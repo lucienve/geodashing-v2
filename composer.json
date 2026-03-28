@@ -1,5 +1,8 @@
 {
     "require-dev": {
         "phpunit/phpunit": "^12.5"
+    },
+    "require": {
+        "google/cloud-storage": "^1.50"
     }
 }
