@@ -1,0 +1,14 @@
+# Geodashing Global Security Overrides
+
+# 1. Deny access to all sensitive configuration files across the entire application tree natively
+<FilesMatch "\.(env|ini|json|lock|md|log)$">
+    Require all denied
+</FilesMatch>
+
+# 2. Block direct HTTP web browser execution of backend test suites and vendor frameworks
+<DirectoryMatch "^.*/(tests|vendor)/.*$">
+    Require all denied
+</DirectoryMatch>
+
+# 3. Disable directory browsing globally (preventing users from seeing lists of files)
+Options -Indexes
