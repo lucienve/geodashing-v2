@@ -135,37 +135,44 @@ def generate_spherical_points(num_points: int) -> List[Point]:
     
     return [Point(lon, lat) for lon, lat in zip(lons, lats)]
 
-def generate_valid_dashpoints(target_count: int = 31000, land_zip_path: str = '../../data/ne_10m_land.zip') -> List[Point]:
+def generate_valid_dashpoints(target_count: int = 2000, land_zip_path: str = '../../data/ne_10m_land.zip', lakes_zip_path: str = '../../data/ne_10m_lakes.zip') -> List[Point]:
     """Generates valid dashpoints ensuring they are on land or <= 500m offshore.
     
     Algorithm:
         1. Generates random global spherical coordinates.
-        2. Projects the raw points and the core landmass polygons to a Cylindrical Equal-Area CRS (EPSG:6933) to enable precise 2D metric measurements.
-        3. Buffers our simple points by a 500m radius. This is a CPU optimization trick: buffering thousands of simple dots is vastly faster than buffering the entire global coastline.
-        4. Filters for points whose 500m radius geometrically intersects the land polygon.
+        2. Projects the raw points, the core landmass polygons, and the lake boundaries to a Cylindrical Equal-Area CRS (EPSG:6933) to enable precise 2D metric measurements.
+        3. Mathematically punches the lake boundaries out of the landmass generating a hole-punched base geometry.
+        4. Buffers our simple points by a 500m radius. This is a CPU optimization trick: buffering thousands of simple dots is vastly faster than buffering the entire global coastline.
+        5. Filters for points whose 500m radius geometrically intersects the hole-punched land polygon.
 
     Args:
         target_count (int): The number of valid points to generate.
         land_zip_path (str): The relative or absolute path to the Natural Earth land zip file.
+        lakes_zip_path (str): The path to the Natural Earth lakes zip file.
 
     Returns:
         List[Point]: A list of valid Shapely Point objects.
         
     Raises:
-        FileNotFoundError: If the land shapefile cannot be found or read.
+        FileNotFoundError: If the land or lake shapefiles cannot be found or read.
     """
     try:
         land_gdf = gpd.read_file(f"zip://{land_zip_path}")
+        lakes_gdf = gpd.read_file(f"zip://{lakes_zip_path}")
     except Exception as e:
-        raise FileNotFoundError(f"Failed to read shapefile from {land_zip_path}: {e}")
+        raise FileNotFoundError(f"Failed to read shapefiles: {e}")
 
-    # We reproject the land to EPSG:6933 (Cylindrical Equal Area) which uses METERS instead of Degrees.
+    # We reproject the geometries to EPSG:6933 (Cylindrical Equal Area) which uses METERS instead of Degrees.
     # This is crucial so we can accurately measure 500 meters everywhere on earth.
-    print("Projecting land geometries to equal-area projection for accurate meter math...")
+    print("Projecting land and lakes geometries to equal-area projection for accurate meter math...")
     land_proj = land_gdf.to_crs(epsg=6933)
+    lakes_proj = lakes_gdf.to_crs(epsg=6933)
     
-    # We will combine all land polygons into a single geometric tree for fast searches
-    land_geometry = land_proj.geometry.union_all()
+    print("Computing boolean physical difference (Punching holes in the landmass to exclude major lakes)...")
+    land_base = land_proj.geometry.union_all()
+    lakes_base = lakes_proj.geometry.union_all()
+    
+    land_geometry = land_base.difference(lakes_base)
     
     valid_points: List[Point] = []
     batch_size = 10000 
@@ -195,12 +202,13 @@ def generate_valid_dashpoints(target_count: int = 31000, land_zip_path: str = '.
 if __name__ == "__main__":
     current_dir = os.path.dirname(os.path.abspath(__file__))
     zip_path = os.path.join(current_dir, '../../data/ne_10m_land.zip')
+    lakes_zip = os.path.join(current_dir, '../../data/ne_10m_lakes.zip')
     config_path = os.path.join(current_dir, '../config.ini')
     
     try:
         # 1. Generate Points
-        target = 31000
-        points = generate_valid_dashpoints(target_count=target, land_zip_path=zip_path)
+        target = 2000
+        points = generate_valid_dashpoints(target_count=target, land_zip_path=zip_path, lakes_zip_path=lakes_zip)
         
         # 2. Upload to MySQL
         seed_database(points, config_path)
