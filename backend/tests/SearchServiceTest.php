@@ -1,0 +1,80 @@
+<?php
+use PHPUnit\Framework\TestCase;
+
+require_once __DIR__ . '/../services/SearchService.php';
+
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
+
+/**
+ * SearchServiceTest
+ *
+ * Verifies the spatial bounding box mechanics and ensures Date Line (-180/180)
+ * coordinate logic cleanly bifurcates vectors in MySQL.
+ */
+#[CoversClass(SearchService::class)]
+#[AllowMockObjectsWithoutExpectations]
+class SearchServiceTest extends TestCase
+{
+    private $pdoMock;
+    private $searchService;
+
+    protected function setUp(): void
+    {
+        // Mock the PDO object mimicking the MySQL environment
+        $this->pdoMock = $this->createMock(PDO::class);
+        $this->searchService = new SearchService($this->pdoMock);
+    }
+
+    /**
+     * Verifies that the service properly parses a standard bounding box payload
+     * directly into the default BETWEEN clauses natively.
+     */
+    #[Test]
+    public function processesStandardBoundingBoxQueryNatively()
+    {
+        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock->method('fetchAll')->willReturn([
+            ['id' => 'GD01-123', 'lat' => 45.0, 'lon' => -70.0]
+        ]);
+        
+        // Assert the SQL string securely binds a strict monolithic coordinate matrix
+        $this->pdoMock->expects($this->once())
+            ->method('prepare')
+            ->with($this->stringContains('ST_X(d.location) BETWEEN :west AND :east'))
+            ->willReturn($stmtMock);
+
+        $result = $this->searchService->searchRegion(50.0, 40.0, -60.0, -80.0);
+
+        $this->assertCount(1, $result);
+        $this->assertEquals('GD01-123', $result[0]['id']);
+    }
+
+    /**
+     * Mathematically verifies that the system gracefully detects Pacific Date Line
+     * crossings and natively splits the boundary checking bounds cleanly!
+     */
+    #[Test]
+    public function processesAntiMeridianDateLineOveflowNatively()
+    {
+        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock->method('fetchAll')->willReturn([
+            ['id' => 'GD01-FIJI', 'lat' => -18.0, 'lon' => 179.9],
+            ['id' => 'GD01-SAMOA', 'lat' => -13.0, 'lon' => -171.0]
+        ]);
+        
+        // Assert the SQL definitively overrides the WHERE clause mapping dual hemispheres
+        $this->pdoMock->expects($this->once())
+            ->method('prepare')
+            ->with($this->stringContains('ST_X(d.location) BETWEEN :west AND 180.0 OR ST_X(d.location) BETWEEN -180.0 AND :east'))
+            ->willReturn($stmtMock);
+
+        // Simulated Bounding box bridging the Date Line securely
+        $result = $this->searchService->searchRegion(0.0, -30.0, -170.0, 175.0);
+
+        $this->assertCount(2, $result);
+        $this->assertEquals('GD01-FIJI', $result[0]['id']);
+        $this->assertEquals('GD01-SAMOA', $result[1]['id']);
+    }
+}
