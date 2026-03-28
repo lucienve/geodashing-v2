@@ -25,6 +25,9 @@ env/
 venv/
 ENV/
 
+# Data sets
+data/
+
 # IDEs and Editors
 .vscode/
 *~
