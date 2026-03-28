@@ -10,6 +10,12 @@
 * **Dependencies:** Use `pip` and a `requirements.txt` file for dependency management.
 * **Database:** Use the `mysql-connector-python` (or PHP equivalent) driver; do not use an ORM. Use parameterized queries or prepared statements for all MySQL interactions to prevent SQL injection. Do not use raw string interpolation for SQL queries.
 
+## Backend (PHP)
+* **Style:** Strictly adhere to PSR standards.
+* **Database:** Use the mysql driver; do not use an ORM. Use prepared statements for all MySQL interactions to prevent SQL injection. Do not use raw string interpolation for SQL queries.
+* **Testing:** Use PHPUnit for unit testing.
+* **Documentation:** Use clear docstrings (PHPDoc style) for all functions and classes.
+
 ## Frontend (Vanilla JS/HTML/CSS)
 * **Frameworks:** Do not introduce React, Vue, or other heavy frameworks. Stick strictly to vanilla JavaScript (ES6+), semantic HTML5, and CSS3.
 * **Performance:** Code must be usable by mobile browsers and desktop browsers alike. Avoid heavy libraries unless there is a compelling reason.
