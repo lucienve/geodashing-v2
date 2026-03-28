@@ -94,13 +94,7 @@ function plotVectors(pointsArray) {
         
         // If they tap a Dashpoint on their phone, physically inject the ID into the Report URL and swap the SPA template mapping it for them seamlessly!
         marker.addListener('click', () => {
-            window.location.hash = `#report`;
-            
-            // Temporary logic injection mechanism pushing the Dashpoint mapping dynamically into the forms natively
-            setTimeout(() => {
-                const idInput = document.getElementById('dashpoint_id');
-                if(idInput) idInput.value = pt.id;
-            }, 200);
+            window.location.hash = `#dashpoint?id=${pt.id}`;
         });
         
         activeMarkers.push(marker);

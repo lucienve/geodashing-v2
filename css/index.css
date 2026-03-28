@@ -185,6 +185,23 @@ body, html {
   animation: slideIn 0.3s ease-out forwards;
 }
 
+.close-btn {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  font-size: 2rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  line-height: 0.5;
+  transition: all 0.2s ease;
+  z-index: 20;
+}
+
+.close-btn:hover {
+  color: var(--accent-red);
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.7);
+}
+
 @keyframes slideIn {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }

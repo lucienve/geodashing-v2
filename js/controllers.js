@@ -23,6 +23,104 @@ document.addEventListener('routeLoaded', (e) => {
     }
 
     // ==========================================================
+    // Controller: DASHPOINT LEDGER (#dashpoint)
+    // ==========================================================
+    if (route.startsWith('#dashpoint')) {
+        let dpId = null;
+        if (route.includes('?')) {
+            const hashParams = new URLSearchParams(route.split('?')[1]);
+            dpId = hashParams.get('id');
+        }
+
+        if (!dpId) {
+            document.getElementById('dp-visits-container').innerHTML = "<span style='color:var(--accent-red);'>[ ERROR: NO DASHPOINT ID PROVIDED ]</span>";
+            return;
+        }
+
+        const dpIdLabel = document.getElementById('dp-id-label');
+        const dpCoordLabel = document.getElementById('dp-coord-label');
+        const visitsContainer = document.getElementById('dp-visits-container');
+        const btnLog = document.getElementById('btn-goto-report');
+
+        // Dynamically shift the URL mapping right back over to the Log forms if they click it!
+        if (btnLog) {
+            btnLog.addEventListener('click', () => {
+                window.location.hash = `#report?id=${dpId}`;
+            });
+        }
+
+        // Poll the new Phase 5.4 Backend directly!
+        fetch(`backend/api/dashpoint.php?id=${dpId}`)
+            .then(res => res.json())
+            .then(json => {
+                if (json.status === 'success') {
+                    const dp = json.data;
+                    if(dpIdLabel) dpIdLabel.innerText = `${dp.id}`;
+                    if(dpCoordLabel) dpCoordLabel.innerText = `[ LAT: ${dp.lat.toFixed(5)} | LON: ${dp.lon.toFixed(5)} ]`;
+
+                    // Generate the beautiful HTML5 Ledgers directly from MySQL bounds
+                    if (dp.visits.length === 0) {
+                        visitsContainer.innerHTML = `<div style="text-align:center; padding:1.5rem; color:var(--text-muted); border:1px solid #333; margin-top:1rem;">ZERO VISITS. <br><br>Dashpoint is unvisited.</div>`;
+                    } else {
+                        visitsContainer.innerHTML = ''; // Purge "LOADING"
+
+                        dp.visits.forEach((visit, index) => {
+                            // Extract standard timestamps cleanly for the CLI UI
+                            const d = new Date(visit.reported_time);
+                            const tStr = `${d.getFullYear()}.${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getDate().toString().padStart(2,'0')} @ ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+
+                            // Generate a pure Javascript DOM block specifically separating the rows safely!
+                            const visitDiv = document.createElement('div');
+                            visitDiv.style.border = '1px solid var(--text-muted)';
+                            visitDiv.style.marginBottom = '1rem';
+                            visitDiv.style.padding = '1rem';
+                            visitDiv.style.background = 'rgba(0, 0, 0, 0.4)';
+
+                            let html = `
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                                    <span style="font-size:0.9rem; color:var(--accent-amber); font-weight:bold;">${index + 1}. ${visit.username}</span>
+                                    <span style="font-size:0.8rem; color:var(--accent-green); border:1px solid var(--accent-green); padding:2px 6px;">+${visit.score_awarded} PT</span>
+                                </div>
+                                <div style="color:#888; font-size:0.75rem; margin-bottom:1rem;">> LOG_TIME: ${tStr}</div>
+                            `;
+
+                            // If they provided notes or uploaded physical Photos to GCP, expose the [ VIEW DETAILS ] toggler natively
+                            if ((visit.notes && visit.notes.trim() !== '') || (visit.photos && visit.photos.length > 0)) {
+                                html += `<button type="button" class="btn btn-secondary" style="width:100%; font-size:0.7rem;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none';">VIEW DETAILS</button>`;
+                                html += `<div style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px dashed #444;">`;
+                                
+                                if (visit.notes) {
+                                    html += `<p style="color:#ddd; margin-bottom:1rem; font-style:italic;">"${visit.notes}"</p>`;
+                                }
+                                
+                                if (visit.photos && visit.photos.length > 0) {
+                                    html += `<div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem;">`;
+                                    visit.photos.forEach(photoPath => {
+                                        // Renders raw GCS URL tokens securely into HTML5 DOM nodes!
+                                        html += `<img src="${photoPath}" style="width:100%; height:auto; border:1px solid var(--accent-amber);" loading="lazy">`;
+                                    });
+                                    html += `</div>`;
+                                }
+                                html += `</div>`;
+                            } else {
+                                html += `<p style="color:#555; font-style:italic;">No details provided.</p>`;
+                            }
+
+                            visitDiv.innerHTML = html;
+                            visitsContainer.appendChild(visitDiv);
+                        });
+                    }
+                } else {
+                    if (visitsContainer) visitsContainer.innerHTML = `<span style='color:var(--accent-red);'>[-] ERROR: ${json.message}</span>`;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                if (visitsContainer) visitsContainer.innerHTML = `<span style='color:var(--accent-red);'>[-] UPLINK SEVERED.</span>`;
+            });
+    }
+
+    // ==========================================================
     // Controller: LOG A VISIT (#report)
     // ==========================================================
     if (route.startsWith('#report')) {
@@ -31,11 +129,14 @@ document.addEventListener('routeLoaded', (e) => {
         const lonInput = document.getElementById('input-lon');
         
         // If they click map markers, the ID gets injected into the URL ?id=GD...
-        // We parse that securely and drop it into the form statically.
-        const urlParams = new URL(window.location.href).searchParams;
-        if(urlParams.get('id')) {
-            const idInput = document.getElementById('input-id');
-            if(idInput) idInput.value = urlParams.get('id');
+        // We parse that securely out of the SPA Routing hash!
+        if (route.includes('?')) {
+            const hashParams = new URLSearchParams(route.split('?')[1]);
+            const targetId = hashParams.get('id');
+            if(targetId) {
+                const idInput = document.getElementById('dashpoint_id');
+                if(idInput) idInput.value = targetId;
+            }
         }
 
         // HTML5 Geolocation Binder - Note: Inputs are NOT readonly globally!

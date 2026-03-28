@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const routes = {
         '': null,
         '#home': null,
+        '#dashpoint': 'templates/dashpoint.html',
         '#login': 'templates/login.html',
         '#report': 'templates/report.html',
         '#search': 'templates/search.html',
@@ -21,13 +22,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. Bounding the SPA state natively
     async function loadRoute() {
-        const hash = window.location.hash || '#home';
+        const fullHash = window.location.hash || '#home';
+        
+        // Strip out query parameters cleanly so the dictionary perfectly understands `#dashpoint?id=123`
+        const hash = fullHash.split('?')[0]; 
+
         const templatePath = routes[hash];
 
         // Ensure active Nav items get highlighted aesthetically
         navLinks.forEach(link => {
             link.classList.remove('active');
-            if (link.getAttribute('href') === hash) {
+            if (link.getAttribute('href') === hash || link.getAttribute('href') === fullHash) {
                 link.classList.add('active');
             }
         });
@@ -46,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => {
                     contentDiv.innerHTML = '';
                     contentDiv.style.opacity = '1';
-                    document.dispatchEvent(new CustomEvent('routeLoaded', { detail: { route: hash } }));
+                    document.dispatchEvent(new CustomEvent('routeLoaded', { detail: { route: fullHash } }));
                 }, 100);
                 return;
             }
@@ -62,8 +67,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // CRITICAL: Since we just dumped raw HTML into the DOM natively, 
                 // any JS listeners tied to buttons inside it must be re-bound!
-                // We fire a custom event telling `api.js` to wake up.
-                document.dispatchEvent(new CustomEvent('routeLoaded', { detail: { route: hash } }));
+                // We fire a custom event telling `controllers.js` to wake up routing the original exact query bounds!
+                document.dispatchEvent(new CustomEvent('routeLoaded', { detail: { route: fullHash } }));
             }, 100);
 
         } catch (err) {
@@ -86,9 +91,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (json.status === 'success') {
                 const headerGameId = document.getElementById('header-game-id');
                 if (headerGameId) {
-                    headerGameId.innerText = `[ MISSION: GDx${json.data.game_id} ]`;
+                    headerGameId.innerText = `[ GAME ${json.data.game_id} ]`;
                 }
             }
         })
-        .catch(err => console.error("Could not fetch active GDx mission strictly for visual banner."));
+        .catch(err => console.error("Could not fetch active GDx game strictly for visual banner."));
 });
