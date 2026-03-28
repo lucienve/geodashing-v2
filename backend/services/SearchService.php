@@ -33,21 +33,20 @@ class SearchService
     {
         // 1. Base Query ensuring we only actively process points that belong to the LIVE Game State Month.
         $baseQuery = "
-            SELECT d.id, ST_Y(d.location) AS lat, ST_X(d.location) AS lon 
+            SELECT d.id, ST_X(d.location) AS lat, ST_Y(d.location) AS lon 
             FROM dashpoints d
             JOIN games g ON d.game_id = g.id
             WHERE g.is_active = TRUE 
-              AND ST_Y(d.location) BETWEEN :south AND :north
+              AND ST_X(d.location) BETWEEN :south AND :north
         ";
         
         // 2. International Date Line Router Algorithm
-        // When looking at a map spanning Fiji, the "East" coordinate is technically smaller (-179) than the "West" (179).
         if ($east < $west) {
             // Box mathematically crossed the Anti-Meridian -> Break query into two global hemispheres safely
-            $sql = $baseQuery . " AND (ST_X(d.location) BETWEEN :west AND 180.0 OR ST_X(d.location) BETWEEN -180.0 AND :east)";
+            $sql = $baseQuery . " AND (ST_Y(d.location) BETWEEN :west AND 180.0 OR ST_Y(d.location) BETWEEN -180.0 AND :east)";
         } else {
             // Standard Euclidean Bounding Box mapping
-            $sql = $baseQuery . " AND ST_X(d.location) BETWEEN :west AND :east";
+            $sql = $baseQuery . " AND ST_Y(d.location) BETWEEN :west AND :east";
         }
         
         $stmt = $this->db->prepare($sql);

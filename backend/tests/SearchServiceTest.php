@@ -39,10 +39,10 @@ class SearchServiceTest extends TestCase
             ['id' => 'GD01-123', 'lat' => 45.0, 'lon' => -70.0]
         ]);
         
-        // Assert the SQL string securely binds a strict monolithic coordinate matrix
+        // Assert the SQL string securely binds a strict monolithic coordinate matrix expecting Longitudes on ST_Y
         $this->pdoMock->expects($this->once())
             ->method('prepare')
-            ->with($this->stringContains('ST_X(d.location) BETWEEN :west AND :east'))
+            ->with($this->stringContains('ST_Y(d.location) BETWEEN :west AND :east'))
             ->willReturn($stmtMock);
 
         $result = $this->searchService->searchRegion(50.0, 40.0, -60.0, -80.0);
@@ -64,10 +64,10 @@ class SearchServiceTest extends TestCase
             ['id' => 'GD01-SAMOA', 'lat' => -13.0, 'lon' => -171.0]
         ]);
         
-        // Assert the SQL definitively overrides the WHERE clause mapping dual hemispheres
+        // Assert the SQL definitively overrides the WHERE clause mapping dual hemispheres via ST_Y Longitudes natively
         $this->pdoMock->expects($this->once())
             ->method('prepare')
-            ->with($this->stringContains('ST_X(d.location) BETWEEN :west AND 180.0 OR ST_X(d.location) BETWEEN -180.0 AND :east'))
+            ->with($this->stringContains('ST_Y(d.location) BETWEEN :west AND 180.0 OR ST_Y(d.location) BETWEEN -180.0 AND :east'))
             ->willReturn($stmtMock);
 
         // Simulated Bounding box bridging the Date Line securely
