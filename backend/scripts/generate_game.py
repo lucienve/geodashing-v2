@@ -1,8 +1,121 @@
 import os
+import time
+import calendar
+import configparser
 import numpy as np
 import geopandas as gpd
+from datetime import datetime
 from shapely.geometry import Point
 from typing import List
+import mysql.connector
+
+def get_db_connection(config_path: str) -> mysql.connector.connection.MySQLConnection:
+    """Establishes a connection to the MySQL database securely via config.ini.
+
+    Args:
+        config_path (str): The absolute or relative path to the backend/config.ini.
+
+    Returns:
+        mysql.connector.connection.MySQLConnection: The active database connection object.
+        
+    Raises:
+        FileNotFoundError: If the config file cannot be found.
+        mysql.connector.Error: If the database connection fails.
+    """
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"Database config not found at {config_path}")
+        
+    config = configparser.ConfigParser()
+    config.read(config_path)
+    
+    # Strip quotes if they were included in the INI formatting
+    host = config['database'].get('DB_HOST', '127.0.0.1').strip('"\'')
+    port = config['database'].get('DB_PORT', '3306').strip('"\'')
+    user = config['database'].get('DB_USER', 'geodashing').strip('"\'')
+    password = config['database'].get('DB_PASS', '').strip('"\'')
+    database = config['database'].get('DB_NAME', 'geodashing').strip('"\'')
+    
+    try:
+        conn = mysql.connector.connect(
+            host=host,
+            user=user,
+            password=password,
+            database=database,
+            port=port
+        )
+        return conn
+    except mysql.connector.Error as e:
+        raise Exception(f"Database Connection Error: {e}")
+
+def seed_database(points: List[Point], config_path: str) -> None:
+    """Seeds the newly generated Dashpoints into tracking tables along with a new active Game state.
+
+    Args:
+        points (List[Point]): Mathematically verified Point geometries to insert.
+        config_path (str): The path to the PHP backend config.ini.
+        
+    Raises:
+        Exception: General sql error handling wrapper for safe failure.
+    """
+    print("\nConnecting to the database to seed points...")
+    try:
+        conn = get_db_connection(config_path)
+        cursor = conn.cursor()
+        
+        # 1. Define the game constraints
+        now = datetime.now()
+        game_name = now.strftime("%B %Y Dash")
+        start_time = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        _, last_day = calendar.monthrange(now.year, now.month)
+        end_time = now.replace(day=last_day, hour=23, minute=59, second=59, microsecond=0)
+        
+        # 2. End all active games
+        print("Marking previous games as inactive...")
+        cursor.execute("UPDATE games SET is_active = FALSE")
+        
+        # 3. Insert the new active game
+        print(f"Initializing new game: '{game_name}'...")
+        insert_game_sql = """
+            INSERT INTO games (name, start_time, end_time, is_active)
+            VALUES (%s, %s, %s, True)
+        """
+        cursor.execute(insert_game_sql, (game_name, start_time, end_time))
+        game_id = cursor.lastrowid
+        
+        # 4. Insert all valid dashpoints
+        print(f"Bulk inserting {len(points)} Dashpoints for Game ID format GD{game_id:02d}...")
+        
+        # Format the parameters for chunked execution
+        # Process in batches of 5000 to prevent overwhelming MySQL's statement packet limits
+        insert_dp_sql = """
+            INSERT INTO dashpoints (id, game_id, location, country_code, state_province)
+            VALUES (%s, %s, ST_GeomFromText(%s, 4326), NULL, NULL)
+        """
+        
+        batch_size = 5000
+        for i in range(0, len(points), batch_size):
+            batch_data = []
+            for j, point in enumerate(points[i:i+batch_size]):
+                point_index = i + j + 1
+                dashpoint_id = f"GD{game_id:02d}-{point_index:05d}"
+                wkt_string = f"POINT({point.x} {point.y})"  # OGC standard Well-Known Text
+                batch_data.append((dashpoint_id, game_id, wkt_string))
+            
+            cursor.executemany(insert_dp_sql, batch_data)
+            
+        conn.commit()
+        print("Database seeding completed successfully!")
+        
+    except Exception as e:
+        if 'conn' in locals() and conn.is_connected():
+            conn.rollback()
+        raise Exception(f"Failed to seed database: {e}")
+        
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals() and conn.is_connected():
+            conn.close()
 
 def generate_spherical_points(num_points: int) -> List[Point]:
     """Generates random global coordinates with equal geographic density.
@@ -77,24 +190,19 @@ def generate_valid_dashpoints(target_count: int = 31000, land_zip_path: str = '.
 
     return valid_points[:target_count]
 
+
 if __name__ == "__main__":
     current_dir = os.path.dirname(os.path.abspath(__file__))
     zip_path = os.path.join(current_dir, '../../data/ne_10m_land.zip')
+    config_path = os.path.join(current_dir, '../config.ini')
     
     try:
-        # Test run the engine
-        points = generate_valid_dashpoints(target_count=31000, land_zip_path=zip_path)
+        # 1. Generate Points
+        target = 31000
+        points = generate_valid_dashpoints(target_count=target, land_zip_path=zip_path)
         
-        # Just show a preview to prove it worked
-        print("\nPreview of first 5 Dashpoints:")
-        for i in range(5):
-            print(f" Lat: {points[i].y:.6f}, Lon: {points[i].x:.6f}")
-            
-        # Export 50 points to a CSV file for Google Maps/Earth verification
-        import pandas as pd
-        sample50 = points[:50]
-        df = pd.DataFrame({'Latitude': [p.y for p in sample50], 'Longitude': [p.x for p in sample50]})
-        df.to_csv('sample_map_points.csv', index=False)
-        print("\nSuccessfully exported 'sample_map_points.csv'. You can import this directly into Google My Maps or Google Earth to visually verify the 500m rule!")
+        # 2. Upload to MySQL
+        seed_database(points, config_path)
+        
     except Exception as e:
-        print(f"Execution Error: {e}")
+        print(f"\nExecution Error: {e}")
