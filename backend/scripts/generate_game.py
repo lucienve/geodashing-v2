@@ -98,7 +98,8 @@ def seed_database(points: List[Point], config_path: str) -> None:
             for j, point in enumerate(points[i:i+batch_size]):
                 point_index = i + j + 1
                 dashpoint_id = f"GD{game_id:02d}-{point_index:05d}"
-                wkt_string = f"POINT({point.x} {point.y})"  # OGC standard Well-Known Text
+                # MySQL 8 SRID 4326 strictly enforces (Latitude Longitude) coordinate ordering
+                wkt_string = f"POINT({point.y} {point.x})"
                 batch_data.append((dashpoint_id, game_id, wkt_string))
             
             cursor.executemany(insert_dp_sql, batch_data)
