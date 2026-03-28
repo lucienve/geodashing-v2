@@ -66,6 +66,7 @@ CREATE TABLE visits (
     
     -- Core Tie-Breaking Variables
     reported_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- The exact time the API received the request (FCFS Logic)
+    edited_at DATETIME NULL DEFAULT NULL, -- Structural tracking identifying when a post-log Field Note modification occurred
     
     -- Evidence and Flavor
     notes TEXT,
