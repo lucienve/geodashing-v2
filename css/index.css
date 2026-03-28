@@ -1,0 +1,308 @@
+/* =========================================================================
+   GEODASHING V2: Core Design System
+   Aesthetic: "Premium Retro-Technical" Data Terminal
+   Combines early-2000s utilitarian logic with hyper-modern glassmorphism.
+========================================================================= */
+
+:root {
+  /* Ultra-dark canvas anchoring the bright neon typography natively */
+  --bg-dark: #09090b;
+  
+  /* Glassmorphism translucent layers revealing the Google Map beneath */
+  --bg-glass: rgba(9, 9, 11, 0.85);
+  --bg-glass-heavy: rgba(9, 9, 11, 0.95);
+  
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  
+  /* The GPS Action Colors - Highly vibrant mimicking physical LED screens */
+  --accent-amber: #f59e0b;
+  --accent-amber-glow: rgba(245, 158, 11, 0.4);
+  
+  --accent-green: #10b981;
+  --accent-green-glow: rgba(16, 185, 129, 0.4);
+
+  --accent-red: #ef4444;
+  
+  --font-mono: 'Roboto Mono', 'Courier New', monospace;
+  --font-sans: 'Inter', sans-serif;
+  
+  --border-neon: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+/* Global Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body, html {
+  width: 100%;
+  height: 100vh;
+  /* Strictly lock scrolling to internal containers only, protecting Map State! */
+  overflow: hidden; 
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* =========================================================================
+   LAYER 0: Google Map Persistence Framework
+========================================================================= */
+#map-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1; /* Locked precisely at the bottom of the visible DOM */
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  background-color: #1a1a1a; 
+}
+
+/* =========================================================================
+   LAYER 1: The UI Shell Overlay
+========================================================================= */
+#ui-shell {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 10;
+  
+  /* CRITICAL: Let clicks instantly fall through the empty space so the user 
+     can pan the Google map organically without hitting invisible divs. */
+  pointer-events: none; 
+  
+  display: flex;
+  flex-direction: column;
+}
+
+/* Turn pointers securely back ON for the actual UI buttons and panels */
+#top-nav, #app-content, .fab {
+  pointer-events: auto;
+}
+
+/* -------------------------------------------------------------------------
+   Navigation Block
+------------------------------------------------------------------------- */
+.glass-panel {
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: var(--border-neon);
+}
+
+#top-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.7);
+}
+
+.logo {
+  font-family: var(--font-mono);
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--text-main);
+}
+
+.version-tag {
+  color: var(--accent-amber);
+  font-size: 0.8rem;
+  vertical-align: super;
+}
+
+.glow-text {
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+.nav-links {
+  display: flex;
+  gap: 2rem;
+}
+
+.nav-link {
+  color: var(--text-main);
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.2s ease;
+}
+
+.nav-link:hover, .nav-link.active {
+  color: var(--accent-amber);
+  text-shadow: 0 0 8px var(--accent-amber-glow);
+}
+
+.nav-link.highlight {
+  color: var(--accent-green);
+}
+
+#mobile-menu-btn {
+  display: none;
+  background: transparent;
+  color: var(--accent-amber);
+  border: 1px solid var(--accent-amber);
+  font-size: 1.5rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+}
+
+/* -------------------------------------------------------------------------
+   SPA Dynamic Component Wrapper
+------------------------------------------------------------------------- */
+#app-content {
+  flex-grow: 1; /* Consumes remaining vertical height cleanly */
+  width: 100%;
+  max-width: 550px; /* Force the UI strictly to a mobile/sidebar column */
+  padding: 1.5rem;
+  overflow-y: auto; /* Scoped scrolling independent of the map wrapper */
+}
+
+/* When app.js injects a template, it lands inside this class magically */
+.template-view {
+  background: var(--bg-glass-heavy);
+  backdrop-filter: blur(20px);
+  border: var(--border-neon);
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.8);
+  
+  /* Forces the data-logger terminal font onto all nested form labels */
+  font-family: var(--font-mono); 
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.template-view h2 {
+  font-size: 1.25rem;
+  color: var(--accent-amber);
+  border-bottom: 1px solid var(--accent-amber-glow);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* -------------------------------------------------------------------------
+   Form Components
+------------------------------------------------------------------------- */
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+  text-transform: uppercase;
+}
+
+.data-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 0.85rem;
+  color: var(--accent-green); /* Terminal phosphorus green text */
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.data-input:focus {
+  outline: none;
+  border-color: var(--accent-amber);
+  box-shadow: 0 0 10px var(--accent-amber-glow);
+}
+
+.data-input::placeholder {
+  color: rgba(148, 163, 184, 0.3);
+}
+
+/* -------------------------------------------------------------------------
+   Buttons & Interfaces
+------------------------------------------------------------------------- */
+.btn {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 0.85rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: var(--accent-amber);
+  color: #000;
+  box-shadow: 0 0 15px var(--accent-amber-glow);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-main);
+  border: 1px solid var(--text-muted);
+}
+
+.alert {
+  padding: 1rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.alert-error {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid var(--accent-red);
+  color: #ffb3b3;
+}
+
+/* -------------------------------------------------------------------------
+   Global Utility Classes
+------------------------------------------------------------------------- */
+.d-none {
+  display: none !important;
+}
+
+/* Responsive Overrides (Mobile First) */
+@media (max-width: 768px) {
+  #desktop-links {
+    display: none; /* Hide heavy links on tiny phones securely */
+  }
+  
+  #mobile-menu-btn {
+    display: block; /* Reveal Hamburger natively */
+  }
+  
+  #app-content {
+    max-width: 100%;
+    padding: 1rem;
+  }
+}
