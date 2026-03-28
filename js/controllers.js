@@ -42,10 +42,25 @@ document.addEventListener('routeLoaded', (e) => {
         const visitsContainer = document.getElementById('dp-visits-container');
         const btnLog = document.getElementById('btn-goto-report');
 
-        // Dynamically shift the URL mapping right back over to the Log forms if they click it!
+        // Dynamically bind the Authentication API physically against the button DOM node natively
         if (btnLog) {
-            btnLog.addEventListener('click', () => {
-                window.location.hash = `#report?id=${dpId}`;
+            API.checkSession().then(res => {
+                if (res.status === 'success') {
+                    // Authenticated Identity - Permitted to Route
+                    btnLog.innerText = "LOG VISIT";
+                    btnLog.addEventListener('click', () => {
+                        window.location.hash = `#report?id=${dpId}`;
+                    });
+                } else {
+                    // Unauthenticated Identity - Enforce Login
+                    btnLog.innerText = "LOGIN TO LOG VISIT";
+                    btnLog.style.background = "transparent";
+                    btnLog.style.color = "var(--accent-red)";
+                    btnLog.style.border = "1px solid var(--accent-red)";
+                    btnLog.addEventListener('click', () => {
+                        window.location.hash = `#login`;
+                    });
+                }
             });
         }
 
