@@ -29,8 +29,9 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
 
     // 2. Input Sanitization
     $dashpoint_id = $_POST['dashpoint_id'] ?? '';
-    $lat = filter_var($_POST['latitude'] ?? '', FILTER_VALIDATE_FLOAT);
-    $lon = filter_var($_POST['longitude'] ?? '', FILTER_VALIDATE_FLOAT);
+    // Safely mapping strictly against the frontend `name="lat"` and `name="lon"` constraints!
+    $lat = filter_var($_POST['lat'] ?? '', FILTER_VALIDATE_FLOAT);
+    $lon = filter_var($_POST['lon'] ?? '', FILTER_VALIDATE_FLOAT);
     $notes = trim($_POST['notes'] ?? '');
     
     // Phase 5 Validation: Strict Field Log Text Constraints
