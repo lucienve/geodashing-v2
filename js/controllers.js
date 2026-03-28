@@ -283,6 +283,106 @@ document.addEventListener('routeLoaded', (e) => {
     }
 
     // ==========================================================
+    // Controller: AUTHENTICATION MODULE (#login)
+    // ==========================================================
+    if (route === '#login') {
+        const loginForm = document.getElementById('form-login');
+        const signupForm = document.getElementById('form-signup');
+        const loginFeedback = document.getElementById('login-feedback');
+        const signupFeedback = document.getElementById('signup-feedback');
+        
+        // CSS Tab Toggles Native Integration
+        const toggleSignup = document.getElementById('toggle-signup');
+        const toggleLogin = document.getElementById('toggle-login');
+        const loginPane = document.getElementById('login-pane');
+        const signupPane = document.getElementById('signup-pane');
+
+        if (toggleSignup && toggleLogin && loginPane && signupPane) {
+            toggleSignup.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                loginPane.style.display = 'none';
+                signupPane.style.display = 'block';
+            });
+            toggleLogin.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                signupPane.style.display = 'none';
+                loginPane.style.display = 'block';
+            });
+        }
+        
+        if (loginForm) {
+            loginForm.addEventListener('submit', async (ev) => {
+                ev.preventDefault();
+                const btn = document.getElementById('btn-submit-login');
+                btn.disabled = true;
+                btn.innerText = "AUTHENTICATING...";
+                
+                const user = document.getElementById('login-username').value;
+                const pass = document.getElementById('login-password').value;
+                
+                const res = await API.login(user, pass);
+                if (res.status === 'success') {
+                    loginFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] IDENTITY VERIFIED. Uplink established.</div>`;
+                    // Global Application State re-syncs instantly updating the Navigation bar natively!
+                    if (typeof window.updateAuthState === 'function') window.updateAuthState();
+                    setTimeout(() => window.location.hash = '#home', 800);
+                } else {
+                    loginFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] REJECTED: ${res.message}</div>`;
+                    btn.disabled = false;
+                    btn.innerText = "LOGIN";
+                }
+            });
+        }
+
+        if (signupForm) {
+            const signupBtn = document.getElementById('btn-submit-signup');
+            const pass1 = document.getElementById('signup-password');
+            const pass2 = document.getElementById('signup-password-verify');
+            
+            // Dynamically validate matching passwords natively locking the submission button
+            const validatePasswords = () => {
+                if (pass1.value.length >= 6 && pass1.value === pass2.value) {
+                    signupBtn.disabled = false;
+                    pass2.style.borderColor = "var(--accent-green)";
+                } else {
+                    signupBtn.disabled = true;
+                    if (pass2.value.length > 0) {
+                        pass2.style.borderColor = "var(--accent-red)";
+                    } else {
+                        pass2.style.borderColor = "var(--text-muted)";
+                    }
+                }
+            };
+            
+            if (pass1 && pass2) {
+                pass1.addEventListener('input', validatePasswords);
+                pass2.addEventListener('input', validatePasswords);
+            }
+
+            signupForm.addEventListener('submit', async (ev) => {
+                ev.preventDefault();
+                signupBtn.disabled = true;
+                signupBtn.innerText = "CREATING PROFILE...";
+                
+                const user = document.getElementById('signup-username').value;
+                const email = document.getElementById('signup-email').value;
+                const pass = pass1.value;
+                
+                const res = await API.signup(user, email, pass);
+                if (res.status === 'success') {
+                    signupFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] WELCOME: Authentication matrix initialized.</div>`;
+                    if (typeof window.updateAuthState === 'function') window.updateAuthState();
+                    setTimeout(() => window.location.hash = '#home', 800);
+                } else {
+                    signupFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] REJECTED: ${res.message}</div>`;
+                    signupBtn.disabled = false;
+                    signupBtn.innerText = "CREATE ACCOUNT";
+                }
+            });
+        }
+    }
+
+    // ==========================================================
     // Controller: SCANNER EXPORT ROUTINES (#search)
     // ==========================================================
     if (route === '#search') {

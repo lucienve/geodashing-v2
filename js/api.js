@@ -37,11 +37,10 @@ const API = {
     login: async function(username, password) {
         try {
             const data = new URLSearchParams();
-            data.append('action', 'login');
             data.append('username', username);
             data.append('password', password);
 
-            const res = await fetch('backend/api/auth.php', {
+            const res = await fetch('backend/api/auth.php?action=login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -53,6 +52,62 @@ const API = {
         } catch(e) {
             console.error(e);
             return { status: 'error', message: 'Auth Network Failure!' };
+        }
+    },
+
+    /**
+     * Attempts native Registration natively persisting the hash state safely
+     */
+    signup: async function(username, email, password) {
+        try {
+            const data = new URLSearchParams();
+            data.append('username', username);
+            data.append('email', email);
+            data.append('password', password);
+
+            const res = await fetch('backend/api/auth.php?action=signup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    ...this.headers
+                },
+                body: data.toString()
+            });
+            return await res.json();
+        } catch(e) {
+            console.error(e);
+            return { status: 'error', message: 'Registration Network Failure!' };
+        }
+    },
+
+    /**
+     * Purges the PHP backend session cleanly and formally returning the state natively
+     */
+    logout: async function() {
+        try {
+            const res = await fetch('backend/api/auth.php?action=logout', {
+                method: 'POST',
+                headers: this.headers
+            });
+            return await res.json();
+        } catch(e) {
+            console.error(e);
+            return { status: 'error', message: 'Logout Network Failure!' };
+        }
+    },
+
+    /**
+     * Polls the live Session strictly ensuring the user is authorized.
+     */
+    checkSession: async function() {
+        try {
+            const res = await fetch('backend/api/auth.php?action=session', {
+                method: 'POST', // Auth endpoint enforces POST mapped strictly
+                headers: this.headers
+            });
+            return await res.json();
+        } catch(e) {
+            return { status: 'error', message: 'Session Network Failure!' };
         }
     }
 };

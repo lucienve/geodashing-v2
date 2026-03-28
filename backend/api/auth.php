@@ -64,6 +64,19 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             session_destroy();
             echo json_encode(["status" => "success", "message" => "Logged out successfully"]);
             
+        } elseif ($action === 'session') {
+            // Native session state retrieval explicitly mapping memory back to the SPA
+            if (isset($_SESSION['user_id']) && isset($_SESSION['username'])) {
+                echo json_encode([
+                    "status" => "success",
+                    "user_id" => $_SESSION['user_id'],
+                    "username" => $_SESSION['username']
+                ]);
+            } else {
+                http_response_code(401);
+                echo json_encode(["status" => "error", "message" => "No active session"]);
+            }
+            
         } else {
             http_response_code(400);
             echo json_encode(["status" => "error", "message" => "Invalid action specified."]);

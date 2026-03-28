@@ -96,4 +96,43 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         })
         .catch(err => console.error("Could not fetch active GDx game strictly for visual banner."));
+
+    // 5. Native Javascript Session Bootstrapper dynamically driving the Nav Auth state securely
+    window.updateAuthState = async function() {
+        const authBtn = document.getElementById('nav-auth-btn');
+        const fab = document.getElementById('fab-report');
+        
+        try {
+            const res = await API.checkSession();
+            if (res.status === 'success') {
+                authBtn.innerText = `LOGOUT [${res.username}]`;
+                authBtn.href = '#';
+                
+                // Natively detaching previous listeners to prevent stack duplications
+                const newBtn = authBtn.cloneNode(true);
+                authBtn.replaceWith(newBtn);
+                
+                newBtn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    await API.logout();
+                    window.location.reload(); // Physical purge resets the SPA safely
+                });
+
+                if (fab) fab.classList.remove('d-none');
+            } else {
+                authBtn.innerText = `Player login`;
+                authBtn.href = '#login';
+                
+                const newBtn = authBtn.cloneNode(true);
+                authBtn.replaceWith(newBtn);
+                
+                if (fab) fab.classList.add('d-none');
+            }
+        } catch(e) {
+            console.error("Session integrity check failed.");
+        }
+    };
+
+    // Execute the Auth loop instantly mapping the initial load!
+    window.updateAuthState();
 });

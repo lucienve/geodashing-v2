@@ -1,12 +1,56 @@
 <div class="template-view" id="view-login">
     <a href="#home" class="close-btn" aria-label="Close View">&times;</a>
     <h2>LOGIN</h2>
-    <p style="margin-bottom:1.5rem; font-size:0.85rem; color:var(--text-muted); line-height:1.4;">
-        Provide your registered player credentials.
-    </p>
+    
+    <!-- Login Pane -->
+    <div id="login-pane" style="border:1px solid var(--accent-amber); padding:1.5rem; margin-bottom: 2rem; background:rgba(212, 163, 115, 0.05);">
+        <h3 style="color:var(--accent-amber); margin-bottom:1rem; border-bottom:1px dashed var(--accent-amber); padding-bottom:0.5rem;">EXISTING PLAYER</h3>
+        <div id="login-feedback"></div>
+        
+        <form id="form-login">
+            <div class="form-group">
+                <label>USERNAME</label>
+                <input type="text" id="login-username" name="username" class="data-input" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label>PASSWORD</label>
+                <input type="password" id="login-password" name="password" class="data-input" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn btn-primary" id="btn-submit-login" style="width:100%; margin-top:0.5rem;">LOGIN</button>
+        </form>
+        
+        <div style="text-align:center; margin-top:1.5rem;">
+            <a href="#" id="toggle-signup" style="color:var(--text-muted); font-size:0.85rem; text-decoration:none; border-bottom:1px dashed var(--text-muted);">[ Or Register a New Player ]</a>
+        </div>
+    </div>
 
-    <!-- Placeholder for Phase 6 Logic -->
-    <div class="dash-block" style="text-align:center; padding:2rem; border:1px dashed var(--accent-amber);">
-        <p style="color:var(--accent-amber); font-family:monospace;">[ AUTHENTICATION MODULE PENDING ]</p>
+    <!-- Signup Pane -->
+    <div id="signup-pane" style="border:1px solid var(--text-muted); padding:1.5rem; display:none;">
+        <h3 style="color:var(--text-muted); margin-bottom:1rem; border-bottom:1px dashed var(--text-muted); padding-bottom:0.5rem;">REGISTER NEW PLAYER</h3>
+        <div id="signup-feedback"></div>
+        
+        <form id="form-signup">
+            <div class="form-group">
+                <label>USERNAME</label>
+                <input type="text" id="signup-username" name="username" class="data-input" style="border-color:var(--text-muted);" required autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label>EMAIL ADDRESS</label>
+                <input type="email" id="signup-email" name="email" class="data-input" style="border-color:var(--text-muted);" required autocomplete="email">
+            </div>
+            <div class="form-group">
+                <label>PASSWORD <span style="font-size:0.7rem; color:var(--text-muted); font-weight:normal;">[MIN 6 CHARS]</span></label>
+                <input type="password" id="signup-password" name="password" class="data-input" style="border-color:var(--text-muted);" required autocomplete="new-password" minlength="6">
+            </div>
+            <div class="form-group">
+                <label>VERIFY PASSWORD <span style="font-size:0.7rem; color:var(--text-muted); font-weight:normal;">[MIN 6 CHARS]</span></label>
+                <input type="password" id="signup-password-verify" name="password_verify" class="data-input" style="border-color:var(--text-muted);" required autocomplete="new-password" minlength="6">
+            </div>
+            <button type="submit" class="btn btn-secondary" id="btn-submit-signup" style="width:100%; margin-top:0.5rem;" disabled>CREATE ACCOUNT</button>
+        </form>
+        
+        <div style="text-align:center; margin-top:1.5rem;">
+            <a href="#" id="toggle-login" style="color:var(--text-muted); font-size:0.85rem; text-decoration:none; border-bottom:1px dashed var(--text-muted);">[ Return to Login ]</a>
+        </div>
     </div>
 </div>
