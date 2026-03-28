@@ -169,6 +169,26 @@ document.addEventListener('routeLoaded', (e) => {
             });
         }
         
+        // Dynamic Log Character Counter natively optimizing the UX!
+        const logArea = document.getElementById('log-textarea');
+        const charCounter = document.getElementById('char-counter');
+        if (logArea && charCounter) {
+            logArea.addEventListener('input', () => {
+                const len = logArea.value.length;
+                const remaining = 10000 - len;
+                
+                charCounter.innerText = `${remaining.toLocaleString()} chars remaining`;
+                
+                if (remaining <= 50) {
+                    charCounter.style.color = "var(--accent-red)";
+                    charCounter.style.fontWeight = "bold";
+                } else {
+                    charCounter.style.color = "var(--accent-amber)";
+                    charCounter.style.fontWeight = "normal";
+                }
+            });
+        }
+        
         // Final Logging Form Submitter trapping the Data matrix natively into api.js
         const reportForm = document.getElementById('form-report');
         if (reportForm) {
@@ -182,6 +202,12 @@ document.addEventListener('routeLoaded', (e) => {
                 const userLat = parseFloat(latInput.value);
                 const userLon = parseFloat(lonInput.value);
                 const targetId = document.getElementById('dashpoint_id').value;
+                const logLength = logArea ? logArea.value.length : 0;
+
+                if (logLength === 0 || logLength > 10000) {
+                    feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] LOG REJECTED: Mandatory field observations must be between 1 and 10,000 characters.</div>`;
+                    return;
+                }
 
                 if (isNaN(userLat) || userLat < -90 || userLat > 90) {
                     feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] GEOPHYSICAL REJECTION: Latitude strictly bounded between -90 and 90 degrees.</div>`;

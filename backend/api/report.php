@@ -31,7 +31,14 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     $dashpoint_id = $_POST['dashpoint_id'] ?? '';
     $lat = filter_var($_POST['latitude'] ?? '', FILTER_VALIDATE_FLOAT);
     $lon = filter_var($_POST['longitude'] ?? '', FILTER_VALIDATE_FLOAT);
-    $notes = $_POST['notes'] ?? null;
+    $notes = trim($_POST['notes'] ?? '');
+    
+    // Phase 5 Validation: Strict Field Log Text Constraints
+    if (empty($notes) || strlen($notes) > 10000) {
+        http_response_code(400);
+        echo json_encode(["status" => "error", "message" => "Field observations are mandatory and must not exceed 10,000 characters."]);
+        exit;
+    }
     $photosJson = null;
 
     // 2.5 Optional Media Processing Pipeline
