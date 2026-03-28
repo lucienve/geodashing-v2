@@ -14,6 +14,7 @@ window.initMap = function() {
     map = new google.maps.Map(document.getElementById("map"), {
         center: { lat: 39.8, lng: -98.5 }, // North American Center Base Default
         zoom: 4,
+        mapId: "GEODASH-V2-MAIN", // CRITICAL: AdvancedMarkerElement absolutely requires explicitly mapping a Map ID string over Google's bounds!
         disableDefaultUI: true, // Strips out the generic Google buttons leaving an ultra-clean Terminal mapping shell
         zoomControl: true, // Allow manual zooming if mouse-wheels fail
         backgroundColor: '#09090b',
@@ -77,19 +78,19 @@ function plotVectors(pointsArray) {
     activeMarkers = [];
 
     pointsArray.forEach(pt => {
-        const marker = new google.maps.Marker({
+        // AdvancedMarkerElement natively replaces deprecated vector geometries with the new PinElement Engine
+        const pinView = new google.maps.marker.PinElement({
+            background: "#10b981",     // Glowing Neon Green mapping the CSS tokens
+            borderColor: "#f59e0b",    // Bright Amber rim wrapping the point distinctively
+            glyphColor: "#ffffff",
+            scale: 0.95
+        });
+
+        const marker = new google.maps.marker.AdvancedMarkerElement({
             position: { lat: parseFloat(pt.lat), lng: parseFloat(pt.lon) },
             map: map,
-            title: pt.id,
-            // Draw an explicitly custom LED style Dot natively utilizing standard vector strokes guaranteeing blazing rendering speed!
-            icon: {
-                path: google.maps.SymbolPath.CIRCLE,
-                scale: 6,
-                fillColor: '#00ff41',     // Glowing Neon Green mapping the CSS tokens
-                fillOpacity: 1,
-                strokeWeight: 2,
-                strokeColor: '#f59e0b',   // Bright Amber rim wrapping the point distinctively
-            }
+            title: `Dashpoint ${pt.id}`,
+            content: pinView.element
         });
         
         // If they tap a Dashpoint on their phone, physically inject the ID into the Report URL and swap the SPA template mapping it for them seamlessly!
