@@ -86,7 +86,7 @@ body, html {
 }
 
 /* Turn pointers securely back ON for the actual UI buttons and panels */
-#top-nav, #app-content, .fab {
+#top-nav, .template-view, .fab {
   pointer-events: auto;
 }
 
@@ -106,6 +106,12 @@ body, html {
   align-items: center;
   padding: 1rem 1.5rem;
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.7);
+  
+  /* CRITICAL: Protects the desktop map-drag experience from accidentally highlighting HTML UI text natively! */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .logo {
