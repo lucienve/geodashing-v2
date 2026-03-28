@@ -8,8 +8,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Explicit Routing Logic Dictionary
     const routes = {
-        '': 'templates/dashboard.html',
-        '#home': 'templates/dashboard.html',
+        '': null,
+        '#home': null,
         '#login': 'templates/login.html',
         '#report': 'templates/report.html',
         '#search': 'templates/search.html',
@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        if (!templatePath) {
+        if (templatePath === undefined) {
             contentDiv.innerHTML = '<div class="template-view"><h2>404 ERROR</h2><p class="data-input" style="color:var(--accent-red)">System route physically unmapped.</p></div>';
             return;
         }
@@ -40,6 +40,16 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // Smoothly collapse the current UI out preventing janky HTML resets
             contentDiv.style.opacity = '0.3';
+            
+            // Allow the router to completely purge the DOM overlay for 100% Map Views!
+            if (templatePath === null) {
+                setTimeout(() => {
+                    contentDiv.innerHTML = '';
+                    contentDiv.style.opacity = '1';
+                    document.dispatchEvent(new CustomEvent('routeLoaded', { detail: { route: hash } }));
+                }, 100);
+                return;
+            }
             
             const response = await fetch(templatePath);
             if (!response.ok) throw new Error("Template layout missing continuously.");
@@ -68,4 +78,17 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initial Boot mapping
     loadRoute();
+
+    // 4. One-time Global Data Boot: Pings the active game parameters explicitly into the Header Navigation Bar
+    fetch('backend/api/game.php')
+        .then(res => res.json())
+        .then(json => {
+            if (json.status === 'success') {
+                const headerGameId = document.getElementById('header-game-id');
+                if (headerGameId) {
+                    headerGameId.innerText = `[ MISSION: GDx${json.data.game_id} ]`;
+                }
+            }
+        })
+        .catch(err => console.error("Could not fetch active GDx mission strictly for visual banner."));
 });

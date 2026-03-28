@@ -18,55 +18,8 @@ document.addEventListener('routeLoaded', (e) => {
     // Controller: HOME DASHBOARD (#home)
     // ==========================================================
     if (route === '#home' || route === '') {
-        const timerDisplay = document.getElementById('timer-display');
-        const gameIdDisplay = document.getElementById('dash-game-id');
-        const liveTicker = document.getElementById('live-ticker');
-
-        // Ping Game State metrics from the backend purely dynamically
-        fetch('backend/api/game.php')
-            .then(res => res.json())
-            .then(json => {
-                if (json.status === 'success') {
-                    const game = json.data;
-                    gameIdDisplay.innerHTML = `<span style="color:var(--accent-green)">[ ACTIVE MISSION: GDx${game.game_id} ]</span>`;
-                    
-                    const endDate = new Date(game.end_time).getTime();
-                    
-                    // Boot the Retro-terminal countdown clock cleanly 
-                    const timerId = setInterval(() => {
-                        const now = new Date().getTime();
-                        const distance = endDate - now;
-
-                        if (distance < 0) {
-                            clearInterval(timerId);
-                            timerDisplay.innerText = "00:00:00:00";
-                            timerDisplay.style.color = 'var(--accent-red)';
-                            return;
-                        }
-
-                        const days = Math.floor(distance / (1000 * 60 * 60 * 24)).toString().padStart(2, '0');
-                        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).toString().padStart(2, '0');
-                        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
-                        const seconds = Math.floor((distance % (1000 * 60)) / 1000).toString().padStart(2, '0');
-
-                        timerDisplay.innerText = `${days}:${hours}:${minutes}:${seconds}`;
-                    }, 1000);
-                    
-                    activeIntervals.push(timerId);
-                    
-                    // Tiny aesthetic ticker update mapping retro lore!
-                    setTimeout(() => {
-                        liveTicker.innerHTML += "<br>> SYNC_ESTABLISHED: SATELLITES LOCKED.";
-                        liveTicker.scrollTo(0, liveTicker.scrollHeight);
-                    }, 800);
-                } else {
-                    gameIdDisplay.innerHTML = `<span style="color:var(--accent-red)">[ NO ACTIVE MISSIONS ]</span>`;
-                }
-            })
-            .catch(err => {
-                console.error("Dashboard Fetch RUPTURED:", err);
-                gameIdDisplay.innerHTML = `<span style="color:var(--accent-red)">[ SYSTEM FAULT ]</span>`;
-            });
+        // The dashboard is now a purely transparent state allowing 100% full-screen map layouts natively!
+        // (Game ID is now pinged globally on boot in app.js and injected directly into the header block)
     }
 
     // ==========================================================
