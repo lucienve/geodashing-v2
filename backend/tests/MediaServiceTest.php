@@ -58,4 +58,70 @@ class MediaServiceTest extends TestCase
         // Pull the trigger mapped to User ID 1 and Dashpoint 'GD-TEST'
         $service->uploadPhotos($fakeFiles, 'GD-TEST', 1);
     }
+
+    /**
+     * Asserts that when PHP silently drops an oversized payload natively matching UPLOAD_ERR_INI_SIZE
+     * the pipeline explosively blows up routing the failure physically back to the UI!
+     */
+    #[Test]
+    public function processUploadCatchesPhpIniSizeLimits()
+    {
+        $service = new MediaService('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock);
+        
+        $fakeFiles = [
+            'name' => ['too_big.jpg'],
+            'type' => ['image/jpeg'],
+            'tmp_name' => ['/tmp/missing'],
+            'error' => [UPLOAD_ERR_INI_SIZE],
+            'size' => [10000000]
+        ];
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage("Payload exceeds PHP 'upload_max_filesize' limits");
+
+        // The sequence must abort completely prior to resolving GCP streams!
+        $service->uploadPhotos($fakeFiles, 'GD-TEST', 1);
+    }
+    
+    /**
+     * Asserts that successfully validated uploads forcibly return an explicit associative Object array structurally!
+     */
+    #[Test]
+    public function processUploadReturnsAssociatedObjectArrays()
+    {
+        $service = new MediaService('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock);
+        
+        // Construct a safe, raw mock JPEG physically mapped to the local test OS using Magic Hex Bytes alone!
+        // This ensures finfo(FILEINFO_MIME_TYPE) securely identifies it as 'image/jpeg' without requiring ext-gd rendering!
+        $tempFile = tempnam(sys_get_temp_dir(), 'fktst');
+        file_put_contents($tempFile, "\xFF\xD8\xFF\xE0\x00\x10\x4A\x46\x49\x46\x00\x01\x01\x01");
+        
+        $fakeFiles = [
+            'name' => ['valid_pic.jpg'],
+            'type' => ['image/jpeg'],
+            'tmp_name' => [$tempFile],
+            'error' => [UPLOAD_ERR_OK],
+            'size' => [filesize($tempFile)]
+        ];
+
+        // Ensure the bucket mock physically accepts the RESTful stream payload structurally
+        $this->bucketMock->expects($this->once())->method('upload');
+
+        $result = $service->uploadPhotos($fakeFiles, 'GD-TEST', 1);
+        
+        // Assert exactly correct Object mapping parameters preventing frontend array collisions
+        $this->assertIsArray($result);
+        $this->assertCount(1, $result);
+        $this->assertArrayHasKey('url', $result[0]);
+        $this->assertArrayHasKey('lat', $result[0]);
+        $this->assertArrayHasKey('lon', $result[0]);
+        $this->assertStringContainsString("geodashing-test-blobs", $result[0]['url']);
+        
+        // Without an actual EXIF data package specifically baked into our mock JPEG bytes, coordinates MUST strictly resolve null!
+        $this->assertNull($result[0]['lat']);
+        $this->assertNull($result[0]['lon']);
+        
+        // Trash the local mock mapping safely
+        unlink($tempFile);
+    }
 }
