@@ -19,6 +19,7 @@ htmlcov/
 
 # Environments & Secrets
 .env
+config.ini
 .venv
 env/
 venv/
