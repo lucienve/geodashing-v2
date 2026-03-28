@@ -178,27 +178,76 @@ document.addEventListener('routeLoaded', (e) => {
                 const submitBtn = document.getElementById('btn-submit-report');
                 const feedbackStatus = document.getElementById('report-feedback');
                 
-                submitBtn.disabled = true;
-                submitBtn.innerText = "UPLOADING...";
+                // 1. Initial Local Coordinate Validation Matrix natively preventing impossible values
+                const userLat = parseFloat(latInput.value);
+                const userLon = parseFloat(lonInput.value);
+                const targetId = document.getElementById('dashpoint_id').value;
+
+                if (isNaN(userLat) || userLat < -90 || userLat > 90) {
+                    feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] GEOPHYSICAL REJECTION: Latitude strictly bounded between -90 and 90 degrees.</div>`;
+                    return;
+                }
+                if (isNaN(userLon) || userLon < -180 || userLon > 180) {
+                    feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] GEOPHYSICAL REJECTION: Longitude strictly bounded between -180 and 180 degrees.</div>`;
+                    return;
+                }
                 
-                // Natively traps the raw DOM element wrapping all file streams into a payload
-                const formData = new FormData(reportForm);
+                submitBtn.disabled = true;
+                submitBtn.innerText = "CALCULATING PROXIMITY...";
                 
                 try {
-                    // Call out to the wrapper securely built in Phase 4.3!
+                    // 2. Safely Fetch target constraints transparently before throwing Heavy User Photos across the bandwidth
+                    const targetRes = await fetch(`backend/api/dashpoint.php?id=${targetId}`);
+                    const targetJson = await targetRes.json();
+                    
+                    if (targetJson.status !== 'success') {
+                        feedbackStatus.innerHTML = `<div class="alert alert-error">[-] TARGET CORRUPTION: System could not identify target node bounds.</div>`;
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = "SUBMIT LOG";
+                        return;
+                    }
+
+                    const targetLat = targetJson.data.lat;
+                    const targetLon = targetJson.data.lon;
+
+                    // 3. Mathematical Haversine Proximity Core natively checking the 100m limits dynamically
+                    const R = 6371e3; // Earth radius strictly modeled in meters
+                    const rad = Math.PI / 180;
+                    const phi1 = userLat * rad;
+                    const phi2 = targetLat * rad;
+                    const deltaPhi = (targetLat - userLat) * rad;
+                    const deltaLambda = (targetLon - userLon) * rad;
+
+                    const a = Math.sin(deltaPhi/2) * Math.sin(deltaPhi/2) +
+                              Math.cos(phi1) * Math.cos(phi2) *
+                              Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                    const distance = R * c; 
+
+                    // Reject log client-side before massive bandwidth photo transfers commence
+                    if (distance > 100) {
+                        feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] PROXIMITY ALERT: Out of bounds. You are <strong>${distance.toFixed(1)}m</strong> from the target radius. Submissions strictly require &le; 100m.</div>`;
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = "SUBMIT LOG";
+                        return;
+                    }
+
+                    submitBtn.innerText = "UPLOADING PAYLOAD...";
+                    
+                    // 4. Actuating the standard POST injection seamlessly wrapper wrapping all data safely
+                    const formData = new FormData(reportForm);
                     const result = await API.logVisit(formData);
                     
                     if(result.status === 'success') {
-                        feedbackStatus.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] LOG_ACCEPTED: Server logged coordinates at ping distance ${result.distance.toFixed(1)}m. You scored ${result.points_awarded} points!</div>`;
+                        feedbackStatus.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] LOG_ACCEPTED: Server logged coordinates at strictly ${result.distance.toFixed(1)}m. You scored ${result.points_awarded} points!</div>`;
                         reportForm.reset();
-                        btnGeo.innerText = "PULL CURRENT GPS LOCATION";
+                        btnGeo.innerText = "[ SYNC LIVE GPS ]";
                         btnGeo.style.color = ""; // Reset inline CSS
                     } else {
-                        // Display error directly in the console HUD
-                        feedbackStatus.innerHTML = `<div class="alert alert-error">[-] REJECTED: ${result.message}</div>`;
+                        feedbackStatus.innerHTML = `<div class="alert alert-error">[-] UPLOAD REJECTED: ${result.message}</div>`;
                     }
                 } catch(err) {
-                    feedbackStatus.innerHTML = `<div class="alert alert-error">[-] UPLINK RUPTURED: Critical system error.</div>`;
+                    feedbackStatus.innerHTML = `<div class="alert alert-error">[-] UPLINK RUPTURED: Critical system upload execution error natively crashed.</div>`;
                 }
                 
                 submitBtn.disabled = false;

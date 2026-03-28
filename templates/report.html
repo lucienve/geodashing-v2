@@ -5,53 +5,52 @@
     <div id="report-feedback"></div>
 
     <form id="form-report" enctype="multipart/form-data">
-        <div class="form-group">
-            <label>DASHPOINT ID [REQUIRED]</label>
+        <div class="form-group" style="text-align:center; padding-bottom: 1.5rem; margin-bottom: 1.5rem; border-bottom: 1px dashed var(--accent-amber-glow);">
+            <label style="color:var(--text-muted); letter-spacing: 2px; font-size: 0.75rem;">DASHPOINT</label>
+            <!-- Functionally an input for the POST request, visually an immutable Header! -->
             <input type="text" 
                    id="dashpoint_id" 
                    name="dashpoint_id" 
-                   class="data-input" 
-                   placeholder="e.g., GD01-1A4C" 
-                   required>
+                   placeholder="GD01-UNKNOWN"
+                   style="background:transparent; border:none; color:var(--accent-amber); font-size:2rem; font-weight:700; font-family:var(--font-mono); text-align:center; width:100%; pointer-events:none; outline:none; margin-top:0.5rem;" 
+                   readonly>
         </div>
 
-        <div class="dash-block" style="border:1px dashed var(--text-muted); padding:1rem; margin-bottom:1.5rem; text-align:center;">
-            <button type="button" class="btn btn-secondary" id="btn-geolocation" style="font-size:0.8rem; border-color:var(--text-muted); color:var(--text-muted);">
-                PULL CURRENT GPS LOCATION
-            </button>
-            <small style="display:block; margin-top:0.5rem; color:#666; font-size:0.7rem;">
-                Note: Standard inputs remain completely <b>mutable</b> below if you physically logged data onto a Garmin beforehand!
-            </small>
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:0.4rem;">
+             <label style="color:var(--text-muted); font-size:0.85rem; padding-bottom:0; margin-bottom:0;">VISIT COORDINATES [REQUIRED]</label>
+             <button type="button" class="btn btn-secondary" id="btn-geolocation" style="padding:0.3rem 0.6rem; font-size:0.7rem; width:auto; border-color:var(--accent-green); color:var(--accent-green); margin-bottom:0; line-height:1;">
+                 [ SYNC LIVE GPS ]
+             </button>
         </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
-            <div class="form-group">
-                <label>LATITUDE [REQUIRED]</label>
+        
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1.25rem;">
+            <div class="form-group" style="margin-bottom:0;">
                 <!-- Specifically ensuring readonly is entirely removed mathematically authorizing overrides -->
-                <input type="number" 
-                       step="any"
+                <input type="text" 
+                       inputmode="decimal"
                        id="input-lat" 
                        name="lat" 
                        class="data-input" 
-                       placeholder="42.1234" 
+                       placeholder="Lat: 42.1234" 
+                       oninput="this.value = this.value.replace(/[^0-9.\-]/g, '');"
                        required>
             </div>
             
-            <div class="form-group">
-                <label>LONGITUDE [REQUIRED]</label>
+            <div class="form-group" style="margin-bottom:0;">
                 <!-- Explicit manual overriding enabled for physical GPS logging loops -->
-                <input type="number" 
-                       step="any"
+                <input type="text" 
+                       inputmode="decimal"
                        id="input-lon" 
                        name="lon" 
                        class="data-input" 
-                       placeholder="-71.1234" 
+                       placeholder="Lon: -71.1234" 
+                       oninput="this.value = this.value.replace(/[^0-9.\-]/g, '');"
                        required>
             </div>
         </div>
 
         <div class="form-group">
-            <label>ENVIRONMENTAL CAPTURE [OPTIONAL]</label>
+            <label>Visit photos [OPTIONAL]</label>
             <small style="color:var(--accent-amber); display:block; margin-bottom:0.5rem; font-size:0.75rem;">Limit 10 Photos</small>
             <input type="file" 
                    name="photos[]" 
@@ -63,7 +62,7 @@
         </div>
 
         <div class="form-group">
-            <label>FIELD NOTES [OPTIONAL]</label>
+            <label>Log [OPTIONAL]</label>
             <textarea name="notes" class="data-input" rows="3" placeholder="Terrain anomalies, unexpected wildlife..."></textarea>
         </div>
 
