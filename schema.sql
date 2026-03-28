@@ -65,8 +65,7 @@ CREATE TABLE visits (
     distance_meters INT NOT NULL, -- Computed ST_Distance_Sphere result in meters (should be <= 100m)
     
     -- Core Tie-Breaking Variables
-    visit_time DATETIME NOT NULL, -- The time from their GPS device/Claim
-    reported_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- The time the form was submitted online
+    reported_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- The exact time the API received the request (FCFS Logic)
     
     -- Evidence and Flavor
     notes TEXT,

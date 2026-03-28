@@ -36,7 +36,7 @@ class ReportServiceTest extends TestCase
         $stmtMock->method('fetch')->willReturn(false); // Simulates 0 rows found
         $this->pdoMock->method('prepare')->willReturn($stmtMock);
 
-        $result = $this->reportService->processVisit(1, 'GD01-99999', 40.0, -75.0, '2026-04-01 12:00:00');
+        $result = $this->reportService->processVisit(1, 'GD01-99999', 40.0, -75.0);
 
         $this->assertEquals('error', $result['status']);
         $this->assertEquals('Invalid Dashpoint ID.', $result['message']);
@@ -53,7 +53,7 @@ class ReportServiceTest extends TestCase
         $stmtMock->method('fetch')->willReturn(['distance_meters' => 101.5]); 
         $this->pdoMock->method('prepare')->willReturn($stmtMock);
 
-        $result = $this->reportService->processVisit(1, 'GD01-00001', 40.0, -75.0, '2026-04-01 12:00:00');
+        $result = $this->reportService->processVisit(1, 'GD01-00001', 40.0, -75.0);
 
         $this->assertEquals('error', $result['status']);
         $this->assertStringContainsString('Visit rejected', $result['message']);
@@ -77,18 +77,23 @@ class ReportServiceTest extends TestCase
         $teamMock = $this->createMock(PDOStatement::class);
         $teamMock->method('fetch')->willReturn(false);
         
-        // 4. Mock the final Insert
+        // 4. Mock the Native FCFS Scoring check (0 previous claims = 3 points)
+        $scoreMock = $this->createMock(PDOStatement::class);
+        $scoreMock->method('fetch')->willReturn(['previous_claims' => 0]);
+        
+        // 5. Mock the final Insert
         $insertMock = $this->createMock(PDOStatement::class);
         $insertMock->expects($this->once())->method('execute')->willReturn(true);
 
         // Chain the PDO prepares to return the distinct statements sequentially in order
-        $this->pdoMock->expects($this->exactly(4))
+        $this->pdoMock->expects($this->exactly(5))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($distMock, $duplicateMock, $teamMock, $insertMock);
+            ->willReturnOnConsecutiveCalls($distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock);
 
-        $result = $this->reportService->processVisit(1, 'GD01-00001', 40.0, -75.0, '2026-04-01 12:00:00');
+        $result = $this->reportService->processVisit(1, 'GD01-00001', 40.0, -75.0);
 
         $this->assertEquals('success', $result['status']);
         $this->assertEquals(45, $result['distance']);
+        $this->assertEquals(3, $result['points']);
     }
 }

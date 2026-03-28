@@ -32,7 +32,6 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     $lat = filter_var($_POST['latitude'] ?? '', FILTER_VALIDATE_FLOAT);
     $lon = filter_var($_POST['longitude'] ?? '', FILTER_VALIDATE_FLOAT);
     $notes = $_POST['notes'] ?? null;
-    $visit_time = !empty($_POST['visit_time']) ? date('Y-m-d H:i:s', strtotime($_POST['visit_time'])) : date('Y-m-d H:i:s');
 
     if (empty($dashpoint_id) || $lat === false || $lon === false) {
         http_response_code(400);
@@ -43,7 +42,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     try {
         $db = Database::getConnection();
         $service = new ReportService($db);
-        $result = $service->processVisit($_SESSION['user_id'], $dashpoint_id, $lat, $lon, $visit_time, $notes);
+        $result = $service->processVisit($_SESSION['user_id'], $dashpoint_id, $lat, $lon, $notes);
         
         if ($result['status'] === 'error') {
             http_response_code(400);
@@ -87,13 +86,12 @@ class ReportService
      * @param string      $dashpointId  The unique ID target Dashpoint.
      * @param float       $lat          The user's reported latitude.
      * @param float       $lon          The user's reported longitude.
-     * @param string      $visitTime    The SQL-formatted DATETIME of the visit.
      * @param string|null $notes        Optional narrative submitted by the user.
      *
      * @return array Associative array containing the JSON-ready API response.
      * @throws PDOException If the database connection fails.
      */
-    public function processVisit($userId, string $dashpointId, float $lat, float $lon, string $visitTime, ?string $notes = null): array
+    public function processVisit($userId, string $dashpointId, float $lat, float $lon, ?string $notes = null): array
     {
         // 3. Proximity Calculation utilizing MySQL native ST_Distance_Sphere
         $wkt = "POINT($lat $lon)";
@@ -134,10 +132,22 @@ class ReportService
         $teamRow = $teamStmt->fetch(PDO::FETCH_ASSOC);
         $teamId = $teamRow ? $teamRow['team_id'] : null;
         
-        // 7. Insert the valid visit cleanly into MySQL Spatial tracking
+        // 7. Real-Time Scoring Assessment
+        $scoreCheckStmt = $this->db->prepare("SELECT COUNT(id) AS previous_claims FROM visits WHERE dashpoint_id = :dpid");
+        $scoreCheckStmt->execute([':dpid' => $dashpointId]);
+        $previousClaims = (int)$scoreCheckStmt->fetch(PDO::FETCH_ASSOC)['previous_claims'];
+
+        $scoreAwarded = 1; // Default minimum score for latecomers
+        if ($previousClaims === 0) {
+            $scoreAwarded = 3; // First to physically network the claim
+        } elseif ($previousClaims === 1) {
+            $scoreAwarded = 2; // Second to claim
+        }
+        
+        // 8. Log the Visit and Secure the Calculated Score Automatically
         $insertStmt = $this->db->prepare("
-            INSERT INTO visits (dashpoint_id, user_id, team_id, reported_location, distance_meters, visit_time, notes)
-            VALUES (:dpid, :uid, :tid, ST_GeomFromText(:wkt, 4326), :dist, :vtime, :notes)
+            INSERT INTO visits (dashpoint_id, user_id, team_id, reported_location, distance_meters, score_awarded, notes)
+            VALUES (:dpid, :uid, :tid, ST_GeomFromText(:wkt, 4326), :dist, :score, :notes)
         ");
         
         $insertStmt->execute([
@@ -146,14 +156,15 @@ class ReportService
             ':tid' => $teamId,
             ':wkt' => $wkt,
             ':dist' => $distance,
-            ':vtime' => $visitTime,
+            ':score' => $scoreAwarded,
             ':notes' => $notes
         ]);
         
         return [
             "status" => "success", 
-            "message" => "Dashpoint successfully claimed!",
-            "distance" => $distance
+            "message" => "Dashpoint successfully claimed! You earned {$scoreAwarded} points.",
+            "distance" => $distance,
+            "points" => $scoreAwarded
         ];
     }
 }
