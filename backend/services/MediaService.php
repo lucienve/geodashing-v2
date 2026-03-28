@@ -105,11 +105,73 @@ class MediaService
                 ]
             );
 
+            // Extract standard EXIF GPS coordinates strictly BEFORE we physically trash the local tmp_name!
+            $exifData = $this->parseExifGPS($file['tmp_name']);
+
             // Construct standard GS public URL path resolving identically via HTTP
-            $urls[] = "https://storage.googleapis.com/{$this->bucketName}/{$objectName}";
+            $urls[] = [
+                'url' => "https://storage.googleapis.com/{$this->bucketName}/{$objectName}",
+                'lat' => $exifData ? $exifData['lat'] : null,
+                'lon' => $exifData ? $exifData['lon'] : null
+            ];
         }
 
         return $urls;
+    }
+
+    /**
+     * Extracts and calculates EXIF GPS data from an image file natively.
+     * 
+     * @param string $path Local absolute path to the uploaded image binary.
+     * @return array|null Null if no EXIF exists or if coordinates are missing.
+     */
+    private function parseExifGPS(string $path): ?array
+    {
+        // Suppress warnings specifically because standard WebP/PNG uploads often strictly lack EXIF headers!
+        $exif = @exif_read_data($path);
+        if (!$exif || !isset($exif['GPSLatitude'], $exif['GPSLongitude'], $exif['GPSLatitudeRef'], $exif['GPSLongitudeRef'])) {
+            return null;
+        }
+
+        $lat = $this->convertGpsToDecimal($exif['GPSLatitude'], $exif['GPSLatitudeRef']);
+        $lon = $this->convertGpsToDecimal($exif['GPSLongitude'], $exif['GPSLongitudeRef']);
+
+        if ($lat === null || $lon === null) {
+            return null;
+        }
+
+        return ['lat' => $lat, 'lon' => $lon];
+    }
+
+    /**
+     * Converts raw EXIF DMS fraction arrays into a strict Decimal Degree natively.
+     */
+    private function convertGpsToDecimal(array $exifCoord, string $hemi): ?float
+    {
+        $degrees = count($exifCoord) > 0 ? $this->evalExifFraction($exifCoord[0]) : 0;
+        $minutes = count($exifCoord) > 1 ? $this->evalExifFraction($exifCoord[1]) : 0;
+        $seconds = count($exifCoord) > 2 ? $this->evalExifFraction($exifCoord[2]) : 0;
+
+        $decimal = $degrees + ($minutes / 60) + ($seconds / 3600);
+        
+        $hemi = strtoupper(trim($hemi));
+        if ($hemi === 'S' || $hemi === 'W') {
+            $decimal *= -1;
+        }
+
+        return round($decimal, 6);
+    }
+
+    /**
+     * Evaluates PHP's physical EXIF integer fractions (e.g. "42/1") cleanly.
+     */
+    private function evalExifFraction($fraction): float 
+    {
+        $parts = explode('/', (string)$fraction);
+        if (count($parts) <= 0) return 0.0;
+        if (count($parts) == 1) return (float)$parts[0];
+        if ($parts[1] == 0) return 0.0; 
+        return (float)$parts[0] / (float)$parts[1];
     }
 
     /**

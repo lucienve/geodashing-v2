@@ -4,6 +4,24 @@
  * Intercepts completely native browser URL hashes (e.g. domain.com/#login) 
  * intercepting standard navigation and transparently loading HTML chunks over the map dynamically.
  */
+/**
+ * Global Haversine Math Core
+ * Calculates the precise physical distance in meters across the spherical curvature of the Earth.
+ */
+window.calculateDistance = function(lat1, lon1, lat2, lon2) {
+    const r = 6371e3; // Earth radius in meters
+    const rad = Math.PI / 180;
+    const phi1 = lat1 * rad;
+    const phi2 = lat2 * rad;
+    const deltaPhi = (lat2 - lat1) * rad;
+    const deltaLambda = (lon2 - lon1) * rad;
+
+    const a = Math.sin(deltaPhi/2) * Math.sin(deltaPhi/2) +
+              Math.cos(phi1) * Math.cos(phi2) *
+              Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
+              
+    return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+};
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Explicit Routing Logic Dictionary

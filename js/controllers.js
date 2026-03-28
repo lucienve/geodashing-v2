@@ -94,10 +94,18 @@ document.addEventListener('routeLoaded', (e) => {
                                 }
                                 
                                 if (visit.photos && visit.photos.length > 0) {
-                                    html += `<div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem;">`;
-                                    visit.photos.forEach(photoPath => {
-                                        // Renders raw GCS URL tokens securely into HTML5 DOM nodes!
-                                        html += `<img src="${photoPath}" style="width:100%; height:auto; border:1px solid var(--accent-amber);" loading="lazy">`;
+                                    html += `<div style="display:grid; grid-template-columns: 1fr; gap:1rem;">`;
+                                    visit.photos.forEach(photo => {
+                                        let imgHtml = `<img src="${photo.url}" style="width:100%; height:auto; border:1px solid var(--accent-amber);" loading="lazy">`;
+                                        
+                                        if (photo.lat !== null && photo.lon !== null && dp.lat !== undefined) {
+                                            // Native JS Haversine Distance Mapper cleanly invoking the global SPA utility
+                                            const distance = window.calculateDistance(photo.lat, photo.lon, dp.lat, dp.lon);
+                                            
+                                            imgHtml += `<div style="text-align:center; font-size:0.75rem; color:var(--accent-green); margin-top:0.3rem;">[ EXIF GPS: ${photo.lat.toFixed(5)}, ${photo.lon.toFixed(5)} | DISTANCE FROM DASHPOINT: ${distance.toFixed(1)}m ]</div>`;
+                                        }
+                                        
+                                        html += `<div>${imgHtml}</div>`;
                                     });
                                     html += `</div>`;
                                 }
@@ -236,19 +244,8 @@ document.addEventListener('routeLoaded', (e) => {
                     const targetLat = targetJson.data.lat;
                     const targetLon = targetJson.data.lon;
 
-                    // 3. Mathematical Haversine Proximity Core natively checking the 100m limits dynamically
-                    const R = 6371e3; // Earth radius strictly modeled in meters
-                    const rad = Math.PI / 180;
-                    const phi1 = userLat * rad;
-                    const phi2 = targetLat * rad;
-                    const deltaPhi = (targetLat - userLat) * rad;
-                    const deltaLambda = (targetLon - userLon) * rad;
-
-                    const a = Math.sin(deltaPhi/2) * Math.sin(deltaPhi/2) +
-                              Math.cos(phi1) * Math.cos(phi2) *
-                              Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
-                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                    const distance = R * c; 
+                    // 3. Calculate distance strictly using the Global SPA Haversine Utility
+                    const distance = window.calculateDistance(userLat, userLon, targetLat, targetLon);
 
                     // Reject log client-side before massive bandwidth photo transfers commence
                     if (distance > 100) {
