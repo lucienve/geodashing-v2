@@ -16,6 +16,12 @@
 * **Testing:** Use PHPUnit for unit testing.
 * **Documentation:** Use clear docstrings (PHPDoc style) for all functions and classes.
 
+## Software versions
+* Use the following versions of software:
+    * PHP 8.3.6
+    * MySQL 8.4.8
+    * Python 3.12
+
 ## Frontend (Vanilla JS/HTML/CSS)
 * **Frameworks:** Do not introduce React, Vue, or other heavy frameworks. Stick strictly to vanilla JavaScript (ES6+), semantic HTML5, and CSS3.
 * **Performance:** Code must be usable by mobile browsers and desktop browsers alike. Avoid heavy libraries unless there is a compelling reason.
