@@ -90,11 +90,11 @@ function plotVectors(pointsArray) {
             position: { lat: parseFloat(pt.lat), lng: parseFloat(pt.lon) },
             map: map,
             title: `Dashpoint ${pt.id}`,
-            content: pinView.element
+            content: pinView
         });
         
-        // If they tap a Dashpoint on their phone, physically inject the ID into the Report URL and swap the SPA template mapping it for them seamlessly!
-        marker.addListener('click', () => {
+        // AdvancedMarkerElement strictly enforces `gmp-click` mapping directly bypassing legacy DOM bubble overlaps perfectly!
+        marker.addListener('gmp-click', () => {
             window.location.hash = `#dashpoint?id=${pt.id}`;
         });
         
