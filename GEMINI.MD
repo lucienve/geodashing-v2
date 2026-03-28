@@ -1,7 +1,6 @@
 # Development Guidelines
 ## Global Rules
 * **No Unrequested Features:** Implement only what is explicitly asked for in the prompt. Do not over-engineer or add "nice-to-have" features unless approved.
-* **Concise Responses:** Provide just the code and a brief explanation of the changes. Skip lengthy pleasantries.
 * **Error Handling:** Always include try/except blocks for file I/O, database connections, and external requests. Fail gracefully.
 
 ## Backend (Python)
