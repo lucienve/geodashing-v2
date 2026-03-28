@@ -1,0 +1,73 @@
+<div class="template-view" id="view-report">
+    <h2>LOG A VISIT</h2>
+    
+    <div id="report-feedback"></div>
+
+    <form id="form-report" enctype="multipart/form-data">
+        <div class="form-group">
+            <label>DASHPOINT ID [REQUIRED]</label>
+            <input type="text" 
+                   id="dashpoint_id" 
+                   name="dashpoint_id" 
+                   class="data-input" 
+                   placeholder="e.g., GD01-1A4C" 
+                   required>
+        </div>
+
+        <div class="dash-block" style="border:1px dashed var(--text-muted); padding:1rem; margin-bottom:1.5rem; text-align:center;">
+            <button type="button" class="btn btn-secondary" id="btn-geolocation" style="font-size:0.8rem; border-color:var(--text-muted); color:var(--text-muted);">
+                PULL CURRENT GPS LOCATION
+            </button>
+            <small style="display:block; margin-top:0.5rem; color:#666; font-size:0.7rem;">
+                Note: Standard inputs remain completely <b>mutable</b> below if you physically logged data onto a Garmin beforehand!
+            </small>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+                <label>LATITUDE [REQUIRED]</label>
+                <!-- Specifically ensuring readonly is entirely removed mathematically authorizing overrides -->
+                <input type="number" 
+                       step="any"
+                       id="input-lat" 
+                       name="lat" 
+                       class="data-input" 
+                       placeholder="42.1234" 
+                       required>
+            </div>
+            
+            <div class="form-group">
+                <label>LONGITUDE [REQUIRED]</label>
+                <!-- Explicit manual overriding enabled for physical GPS logging loops -->
+                <input type="number" 
+                       step="any"
+                       id="input-lon" 
+                       name="lon" 
+                       class="data-input" 
+                       placeholder="-71.1234" 
+                       required>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>ENVIRONMENTAL CAPTURE [OPTIONAL]</label>
+            <small style="color:var(--accent-amber); display:block; margin-bottom:0.5rem; font-size:0.75rem;">Limit 10 Photos</small>
+            <input type="file" 
+                   name="photos[]" 
+                   accept="image/*" 
+                   capture="environment" 
+                   class="data-input" 
+                   style="font-size:0.8rem;"
+                   multiple>
+        </div>
+
+        <div class="form-group">
+            <label>FIELD NOTES [OPTIONAL]</label>
+            <textarea name="notes" class="data-input" rows="3" placeholder="Terrain anomalies, unexpected wildlife..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="btn-submit-report">
+            SUBMIT LOG
+        </button>
+    </form>
+</div>

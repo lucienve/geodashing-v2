@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
         '#home': 'templates/dashboard.html',
         '#login': 'templates/login.html',
         '#report': 'templates/report.html',
+        '#search': 'templates/search.html',
         '#leaderboard': 'templates/leaderboard.html'
     };
 
