@@ -17,13 +17,14 @@ htmlcov/
 .pytest_cache/
 *.cover
 
-# Environments & Secrets
+# Environments, Secrets & Dependencies
 .env
 config.ini
 .venv
 env/
 venv/
 ENV/
+vendor/
 
 # Data sets
 data/
