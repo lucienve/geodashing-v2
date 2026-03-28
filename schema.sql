@@ -1,4 +1,5 @@
 -- Geodashing Database Schema
+USE geodashing;
 
 -- 1. Users 
 CREATE TABLE users (
