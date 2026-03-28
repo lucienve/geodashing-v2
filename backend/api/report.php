@@ -32,6 +32,33 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     $lat = filter_var($_POST['latitude'] ?? '', FILTER_VALIDATE_FLOAT);
     $lon = filter_var($_POST['longitude'] ?? '', FILTER_VALIDATE_FLOAT);
     $notes = $_POST['notes'] ?? null;
+    $photosJson = null;
+
+    // 2.5 Optional Media Processing Pipeline
+    if (!empty($_FILES['photos']) && (is_array($_FILES['photos']['error']) ? $_FILES['photos']['error'][0] : $_FILES['photos']['error']) !== UPLOAD_ERR_NO_FILE) {
+        require_once __DIR__ . '/../services/MediaService.php';
+        
+        $keyPath = __DIR__ . '/../gcp-credentials.json';
+        if (!file_exists($keyPath)) {
+            http_response_code(500);
+            echo json_encode(["status" => "error", "message" => "Server missing GCP Key mappings blocking photo payload uploads."]);
+            exit;
+        }
+
+        try {
+            // Instantiate securely with user's explicitly provided Geodashing GCP identifiers
+            $mediaService = new MediaService('geodashing-v2', 'geodashing-v2-blobs', $keyPath);
+            $urls = $mediaService->uploadPhotos($_FILES['photos'], $dashpoint_id, $_SESSION['user_id']);
+            if (!empty($urls)) {
+                $photosJson = json_encode($urls);
+            }
+        } catch (Exception $e) {
+            error_log("GCP Upload Error: " . $e->getMessage());
+            http_response_code(400);
+            echo json_encode(["status" => "error", "message" => "Image Upload Framework Failed: " . $e->getMessage()]);
+            exit;
+        }
+    }
 
     if (empty($dashpoint_id) || $lat === false || $lon === false) {
         http_response_code(400);
@@ -42,7 +69,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     try {
         $db = Database::getConnection();
         $service = new ReportService($db);
-        $result = $service->processVisit($_SESSION['user_id'], $dashpoint_id, $lat, $lon, $notes);
+        $result = $service->processVisit($_SESSION['user_id'], $dashpoint_id, $lat, $lon, $notes, $photosJson);
         
         if ($result['status'] === 'error') {
             http_response_code(400);
@@ -87,11 +114,12 @@ class ReportService
      * @param float       $lat          The user's reported latitude.
      * @param float       $lon          The user's reported longitude.
      * @param string|null $notes        Optional narrative submitted by the user.
+     * @param string|null $photosJson   Optional pre-compiled JSON string array of valid GCS image paths.
      *
      * @return array Associative array containing the JSON-ready API response.
      * @throws PDOException If the database connection fails.
      */
-    public function processVisit($userId, string $dashpointId, float $lat, float $lon, ?string $notes = null): array
+    public function processVisit($userId, string $dashpointId, float $lat, float $lon, ?string $notes = null, ?string $photosJson = null): array
     {
         // 3. Proximity Calculation utilizing MySQL native ST_Distance_Sphere
         $wkt = "POINT($lat $lon)";
@@ -144,10 +172,10 @@ class ReportService
             $scoreAwarded = 2; // Second to claim
         }
         
-        // 8. Log the Visit and Secure the Calculated Score Automatically
+        // 8. Log the Visit and Secure the Calculated Score Automatically alongside bounded JSON image paths
         $insertStmt = $this->db->prepare("
-            INSERT INTO visits (dashpoint_id, user_id, team_id, reported_location, distance_meters, score_awarded, notes)
-            VALUES (:dpid, :uid, :tid, ST_GeomFromText(:wkt, 4326), :dist, :score, :notes)
+            INSERT INTO visits (dashpoint_id, user_id, team_id, reported_location, distance_meters, score_awarded, notes, photos)
+            VALUES (:dpid, :uid, :tid, ST_GeomFromText(:wkt, 4326), :dist, :score, :notes, :photos)
         ");
         
         $insertStmt->execute([
@@ -157,7 +185,8 @@ class ReportService
             ':wkt' => $wkt,
             ':dist' => $distance,
             ':score' => $scoreAwarded,
-            ':notes' => $notes
+            ':notes' => $notes,
+            ':photos' => $photosJson
         ]);
         
         return [
