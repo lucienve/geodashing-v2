@@ -59,9 +59,22 @@ class MediaService
         }
 
         foreach ($normalizedFiles as $index => $file) {
-            // Drop technically null/omitted form inputs cleanly
-            if ($file['error'] !== UPLOAD_ERR_OK || empty($file['tmp_name'])) {
+            // Silently skip if no file was uploaded
+            if ($file['error'] === UPLOAD_ERR_NO_FILE || empty($file['tmp_name'])) {
                 continue; 
+            }
+            
+            // Explosively intercept physical block drops cleanly routing the failure to the UI
+            if ($file['error'] !== UPLOAD_ERR_OK) {
+                $errMap = [
+                    UPLOAD_ERR_INI_SIZE => "Payload exceeds PHP 'upload_max_filesize' limits (Current default is likely 2MB).",
+                    UPLOAD_ERR_FORM_SIZE => "File exceeds MAX_FILE_SIZE form limit.",
+                    UPLOAD_ERR_PARTIAL => "File was only partially uploaded over the network.",
+                    UPLOAD_ERR_NO_TMP_DIR => "Disk error: Missing temporary tracking directory.",
+                    UPLOAD_ERR_CANT_WRITE => "Disk error: PHP failed to write chunk to disk.",
+                ];
+                $msg = $errMap[$file['error']] ?? "Raw PHP System Error Code: {$file['error']}";
+                throw new Exception($msg);
             }
             
             // Server-side strict MIME validation preventing remote exploits
@@ -82,11 +95,13 @@ class MediaService
             );
 
             // Execute the RESTful socket stream uploading binary payload natively into Google Cloud
+            // Explicitly disabling resumable uploads forces a direct multipart stream natively preventing 
+            // the PHP Apache lifecycle from abandoning the background chunk process mid-upload!
             $bucket->upload(
                 fopen($file['tmp_name'], 'r'),
                 [
                     'name' => $objectName,
-                    'predefinedAcl' => 'publicRead' // Force Public-Read scope natively enabling frontend image tag renders without pre-signed URL architectures
+                    'resumable' => false             // Bypass chunked background uploads natively
                 ]
             );
 
