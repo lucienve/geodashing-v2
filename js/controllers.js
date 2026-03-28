@@ -262,8 +262,13 @@ document.addEventListener('routeLoaded', (e) => {
                     const result = await API.logVisit(formData);
                     
                     if(result.status === 'success') {
-                        feedbackStatus.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] LOG_ACCEPTED: Server logged coordinates at strictly ${result.distance.toFixed(1)}m. You scored ${result.points_awarded} points!</div>`;
+                        feedbackStatus.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] LOG_ACCEPTED: Server logged coordinates at strictly ${result.distance.toFixed(1)}m. You scored ${result.points} points!</div>`;
+                        
+                        // Capture the Target natively before the structural form reset wipes it out!
+                        const targetPersistence = document.getElementById('dashpoint_id').value;
                         reportForm.reset();
+                        document.getElementById('dashpoint_id').value = targetPersistence;
+                        
                         btnGeo.innerText = "[ SYNC LIVE GPS ]";
                         btnGeo.style.color = ""; // Reset inline CSS
                     } else {
