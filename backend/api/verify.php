@@ -17,7 +17,7 @@ if (empty($token)) {
 
 try {
     $db = Database::getConnection();
-    
+
     // Evaluate the physical token strictly matching the Users table
     $stmt = $db->prepare("SELECT id FROM users WHERE verification_token = :token AND is_verified = 0 LIMIT 1");
     $stmt->execute([':token' => $token]);
@@ -28,10 +28,9 @@ try {
         $updateStmt = $db->prepare("UPDATE users SET is_verified = 1, verification_token = NULL WHERE id = :id");
         $updateStmt->execute([':id' => $user['id']]);
 
-        // Explicitly update the active PHP Session variable if the user was already logged in!
-        if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $user['id']) {
-            $_SESSION['is_verified'] = 1;
-        }
+        // Mark the user as logged in.
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['is_verified'] = 1;
 
         // Redirect with success anchor
         header("Location: ../../index.html#login?verified=true");

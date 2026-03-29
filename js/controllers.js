@@ -321,13 +321,8 @@ document.addEventListener('routeLoaded', (e) => {
         const loginFeedback = document.getElementById('login-feedback');
         const signupFeedback = document.getElementById('signup-feedback');
 
-        // Dynamically catch Verification parameters from the Native Email routing
         const urlArgs = e.detail.url || '';
-        if (urlArgs.includes('verified=true') && loginFeedback) {
-            loginFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] ACCOUNT VERIFIED! Welcome to the game. You may now log visits.</div>`;
-        } else if (urlArgs.includes('error=invalid_token') && loginFeedback) {
-            loginFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: Invalid or expired verification string.</div>`;
-        }
+        const user = window.currentUser || null;
 
         // CSS Tab Toggles Native Integration
         const toggleSignup = document.getElementById('toggle-signup');
@@ -336,19 +331,42 @@ document.addEventListener('routeLoaded', (e) => {
         const signupPane = document.getElementById('signup-pane');
         const verifyPane = document.getElementById('verify-pane');
 
-        // Synchronously intercept Sandboxed accounts securely routing them to the Verification Matrix
-        const user = window.currentUser || null;
+        // --- DYNAMIC STATE: Fully Authenticated & Verified ---
+        if (user && user.is_verified == 1) {
+            if (loginPane) loginPane.style.display = 'none';
+            if (signupPane) signupPane.style.display = 'none';
+            if (verifyPane) verifyPane.style.display = 'none';
+
+            if (urlArgs.includes('verified=true')) {
+                // Dynamically build the Victory overlay physically replacing the bounds
+                const verifiedInject = document.createElement('div');
+                verifiedInject.style.cssText = "border:1px solid var(--accent-green); padding:2.5rem; background:rgba(42, 212, 115, 0.05); text-align:center; margin-top:1rem;";
+                verifiedInject.innerHTML = `
+                    <h3 style="color:var(--accent-green); margin-bottom:1rem; border-bottom:1px dashed var(--accent-green); padding-bottom:1rem;">Email confirmed.</h3>
+                    <p style="color:var(--text-main); line-height:1.6; font-size:1.1rem;">Welcome to Geodashing!</p>
+                    <a href="#home" class="btn btn-primary" style="display:inline-block; margin-top:2rem; font-size:1.2rem; padding:12px 24px;">Return to the map.</a>
+                `;
+                document.getElementById('view-login').appendChild(verifiedInject);
+            } else {
+                window.location.hash = '#home';
+            }
+            return;
+        }
+
+        if (urlArgs.includes('error=invalid_token') && loginFeedback) {
+            loginFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: Invalid or expired verification string.</div>`;
+        }
 
         // Using double equals natively protects against weak-typed PHP JSON coercion race conditions!
         if (user && user.is_verified == 0 && verifyPane) {
             if (loginPane) loginPane.style.display = 'none';
             if (signupPane) signupPane.style.display = 'none';
             verifyPane.classList.remove('d-none');
-            
+
             const resendBtn = document.getElementById('resend-verify-btn');
             const logoutBtn = document.getElementById('verify-logout-btn');
             const verifyFeedback = document.getElementById('verify-feedback');
-            
+
             if (resendBtn) {
                 resendBtn.addEventListener('click', async () => {
                     resendBtn.innerText = "Sending Email...";
@@ -374,97 +392,97 @@ document.addEventListener('routeLoaded', (e) => {
         }
 
         // --- STANDARD LOGIN HOOKS ---
-            if (toggleSignup && toggleLogin && loginPane && signupPane) {
-                toggleSignup.addEventListener('click', (ev) => {
-                    ev.preventDefault();
-                    loginPane.style.display = 'none';
-                    signupPane.style.display = 'block';
-                });
-                toggleLogin.addEventListener('click', (ev) => {
-                    ev.preventDefault();
-                    signupPane.style.display = 'none';
-                    loginPane.style.display = 'block';
-                });
-            }
+        if (toggleSignup && toggleLogin && loginPane && signupPane) {
+            toggleSignup.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                loginPane.style.display = 'none';
+                signupPane.style.display = 'block';
+            });
+            toggleLogin.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                signupPane.style.display = 'none';
+                loginPane.style.display = 'block';
+            });
+        }
 
-            if (loginForm) {
-                loginForm.addEventListener('submit', async (ev) => {
-                    ev.preventDefault();
-                    const btn = document.getElementById('btn-submit-login');
-                    btn.disabled = true;
-                    btn.innerText = "AUTHENTICATING...";
+        if (loginForm) {
+            loginForm.addEventListener('submit', async (ev) => {
+                ev.preventDefault();
+                const btn = document.getElementById('btn-submit-login');
+                btn.disabled = true;
+                btn.innerText = "AUTHENTICATING...";
 
-                    const user = document.getElementById('login-username').value;
-                    const pass = document.getElementById('login-password').value;
+                const user = document.getElementById('login-username').value;
+                const pass = document.getElementById('login-password').value;
 
-                    const res = await API.login(user, pass);
-                    if (res.status === 'success') {
-                        loginFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] Login Successful.</div>`;
-                        if (typeof window.updateAuthState === 'function') window.updateAuthState();
+                const res = await API.login(user, pass);
+                if (res.status === 'success') {
+                    loginFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] Login Successful.</div>`;
+                    if (typeof window.updateAuthState === 'function') window.updateAuthState();
 
-                        // Route unverified directly to the verify-pane natively!
-                        if (res.is_verified === 0) {
-                            setTimeout(() => window.location.reload(), 400);
-                        } else {
-                            setTimeout(() => window.location.hash = '#home', 800);
-                        }
-                    } else {
-                        loginFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${res.message}</div>`;
-                        btn.disabled = false;
-                        btn.innerText = "LOGIN";
-                    }
-                });
-            }
-
-            if (signupForm) {
-                const signupBtn = document.getElementById('btn-submit-signup');
-                const pass1 = document.getElementById('signup-password');
-                const pass2 = document.getElementById('signup-password-verify');
-
-                // Dynamically validate matching passwords natively locking the submission button
-                const validatePasswords = () => {
-                    if (pass1.value.length >= 6 && pass1.value === pass2.value) {
-                        signupBtn.disabled = false;
-                        pass2.style.borderColor = "var(--accent-green)";
-                    } else {
-                        signupBtn.disabled = true;
-                        if (pass2.value.length > 0) {
-                            pass2.style.borderColor = "var(--accent-red)";
-                        } else {
-                            pass2.style.borderColor = "var(--text-muted)";
-                        }
-                    }
-                };
-
-                if (pass1 && pass2) {
-                    pass1.addEventListener('input', validatePasswords);
-                    pass2.addEventListener('input', validatePasswords);
-                }
-
-                signupForm.addEventListener('submit', async (ev) => {
-                    ev.preventDefault();
-                    signupBtn.disabled = true;
-                    signupBtn.innerText = "CREATING PROFILE...";
-
-                    const user = document.getElementById('signup-username').value;
-                    const email = document.getElementById('signup-email').value;
-                    const pass = pass1.value;
-
-                    const res = await API.signup(user, email, pass);
-                    if (res.status === 'success') {
-                        signupFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] WELCOME: Account created.</div>`;
-                        if (typeof window.updateAuthState === 'function') window.updateAuthState();
-
-                        // Route instantly securely to the new verification pane!
+                    // Route unverified directly to the verify-pane natively!
+                    if (res.is_verified === 0) {
                         setTimeout(() => window.location.reload(), 400);
                     } else {
-                        signupFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${res.message}</div>`;
-                        signupBtn.disabled = false;
-                        signupBtn.innerText = "CREATE ACCOUNT";
+                        setTimeout(() => window.location.hash = '#home', 800);
                     }
-                });
-            }
+                } else {
+                    loginFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${res.message}</div>`;
+                    btn.disabled = false;
+                    btn.innerText = "LOGIN";
+                }
+            });
         }
+
+        if (signupForm) {
+            const signupBtn = document.getElementById('btn-submit-signup');
+            const pass1 = document.getElementById('signup-password');
+            const pass2 = document.getElementById('signup-password-verify');
+
+            // Dynamically validate matching passwords natively locking the submission button
+            const validatePasswords = () => {
+                if (pass1.value.length >= 6 && pass1.value === pass2.value) {
+                    signupBtn.disabled = false;
+                    pass2.style.borderColor = "var(--accent-green)";
+                } else {
+                    signupBtn.disabled = true;
+                    if (pass2.value.length > 0) {
+                        pass2.style.borderColor = "var(--accent-red)";
+                    } else {
+                        pass2.style.borderColor = "var(--text-muted)";
+                    }
+                }
+            };
+
+            if (pass1 && pass2) {
+                pass1.addEventListener('input', validatePasswords);
+                pass2.addEventListener('input', validatePasswords);
+            }
+
+            signupForm.addEventListener('submit', async (ev) => {
+                ev.preventDefault();
+                signupBtn.disabled = true;
+                signupBtn.innerText = "CREATING PROFILE...";
+
+                const user = document.getElementById('signup-username').value;
+                const email = document.getElementById('signup-email').value;
+                const pass = pass1.value;
+
+                const res = await API.signup(user, email, pass);
+                if (res.status === 'success') {
+                    signupFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] WELCOME: Account created.</div>`;
+                    if (typeof window.updateAuthState === 'function') window.updateAuthState();
+
+                    // Route instantly securely to the new verification pane!
+                    setTimeout(() => window.location.reload(), 400);
+                } else {
+                    signupFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${res.message}</div>`;
+                    signupBtn.disabled = false;
+                    signupBtn.innerText = "CREATE ACCOUNT";
+                }
+            });
+        }
+    }
 
     // ==========================================================
     // Controller: EDIT A VISIT (#edit)
