@@ -5,10 +5,11 @@
     Require all denied
 </FilesMatch>
 
-# 2. Block direct HTTP web browser execution of backend test suites and vendor frameworks
-<DirectoryMatch "^.*/(tests|vendor)/.*$">
-    Require all denied
-</DirectoryMatch>
+# 2. Block direct HTTP web browser execution of backend test suites and vendor frameworks using ModRewrite
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule "(^|/)(tests|vendor)(/|$)" - [F,L]
+</IfModule>
 
 # 3. Disable directory browsing globally (preventing users from seeing lists of files)
 Options -Indexes
