@@ -348,7 +348,7 @@ document.addEventListener('routeLoaded', (e) => {
             debugBox.style.cssText = "border:2px solid magenta; padding:15px; background:rgba(255,0,255,0.1); margin-bottom:20px; color:magenta; font-family:monospace;";
             debugBox.innerHTML = `
                 <b>[SYSTEM DIAGNOSTIC TRACE]</b><br>
-                fullHash: ${fullHash}<br>
+                route: ${route}<br>
                 split[1]: ${resetTokenRaw}<br>
                 token: ${resetToken}<br>
                 resetPane exists: ${!!resetPane}<br>
