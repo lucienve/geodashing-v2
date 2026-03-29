@@ -12,8 +12,8 @@ let activeMarkers = [];
 window.initMap = function () {
     // 1. Instantiate the Canvas directly into the persistent Layer 0 block securely
     map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: 39.8, lng: -98.5 }, // North American Center Base Default
-        zoom: 4,
+        center: { lat: 43.0606, lng: -88.1065 }, // Brookfield, Wisconsin Default
+        zoom: 11,
         mapId: "GEODASH-V2-MAIN", // CRITICAL: AdvancedMarkerElement absolutely requires explicitly mapping a Map ID string over Google's bounds!
         disableDefaultUI: true, // Strips out the generic Google buttons leaving an ultra-clean Terminal mapping shell
         zoomControl: true, // Allow manual zooming if mouse-wheels fail
