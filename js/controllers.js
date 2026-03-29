@@ -542,6 +542,50 @@ document.addEventListener('routeLoaded', (e) => {
     }
 
     // ==========================================================
+    // Controller: GLOBAL LEADERBOARDS (#leaderboard)
+    // ==========================================================
+    if (route === '#leaderboard') {
+        const tbody = document.getElementById('leaderboard-tbody');
+        if (tbody) {
+            // Ping the JSON endpoint directly mapping the arrays
+            API.getLeaderboard().then(json => {
+                if (json.status === 'success') {
+                    const data = json.data;
+                    
+                    if (data.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);">[ NO STATISTICAL DATA PRESENT ]</td></tr>`;
+                        return;
+                    }
+
+                    // Dynamically render the Glassmorphism Table natively
+                    let html = '';
+                    data.forEach(row => {
+                        let rankStyle = "color:var(--text-muted);";
+                        if (row.rank === 1) rankStyle = "color:var(--accent-amber); font-weight:bold;";
+                        else if (row.rank === 2) rankStyle = "color:#ccc; font-weight:bold;";
+                        else if (row.rank === 3) rankStyle = "color:#b08d55; font-weight:bold;"; // Bronze
+                        
+                        html += `
+                            <tr style="border-bottom:1px solid #222; transition: background 0.2s;">
+                                <td style="padding:10px; ${rankStyle}">#${row.rank}</td>
+                                <td style="padding:10px; color:var(--text-main); font-family:var(--font-mono);">${row.username}</td>
+                                <td style="padding:10px; color:var(--accent-amber); text-align:right;">${row.total_score}</td>
+                                <td style="padding:10px; color:var(--text-muted); text-align:right;">${row.total_finds}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    tbody.innerHTML = html;
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--accent-red);">[-] CRITICAL UPLINK FAILURE: ${json.message}</td></tr>`;
+                }
+            }).catch(err => {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--accent-red);">[-] SYNC RUPTURED: Network Timeout.</td></tr>`;
+            });
+        }
+    }
+
+    // ==========================================================
     // Controller: SCANNER EXPORT ROUTINES (#search)
     // ==========================================================
     if (route === '#search') {

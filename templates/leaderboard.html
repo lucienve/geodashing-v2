@@ -1,12 +1,37 @@
 <div class="template-view" id="view-leaderboard">
     <a href="#home" class="close-btn" aria-label="Close View">&times;</a>
     <h2>GLOBAL RANKINGS</h2>
-    <p style="margin-bottom:1.5rem; font-size:0.85rem; color:var(--text-muted); line-height:1.4;">
-        Real-time statistical breakdown of the highest-scoring players.
-    </p>
-
-    <!-- Placeholder for Phase 6 Logic -->
-    <div class="dash-block" style="text-align:center; padding:2rem; border:1px dashed var(--accent-amber);">
-        <p style="color:var(--accent-amber); font-family:monospace;">[ METRICS MODULE PENDING ]</p>
+    <div class="dash-block" style="text-align:center; padding: 1.5rem; margin-bottom:1.5rem;">
+        <h3 style="color:var(--accent-green); font-size:1.4rem; margin-bottom:0.5rem; letter-spacing:2px;">
+            TOP GEODASHERS
+        </h3>
+        <p style="color:var(--text-muted); font-size:0.8rem; letter-spacing:1px;">
+            CURRENT GAME CYCLE
+        </p>
     </div>
+
+    <!-- The physical Glassmorphism Table natively anchoring the JSON arrays -->
+    <div class="dash-block" style="padding:0;">
+        <table class="data-table" style="width:100%; text-align:left; border-collapse: collapse; font-size: 0.85rem;">
+            <thead>
+                <tr style="border-bottom:1px solid #333;">
+                    <th style="padding:10px; color:var(--text-muted); width: 15%;">#</th>
+                    <th style="padding:10px; color:var(--text-muted); width: 45%;">GEODASHER</th>
+                    <th style="padding:10px; color:var(--accent-amber); text-align:right; width: 20%;">PT</th>
+                    <th style="padding:10px; color:var(--text-muted); text-align:right; width: 20%;">LOGS</th>
+                </tr>
+            </thead>
+            <!-- Javascript explicitly injects `<tr>` rows directly into this exact tbody! -->
+            <tbody id="leaderboard-tbody">
+                <tr>
+                    <td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);">
+                        [ COMPILING NETWORK DATA... ]
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Future-proofed spacing natively buffering the bottom of the Terminal shell -->
+    <div style="height:20px;"></div>
 </div>

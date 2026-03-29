@@ -111,6 +111,28 @@ const API = {
     },
 
     /**
+     * Structurally retrieves the Global Solo Leaderboards JSON mapping dynamically.
+     * @param {number} gameId Optional integer ID to query historic loops natively 
+     */
+    getLeaderboard: async function(gameId = null) {
+        try {
+            let url = 'backend/api/leaderboard.php';
+            if (gameId !== null) {
+                url += `?game_id=${gameId}`;
+            }
+            
+            const res = await fetch(url, {
+                method: 'GET',
+                headers: this.headers
+            });
+            return await res.json();
+        } catch (e) {
+            console.error(e);
+            return { status: 'error', message: 'API Network Timeout!' };
+        }
+    },
+
+    /**
      * Polls the live Session strictly ensuring the user is authorized.
      */
     checkSession: async function() {
