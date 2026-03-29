@@ -1,28 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    
+
     <!-- Enforce STRICT mobile viewport mapping preventing layout zooming when tapping inputs -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
+
     <!-- SEO Pipeline Basics -->
     <title>Geodashing V2 | The Global GPS Challenge</title>
-    <meta name="description" content="A premium location-based scavenger hunt utilizing randomized global dashpoints and competitive live networking.">
-    
+    <meta name="description"
+        content="A premium location-based scavenger hunt utilizing randomized global dashpoints and competitive live networking.">
+
     <!-- Branding -->
     <link rel="icon" href="favicon.ico" type="image/x-icon">
-    
+
     <!-- Google Fonts: Inter for readability, Roboto Mono to satisfy the early-2000s Utilitarian Dashboard request natively -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    
+    <link
+        href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;600;700&family=Inter:wght@400;600&display=swap"
+        rel="stylesheet">
+
     <!-- Core Glassmorphism Design System -->
     <link rel="stylesheet" href="css/index.css">
 </head>
+
 <body>
-    
+
     <!-- Layer 0: The Persistent Google Map. 
          This DIV physically never unloads. It stays cached in memory identically
          as the player navigates HTML templates via the router. -->
@@ -32,21 +37,22 @@
 
     <!-- Layer 1: The Glassmorphism UI Shell overlaying the Map completely -->
     <div id="ui-shell">
-        
+
         <!-- Persistent Top Navigation Console -->
         <nav id="top-nav" class="glass-panel">
             <h1 class="logo glow-text">
                 GEODASHING<span class="version-tag">.v2</span>
-                <span id="header-game-id" style="color:var(--accent-green); font-size:0.8rem; margin-left:15px; letter-spacing:1px;"></span>
+                <span id="header-game-id"
+                    style="color:var(--accent-green); font-size:0.8rem; margin-left:15px; letter-spacing:1px;"></span>
             </h1>
-            
+
             <div id="desktop-links" class="nav-links">
-                <a href="#home" class="nav-link active">STATUS</a>
-                <a href="#search" class="nav-link">SCANNER</a>
+                <a href="#home" class="nav-link active">MAP</a>
+                <a href="#search" class="nav-link">EXPORT</a>
                 <a href="#leaderboard" class="nav-link">LEADERBOARD</a>
                 <a href="#login" id="nav-auth-btn" class="nav-link highlight">Player login</a>
             </div>
-            
+
             <!-- Mobile Hamburger Toggle -->
             <button id="mobile-menu-btn" class="btn btn-outline glow-box">☰</button>
         </nav>
@@ -70,8 +76,10 @@
     <script src="js/controllers.js"></script>
     <script src="js/app.js"></script>
     <script src="js/map.js"></script>
-    
+
     <!-- Google Maps JS API Engine natively rendering the bounds asynchronously -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBDJBkvgGtuwxwadQc4-T13K5Ifg_HcFDg&callback=initMap&loading=async&libraries=marker"></script>
+    <script
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBDJBkvgGtuwxwadQc4-T13K5Ifg_HcFDg&callback=initMap&loading=async&libraries=marker"></script>
 </body>
+
 </html>
