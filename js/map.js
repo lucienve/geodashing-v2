@@ -9,7 +9,7 @@ let map;
 let activeMarkers = [];
 
 // CRITICAL: This exact function name is explicitly triggered by the Google Maps `<script>` callback string natively in index.html!
-window.initMap = function() {
+window.initMap = function () {
     // 1. Instantiate the Canvas directly into the persistent Layer 0 block securely
     map = new google.maps.Map(document.getElementById("map"), {
         center: { lat: 39.8, lng: -98.5 }, // North American Center Base Default
@@ -23,9 +23,9 @@ window.initMap = function() {
 
     // 2. Bind the primary map movement listener. 
     // 'idle' physically fires exactly once instantly when a user definitively finishes sliding/zooming their finger mapping efficiency!
-    google.maps.event.addListener(map, 'idle', function() {
+    google.maps.event.addListener(map, 'idle', function () {
         const bounds = map.getBounds();
-        if(!bounds) return;
+        if (!bounds) return;
 
         const NE = bounds.getNorthEast();
         const SW = bounds.getSouthWest();
@@ -47,7 +47,7 @@ window.initMap = function() {
             map.setCenter({ lat: position.coords.latitude, lng: position.coords.longitude });
             map.setZoom(11); // Snap dynamically tightly matching typical hunting zones implicitly
         }, () => {
-             console.log("Geolocation mapping completely refused or unavailable on this terminal.");
+            console.log("Geolocation mapping completely refused or unavailable on this terminal.");
         });
     }
 }
@@ -57,12 +57,12 @@ window.initMap = function() {
  */
 function refreshDashpoints(bounds) {
     const query = new URLSearchParams(bounds).toString();
-    
+
     // Dynamically pinging the backend routing through the Apache /api/ structure securely
     fetch(`backend/api/search.php?${query}`)
         .then(response => response.json())
         .then(json => {
-            if(json.status === 'success') {
+            if (json.status === 'success') {
                 plotVectors(json.data);
             }
         })
@@ -78,10 +78,27 @@ function plotVectors(pointsArray) {
     activeMarkers = [];
 
     pointsArray.forEach(pt => {
+        let vCount = 0;
+        if (pt.visit_count) {
+            vCount = parseInt(pt.visit_count);
+        }
+
+        // Dynamically style based on visit count
+        let bgColor = "#ef4444"; // Default Red: Unvisited dashpoint
+        let rimColor = "#7f1d1d";
+
+        if (vCount === 1) {
+            bgColor = "#10b981"; // Green: Successfully visited
+            rimColor = "#064e3b";
+        } else if (vCount > 1) {
+            bgColor = "#facc15"; // Yellow: Multiple visits
+            rimColor = "#713f12";
+        }
+
         // AdvancedMarkerElement natively replaces deprecated vector geometries with the new PinElement Engine
         const pinView = new google.maps.marker.PinElement({
-            background: "#10b981",     // Glowing Neon Green mapping the CSS tokens
-            borderColor: "#f59e0b",    // Bright Amber rim wrapping the point distinctively
+            background: bgColor,
+            borderColor: rimColor,
             glyphColor: "#ffffff",
             scale: 0.95
         });
@@ -92,12 +109,12 @@ function plotVectors(pointsArray) {
             title: `Dashpoint ${pt.id}`,
             content: pinView
         });
-        
+
         // AdvancedMarkerElement strictly enforces `gmp-click` mapping directly bypassing legacy DOM bubble overlaps perfectly!
         marker.addListener('gmp-click', () => {
             window.location.hash = `#dashpoint?id=${pt.id}`;
         });
-        
+
         activeMarkers.push(marker);
     });
 }

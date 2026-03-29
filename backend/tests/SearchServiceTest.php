@@ -36,7 +36,7 @@ class SearchServiceTest extends TestCase
     {
         $stmtMock = $this->createMock(PDOStatement::class);
         $stmtMock->method('fetchAll')->willReturn([
-            ['id' => 'GD01-123', 'lat' => 45.0, 'lon' => -70.0]
+            ['id' => 'GD01-123', 'lat' => 45.0, 'lon' => -70.0, 'visit_count' => 0]
         ]);
         
         // Assert the SQL string securely binds a strict monolithic coordinate matrix expecting Longitudes on ST_Y
@@ -49,6 +49,7 @@ class SearchServiceTest extends TestCase
 
         $this->assertCount(1, $result);
         $this->assertEquals('GD01-123', $result[0]['id']);
+        $this->assertEquals(0, $result[0]['visit_count']);
     }
 
     /**
@@ -60,8 +61,8 @@ class SearchServiceTest extends TestCase
     {
         $stmtMock = $this->createMock(PDOStatement::class);
         $stmtMock->method('fetchAll')->willReturn([
-            ['id' => 'GD01-FIJI', 'lat' => -18.0, 'lon' => 179.9],
-            ['id' => 'GD01-SAMOA', 'lat' => -13.0, 'lon' => -171.0]
+            ['id' => 'GD01-FIJI', 'lat' => -18.0, 'lon' => 179.9, 'visit_count' => 1],
+            ['id' => 'GD01-SAMOA', 'lat' => -13.0, 'lon' => -171.0, 'visit_count' => 5]
         ]);
         
         // Assert the SQL definitively overrides the WHERE clause mapping dual hemispheres via ST_Y Longitudes natively
@@ -75,6 +76,9 @@ class SearchServiceTest extends TestCase
 
         $this->assertCount(2, $result);
         $this->assertEquals('GD01-FIJI', $result[0]['id']);
+        $this->assertEquals(1, $result[0]['visit_count']);
+        
         $this->assertEquals('GD01-SAMOA', $result[1]['id']);
+        $this->assertEquals(5, $result[1]['visit_count']);
     }
 }
