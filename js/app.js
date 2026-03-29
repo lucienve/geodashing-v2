@@ -145,18 +145,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Display the Global Notice natively grabbing the click event for the Email re-route
                 const verifyBanner = document.getElementById('verify-banner');
-                if (verifyBanner) {
+                const verifyBtn = document.getElementById('resend-verify-btn');
+                if (verifyBanner && verifyBtn) {
                     if (res.is_verified === 0) {
                         verifyBanner.classList.remove('d-none');
-                        verifyBanner.onclick = async () => {
-                            verifyBanner.innerText = "[ ... ]";
+                        verifyBtn.onclick = async () => {
+                            verifyBtn.innerText = "SENDING...";
                             const resendRes = await API.resendVerification();
                             if (resendRes.status === 'success') {
-                                verifyBanner.innerText = "[ Mail sent - Please check your inbox. ]";
-                                verifyBanner.style.background = "var(--accent-green)";
+                                verifyBtn.innerText = "Mail sent - Please check your inbox.";
+                                verifyBtn.style.color = "var(--accent-green)";
                             } else {
-                                verifyBanner.innerText = `[ ERROR: ${resendRes.message} ]`;
-                                verifyBanner.style.background = "var(--accent-red)";
+                                verifyBtn.innerText = `ERROR: ${resendRes.message}`;
+                                verifyBtn.style.color = "var(--accent-red)";
                             }
                         };
                     } else {
