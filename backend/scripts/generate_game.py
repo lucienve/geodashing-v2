@@ -1,6 +1,7 @@
 import os
 import time
 import calendar
+import argparse
 import configparser
 import numpy as np
 import geopandas as gpd
@@ -200,14 +201,24 @@ def generate_valid_dashpoints(target_count: int = 2000, land_zip_path: str = '..
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Geodashing V2 Point Generator Engine")
+    parser.add_argument(
+        '-c', '--count',
+        type=int,
+        default=31000,
+        help="The total number of dashpoints to randomly distribute on Earth (default: 31000)"
+    )
+    args = parser.parse_args()
+
     current_dir = os.path.dirname(os.path.abspath(__file__))
     zip_path = os.path.join(current_dir, '../../data/ne_10m_land.zip')
     lakes_zip = os.path.join(current_dir, '../../data/ne_10m_lakes.zip')
     config_path = os.path.join(current_dir, '../config.ini')
     
     try:
-        # 1. Generate Points
-        target = 2000
+        # 1. Generate Points dynamically bound to the user's explicit CLI count
+        target = args.count
+        print(f"Generating {target} dashpoints...")
         points = generate_valid_dashpoints(target_count=target, land_zip_path=zip_path, lakes_zip_path=lakes_zip)
         
         # 2. Upload to MySQL
