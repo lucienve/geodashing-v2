@@ -336,42 +336,44 @@ document.addEventListener('routeLoaded', (e) => {
         const signupPane = document.getElementById('signup-pane');
         const verifyPane = document.getElementById('verify-pane');
 
-        // Execute a native promise directly to mathematically prevent DOM race conditions against app.js
-        API.checkSession().then(authRes => {
-            if (authRes.status === 'success' && authRes.is_verified === 0 && verifyPane) {
-                if (loginPane) loginPane.style.display = 'none';
-                if (signupPane) signupPane.style.display = 'none';
-                verifyPane.classList.remove('d-none');
+        // Synchronously intercept Sandboxed accounts securely routing them to the Verification Matrix
+        const user = window.currentUser || null;
 
-                const resendBtn = document.getElementById('resend-verify-btn');
-                const logoutBtn = document.getElementById('verify-logout-btn');
-                const verifyFeedback = document.getElementById('verify-feedback');
-
-                if (resendBtn) {
-                    resendBtn.addEventListener('click', async () => {
-                        resendBtn.innerText = "Sending Email...";
-                        resendBtn.disabled = true;
-                        const resendRes = await API.resendVerification();
-                        if (resendRes.status === 'success') {
-                            verifyFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] NETWORK SYNC: Email sent successfully! Check your inbox.</div>`;
-                            resendBtn.innerText = "Email Sent";
-                        } else {
-                            verifyFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${resendRes.message}</div>`;
-                            resendBtn.innerText = "Click here to resend validation email";
-                            resendBtn.disabled = false;
-                        }
-                    });
-                }
-                if (logoutBtn) {
-                    logoutBtn.addEventListener('click', async () => {
-                        await API.logout();
-                        window.location.reload();
-                    });
-                }
-                return; // Prevent standard forms from attaching if verified
+        // Using double equals natively protects against weak-typed PHP JSON coercion race conditions!
+        if (user && user.is_verified == 0 && verifyPane) {
+            if (loginPane) loginPane.style.display = 'none';
+            if (signupPane) signupPane.style.display = 'none';
+            verifyPane.classList.remove('d-none');
+            
+            const resendBtn = document.getElementById('resend-verify-btn');
+            const logoutBtn = document.getElementById('verify-logout-btn');
+            const verifyFeedback = document.getElementById('verify-feedback');
+            
+            if (resendBtn) {
+                resendBtn.addEventListener('click', async () => {
+                    resendBtn.innerText = "Sending Email...";
+                    resendBtn.disabled = true;
+                    const resendRes = await API.resendVerification();
+                    if (resendRes.status === 'success') {
+                        verifyFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] NETWORK SYNC: Email sent successfully! Check your inbox.</div>`;
+                        resendBtn.innerText = "Email Sent";
+                    } else {
+                        verifyFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${resendRes.message}</div>`;
+                        resendBtn.innerText = "Click here to resend validation email";
+                        resendBtn.disabled = false;
+                    }
+                });
             }
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', async () => {
+                    await API.logout();
+                    window.location.reload();
+                });
+            }
+            return; // Prevent standard forms from attaching if verified
+        }
 
-            // --- STANDARD LOGIN HOOKS ---
+        // --- STANDARD LOGIN HOOKS ---
             if (toggleSignup && toggleLogin && loginPane && signupPane) {
                 toggleSignup.addEventListener('click', (ev) => {
                     ev.preventDefault();
@@ -462,8 +464,7 @@ document.addEventListener('routeLoaded', (e) => {
                     }
                 });
             }
-        }); // Close the API.checkSession Promise wrapper
-    }
+        }
 
     // ==========================================================
     // Controller: EDIT A VISIT (#edit)
