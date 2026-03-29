@@ -17,6 +17,14 @@ window.initMap = function () {
         mapId: "GEODASH-V2-MAIN", // CRITICAL: AdvancedMarkerElement absolutely requires explicitly mapping a Map ID string over Google's bounds!
         disableDefaultUI: true, // Strips out the generic Google buttons leaving an ultra-clean Terminal mapping shell
         zoomControl: true, // Allow manual zooming if mouse-wheels fail
+
+        // Natively invoke Google's Satellite vs Terrain mapping toggle perfectly avoiding the Header!
+        mapTypeControl: true,
+        mapTypeControlOptions: {
+            position: google.maps.ControlPosition.RIGHT_BOTTOM,
+            style: google.maps.MapTypeControlStyle.DEFAULT
+        },
+
         backgroundColor: '#09090b',
         mapTypeId: google.maps.MapTypeId.TERRAIN // Automatically maps natural elevations/coastlines out natively supporting the 500m buffer logic structurally!
     });
