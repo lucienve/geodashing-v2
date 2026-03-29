@@ -342,12 +342,31 @@ document.addEventListener('routeLoaded', (e) => {
         const resetToken = rawUrlParams.get('reset_token');
 
         // Execute imperative reset pane override physically bypassing standard user states
-        if (resetToken && resetPane) {
-            if (loginPane) loginPane.style.display = 'none';
-            if (signupPane) signupPane.style.display = 'none';
-            if (verifyPane) verifyPane.style.display = 'none';
-            if (forgotPane) forgotPane.style.display = 'none';
-            resetPane.style.display = 'block';
+        if (resetToken) {
+            // DEBUG INJECTOR: Physically dump the variable resolution table directly to the user's viewport!
+            const debugBox = document.createElement('div');
+            debugBox.style.cssText = "border:2px solid magenta; padding:15px; background:rgba(255,0,255,0.1); margin-bottom:20px; color:magenta; font-family:monospace;";
+            debugBox.innerHTML = `
+                <b>[SYSTEM DIAGNOSTIC TRACE]</b><br>
+                fullHash: ${fullHash}<br>
+                split[1]: ${resetTokenRaw}<br>
+                token: ${resetToken}<br>
+                resetPane exists: ${!!resetPane}<br>
+                loginPane exists: ${!!loginPane}<br>
+                forgotPane exists: ${!!forgotPane}
+            `;
+            const header = document.querySelector('#view-login h2');
+            if (header) header.insertAdjacentElement('afterend', debugBox);
+            
+            if (resetPane) {
+                if (loginPane) loginPane.style.display = 'none';
+                if (signupPane) signupPane.style.display = 'none';
+                if (verifyPane) verifyPane.style.display = 'none';
+                if (forgotPane) forgotPane.style.display = 'none';
+                resetPane.style.display = 'block';
+            } else {
+                debugBox.innerHTML += `<br><span style="color:red;font-weight:bold;">CRITICAL RUPTURE: resetPane is FALSE (Check browser cache!)</span>`;
+            }
             // Do not return here so standard form hooks (including the reset form!) can bind!
         } else {
             // --- DYNAMIC STATE: Fully Authenticated & Verified ---
