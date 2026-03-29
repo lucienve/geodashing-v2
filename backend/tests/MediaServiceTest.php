@@ -124,4 +124,27 @@ class MediaServiceTest extends TestCase
         // Trash the local mock mapping safely
         unlink($tempFile);
     }
+
+    /**
+     * Asserts that passing public GCS URLs dynamically routes to the underlying raw bucket 
+     * objects uniquely isolating the structural deletions correctly.
+     */
+    #[Test]
+    public function processDeleteIsolatesGcsObjectPrefix()
+    {
+        $service = new MediaService('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock);
+        
+        $fakeObject = $this->createMock(\Google\Cloud\Storage\StorageObject::class);
+        $fakeObject->expects($this->once())->method('exists')->willReturn(true);
+        $fakeObject->expects($this->once())->method('delete');
+        
+        // Assert that exactly 'visits/GD01/my_pic.jpg' is passed natively to the Google Bucket Object request
+        $this->bucketMock->expects($this->once())
+             ->method('object')
+             ->with('visits/GD01/my_pic.jpg')
+             ->willReturn($fakeObject);
+
+        $urlsToDelete = ['https://storage.googleapis.com/geodashing-test-blobs/visits/GD01/my_pic.jpg'];
+        $service->deletePhotos($urlsToDelete);
+    }
 }

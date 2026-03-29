@@ -1,0 +1,47 @@
+<div class="template-view" id="view-edit">
+    <a href="#home" class="close-btn" aria-label="Close View">&times;</a>
+    <h2>EDIT LOG</h2>
+
+    <div class="dash-block" style="text-align:center; padding: 1.5rem; margin-bottom:1.5rem;">
+        <h3 style="color:var(--accent-green); font-size:1.4rem; margin-bottom:0.5rem; letter-spacing:2px;">
+            DASHPOINT LOGGED
+        </h3>
+        <p style="color:var(--text-muted); font-size:0.8rem; letter-spacing:1px;" id="edit-dp-coord-label">
+            EDITING DASHPOINT LOG
+        </p>
+    </div>
+
+    <form id="form-edit" enctype="multipart/form-data">
+        <input type="hidden" id="edit_dashpoint_id" name="dashpoint_id">
+        <input type="hidden" id="edit_kept_photos" name="kept_photos" value="[]">
+
+        <div class="dash-block" style="margin-bottom: 2rem;">
+            <label for="edit-notes">NOTES (Max 10k chars)</label>
+            <textarea id="edit-notes" name="notes" class="data-input" rows="5"
+                placeholder="Enter field notes..." required
+                style="resize:vertical;"></textarea>
+        </div>
+
+        <div class="dash-block" style="margin-bottom: 2rem;">
+            <label>PHOTOS</label>
+            <div id="edit-existing-photos"
+                style="display:grid; grid-template-columns: 1fr; gap:1rem; margin-top:1rem; min-height:50px;">
+                <p
+                    style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:1rem; border:1px dashed var(--border-color);">
+                    [ NO PHOTOS ]</p>
+            </div>
+            <p style="color:var(--accent-amber); font-size:0.75rem; text-align:center; margin-top:0.5rem;">Click [X] to
+                remove photo.</p>
+        </div>
+
+        <div class="dash-block" style="margin-bottom: 2rem;">
+            <label>ATTACH NEW BINARIES (Max 10 total)</label>
+            <input type="file" id="edit-photos" name="photos[]" multiple accept="image/*" class="data-input"
+                style="padding:10px; font-size:0.8rem; color: #fff;">
+        </div>
+
+        <div id="edit-status" style="margin-bottom:1.5rem; text-align:center; font-size:0.85rem;"></div>
+
+        <button type="submit" class="btn btn-primary" id="btn-submit-edit" style="width:100%;">SAVE EDITS</button>
+    </form>
+</div>

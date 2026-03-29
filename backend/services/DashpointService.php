@@ -28,7 +28,7 @@ class DashpointService
 
         // 2. Query precisely all approved Historical Visits mapped to this exact dashpoint
         $vStmt = $this->db->prepare("
-            SELECT v.id AS visit_id, u.username, v.reported_time, v.score_awarded, v.notes, v.photos 
+            SELECT v.id AS visit_id, u.username, v.reported_time, v.edited_at, v.score_awarded, v.notes, v.photos 
             FROM visits v 
             JOIN users u ON v.user_id = u.id 
             WHERE v.dashpoint_id = :id AND v.status = 'approved'

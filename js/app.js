@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
         '#dashpoint': 'templates/dashpoint.html',
         '#login': 'templates/login.html',
         '#report': 'templates/report.html',
+        '#edit': 'templates/edit.html',
         '#search': 'templates/search.html',
         '#leaderboard': 'templates/leaderboard.html'
     };

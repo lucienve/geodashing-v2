@@ -29,6 +29,20 @@ const API = {
         }
     },
 
+    editVisit: async function(formData) {
+        try {
+            const res = await fetch('backend/api/edit.php', {
+                method: 'POST',
+                headers: this.headers,
+                body: formData // Same multipart wrapper supporting JSON strings and Image Binaries
+            });
+            return await res.json();
+        } catch (e) {
+            console.error(e);
+            return { status: 'error', message: 'API Network Timeout!' };
+        }
+    },
+
     /**
      * Attempts native Authentication via PHP Sessions mapping
      * @param {string} username 

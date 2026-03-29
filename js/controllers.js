@@ -9,7 +9,7 @@ let activeIntervals = [];
 
 document.addEventListener('routeLoaded', (e) => {
     const route = e.detail.route;
-    
+
     // Purge any lingering Javascript intervals (like the countdown timer) from previous views
     activeIntervals.forEach(clearInterval);
     activeIntervals = [];
@@ -42,27 +42,7 @@ document.addEventListener('routeLoaded', (e) => {
         const visitsContainer = document.getElementById('dp-visits-container');
         const btnLog = document.getElementById('btn-goto-report');
 
-        // Dynamically bind the Authentication API physically against the button DOM node natively
-        if (btnLog) {
-            API.checkSession().then(res => {
-                if (res.status === 'success') {
-                    // Authenticated Identity - Permitted to Route
-                    btnLog.innerText = "LOG VISIT";
-                    btnLog.addEventListener('click', () => {
-                        window.location.hash = `#report?id=${dpId}`;
-                    });
-                } else {
-                    // Unauthenticated Identity - Enforce Login
-                    btnLog.innerText = "LOGIN TO LOG VISIT";
-                    btnLog.style.background = "transparent";
-                    btnLog.style.color = "var(--accent-red)";
-                    btnLog.style.border = "1px solid var(--accent-red)";
-                    btnLog.addEventListener('click', () => {
-                        window.location.hash = `#login`;
-                    });
-                }
-            });
-        }
+        // The Button Controller logic is executed exclusively post-fetch to allow spatial ownership diffing
 
         // Poll the new Phase 5.4 Backend directly!
         fetch(`backend/api/dashpoint.php?id=${dpId}`)
@@ -70,8 +50,35 @@ document.addEventListener('routeLoaded', (e) => {
             .then(json => {
                 if (json.status === 'success') {
                     const dp = json.data;
-                    if(dpIdLabel) dpIdLabel.innerText = `${dp.id}`;
-                    if(dpCoordLabel) dpCoordLabel.innerText = `[ LAT: ${dp.lat.toFixed(5)} | LON: ${dp.lon.toFixed(5)} ]`;
+                    if (dpIdLabel) dpIdLabel.innerText = `${dp.id}`;
+                    if (dpCoordLabel) dpCoordLabel.innerText = `[ LAT: ${dp.lat.toFixed(5)} | LON: ${dp.lon.toFixed(5)} ]`;
+
+                    // Evaluate Ownership & Authentication dynamically wrapping the Primary Button State
+                    if (btnLog) {
+                        API.checkSession().then(res => {
+                            if (res.status === 'success') {
+                                // 1. Scan the Ledger for an exact Username match proving physical ownership
+                                const userOwnedVisit = dp.visits.find(v => v.username === res.username);
+                                if (userOwnedVisit) {
+                                    btnLog.innerText = "EDIT LOG";
+                                    btnLog.style.background = "var(--accent-amber)";
+                                    btnLog.style.color = "#000";
+                                    btnLog.style.border = "none";
+                                    btnLog.addEventListener('click', () => { window.location.hash = `#edit?id=${dp.id}`; });
+                                } else {
+                                    btnLog.innerText = "LOG VISIT";
+                                    btnLog.addEventListener('click', () => { window.location.hash = `#report?id=${dp.id}`; });
+                                }
+                            } else {
+                                // 2. Unauthenticated Identity - Enforce Login Array Flow 
+                                btnLog.innerText = "LOGIN TO LOG VISIT";
+                                btnLog.style.background = "transparent";
+                                btnLog.style.color = "var(--accent-red)";
+                                btnLog.style.border = "1px solid var(--accent-red)";
+                                btnLog.addEventListener('click', () => { window.location.hash = `#login`; });
+                            }
+                        });
+                    }
 
                     // Generate the beautiful HTML5 Ledgers directly from MySQL bounds
                     if (dp.visits.length === 0) {
@@ -82,7 +89,7 @@ document.addEventListener('routeLoaded', (e) => {
                         dp.visits.forEach((visit, index) => {
                             // Extract standard timestamps cleanly for the CLI UI
                             const d = new Date(visit.reported_time);
-                            const tStr = `${d.getFullYear()}.${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getDate().toString().padStart(2,'0')} @ ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+                            const tStr = `${d.getFullYear()}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getDate().toString().padStart(2, '0')} @ ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 
                             // Generate a pure Javascript DOM block specifically separating the rows safely!
                             const visitDiv = document.createElement('div');
@@ -99,27 +106,34 @@ document.addEventListener('routeLoaded', (e) => {
                                 <div style="color:#888; font-size:0.75rem; margin-bottom:1rem;">> LOG_TIME: ${tStr}</div>
                             `;
 
+                            // Map the newly registered Spatial Temporal Edit constraint natively
+                            if (visit.edited_at) {
+                                const ed = new Date(visit.edited_at);
+                                const edStr = `${ed.getFullYear()}.${(ed.getMonth() + 1).toString().padStart(2, '0')}.${ed.getDate().toString().padStart(2, '0')} @ ${ed.getHours().toString().padStart(2, '0')}:${ed.getMinutes().toString().padStart(2, '0')}`;
+                                html += `<div style="color:var(--accent-amber); font-size:0.75rem; margin-bottom:1rem;">> EDITED_AT: ${edStr}</div>`;
+                            }
+
                             // If they provided notes or uploaded physical Photos to GCP, expose the [ VIEW DETAILS ] toggler natively
                             if ((visit.notes && visit.notes.trim() !== '') || (visit.photos && visit.photos.length > 0)) {
                                 html += `<button type="button" class="btn btn-secondary" style="width:100%; font-size:0.7rem;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none';">VIEW DETAILS</button>`;
                                 html += `<div style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px dashed #444;">`;
-                                
+
                                 if (visit.notes) {
                                     html += `<p style="color:#ddd; margin-bottom:1rem; font-style:italic;">"${visit.notes}"</p>`;
                                 }
-                                
+
                                 if (visit.photos && visit.photos.length > 0) {
                                     html += `<div style="display:grid; grid-template-columns: 1fr; gap:1rem;">`;
                                     visit.photos.forEach(photo => {
                                         let imgHtml = `<img src="${photo.url}" style="width:100%; height:auto; border:1px solid var(--accent-amber);" loading="lazy">`;
-                                        
+
                                         if (photo.lat !== null && photo.lon !== null && dp.lat !== undefined) {
                                             // Native JS Haversine Distance Mapper cleanly invoking the global SPA utility
                                             const distance = window.calculateDistance(photo.lat, photo.lon, dp.lat, dp.lon);
-                                            
+
                                             imgHtml += `<div style="text-align:center; font-size:0.75rem; color:var(--accent-green); margin-top:0.3rem;">[ EXIF GPS: ${photo.lat.toFixed(5)}, ${photo.lon.toFixed(5)} | DISTANCE FROM DASHPOINT: ${distance.toFixed(1)}m ]</div>`;
                                         }
-                                        
+
                                         html += `<div>${imgHtml}</div>`;
                                     });
                                     html += `</div>`;
@@ -150,15 +164,15 @@ document.addEventListener('routeLoaded', (e) => {
         const btnGeo = document.getElementById('btn-geolocation');
         const latInput = document.getElementById('input-lat');
         const lonInput = document.getElementById('input-lon');
-        
+
         // If they click map markers, the ID gets injected into the URL ?id=GD...
         // We parse that securely out of the SPA Routing hash!
         if (route.includes('?')) {
             const hashParams = new URLSearchParams(route.split('?')[1]);
             const targetId = hashParams.get('id');
-            if(targetId) {
+            if (targetId) {
                 const idInput = document.getElementById('dashpoint_id');
-                if(idInput) idInput.value = targetId;
+                if (idInput) idInput.value = targetId;
             }
         }
 
@@ -168,13 +182,13 @@ document.addEventListener('routeLoaded', (e) => {
                 ev.preventDefault();
                 btnGeo.innerText = "PULLING GPS...";
                 btnGeo.style.color = "var(--accent-amber)";
-                
+
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(
                         (position) => {
                             latInput.value = position.coords.latitude.toFixed(6);
                             lonInput.value = position.coords.longitude.toFixed(6);
-                            
+
                             btnGeo.innerText = "[ COORDINATES SYNCED ]";
                             btnGeo.style.color = "var(--accent-green)";
                             btnGeo.style.borderColor = "var(--accent-green)";
@@ -191,7 +205,7 @@ document.addEventListener('routeLoaded', (e) => {
                 }
             });
         }
-        
+
         // Dynamic Log Character Counter natively optimizing the UX!
         const logArea = document.getElementById('log-textarea');
         const charCounter = document.getElementById('char-counter');
@@ -199,9 +213,9 @@ document.addEventListener('routeLoaded', (e) => {
             logArea.addEventListener('input', () => {
                 const len = logArea.value.length;
                 const remaining = 10000 - len;
-                
+
                 charCounter.innerText = `${remaining.toLocaleString()} chars remaining`;
-                
+
                 if (remaining <= 50) {
                     charCounter.style.color = "var(--accent-red)";
                     charCounter.style.fontWeight = "bold";
@@ -211,16 +225,16 @@ document.addEventListener('routeLoaded', (e) => {
                 }
             });
         }
-        
+
         // Final Logging Form Submitter trapping the Data matrix natively into api.js
         const reportForm = document.getElementById('form-report');
         if (reportForm) {
             reportForm.addEventListener('submit', async (ev) => {
                 ev.preventDefault();
-                
+
                 const submitBtn = document.getElementById('btn-submit-report');
                 const feedbackStatus = document.getElementById('report-feedback');
-                
+
                 // 1. Initial Local Coordinate Validation Matrix natively preventing impossible values
                 const userLat = parseFloat(latInput.value);
                 const userLon = parseFloat(lonInput.value);
@@ -240,17 +254,17 @@ document.addEventListener('routeLoaded', (e) => {
                     feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] GEOPHYSICAL REJECTION: Longitude strictly bounded between -180 and 180 degrees.</div>`;
                     return;
                 }
-                
+
                 submitBtn.disabled = true;
                 submitBtn.innerText = "CALCULATING PROXIMITY...";
-                
+
                 try {
                     // 2. Safely Fetch target constraints transparently before throwing Heavy User Photos across the bandwidth
                     const targetRes = await fetch(`backend/api/dashpoint.php?id=${targetId}`);
                     const targetJson = await targetRes.json();
-                    
+
                     if (targetJson.status !== 'success') {
-                        feedbackStatus.innerHTML = `<div class="alert alert-error">[-] TARGET CORRUPTION: System could not identify target node bounds.</div>`;
+                        feedbackStatus.innerHTML = `<div class="alert alert-error">[-] DASHPOINT ERROR: System could not identify dashpoint bounds.</div>`;
                         submitBtn.disabled = false;
                         submitBtn.innerText = "SUBMIT LOG";
                         return;
@@ -259,40 +273,39 @@ document.addEventListener('routeLoaded', (e) => {
                     const targetLat = targetJson.data.lat;
                     const targetLon = targetJson.data.lon;
 
-                    // 3. Calculate distance strictly using the Global SPA Haversine Utility
                     const distance = window.calculateDistance(userLat, userLon, targetLat, targetLon);
 
-                    // Reject log client-side before massive bandwidth photo transfers commence
+                    // Reject log client-side before photo transfers 
                     if (distance > 100) {
-                        feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] PROXIMITY ALERT: Out of bounds. You are <strong>${distance.toFixed(1)}m</strong> from the target radius. Submissions strictly require &le; 100m.</div>`;
+                        feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: Out of bounds. You are <strong>${distance.toFixed(1)}m</strong> from the dashpoint. Logs require you to be within &le; 100m.</div>`;
                         submitBtn.disabled = false;
                         submitBtn.innerText = "SUBMIT LOG";
                         return;
                     }
 
                     submitBtn.innerText = "UPLOADING PAYLOAD...";
-                    
+
                     // 4. Actuating the standard POST injection seamlessly wrapper wrapping all data safely
                     const formData = new FormData(reportForm);
                     const result = await API.logVisit(formData);
-                    
-                    if(result.status === 'success') {
-                        feedbackStatus.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] LOG_ACCEPTED: Server logged coordinates at strictly ${result.distance.toFixed(1)}m. You scored ${result.points} points!</div>`;
-                        
+
+                    if (result.status === 'success') {
+                        feedbackStatus.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] LOG_ACCEPTED: Server logged visit at ${result.distance.toFixed(1)}m. You scored ${result.points} points!</div>`;
+
                         // Capture the Target natively before the structural form reset wipes it out!
                         const targetPersistence = document.getElementById('dashpoint_id').value;
                         reportForm.reset();
                         document.getElementById('dashpoint_id').value = targetPersistence;
-                        
+
                         btnGeo.innerText = "[ SYNC LIVE GPS ]";
                         btnGeo.style.color = ""; // Reset inline CSS
                     } else {
                         feedbackStatus.innerHTML = `<div class="alert alert-error">[-] UPLOAD REJECTED: ${result.message}</div>`;
                     }
-                } catch(err) {
-                    feedbackStatus.innerHTML = `<div class="alert alert-error">[-] UPLINK RUPTURED: Critical system upload execution error natively crashed.</div>`;
+                } catch (err) {
+                    feedbackStatus.innerHTML = `<div class="alert alert-error">[-] ERROR: Upload failed.</div>`;
                 }
-                
+
                 submitBtn.disabled = false;
                 submitBtn.innerText = "SUBMIT LOG";
             });
@@ -307,7 +320,7 @@ document.addEventListener('routeLoaded', (e) => {
         const signupForm = document.getElementById('form-signup');
         const loginFeedback = document.getElementById('login-feedback');
         const signupFeedback = document.getElementById('signup-feedback');
-        
+
         // CSS Tab Toggles Native Integration
         const toggleSignup = document.getElementById('toggle-signup');
         const toggleLogin = document.getElementById('toggle-login');
@@ -326,25 +339,24 @@ document.addEventListener('routeLoaded', (e) => {
                 loginPane.style.display = 'block';
             });
         }
-        
+
         if (loginForm) {
             loginForm.addEventListener('submit', async (ev) => {
                 ev.preventDefault();
                 const btn = document.getElementById('btn-submit-login');
                 btn.disabled = true;
                 btn.innerText = "AUTHENTICATING...";
-                
+
                 const user = document.getElementById('login-username').value;
                 const pass = document.getElementById('login-password').value;
-                
+
                 const res = await API.login(user, pass);
                 if (res.status === 'success') {
-                    loginFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] IDENTITY VERIFIED. Uplink established.</div>`;
-                    // Global Application State re-syncs instantly updating the Navigation bar natively!
+                    loginFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] Login Successful.</div>`;
                     if (typeof window.updateAuthState === 'function') window.updateAuthState();
                     setTimeout(() => window.location.hash = '#home', 800);
                 } else {
-                    loginFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] REJECTED: ${res.message}</div>`;
+                    loginFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${res.message}</div>`;
                     btn.disabled = false;
                     btn.innerText = "LOGIN";
                 }
@@ -355,7 +367,7 @@ document.addEventListener('routeLoaded', (e) => {
             const signupBtn = document.getElementById('btn-submit-signup');
             const pass1 = document.getElementById('signup-password');
             const pass2 = document.getElementById('signup-password-verify');
-            
+
             // Dynamically validate matching passwords natively locking the submission button
             const validatePasswords = () => {
                 if (pass1.value.length >= 6 && pass1.value === pass2.value) {
@@ -370,7 +382,7 @@ document.addEventListener('routeLoaded', (e) => {
                     }
                 }
             };
-            
+
             if (pass1 && pass2) {
                 pass1.addEventListener('input', validatePasswords);
                 pass2.addEventListener('input', validatePasswords);
@@ -380,20 +392,150 @@ document.addEventListener('routeLoaded', (e) => {
                 ev.preventDefault();
                 signupBtn.disabled = true;
                 signupBtn.innerText = "CREATING PROFILE...";
-                
+
                 const user = document.getElementById('signup-username').value;
                 const email = document.getElementById('signup-email').value;
                 const pass = pass1.value;
-                
+
                 const res = await API.signup(user, email, pass);
                 if (res.status === 'success') {
-                    signupFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] WELCOME: Authentication matrix initialized.</div>`;
+                    signupFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] WELCOME: Account created.</div>`;
                     if (typeof window.updateAuthState === 'function') window.updateAuthState();
                     setTimeout(() => window.location.hash = '#home', 800);
                 } else {
-                    signupFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] REJECTED: ${res.message}</div>`;
+                    signupFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${res.message}</div>`;
                     signupBtn.disabled = false;
                     signupBtn.innerText = "CREATE ACCOUNT";
+                }
+            });
+        }
+    }
+
+    // ==========================================================
+    // Controller: EDIT A VISIT (#edit)
+    // ==========================================================
+    if (route.startsWith('#edit')) {
+        let dpId = null;
+        if (route.includes('?')) {
+            const hashParams = new URLSearchParams(route.split('?')[1]);
+            dpId = hashParams.get('id');
+        }
+
+        if (!dpId) {
+            document.getElementById('edit-status').innerHTML = "<div class='alert alert-error'>[-] DASHPOINT LOOKUP FAILED.</div>";
+            return;
+        }
+
+        const editForm = document.getElementById('form-edit');
+        const submitBtn = document.getElementById('btn-submit-edit');
+        const statusDiv = document.getElementById('edit-status');
+        const keptPhotosInput = document.getElementById('edit_kept_photos');
+        const existingPhotosContainer = document.getElementById('edit-existing-photos');
+
+        document.getElementById('edit_dashpoint_id').value = dpId;
+
+        // 1. Authenticate and Map the specific Visit dynamically
+        API.checkSession().then(auth => {
+            if (auth.status !== 'success') {
+                if (statusDiv) statusDiv.innerHTML = `<div class='alert alert-error'>[-] AUTHENTICATION FAILED.</div>`;
+                return;
+            }
+
+            fetch(`backend/api/dashpoint.php?id=${dpId}`)
+                .then(res => res.json())
+                .then(json => {
+                    if (json.status !== 'success') return;
+
+                    const dp = json.data;
+                    const userVisit = dp.visits.find(v => v.username === auth.username);
+
+                    if (!userVisit) {
+                        statusDiv.innerHTML = `<div class='alert alert-error'>[-] EDIT REJECTED: You do not own a physical log mapped to this exact Dashpoint.</div>`;
+                        editForm.style.display = 'none';
+                        return;
+                    }
+
+                    // 2. Pre-fill the decoupled Interface natively
+                    document.getElementById('edit-notes').value = userVisit.notes || '';
+
+                    let keptPhotosArray = [];
+
+                    // 3. Render Historical Blobs identically wrapping them in Deletion Callbacks natively!
+                    if (userVisit.photos && userVisit.photos.length > 0) {
+                        existingPhotosContainer.innerHTML = ''; // Pop the generic "None" message
+
+                        userVisit.photos.forEach(photo => {
+                            // Extract String uniquely ensuring structural backwards-compatibility
+                            const urlStr = typeof photo === 'string' ? photo : photo.url;
+                            keptPhotosArray.push(urlStr);
+
+                            const wrap = document.createElement('div');
+                            wrap.style.position = 'relative';
+
+                            const img = document.createElement('img');
+                            img.src = urlStr;
+                            img.style.width = '100%';
+                            img.style.border = '1px solid var(--accent-amber)';
+                            wrap.appendChild(img);
+
+                            const delBtn = document.createElement('div');
+                            delBtn.innerHTML = "&times;";
+                            delBtn.style.position = 'absolute';
+                            delBtn.style.top = '5px';
+                            delBtn.style.right = '5px';
+                            delBtn.style.background = 'var(--accent-red)';
+                            delBtn.style.color = '#fff';
+                            delBtn.style.width = '25px';
+                            delBtn.style.height = '25px';
+                            delBtn.style.textAlign = 'center';
+                            delBtn.style.lineHeight = '25px';
+                            delBtn.style.cursor = 'pointer';
+                            delBtn.style.fontWeight = 'bold';
+                            delBtn.style.borderRadius = '3px';
+
+                            delBtn.onclick = () => {
+                                // Physically purge the URL from the mathematical retained struct natively!
+                                keptPhotosArray = keptPhotosArray.filter(u => u !== urlStr);
+                                keptPhotosInput.value = JSON.stringify(keptPhotosArray);
+                                wrap.remove();
+
+                                if (keptPhotosArray.length === 0) {
+                                    existingPhotosContainer.innerHTML = `<p style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:1rem; border:1px dashed var(--border-color);">[ NO EXISTING MEDIA RETAINED ]</p>`;
+                                }
+                            };
+
+                            wrap.appendChild(delBtn);
+                            existingPhotosContainer.appendChild(wrap);
+                        });
+
+                        keptPhotosInput.value = JSON.stringify(keptPhotosArray);
+                    }
+                });
+        });
+
+        // 4. Capture the form submission securely routing to the new Diff endpoint
+        if (editForm) {
+            editForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                submitBtn.disabled = true;
+                submitBtn.innerText = "UPDATING LOG...";
+
+                try {
+                    const formData = new FormData(editForm);
+                    const result = await API.editVisit(formData);
+
+                    if (result.status === 'success') {
+                        statusDiv.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] SYNCHRONIZED: ${result.message}</div>`;
+                        submitBtn.innerText = "EDITS SAVED";
+                    } else {
+                        statusDiv.innerHTML = `<div class="alert alert-error">[-] EDIT REJECTED: ${result.message}</div>`;
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = "SAVE EDITS";
+                    }
+                } catch (err) {
+                    statusDiv.innerHTML = `<div class="alert alert-error">[-] UPLINK RUPTURED: Critical systemic execution error.</div>`;
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = "COMMIT REVISION";
                 }
             });
         }
@@ -406,7 +548,7 @@ document.addEventListener('routeLoaded', (e) => {
         const btnTeleport = document.getElementById('btn-teleport');
         const btnGPX = document.getElementById('btn-export-gpx');
         const btnLOC = document.getElementById('btn-export-loc');
-        
+
         // Dynamically extract bounds from the DOM boxes
         const getBounds = () => ({
             n: parseFloat(document.getElementById('search-n').value),
@@ -416,19 +558,19 @@ document.addEventListener('routeLoaded', (e) => {
         });
 
         // Natively shift the underlying Google Maps engine asynchronously 
-        if(btnTeleport) {
+        if (btnTeleport) {
             btnTeleport.addEventListener('click', () => {
                 const b = getBounds();
-                if(isNaN(b.n) || isNaN(b.s) || isNaN(b.e) || isNaN(b.w)) {
+                if (isNaN(b.n) || isNaN(b.s) || isNaN(b.e) || isNaN(b.w)) {
                     alert("INVALID MATRIX: Coordinates strictly require decimals.");
                     return;
                 }
-                
+
                 const sw = new google.maps.LatLng(b.s, b.w);
                 const ne = new google.maps.LatLng(b.n, b.e);
                 const googleBounds = new google.maps.LatLngBounds(sw, ne);
                 map.fitBounds(googleBounds); // Physically wraps the map!
-                
+
                 // Jump the UI router back to the Home Dashboard instantly revealing the results!
                 window.location.hash = '#home';
             });
@@ -437,7 +579,7 @@ document.addEventListener('routeLoaded', (e) => {
         // Exporters ping the Backend purely using `backend/api/export.php` triggering raw XML downloads
         const downloadPayload = (format) => {
             const b = getBounds();
-            if(isNaN(b.n) || isNaN(b.s) || isNaN(b.e) || isNaN(b.w)) {
+            if (isNaN(b.n) || isNaN(b.s) || isNaN(b.e) || isNaN(b.w)) {
                 alert("INVALID MATRIX: Coordinates tightly required for regional exports.");
                 return;
             }
@@ -445,7 +587,7 @@ document.addEventListener('routeLoaded', (e) => {
             window.location.href = `backend/api/export.php?n=${b.n}&s=${b.s}&e=${b.e}&w=${b.w}&format=${format}`;
         };
 
-        if(btnGPX) btnGPX.addEventListener('click', () => downloadPayload('gpx'));
-        if(btnLOC) btnLOC.addEventListener('click', () => downloadPayload('loc'));
+        if (btnGPX) btnGPX.addEventListener('click', () => downloadPayload('gpx'));
+        if (btnLOC) btnLOC.addEventListener('click', () => downloadPayload('loc'));
     }
 });

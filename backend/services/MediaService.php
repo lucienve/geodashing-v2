@@ -120,6 +120,31 @@ class MediaService
     }
 
     /**
+     * Physically parses public Google URLs natively routing them back into structural Object paths
+     * and rigidly detonates the physical blob exclusively inside the user's tied bucket.
+     * 
+     * @param string[] $urls An array of raw Google Cloud Storage URL strings natively.
+     */
+    public function deletePhotos(array $urls): void
+    {
+        $bucket = $this->storage->bucket($this->bucketName);
+        $prefix = "https://storage.googleapis.com/{$this->bucketName}/";
+
+        foreach ($urls as $url) {
+            // Strip the public HTTP prefix natively to isolate the internal Object mapping (e.g. 'visits/GD01/1_pic')
+            if (strpos($url, $prefix) === 0) {
+                $objectName = substr($url, strlen($prefix));
+                
+                // Execute the explicit REST deletion hook synchronously 
+                $object = $bucket->object($objectName);
+                if ($object->exists()) {
+                    $object->delete();
+                }
+            }
+        }
+    }
+
+    /**
      * Extracts and calculates EXIF GPS data from an image file natively.
      * 
      * @param string $path Local absolute path to the uploaded image binary.
