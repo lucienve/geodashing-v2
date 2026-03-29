@@ -586,6 +586,14 @@ document.addEventListener('routeLoaded', (e) => {
     }
 
     // ==========================================================
+    // Controller: STATIC DOCUMENTATION (#about, #how-to, #contact)
+    // ==========================================================
+    if (['#about', '#how-to', '#contact'].includes(route)) {
+        // Custom API querying is strictly unnecessary for entirely static views.
+        // `app.js` performs the native physical DOM injection automatically via `<main id="app-content">`!
+    }
+
+    // ==========================================================
     // Controller: SCANNER EXPORT ROUTINES (#search)
     // ==========================================================
     if (route === '#search') {

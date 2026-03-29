@@ -33,7 +33,10 @@ document.addEventListener('DOMContentLoaded', () => {
         '#report': 'templates/report.html',
         '#edit': 'templates/edit.html',
         '#search': 'templates/search.html',
-        '#leaderboard': 'templates/leaderboard.html'
+        '#leaderboard': 'templates/leaderboard.html',
+        '#about': 'templates/about.html',
+        '#how-to': 'templates/how-to.html',
+        '#contact': 'templates/contact.html'
     };
 
     const contentDiv = document.getElementById('app-content');

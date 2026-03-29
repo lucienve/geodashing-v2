@@ -147,6 +147,45 @@ body, html {
   transition: all 0.2s ease;
 }
 
+/* Base structural bounding box for the new Help Dropdown! */
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+/* Pure CSS hidden-state container mapping Glassmorphism filters natively */
+.dropdown-content {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 160px;
+  background: var(--bg-glass-heavy);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.8);
+  z-index: 100;
+  border-radius: 4px;
+}
+
+.dropdown-content .nav-link {
+  display: block;
+  padding: 12px 16px;
+  color: var(--text-main);
+  text-transform: none;
+}
+
+.dropdown-content .nav-link:hover {
+  background-color: rgba(255,255,255,0.05);
+  color: var(--accent-amber);
+}
+
+/* Natively ping the CSS Engine hooking the Hover state cleanly! */
+.dropdown:hover .dropdown-content {
+  display: block;
+}
+
 .nav-link:hover, .nav-link.active {
   color: var(--accent-amber);
   text-shadow: 0 0 8px var(--accent-amber-glow);
