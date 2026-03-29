@@ -1,8 +1,7 @@
 /**
  * Geodashing Global API Fetch Wrapper
  *
- * Exposes a rigid library of asynchronous functions mapping the UI modules natively 
- * straight into the PHP secure backend.
+ * Exposes asynchronous functions mapping the UI to the backend API.
  */
 
 const API = {
@@ -12,8 +11,8 @@ const API = {
     },
 
     /**
-     * Executes the Haversine payload check dynamically validating physical GPS coordinates
-     * @param {FormData} formData Native HTML5 Mobile Form Dump containing images/lat/lon
+     * Submit a visit log
+     * @param {FormData} formData Includes images, lat, lon, and log text
      */
     logVisit: async function (formData) {
         try {
@@ -44,7 +43,7 @@ const API = {
     },
 
     /**
-     * Attempts native Authentication via PHP Sessions mapping
+     * Authenticate user session
      * @param {string} username 
      * @param {string} password 
      */
@@ -70,7 +69,7 @@ const API = {
     },
 
     /**
-     * Attempts native Registration natively persisting the hash state safely
+     * Register a new user
      */
     signup: async function (username, email, password) {
         try {
@@ -145,7 +144,7 @@ const API = {
     },
 
     /**
-     * Purges the PHP backend session cleanly and formally returning the state natively
+     * Logout current session
      */
     logout: async function () {
         try {
@@ -161,8 +160,8 @@ const API = {
     },
 
     /**
-     * Structurally retrieves the Global Solo Leaderboards JSON mapping dynamically.
-     * @param {number} gameId Optional integer ID to query historic loops natively 
+     * Call the leaderboard API
+     * @param {number} gameId Optional integer ID to query historic games
      */
     getLeaderboard: async function (gameId = null) {
         try {
@@ -183,7 +182,7 @@ const API = {
     },
 
     /**
-     * Polls the live Session strictly ensuring the user is authorized.
+     * Poll the current session to ensure the user is authorized.
      */
     checkSession: async function () {
         try {
@@ -198,7 +197,7 @@ const API = {
     },
 
     /**
-     * Re-triggers the registration mail() logic dynamically verifying bounced addresses natively.
+     * Re-trigger the verification email.
      */
     resendVerification: async function () {
         try {

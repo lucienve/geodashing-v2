@@ -1,11 +1,10 @@
 /* =========================================================================
    GEODASHING V2: Core Design System
-   Aesthetic: "Premium Retro-Technical" Data Terminal
-   Combines early-2000s utilitarian logic with hyper-modern glassmorphism.
+   Aesthetic: Dark Mode Glassmorphism
 ========================================================================= */
 
 :root {
-  /* Ultra-dark canvas anchoring the bright neon typography natively */
+  /* Dark canvas background */
   --bg-dark: #09090b;
   
   /* Glassmorphism translucent layers revealing the Google Map beneath */
@@ -15,7 +14,7 @@
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
   
-  /* The GPS Action Colors - Highly vibrant mimicking physical LED screens */
+  /* Interface Colors */
   --accent-amber: #f59e0b;
   --accent-amber-glow: rgba(245, 158, 11, 0.4);
   
@@ -77,8 +76,7 @@ body, html {
   height: 100vh;
   z-index: 10;
   
-  /* CRITICAL: Let clicks instantly fall through the empty space so the user 
-     can pan the Google map organically without hitting invisible divs. */
+  /* Let clicks fall through the empty space to the Google map */
   pointer-events: none; 
   
   display: flex;
@@ -107,7 +105,7 @@ body, html {
   padding: 1rem 1.5rem;
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.7);
   
-  /* CRITICAL: Protects the desktop map-drag experience from accidentally highlighting HTML UI text natively! */
+  /* Prevent accidentally highlighting UI text */
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
@@ -225,7 +223,7 @@ body, html {
   padding: 1.5rem;
   box-shadow: 0 15px 50px rgba(0, 0, 0, 0.8);
   
-  /* Forces the data-logger terminal font onto all nested form labels */
+  /* Set font for labels */
   font-family: var(--font-mono); 
   animation: slideIn 0.3s ease-out forwards;
 }
@@ -283,7 +281,7 @@ body, html {
   border: 1px solid #333;
   border-radius: 4px;
   padding: 0.85rem;
-  color: var(--accent-green); /* Terminal phosphorus green text */
+  color: var(--accent-green);
   font-family: var(--font-mono);
   font-size: 1rem;
   transition: all 0.3s ease;

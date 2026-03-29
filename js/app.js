@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (templatePath === undefined) {
-            contentDiv.innerHTML = '<div class="template-view"><h2>404 ERROR</h2><p class="data-input" style="color:var(--accent-red)">System route physically unmapped.</p></div>';
+            contentDiv.innerHTML = '<div class="template-view"><h2>PAGE NOT FOUND</h2><p class="data-input" style="color:var(--accent-red)">Could not locate that page.</p></div>';
             return;
         }
 
@@ -94,8 +94,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 100);
 
         } catch (err) {
-            console.error("Router Fatal Crash: ", err);
-            contentDiv.innerHTML = '<div class="template-view"><h2>CONNECTION RUPTURE</h2><p class="data-input" style="color:var(--accent-red)">Failed allocating interface layer blocks across network bounds.</p></div>';
+            console.error("Router Error: ", err);
+            contentDiv.innerHTML = '<div class="template-view"><h2>NETWORK ERROR</h2><p class="data-input" style="color:var(--accent-red)">Oops! Having trouble communicating with the server.</p></div>';
             contentDiv.style.opacity = '1';
         }
     }

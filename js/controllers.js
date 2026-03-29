@@ -33,7 +33,7 @@ document.addEventListener('routeLoaded', (e) => {
         }
 
         if (!dpId) {
-            document.getElementById('dp-visits-container').innerHTML = "<span style='color:var(--accent-red);'>[ ERROR: NO DASHPOINT ID PROVIDED ]</span>";
+            document.getElementById('dp-visits-container').innerHTML = "<span style='color:var(--accent-red);'>[ ERROR: No dashpoint ID provided ]</span>";
             return;
         }
 
@@ -148,12 +148,12 @@ document.addEventListener('routeLoaded', (e) => {
                         });
                     }
                 } else {
-                    if (visitsContainer) visitsContainer.innerHTML = `<span style='color:var(--accent-red);'>[-] ERROR: ${json.message}</span>`;
+                    if (visitsContainer) visitsContainer.innerHTML = `<span style='color:var(--accent-red);'>[-] Error: ${json.message}</span>`;
                 }
             })
             .catch(err => {
                 console.error(err);
-                if (visitsContainer) visitsContainer.innerHTML = `<span style='color:var(--accent-red);'>[-] UPLINK SEVERED.</span>`;
+                if (visitsContainer) visitsContainer.innerHTML = `<span style='color:var(--accent-red);'>[-] Network error.</span>`;
             });
     }
 
@@ -242,21 +242,21 @@ document.addEventListener('routeLoaded', (e) => {
                 const logLength = logArea ? logArea.value.length : 0;
 
                 if (logLength === 0 || logLength > 10000) {
-                    feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] LOG REJECTED: Mandatory field observations must be between 1 and 10,000 characters.</div>`;
+                    feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Oops! Log text must be between 1 and 10,000 characters.</div>`;
                     return;
                 }
 
                 if (isNaN(userLat) || userLat < -90 || userLat > 90) {
-                    feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] GEOPHYSICAL REJECTION: Latitude strictly bounded between -90 and 90 degrees.</div>`;
+                    feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Oops! Latitude must be between -90 and 90 degrees.</div>`;
                     return;
                 }
                 if (isNaN(userLon) || userLon < -180 || userLon > 180) {
-                    feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] GEOPHYSICAL REJECTION: Longitude strictly bounded between -180 and 180 degrees.</div>`;
+                    feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Oops! Longitude must be between -180 and 180 degrees.</div>`;
                     return;
                 }
 
                 submitBtn.disabled = true;
-                submitBtn.innerText = "CALCULATING PROXIMITY...";
+                submitBtn.innerText = "Checking distance...";
 
                 try {
                     // 2. Safely Fetch target constraints transparently before throwing Heavy User Photos across the bandwidth
@@ -264,7 +264,7 @@ document.addEventListener('routeLoaded', (e) => {
                     const targetJson = await targetRes.json();
 
                     if (targetJson.status !== 'success') {
-                        feedbackStatus.innerHTML = `<div class="alert alert-error">[-] DASHPOINT ERROR: System could not identify dashpoint bounds.</div>`;
+                        feedbackStatus.innerHTML = `<div class="alert alert-error">[-] Error: Could not find that dashpoint.</div>`;
                         submitBtn.disabled = false;
                         submitBtn.innerText = "SUBMIT LOG";
                         return;
@@ -277,20 +277,20 @@ document.addEventListener('routeLoaded', (e) => {
 
                     // Reject log client-side before photo transfers 
                     if (distance > 100) {
-                        feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: Out of bounds. You are <strong>${distance.toFixed(1)}m</strong> from the dashpoint. Logs require you to be within &le; 100m.</div>`;
+                        feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Too far away. You are <strong>${distance.toFixed(1)}m</strong> from the dashpoint. You must be within 100m.</div>`;
                         submitBtn.disabled = false;
                         submitBtn.innerText = "SUBMIT LOG";
                         return;
                     }
 
-                    submitBtn.innerText = "UPLOADING PAYLOAD...";
+                    submitBtn.innerText = "Uploading photo...";
 
                     // 4. Actuating the standard POST injection seamlessly wrapper wrapping all data safely
                     const formData = new FormData(reportForm);
                     const result = await API.logVisit(formData);
 
                     if (result.status === 'success') {
-                        feedbackStatus.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] LOG_ACCEPTED: Server logged visit at ${result.distance.toFixed(1)}m. You scored ${result.points} points!</div>`;
+                        feedbackStatus.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] Success! We logged your visit at ${result.distance.toFixed(1)}m. You scored ${result.points} points!</div>`;
 
                         // Capture the Target natively before the structural form reset wipes it out!
                         const targetPersistence = document.getElementById('dashpoint_id').value;
@@ -300,10 +300,10 @@ document.addEventListener('routeLoaded', (e) => {
                         btnGeo.innerText = "[ SYNC LIVE GPS ]";
                         btnGeo.style.color = ""; // Reset inline CSS
                     } else {
-                        feedbackStatus.innerHTML = `<div class="alert alert-error">[-] UPLOAD REJECTED: ${result.message}</div>`;
+                        feedbackStatus.innerHTML = `<div class="alert alert-error">[-] Upload rejected: ${result.message}</div>`;
                     }
                 } catch (err) {
-                    feedbackStatus.innerHTML = `<div class="alert alert-error">[-] ERROR: Upload failed.</div>`;
+                    feedbackStatus.innerHTML = `<div class="alert alert-error">[-] Error: Upload failed.</div>`;
                 }
 
                 submitBtn.disabled = false;
@@ -373,7 +373,7 @@ document.addEventListener('routeLoaded', (e) => {
             }
 
             if (urlArgs.includes('error=invalid_token') && loginFeedback) {
-                loginFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: Invalid or expired verification string.</div>`;
+                loginFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Error: Invalid or expired verification link.</div>`;
             }
 
             // Using double equals natively protects against weak-typed PHP JSON coercion race conditions!
@@ -392,7 +392,7 @@ document.addEventListener('routeLoaded', (e) => {
                         resendBtn.disabled = true;
                         const resendRes = await API.resendVerification();
                         if (resendRes.status === 'success') {
-                            verifyFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] NETWORK SYNC: Email sent successfully! Check your inbox.</div>`;
+                            verifyFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] Success! Email sent successfully. Check your inbox.</div>`;
                             resendBtn.innerText = "Email Sent";
                         } else {
                             verifyFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${resendRes.message}</div>`;
@@ -443,7 +443,7 @@ document.addEventListener('routeLoaded', (e) => {
                 ev.preventDefault();
                 const btn = document.getElementById('btn-submit-login');
                 btn.disabled = true;
-                btn.innerText = "AUTHENTICATING...";
+                btn.innerText = "Logging in...";
 
                 const user = document.getElementById('login-username').value;
                 const pass = document.getElementById('login-password').value;
@@ -495,7 +495,7 @@ document.addEventListener('routeLoaded', (e) => {
             signupForm.addEventListener('submit', async (ev) => {
                 ev.preventDefault();
                 signupBtn.disabled = true;
-                signupBtn.innerText = "CREATING PROFILE...";
+                signupBtn.innerText = "Creating account...";
 
                 const user = document.getElementById('signup-username').value;
                 const email = document.getElementById('signup-email').value;
@@ -530,7 +530,7 @@ document.addEventListener('routeLoaded', (e) => {
                 const res = await API.requestPasswordReset(username);
 
                 if (res.status === 'success') {
-                    feedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] DIRECTIVE: ${res.message}</div>`;
+                    feedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] ${res.message}</div>`;
                     btn.innerText = "Email sent";
                 } else {
                     feedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${res.message}</div>`;
@@ -598,7 +598,7 @@ document.addEventListener('routeLoaded', (e) => {
         }
 
         if (!dpId) {
-            document.getElementById('edit-status').innerHTML = "<div class='alert alert-error'>[-] DASHPOINT LOOKUP FAILED.</div>";
+            document.getElementById('edit-status').innerHTML = "<div class='alert alert-error'>[-] Could not find the dashpoint.</div>";
             return;
         }
 
@@ -709,7 +709,7 @@ document.addEventListener('routeLoaded', (e) => {
                         submitBtn.innerText = "SAVE EDITS";
                     }
                 } catch (err) {
-                    statusDiv.innerHTML = `<div class="alert alert-error">[-] UPLINK RUPTURED: Critical systemic execution error.</div>`;
+                    statusDiv.innerHTML = `<div class="alert alert-error">[-] System error.</div>`;
                     submitBtn.disabled = false;
                     submitBtn.innerText = "COMMIT REVISION";
                 }
@@ -753,7 +753,7 @@ document.addEventListener('routeLoaded', (e) => {
 
                     tbody.innerHTML = html;
                 } else {
-                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--accent-red);">[-] CRITICAL UPLINK FAILURE: ${json.message}</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--accent-red);">[-] Global rankings currently unavailable.</td></tr>`;
                 }
             }).catch(err => {
                 tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--accent-red);">[-] SYNC RUPTURED: Network Timeout.</td></tr>`;

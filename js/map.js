@@ -1,8 +1,8 @@
 /**
- * Geodashing Vector Map Rendering Module
+ * Geodashing Map Rendering Module
  *
- * Hooks into the native Google Maps JS engine, orchestrating the bounding box  
- * mathematics asynchronously mapping to our PHP SearchService seamlessly.
+ * Hooks into the native Google Maps JS engine, mapping 
+ * locations to our search API.
  */
 
 let map;
@@ -10,7 +10,7 @@ let activeMarkers = [];
 
 // CRITICAL: This exact function name is explicitly triggered by the Google Maps `<script>` callback string natively in index.html!
 window.initMap = function () {
-    // 1. Instantiate the Canvas directly into the persistent Layer 0 block securely
+    // 1. Instantiate the Canvas directly into the persistent Layer 0 block
     map = new google.maps.Map(document.getElementById("map"), {
         center: { lat: 43.0606, lng: -88.1065 }, // Brookfield, Wisconsin Default
         zoom: 11,
@@ -18,7 +18,7 @@ window.initMap = function () {
         disableDefaultUI: true, // Strips out the generic Google buttons leaving an ultra-clean Terminal mapping shell
         zoomControl: true, // Allow manual zooming if mouse-wheels fail
 
-        // Natively invoke Google's Satellite vs Terrain mapping toggle perfectly avoiding the Header!
+        // Native Google Satellite vs Terrain toggles
         mapTypeControl: true,
         mapTypeControlOptions: {
             position: google.maps.ControlPosition.RIGHT_BOTTOM,
@@ -30,7 +30,7 @@ window.initMap = function () {
     });
 
     // 2. Bind the primary map movement listener. 
-    // 'idle' physically fires exactly once instantly when a user definitively finishes sliding/zooming their finger mapping efficiency!
+    // 'idle' fires when a user finishes sliding/zooming their map
     google.maps.event.addListener(map, 'idle', function () {
         const bounds = map.getBounds();
         if (!bounds) return;
@@ -49,7 +49,7 @@ window.initMap = function () {
     });
 
     // 3. Optional Geographic Snapping Routine
-    // Physically request user location dropping them perfectly into their active regional gaming sector natively
+    // Request user location dropping them perfectly into their active regional gaming sector
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition((position) => {
             map.setCenter({ lat: position.coords.latitude, lng: position.coords.longitude });
@@ -61,7 +61,7 @@ window.initMap = function () {
 }
 
 /**
- * Executes an outbound JSON fetch mapping directly to the Phase 3.5 Bounding Box API
+ * Fetches dashpoints for the given bounding box
  */
 function refreshDashpoints(bounds) {
     const query = new URLSearchParams(bounds).toString();
@@ -81,7 +81,7 @@ function refreshDashpoints(bounds) {
  * Natively purges the DOM rendering structure allocating entirely fresh Google Map Marker objects
  */
 function plotVectors(pointsArray) {
-    // Securely flush volatile browser RAM preventing massive Map engine leaks
+    // Flush old markers
     activeMarkers.forEach(m => m.setMap(null));
     activeMarkers = [];
 

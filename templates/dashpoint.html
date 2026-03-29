@@ -11,7 +11,7 @@
         </p>
     </div>
 
-    <!-- The explicit "Action" button logically mapping over to the Report Form exactly as the user specified perfectly decoupling it from the Map Pin clicks! -->
+    <!-- Button to navigate to the Log Visit form -->
     <button type="button" class="btn btn-primary" id="btn-goto-report" style="margin-bottom:2rem; width:100%;">
         LOG VISIT
     </button>
@@ -19,9 +19,9 @@
     <div class="dash-block" style="border-top:1px dashed var(--text-muted); padding-top:1.5rem;">
         <label>PREVIOUS VISITS</label>
         
-        <!-- Javascript dynamically explicitly unwraps the /api/dashpoint.php payload straight into this container locally! -->
+        <!-- Container for previous visits -->
         <div id="dp-visits-container" style="margin-top:1rem; font-size:0.85rem;">
-            <p style="color:var(--text-muted); text-align:center;">Querying Database Array...</p>
+            <p style="color:var(--text-muted); text-align:center;">Loading visits...</p>
         </div>
     </div>
 </div>
