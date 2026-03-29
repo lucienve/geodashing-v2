@@ -8,7 +8,7 @@
  * Global Haversine Math Core
  * Calculates the precise physical distance in meters across the spherical curvature of the Earth.
  */
-window.calculateDistance = function(lat1, lon1, lat2, lon2) {
+window.calculateDistance = function (lat1, lon1, lat2, lon2) {
     const r = 6371e3; // Earth radius in meters
     const rad = Math.PI / 180;
     const phi1 = lat1 * rad;
@@ -16,11 +16,11 @@ window.calculateDistance = function(lat1, lon1, lat2, lon2) {
     const deltaPhi = (lat2 - lat1) * rad;
     const deltaLambda = (lon2 - lon1) * rad;
 
-    const a = Math.sin(deltaPhi/2) * Math.sin(deltaPhi/2) +
-              Math.cos(phi1) * Math.cos(phi2) *
-              Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
-              
-    return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+        Math.cos(phi1) * Math.cos(phi2) *
+        Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+
+    return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -45,9 +45,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Bounding the SPA state natively
     async function loadRoute() {
         const fullHash = window.location.hash || '#home';
-        
+
         // Strip out query parameters cleanly so the dictionary perfectly understands `#dashpoint?id=123`
-        const hash = fullHash.split('?')[0]; 
+        const hash = fullHash.split('?')[0];
 
         const templatePath = routes[hash];
 
@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // Smoothly collapse the current UI out preventing janky HTML resets
             contentDiv.style.opacity = '0.3';
-            
+
             // Allow the router to completely purge the DOM overlay for 100% Map Views!
             if (templatePath === null) {
                 setTimeout(() => {
@@ -77,16 +77,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 100);
                 return;
             }
-            
+
             const response = await fetch(templatePath);
             if (!response.ok) throw new Error("Template layout missing continuously.");
-            
+
             const html = await response.text();
-            
+
             setTimeout(() => {
                 contentDiv.innerHTML = html;
                 contentDiv.style.opacity = '1';
-                
+
                 // CRITICAL: Since we just dumped raw HTML into the DOM natively, 
                 // any JS listeners tied to buttons inside it must be re-bound!
                 // We fire a custom event telling `controllers.js` to wake up routing the original exact query bounds!
@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 3. Native History API bindings (so the Phone's 'Back' button physically works)
     window.addEventListener('hashchange', loadRoute);
-    
+
     // Initial Boot mapping
     loadRoute();
 
@@ -120,20 +120,21 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(err => console.error("Could not fetch active GDx game strictly for visual banner."));
 
     // 5. Native Javascript Session Bootstrapper dynamically driving the Nav Auth state securely
-    window.updateAuthState = async function() {
+    window.updateAuthState = async function () {
         const authBtn = document.getElementById('nav-auth-btn');
         const fab = document.getElementById('fab-report');
-        
+
         try {
             const res = await API.checkSession();
             if (res.status === 'success') {
+                window.currentUser = res; // Bind the full Payload (including is_verified) globally
                 authBtn.innerText = `LOGOUT [${res.username}]`;
                 authBtn.href = '#';
-                
+
                 // Natively detaching previous listeners to prevent stack duplications
                 const newBtn = authBtn.cloneNode(true);
                 authBtn.replaceWith(newBtn);
-                
+
                 newBtn.addEventListener('click', async (e) => {
                     e.preventDefault();
                     await API.logout();
@@ -141,16 +142,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (fab) fab.classList.remove('d-none');
+
+                // Display the Global Notice natively grabbing the click event for the Email re-route
+                const verifyBanner = document.getElementById('verify-banner');
+                if (verifyBanner) {
+                    if (res.is_verified === 0) {
+                        verifyBanner.classList.remove('d-none');
+                        verifyBanner.onclick = async () => {
+                            verifyBanner.innerText = "[ ... ]";
+                            const resendRes = await API.resendVerification();
+                            if (resendRes.status === 'success') {
+                                verifyBanner.innerText = "[ Mail sent - Please check your inbox. ]";
+                                verifyBanner.style.background = "var(--accent-green)";
+                            } else {
+                                verifyBanner.innerText = `[ ERROR: ${resendRes.message} ]`;
+                                verifyBanner.style.background = "var(--accent-red)";
+                            }
+                        };
+                    } else {
+                        verifyBanner.classList.add('d-none');
+                    }
+                }
             } else {
+                window.currentUser = null;
                 authBtn.innerText = `Player login`;
                 authBtn.href = '#login';
-                
+
                 const newBtn = authBtn.cloneNode(true);
                 authBtn.replaceWith(newBtn);
-                
+
                 if (fab) fab.classList.add('d-none');
+
+                const verifyBanner = document.getElementById('verify-banner');
+                if (verifyBanner) verifyBanner.classList.add('d-none');
             }
-        } catch(e) {
+        } catch (e) {
             console.error("Session integrity check failed.");
         }
     };

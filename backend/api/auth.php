@@ -32,56 +32,80 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             $password = $_POST['password'] ?? '';
 
             $result = $authService->signup($username, $email, $password);
-            
+
             // Auto sign-in
             if ($result['status'] === 'success') {
                 $_SESSION['user_id'] = $result['user_id'];
                 $_SESSION['username'] = $result['username'];
+                $_SESSION['is_verified'] = $result['is_verified'];
                 // Clean the raw database keys out of the JSON response payload
-                unset($result['user_id'], $result['username']); 
+                unset($result['user_id'], $result['username'], $result['is_verified']);
             } else {
                 http_response_code(400);
             }
             echo json_encode($result);
-            
+
         } elseif ($action === 'login') {
             $username = trim($_POST['username'] ?? '');
             $password = $_POST['password'] ?? '';
 
             $result = $authService->login($username, $password);
-            
+
             if ($result['status'] === 'success') {
                 $_SESSION['user_id'] = $result['user_id'];
                 $_SESSION['username'] = $result['username'];
-                unset($result['user_id'], $result['username']);
+                $_SESSION['is_verified'] = $result['is_verified'];
+                unset($result['user_id'], $result['username'], $result['is_verified']);
             } else {
                 http_response_code(401);
             }
             echo json_encode($result);
-            
+
         } elseif ($action === 'logout') {
             session_unset();
             session_destroy();
             echo json_encode(["status" => "success", "message" => "Logged out successfully"]);
-            
+
+        } elseif ($action === 'resend_verification') {
+            // Securely demand a populated active session dynamically preventing spam hooks
+            if (!isset($_SESSION['user_id'])) {
+                http_response_code(401);
+                echo json_encode(["status" => "error", "message" => "Unauthorized access."]);
+                exit;
+            }
+
+            // Check if they are already formally verified preventing mail relays
+            if (isset($_SESSION['is_verified']) && $_SESSION['is_verified']) {
+                echo json_encode(["status" => "error", "message" => "Account is already verified."]);
+                exit;
+            }
+
+            // Ping the AuthService to fire the relay
+            $result = $authService->resendVerification((int) $_SESSION['user_id']);
+            if ($result['status'] !== 'success') {
+                http_response_code(500);
+            }
+            echo json_encode($result);
+
         } elseif ($action === 'session') {
             // Native session state retrieval explicitly mapping memory back to the SPA
             if (isset($_SESSION['user_id']) && isset($_SESSION['username'])) {
                 echo json_encode([
                     "status" => "success",
                     "user_id" => $_SESSION['user_id'],
-                    "username" => $_SESSION['username']
+                    "username" => $_SESSION['username'],
+                    "is_verified" => $_SESSION['is_verified'] ?? 0
                 ]);
             } else {
                 http_response_code(401);
                 echo json_encode(["status" => "error", "message" => "No active session"]);
             }
-            
+
         } else {
             http_response_code(400);
             echo json_encode(["status" => "error", "message" => "Invalid action specified."]);
         }
-        
+
     } catch (Exception $e) {
         error_log("Auth API Error: " . $e->getMessage());
         http_response_code(500);
@@ -130,21 +154,27 @@ class AuthService
         // Utilizing robust underlying native algorithm (bcrypt currently via PASSWORD_DEFAULT)
         $hash = password_hash($password, PASSWORD_DEFAULT);
 
+        $token = bin2hex(random_bytes(32));
+
         try {
-            $stmt = $this->db->prepare("INSERT INTO users (username, email, password_hash) VALUES (:username, :email, :hash)");
+            $stmt = $this->db->prepare("INSERT INTO users (username, email, password_hash, is_verified, verification_token) VALUES (:username, :email, :hash, 0, :token)");
             $stmt->execute([
                 ':username' => $username,
                 ':email' => $email,
-                ':hash' => $hash
+                ':hash' => $hash,
+                ':token' => $token
             ]);
-            
+
+            $this->sendVerificationEmail($email, $token);
+
             return [
                 "status" => "success",
-                "message" => "Signup successful",
-                "user_id" => (int)$this->db->lastInsertId(),
-                "username" => $username
+                "message" => "Signup successful. Verification email sent.",
+                "user_id" => (int) $this->db->lastInsertId(),
+                "username" => $username,
+                "is_verified" => 0
             ];
-            
+
         } catch (PDOException $e) {
             if ($e->getCode() == 23000) { // Catch MySQL unique constraint violations natively against user data
                 return ["status" => "error", "message" => "That username or email already exists"];
@@ -170,7 +200,7 @@ class AuthService
         }
 
         try {
-            $stmt = $this->db->prepare("SELECT id, username, password_hash FROM users WHERE username = :username LIMIT 1");
+            $stmt = $this->db->prepare("SELECT id, username, password_hash, is_verified FROM users WHERE username = :username LIMIT 1");
             $stmt->execute([':username' => $username]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -179,16 +209,73 @@ class AuthService
                 return [
                     "status" => "success",
                     "message" => "Login successful",
-                    "user_id" => (int)$user['id'],
-                    "username" => $user['username']
+                    "user_id" => (int) $user['id'],
+                    "username" => $user['username'],
+                    "is_verified" => (int) $user['is_verified']
                 ];
             }
-            
+
             return ["status" => "error", "message" => "Invalid credentials"];
-            
+
         } catch (PDOException $e) {
             error_log("Login Logic Error: " . $e->getMessage());
             return ["status" => "error", "message" => "Login failed due to internal server error"];
         }
+    }
+
+    /**
+     * Resends the verification email, optionally regenerating the token.
+     *
+     * @param int $userId The authenticated user's ID
+     * @return array Status array
+     */
+    public function resendVerification(int $userId): array
+    {
+        try {
+            // Check if user exists and get current status
+            $stmt = $this->db->prepare("SELECT email, is_verified, verification_token FROM users WHERE id = :id LIMIT 1");
+            $stmt->execute([':id' => $userId]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$user) {
+                return ["status" => "error", "message" => "User not found."];
+            }
+
+            if ($user['is_verified']) {
+                return ["status" => "error", "message" => "Account is already verified."];
+            }
+
+            // Optional: Regenerate token to prevent stale links
+            $token = bin2hex(random_bytes(32));
+            $updateStmt = $this->db->prepare("UPDATE users SET verification_token = :token WHERE id = :id");
+            $updateStmt->execute([':token' => $token, ':id' => $userId]);
+
+            $this->sendVerificationEmail($user['email'], $token);
+
+            return ["status" => "success", "message" => "Verification email resent successfully."];
+
+        } catch (PDOException $e) {
+            error_log("Resend Verification Error: " . $e->getMessage());
+            return ["status" => "error", "message" => "Failed to resend email."];
+        }
+    }
+
+    /**
+     * Helper routine to construct and explicitly dispatch the Geodashing.org Verification Email.
+     * 
+     * @param string $email
+     * @param string $token
+     */
+    private function sendVerificationEmail(string $email, string $token): void
+    {
+        $verifyLink = "https://geodashing.org/backend/api/verify.php?token=" . $token;
+        $subject = "Verify your account on Geodashing V2";
+        $message = "Welcome to Geodashing V2!\n\nPlease finalize your account registration by clicking the link natively below:\n\n" . $verifyLink . "\n\nWelcome to the game!";
+        
+        $headers = "From: no-reply@geodashing.org\r\n";
+        $headers .= "Reply-To: no-reply@geodashing.org\r\n";
+        $headers .= "X-Mailer: PHP/" . phpversion();
+
+        @mail($email, $subject, $message, $headers);
     }
 }

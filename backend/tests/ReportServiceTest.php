@@ -27,14 +27,36 @@ class ReportServiceTest extends TestCase
     }
 
     /**
+     * Verifies that the service immediately returns an error if the user is unverified.
+     */
+    #[Test]
+    public function processVisitRejectsUnverifiedUsers()
+    {
+        $userMock = $this->createMock(PDOStatement::class);
+        $userMock->method('fetch')->willReturn(['is_verified' => 0]);
+        $this->pdoMock->method('prepare')->willReturn($userMock);
+
+        $result = $this->reportService->processVisit(1, 'GD01-99999', 40.0, -75.0);
+
+        $this->assertEquals('error', $result['status']);
+        $this->assertEquals('Account not verified. Please check your email to activate your account before logging Dashpoints.', $result['message']);
+    }
+
+    /**
      * Verifies that the service immediately returns an error if the dashpoint is completely invalid/missing.
      */
     #[Test]
     public function processVisitRejectsInvalidDashpoint()
     {
-        $stmtMock = $this->createMock(PDOStatement::class);
-        $stmtMock->method('fetch')->willReturn(false); // Simulates 0 rows found
-        $this->pdoMock->method('prepare')->willReturn($stmtMock);
+        $userMock = $this->createMock(PDOStatement::class);
+        $userMock->method('fetch')->willReturn(['is_verified' => 1]);
+
+        $distMock = $this->createMock(PDOStatement::class);
+        $distMock->method('fetch')->willReturn(false); // Simulates 0 rows found
+
+        $this->pdoMock->expects($this->exactly(2))
+            ->method('prepare')
+            ->willReturnOnConsecutiveCalls($userMock, $distMock);
 
         $result = $this->reportService->processVisit(1, 'GD01-99999', 40.0, -75.0);
 
@@ -48,10 +70,16 @@ class ReportServiceTest extends TestCase
     #[Test]
     public function processVisitRejectsDistanceOver100Meters()
     {
-        $stmtMock = $this->createMock(PDOStatement::class);
+        $userMock = $this->createMock(PDOStatement::class);
+        $userMock->method('fetch')->willReturn(['is_verified' => 1]);
+
+        $distMock = $this->createMock(PDOStatement::class);
         // Simulates MySQL ST_Distance_Sphere returning exactly 101 meters
-        $stmtMock->method('fetch')->willReturn(['distance_meters' => 101.5]); 
-        $this->pdoMock->method('prepare')->willReturn($stmtMock);
+        $distMock->method('fetch')->willReturn(['distance_meters' => 101.5]); 
+        
+        $this->pdoMock->expects($this->exactly(2))
+            ->method('prepare')
+            ->willReturnOnConsecutiveCalls($userMock, $distMock);
 
         $result = $this->reportService->processVisit(1, 'GD01-00001', 40.0, -75.0);
 
@@ -65,6 +93,10 @@ class ReportServiceTest extends TestCase
     #[Test]
     public function processVisitAcceptsDistanceUnder100Meters()
     {
+        // 0. Mock the user verification check
+        $userMock = $this->createMock(PDOStatement::class);
+        $userMock->method('fetch')->willReturn(['is_verified' => 1]);
+
         // 1. Mock the Distance Calculation (Returns 45 meters)
         $distMock = $this->createMock(PDOStatement::class);
         $distMock->method('fetch')->willReturn(['distance_meters' => 45.0]);
@@ -86,9 +118,9 @@ class ReportServiceTest extends TestCase
         $insertMock->expects($this->once())->method('execute')->willReturn(true);
 
         // Chain the PDO prepares to return the distinct statements sequentially in order
-        $this->pdoMock->expects($this->exactly(5))
+        $this->pdoMock->expects($this->exactly(6))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock);
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock);
 
         $result = $this->reportService->processVisit(1, 'GD01-00001', 40.0, -75.0);
 

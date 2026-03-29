@@ -33,7 +33,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     $lat = filter_var($_POST['lat'] ?? '', FILTER_VALIDATE_FLOAT);
     $lon = filter_var($_POST['lon'] ?? '', FILTER_VALIDATE_FLOAT);
     $notes = trim($_POST['notes'] ?? '');
-    
+
     // Phase 5 Validation: Strict Field Log Text Constraints
     if (empty($notes) || strlen($notes) > 10000) {
         http_response_code(400);
@@ -45,7 +45,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     // 2.5 Optional Media Processing Pipeline
     if (!empty($_FILES['photos']) && (is_array($_FILES['photos']['error']) ? $_FILES['photos']['error'][0] : $_FILES['photos']['error']) !== UPLOAD_ERR_NO_FILE) {
         require_once __DIR__ . '/../services/MediaService.php';
-        
+
         $keyPath = __DIR__ . '/../gcp-credentials.json';
         if (!file_exists($keyPath)) {
             http_response_code(500);
@@ -78,12 +78,12 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         $db = Database::getConnection();
         $service = new ReportService($db);
         $result = $service->processVisit($_SESSION['user_id'], $dashpoint_id, $lat, $lon, $notes, $photosJson);
-        
+
         if ($result['status'] === 'error') {
             http_response_code(400);
         }
         echo json_encode($result);
-        
+
     } catch (Exception $e) {
         error_log("Report API Error: " . $e->getMessage());
         http_response_code(500);
@@ -129,9 +129,17 @@ class ReportService
      */
     public function processVisit($userId, string $dashpointId, float $lat, float $lon, ?string $notes = null, ?string $photosJson = null): array
     {
+        $userStmt = $this->db->prepare("SELECT is_verified FROM users WHERE id = :user_id LIMIT 1");
+        $userStmt->execute([':user_id' => $userId]);
+        $userCheck = $userStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$userCheck || $userCheck['is_verified'] == 0) {
+            return ["status" => "error", "message" => "Account not verified. Please check your email to activate your account before logging Dashpoints."];
+        }
+
         // 3. Proximity Calculation utilizing MySQL native ST_Distance_Sphere
         $wkt = "POINT($lat $lon)";
-        
+
         $distStmt = $this->db->prepare("
             SELECT ST_Distance_Sphere(location, ST_GeomFromText(:wkt, 4326)) AS distance_meters
             FROM dashpoints 
@@ -140,38 +148,38 @@ class ReportService
         ");
         $distStmt->execute([':wkt' => $wkt, ':id' => $dashpointId]);
         $result = $distStmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if (!$result) {
             return ["status" => "error", "message" => "Invalid Dashpoint ID."];
         }
-        
+
         $distance = (int) round($result['distance_meters']);
-        
+
         // 4. Enforce the classic 100-meter proximity rule
         if ($distance > 100) {
             return [
-                "status" => "error", 
+                "status" => "error",
                 "message" => "Visit rejected. You must be physically within 100 meters to claim this point. Calculated distance: {$distance}m."
             ];
         }
-        
+
         // 5. Verify Anti-Cheat: User hasn't already claimed this dashpoint
         $checkStmt = $this->db->prepare("SELECT id FROM visits WHERE user_id = :uid AND dashpoint_id = :dpid LIMIT 1");
         $checkStmt->execute([':uid' => $userId, ':dpid' => $dashpointId]);
         if ($checkStmt->fetch()) {
             return ["status" => "error", "message" => "You have already logged a visit for this dashpoint."];
         }
-        
+
         // 6. Historic Team Snapshot Mechanics
         $teamStmt = $this->db->prepare("SELECT team_id FROM team_members WHERE user_id = :uid LIMIT 1");
         $teamStmt->execute([':uid' => $userId]);
         $teamRow = $teamStmt->fetch(PDO::FETCH_ASSOC);
         $teamId = $teamRow ? $teamRow['team_id'] : null;
-        
+
         // 7. Real-Time Scoring Assessment
         $scoreCheckStmt = $this->db->prepare("SELECT COUNT(id) AS previous_claims FROM visits WHERE dashpoint_id = :dpid");
         $scoreCheckStmt->execute([':dpid' => $dashpointId]);
-        $previousClaims = (int)$scoreCheckStmt->fetch(PDO::FETCH_ASSOC)['previous_claims'];
+        $previousClaims = (int) $scoreCheckStmt->fetch(PDO::FETCH_ASSOC)['previous_claims'];
 
         $scoreAwarded = 1; // Default minimum score for latecomers
         if ($previousClaims === 0) {
@@ -179,13 +187,13 @@ class ReportService
         } elseif ($previousClaims === 1) {
             $scoreAwarded = 2; // Second to claim
         }
-        
+
         // 8. Log the Visit and Secure the Calculated Score Automatically alongside bounded JSON image paths
         $insertStmt = $this->db->prepare("
             INSERT INTO visits (dashpoint_id, user_id, team_id, reported_location, distance_meters, score_awarded, notes, photos)
             VALUES (:dpid, :uid, :tid, ST_GeomFromText(:wkt, 4326), :dist, :score, :notes, :photos)
         ");
-        
+
         $insertStmt->execute([
             ':dpid' => $dashpointId,
             ':uid' => $userId,
@@ -196,9 +204,9 @@ class ReportService
             ':notes' => $notes,
             ':photos' => $photosJson
         ]);
-        
+
         return [
-            "status" => "success", 
+            "status" => "success",
             "message" => "Dashpoint successfully claimed! You earned {$scoreAwarded} points.",
             "distance" => $distance,
             "points" => $scoreAwarded

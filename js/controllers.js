@@ -321,6 +321,14 @@ document.addEventListener('routeLoaded', (e) => {
         const loginFeedback = document.getElementById('login-feedback');
         const signupFeedback = document.getElementById('signup-feedback');
 
+        // Dynamically catch Verification parameters from the Native Email routing
+        const urlArgs = e.detail.url || '';
+        if (urlArgs.includes('verified=true') && loginFeedback) {
+            loginFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] ACCOUNT VERIFIED! Welcome to the game. You may now log visits.</div>`;
+        } else if (urlArgs.includes('error=invalid_token') && loginFeedback) {
+            loginFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: Invalid or expired verification string.</div>`;
+        }
+
         // CSS Tab Toggles Native Integration
         const toggleSignup = document.getElementById('toggle-signup');
         const toggleLogin = document.getElementById('toggle-login');

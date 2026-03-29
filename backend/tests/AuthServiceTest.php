@@ -21,7 +21,7 @@ class AuthServiceTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->pdoMock = $this->createStub(PDO::class);
+        $this->pdoMock = $this->createMock(PDO::class);
         $this->authService = new AuthService($this->pdoMock);
     }
 
@@ -59,7 +59,8 @@ class AuthServiceTest extends TestCase
         $stmtMock->method('fetch')->willReturn([
             'id' => 1,
             'username' => 'Lucien',
-            'password_hash' => $hash
+            'password_hash' => $hash,
+            'is_verified' => 1
         ]);
         
         $this->pdoMock->method('prepare')->willReturn($stmtMock);
@@ -79,7 +80,8 @@ class AuthServiceTest extends TestCase
         $stmtMock->method('fetch')->willReturn([
             'id' => 1,
             'username' => 'Lucien',
-            'password_hash' => $hash
+            'password_hash' => $hash,
+            'is_verified' => 0
         ]);
         
         $this->pdoMock->method('prepare')->willReturn($stmtMock);
@@ -89,5 +91,47 @@ class AuthServiceTest extends TestCase
         // Assert explicit success returning the exact database identity context
         $this->assertEquals('success', $result['status']);
         $this->assertEquals(1, $result['user_id']);
+        $this->assertEquals(0, $result['is_verified']);
+    }
+
+    #[Test]
+    public function resendVerificationRejectsAlreadyVerifiedUsers()
+    {
+        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock->method('fetch')->willReturn([
+            'email' => 'test@example.com',
+            'is_verified' => 1,
+            'verification_token' => null
+        ]);
+        
+        $this->pdoMock->method('prepare')->willReturn($stmtMock);
+
+        $result = $this->authService->resendVerification(1);
+        
+        $this->assertEquals('error', $result['status']);
+        $this->assertEquals('Account is already verified.', $result['message']);
+    }
+
+    #[Test]
+    public function resendVerificationSucceedsForUnverifiedUsers()
+    {
+        $selectMock = $this->createMock(PDOStatement::class);
+        $selectMock->method('fetch')->willReturn([
+            'email' => 'test@example.com',
+            'is_verified' => 0,
+            'verification_token' => 'old_token'
+        ]);
+
+        $updateMock = $this->createMock(PDOStatement::class);
+        $updateMock->expects($this->once())->method('execute')->willReturn(true);
+        
+        $this->pdoMock->expects($this->exactly(2))
+            ->method('prepare')
+            ->willReturnOnConsecutiveCalls($selectMock, $updateMock);
+
+        $result = $this->authService->resendVerification(1);
+        
+        $this->assertEquals('success', $result['status']);
+        $this->assertEquals('Verification email resent successfully.', $result['message']);
     }
 }

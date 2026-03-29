@@ -145,6 +145,22 @@ const API = {
         } catch(e) {
             return { status: 'error', message: 'Session Network Failure!' };
         }
+    },
+
+    /**
+     * Re-triggers the registration mail() logic dynamically verifying bounced addresses natively.
+     */
+    resendVerification: async function() {
+        try {
+            const res = await fetch('backend/api/auth.php?action=resend_verification', {
+                method: 'POST',
+                headers: this.headers
+            });
+            return await res.json();
+        } catch (e) {
+            console.error(e);
+            return { status: 'error', message: 'API Network Timeout!' };
+        }
     }
 };
 
