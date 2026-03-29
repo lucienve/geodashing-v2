@@ -321,7 +321,7 @@ document.addEventListener('routeLoaded', (e) => {
         const loginFeedback = document.getElementById('login-feedback');
         const signupFeedback = document.getElementById('signup-feedback');
 
-        const urlArgs = e.detail.url || '';
+        const urlArgs = fullHash || '';
         const user = window.currentUser || null;
 
         // CSS Tab Toggles Native Integration
