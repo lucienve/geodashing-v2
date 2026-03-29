@@ -25,10 +25,13 @@
                 style="width:100%; margin-top:0.5rem;">LOGIN</button>
         </form>
 
-        <div style="text-align:center; margin-top:1.5rem;">
+        <div style="text-align:center; margin-top:2.5rem; display:flex; flex-direction:column; gap:1rem;">
             <a href="#" id="toggle-signup"
                 style="color:var(--text-muted); font-size:0.85rem; text-decoration:none; border-bottom:1px dashed var(--text-muted);">[
                 Or Register a New Player ]</a>
+            <a href="#" id="toggle-forgot"
+                style="color:var(--text-muted); font-size:0.85rem; text-decoration:none; border-bottom:1px dashed var(--text-muted);">[
+                Forgot Password? ]</a>
         </div>
     </div>
 
@@ -70,6 +73,61 @@
             <a href="#" id="toggle-login"
                 style="color:var(--text-muted); font-size:0.85rem; text-decoration:none; border-bottom:1px dashed var(--text-muted);">[
                 Return to Login ]</a>
+        </div>
+    </div>
+
+    <!-- Forgot Password Pane -->
+    <div id="forgot-pane" style="border:1px solid var(--text-muted); padding:1.5rem; display:none;">
+        <h3
+            style="color:var(--text-muted); margin-bottom:1rem; border-bottom:1px dashed var(--text-muted); padding-bottom:0.5rem;">
+            ACCOUNT RECOVERY</h3>
+        <div id="forgot-feedback" style="margin-bottom:1rem; font-size:0.9rem; color:var(--text-muted);">Send a reset
+            link to the email address on file.</div>
+
+        <form id="form-forgot">
+            <div class="form-group">
+                <label>USERNAME</label>
+                <input type="text" id="forgot-username" name="username" class="data-input"
+                    style="border-color:var(--text-muted);" required autocomplete="username">
+            </div>
+            <button type="submit" class="btn btn-secondary" id="btn-submit-forgot"
+                style="width:100%; margin-top:0.5rem;">DISPATCH EMAIL</button>
+        </form>
+
+        <div style="text-align:center; margin-top:1.5rem;">
+            <a href="#" id="toggle-login-from-forgot"
+                style="color:var(--text-muted); font-size:0.85rem; text-decoration:none; border-bottom:1px dashed var(--text-muted);">[
+                Return to Login ]</a>
+        </div>
+    </div>
+
+    <!-- Reset Password Pane -->
+    <div id="reset-pane" style="border:1px solid var(--accent-amber); padding:1.5rem; display:none;">
+        <h3
+            style="color:var(--accent-amber); margin-bottom:1rem; border-bottom:1px dashed var(--accent-amber); padding-bottom:0.5rem;">
+            ESTABLISH CREDENTIALS</h3>
+        <div id="reset-feedback" style="margin-bottom:1rem; font-size:0.9rem; color:var(--text-muted);">Mathematically
+            override the previous identity hash. Ensure your new passphrase exceeds 6 characters.</div>
+
+        <form id="form-reset">
+            <div class="form-group">
+                <label>NEW PASSWORD</label>
+                <input type="password" id="reset-password" name="password" class="data-input"
+                    style="border-color:var(--accent-amber);" required autocomplete="new-password" minlength="6">
+            </div>
+            <div class="form-group">
+                <label>VERIFY PASSWORD</label>
+                <input type="password" id="reset-password-verify" name="password_verify" class="data-input"
+                    style="border-color:var(--accent-amber);" required autocomplete="new-password" minlength="6">
+            </div>
+            <button type="submit" class="btn btn-primary" id="btn-submit-reset" style="width:100%; margin-top:0.5rem;"
+                disabled>CONFIRM IDENTITY</button>
+        </form>
+
+        <div style="text-align:center; margin-top:1.5rem;">
+            <a href="#login"
+                style="color:var(--text-muted); font-size:0.85rem; text-decoration:none; border-bottom:1px dashed var(--text-muted);">[
+                Abort and Return ]</a>
         </div>
     </div>
 

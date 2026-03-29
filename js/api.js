@@ -15,7 +15,7 @@ const API = {
      * Executes the Haversine payload check dynamically validating physical GPS coordinates
      * @param {FormData} formData Native HTML5 Mobile Form Dump containing images/lat/lon
      */
-    logVisit: async function(formData) {
+    logVisit: async function (formData) {
         try {
             const res = await fetch('backend/api/report.php', {
                 method: 'POST',
@@ -29,7 +29,7 @@ const API = {
         }
     },
 
-    editVisit: async function(formData) {
+    editVisit: async function (formData) {
         try {
             const res = await fetch('backend/api/edit.php', {
                 method: 'POST',
@@ -48,7 +48,7 @@ const API = {
      * @param {string} username 
      * @param {string} password 
      */
-    login: async function(username, password) {
+    login: async function (username, password) {
         try {
             const data = new URLSearchParams();
             data.append('username', username);
@@ -63,7 +63,7 @@ const API = {
                 body: data.toString()
             });
             return await res.json();
-        } catch(e) {
+        } catch (e) {
             console.error(e);
             return { status: 'error', message: 'Auth Network Failure!' };
         }
@@ -72,7 +72,7 @@ const API = {
     /**
      * Attempts native Registration natively persisting the hash state safely
      */
-    signup: async function(username, email, password) {
+    signup: async function (username, email, password) {
         try {
             const data = new URLSearchParams();
             data.append('username', username);
@@ -88,23 +88,73 @@ const API = {
                 body: data.toString()
             });
             return await res.json();
-        } catch(e) {
+        } catch (e) {
             console.error(e);
             return { status: 'error', message: 'Registration Network Failure!' };
         }
     },
 
     /**
+     * Email a password reset link to the address on file.
+     * @param {string} username 
+     */
+    requestPasswordReset: async function (username) {
+        try {
+            const data = new URLSearchParams();
+            data.append('username', username);
+
+            const res = await fetch('backend/api/auth.php?action=forgot_password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    ...this.headers
+                },
+                body: data.toString()
+            });
+            return await res.json();
+        } catch (e) {
+            console.error(e);
+            return { status: 'error', message: 'Recovery Network Failure!' };
+        }
+    },
+
+    /**
+     * Authenticate the token, and set the new password if valid.
+     * @param {string} token 
+     * @param {string} newPassword 
+     */
+    executePasswordReset: async function (token, newPassword) {
+        try {
+            const data = new URLSearchParams();
+            data.append('token', token);
+            data.append('password', newPassword);
+
+            const res = await fetch('backend/api/auth.php?action=reset_password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    ...this.headers
+                },
+                body: data.toString()
+            });
+            return await res.json();
+        } catch (e) {
+            console.error(e);
+            return { status: 'error', message: 'Credential Logic Failure!' };
+        }
+    },
+
+    /**
      * Purges the PHP backend session cleanly and formally returning the state natively
      */
-    logout: async function() {
+    logout: async function () {
         try {
             const res = await fetch('backend/api/auth.php?action=logout', {
                 method: 'POST',
                 headers: this.headers
             });
             return await res.json();
-        } catch(e) {
+        } catch (e) {
             console.error(e);
             return { status: 'error', message: 'Logout Network Failure!' };
         }
@@ -114,13 +164,13 @@ const API = {
      * Structurally retrieves the Global Solo Leaderboards JSON mapping dynamically.
      * @param {number} gameId Optional integer ID to query historic loops natively 
      */
-    getLeaderboard: async function(gameId = null) {
+    getLeaderboard: async function (gameId = null) {
         try {
             let url = 'backend/api/leaderboard.php';
             if (gameId !== null) {
                 url += `?game_id=${gameId}`;
             }
-            
+
             const res = await fetch(url, {
                 method: 'GET',
                 headers: this.headers
@@ -135,14 +185,14 @@ const API = {
     /**
      * Polls the live Session strictly ensuring the user is authorized.
      */
-    checkSession: async function() {
+    checkSession: async function () {
         try {
             const res = await fetch('backend/api/auth.php?action=session', {
                 method: 'POST', // Auth endpoint enforces POST mapped strictly
                 headers: this.headers
             });
             return await res.json();
-        } catch(e) {
+        } catch (e) {
             return { status: 'error', message: 'Session Network Failure!' };
         }
     },
@@ -150,7 +200,7 @@ const API = {
     /**
      * Re-triggers the registration mail() logic dynamically verifying bounced addresses natively.
      */
-    resendVerification: async function() {
+    resendVerification: async function () {
         try {
             const res = await fetch('backend/api/auth.php?action=resend_verification', {
                 method: 'POST',

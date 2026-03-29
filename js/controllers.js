@@ -327,80 +327,113 @@ document.addEventListener('routeLoaded', (e) => {
         // CSS Tab Toggles Native Integration
         const toggleSignup = document.getElementById('toggle-signup');
         const toggleLogin = document.getElementById('toggle-login');
+        const toggleForgot = document.getElementById('toggle-forgot');
+        const toggleLoginFromForgot = document.getElementById('toggle-login-from-forgot');
+
         const loginPane = document.getElementById('login-pane');
         const signupPane = document.getElementById('signup-pane');
         const verifyPane = document.getElementById('verify-pane');
+        const forgotPane = document.getElementById('forgot-pane');
+        const resetPane = document.getElementById('reset-pane');
 
-        // --- DYNAMIC STATE: Fully Authenticated & Verified ---
-        if (user && user.is_verified == 1) {
+        // Dynamically parse the exact query parameter mapping if a recovery token exists
+        const resetTokenRaw = urlArgs.split('?')[1] || '';
+        const rawUrlParams = new URLSearchParams(resetTokenRaw);
+        const resetToken = rawUrlParams.get('reset_token');
+
+        // Execute imperative reset pane override physically bypassing standard user states
+        if (resetToken && resetPane) {
             if (loginPane) loginPane.style.display = 'none';
             if (signupPane) signupPane.style.display = 'none';
             if (verifyPane) verifyPane.style.display = 'none';
+            if (forgotPane) forgotPane.style.display = 'none';
+            resetPane.style.display = 'block';
+            // Do not return here so standard form hooks (including the reset form!) can bind!
+        } else {
+            // --- DYNAMIC STATE: Fully Authenticated & Verified ---
+            if (user && user.is_verified == 1) {
+                if (loginPane) loginPane.style.display = 'none';
+                if (signupPane) signupPane.style.display = 'none';
+                if (verifyPane) verifyPane.style.display = 'none';
 
-            if (urlArgs.includes('verified=true')) {
-                // Dynamically build the Victory overlay physically replacing the bounds
-                const verifiedInject = document.createElement('div');
-                verifiedInject.style.cssText = "border:1px solid var(--accent-green); padding:2.5rem; background:rgba(42, 212, 115, 0.05); text-align:center; margin-top:1rem;";
-                verifiedInject.innerHTML = `
+                if (urlArgs.includes('verified=true')) {
+                    // Dynamically build the Victory overlay physically replacing the bounds
+                    const verifiedInject = document.createElement('div');
+                    verifiedInject.style.cssText = "border:1px solid var(--accent-green); padding:2.5rem; background:rgba(42, 212, 115, 0.05); text-align:center; margin-top:1rem;";
+                    verifiedInject.innerHTML = `
                     <h3 style="color:var(--accent-green); margin-bottom:1rem; border-bottom:1px dashed var(--accent-green); padding-bottom:1rem;">Email confirmed.</h3>
                     <p style="color:var(--text-main); line-height:1.6; font-size:1.1rem;">Welcome to Geodashing!</p>
                     <a href="#home" class="btn btn-primary" style="display:inline-block; margin-top:2rem; font-size:1.2rem; padding:12px 24px;">Return to the map.</a>
                 `;
-                document.getElementById('view-login').appendChild(verifiedInject);
-            } else {
-                window.location.hash = '#home';
+                    document.getElementById('view-login').appendChild(verifiedInject);
+                } else {
+                    window.location.hash = '#home';
+                }
+                return;
             }
-            return;
-        }
 
-        if (urlArgs.includes('error=invalid_token') && loginFeedback) {
-            loginFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: Invalid or expired verification string.</div>`;
-        }
-
-        // Using double equals natively protects against weak-typed PHP JSON coercion race conditions!
-        if (user && user.is_verified == 0 && verifyPane) {
-            if (loginPane) loginPane.style.display = 'none';
-            if (signupPane) signupPane.style.display = 'none';
-            verifyPane.classList.remove('d-none');
-
-            const resendBtn = document.getElementById('resend-verify-btn');
-            const logoutBtn = document.getElementById('verify-logout-btn');
-            const verifyFeedback = document.getElementById('verify-feedback');
-
-            if (resendBtn) {
-                resendBtn.addEventListener('click', async () => {
-                    resendBtn.innerText = "Sending Email...";
-                    resendBtn.disabled = true;
-                    const resendRes = await API.resendVerification();
-                    if (resendRes.status === 'success') {
-                        verifyFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] NETWORK SYNC: Email sent successfully! Check your inbox.</div>`;
-                        resendBtn.innerText = "Email Sent";
-                    } else {
-                        verifyFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${resendRes.message}</div>`;
-                        resendBtn.innerText = "Click here to resend validation email";
-                        resendBtn.disabled = false;
-                    }
-                });
+            if (urlArgs.includes('error=invalid_token') && loginFeedback) {
+                loginFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: Invalid or expired verification string.</div>`;
             }
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', async () => {
-                    await API.logout();
-                    window.location.reload();
-                });
+
+            // Using double equals natively protects against weak-typed PHP JSON coercion race conditions!
+            if (user && user.is_verified == 0 && verifyPane) {
+                if (loginPane) loginPane.style.display = 'none';
+                if (signupPane) signupPane.style.display = 'none';
+                verifyPane.classList.remove('d-none');
+
+                const resendBtn = document.getElementById('resend-verify-btn');
+                const logoutBtn = document.getElementById('verify-logout-btn');
+                const verifyFeedback = document.getElementById('verify-feedback');
+
+                if (resendBtn) {
+                    resendBtn.addEventListener('click', async () => {
+                        resendBtn.innerText = "Sending Email...";
+                        resendBtn.disabled = true;
+                        const resendRes = await API.resendVerification();
+                        if (resendRes.status === 'success') {
+                            verifyFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] NETWORK SYNC: Email sent successfully! Check your inbox.</div>`;
+                            resendBtn.innerText = "Email Sent";
+                        } else {
+                            verifyFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${resendRes.message}</div>`;
+                            resendBtn.innerText = "Click here to resend validation email";
+                            resendBtn.disabled = false;
+                        }
+                    });
+                }
+                if (logoutBtn) {
+                    logoutBtn.addEventListener('click', async () => {
+                        await API.logout();
+                        window.location.reload();
+                    });
+                }
+                return; // Prevent standard forms from attaching if verified
             }
-            return; // Prevent standard forms from attaching if verified
-        }
+        } // Close the 'resetToken else' conditional!
 
         // --- STANDARD LOGIN HOOKS ---
-        if (toggleSignup && toggleLogin && loginPane && signupPane) {
+        if (toggleSignup && toggleLogin && toggleForgot && toggleLoginFromForgot && loginPane && signupPane && forgotPane) {
             toggleSignup.addEventListener('click', (ev) => {
                 ev.preventDefault();
                 loginPane.style.display = 'none';
+                forgotPane.style.display = 'none';
                 signupPane.style.display = 'block';
             });
             toggleLogin.addEventListener('click', (ev) => {
                 ev.preventDefault();
                 signupPane.style.display = 'none';
+                forgotPane.style.display = 'none';
+                loginPane.style.display = 'block';
+            });
+            toggleForgot.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                loginPane.style.display = 'none';
+                signupPane.style.display = 'none';
+                forgotPane.style.display = 'block';
+            });
+            toggleLoginFromForgot.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                forgotPane.style.display = 'none';
                 loginPane.style.display = 'block';
             });
         }
@@ -479,6 +512,76 @@ document.addEventListener('routeLoaded', (e) => {
                     signupFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${res.message}</div>`;
                     signupBtn.disabled = false;
                     signupBtn.innerText = "CREATE ACCOUNT";
+                }
+            });
+        }
+
+        const formForgot = document.getElementById('form-forgot');
+        if (formForgot) {
+            formForgot.addEventListener('submit', async (ev) => {
+                ev.preventDefault();
+                const btn = document.getElementById('btn-submit-forgot');
+                const feedback = document.getElementById('forgot-feedback');
+
+                btn.disabled = true;
+                btn.innerText = "Sending email";
+
+                const username = document.getElementById('forgot-username').value;
+                const res = await API.requestPasswordReset(username);
+
+                if (res.status === 'success') {
+                    feedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] DIRECTIVE: ${res.message}</div>`;
+                    btn.innerText = "Email sent";
+                } else {
+                    feedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${res.message}</div>`;
+                    btn.disabled = false;
+                    btn.innerText = "Send email";
+                }
+            });
+        }
+
+        const formReset = document.getElementById('form-reset');
+        if (formReset) {
+            const resetBtn = document.getElementById('btn-submit-reset');
+            const feedback = document.getElementById('reset-feedback');
+            const pass1 = document.getElementById('reset-password');
+            const pass2 = document.getElementById('reset-password-verify');
+
+            const validateResetPasswords = () => {
+                if (pass1.value.length >= 6 && pass1.value === pass2.value) {
+                    resetBtn.disabled = false;
+                    pass2.style.borderColor = "var(--accent-green)";
+                } else {
+                    resetBtn.disabled = true;
+                    if (pass2.value.length > 0) {
+                        pass2.style.borderColor = "var(--accent-red)";
+                    } else {
+                        pass2.style.borderColor = "var(--text-muted)";
+                    }
+                }
+            };
+
+            if (pass1 && pass2) {
+                pass1.addEventListener('input', validateResetPasswords);
+                pass2.addEventListener('input', validateResetPasswords);
+            }
+
+            formReset.addEventListener('submit', async (ev) => {
+                ev.preventDefault();
+                resetBtn.disabled = true;
+                resetBtn.innerText = "Resetting password...";
+
+                const newPass = pass1.value;
+                const res = await API.executePasswordReset(resetToken, newPass);
+
+                if (res.status === 'success') {
+                    feedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] SUCCESS: ${res.message}</div>`;
+                    resetBtn.innerText = "Password reset";
+                    setTimeout(() => window.location.assign('#login'), 1500);
+                } else {
+                    feedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${res.message}</div>`;
+                    resetBtn.disabled = false;
+                    resetBtn.innerText = "Reset password";
                 }
             });
         }

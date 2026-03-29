@@ -87,6 +87,31 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             }
             echo json_encode($result);
 
+        } elseif ($action === 'forgot_password') {
+            $username = trim($_POST['username'] ?? '');
+            if (empty($username)) {
+                http_response_code(400);
+                echo json_encode(["status" => "error", "message" => "Username is required"]);
+                exit;
+            }
+            $result = $authService->forgotPassword($username);
+            if ($result['status'] !== 'success')
+                http_response_code(400);
+            echo json_encode($result);
+
+        } elseif ($action === 'reset_password') {
+            $token = trim($_POST['token'] ?? '');
+            $password = $_POST['password'] ?? '';
+            if (empty($token) || empty($password)) {
+                http_response_code(400);
+                echo json_encode(["status" => "error", "message" => "Token and new password required"]);
+                exit;
+            }
+            $result = $authService->resetPassword($token, $password);
+            if ($result['status'] !== 'success')
+                http_response_code(400);
+            echo json_encode($result);
+
         } elseif ($action === 'session') {
             // Native session state retrieval explicitly mapping memory back to the SPA
             if (isset($_SESSION['user_id']) && isset($_SESSION['username'])) {
@@ -271,12 +296,109 @@ class AuthService
         $verifyLink = "https://geodashing.org/backend/api/verify.php?token=" . $token;
         $subject = "Verify your account on Geodashing V2";
         $message = "Welcome to Geodashing V2!\n\nPlease finalize your account registration by clicking the link natively below:\n\n" . $verifyLink . "\n\nWelcome to the game!";
-        
+
         $headers = "From: no-reply@geodashing.org\r\n";
         $headers .= "Reply-To: no-reply@geodashing.org\r\n";
         $headers .= "X-Mailer: PHP/" . phpversion();
 
         // The 5th parameter securely overrides the 'MAIL FROM' Envelope Sender dynamically bypassing Postfix default arrays!
         @mail($email, $subject, $message, $headers, "-fno-reply@geodashing.org");
+    }
+
+    /**
+     * Issues a time-bound cryptographically secure Reset Token for the User.
+     * 
+     * @param string $username
+     * @return array Status array
+     */
+    public function forgotPassword(string $username): array
+    {
+        try {
+            $stmt = $this->db->prepare("SELECT id, email FROM users WHERE username = :username LIMIT 1");
+            $stmt->execute([':username' => $username]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // Obfuscate success natively preventing account enumeration algorithms
+            if (!$user) {
+                return ["status" => "success", "message" => "If that username matches our records, an email has been deployed."];
+            }
+
+            // Generate a secure 64-char token
+            $resetToken = bin2hex(random_bytes(32));
+
+            // Expire in one hour
+            $updateStmt = $this->db->prepare("UPDATE users SET reset_token = :token, reset_token_expires = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE id = :id");
+            $updateStmt->execute([':token' => $resetToken, ':id' => $user['id']]);
+
+            $this->sendPasswordResetEmail($user['email'], $resetToken, $username);
+
+            return ["status" => "success", "message" => "If that username matches our records, an email has been deployed."];
+
+        } catch (PDOException $e) {
+            error_log("Forgot Password Error: " . $e->getMessage());
+            return ["status" => "error", "message" => "Internal server array failure."];
+        }
+    }
+
+    /**
+     * Helper routine to explicitly dispatch the Password Reset Email.
+     * 
+     * @param string $email
+     * @param string $token
+     * @param string $username
+     */
+    private function sendPasswordResetEmail(string $email, string $token, string $username): void
+    {
+        // Route purely to the frontend parameter architecture where the `#login` controller dynamically intercepts the payload
+        $resetLink = "https://geodashing.org/#login?reset_token=" . $token;
+
+        $subject = "Password Reset Request for Geodashing V2";
+        $message = "Hello " . $username . ",\n\nWe received a request to reset your password on Geodashing V2.\n\n";
+        $message .= "If you did not make this request, please safely ignore this email.\n\n";
+        $message .= "Otherwise, physically click the highly-secure link below to establish a new credential:\n\n";
+        $message .= $resetLink . "\n\n";
+        $message .= "This link algorithmically expires in exactly 1 hour for your protection.";
+
+        $headers = "From: no-reply@geodashing.org\r\n";
+        $headers .= "Reply-To: no-reply@geodashing.org\r\n";
+        $headers .= "X-Mailer: PHP/" . phpversion();
+
+        @mail($email, $subject, $message, $headers, "-fno-reply@geodashing.org");
+    }
+
+    /**
+     * Executes the mechanical password override tracking validation metrics strictly natively.
+     * 
+     * @param string $token
+     * @param string $newPassword
+     * @return array Status array
+     */
+    public function resetPassword(string $token, string $newPassword): array
+    {
+        if (strlen($newPassword) < 6) {
+            return ["status" => "error", "message" => "Password must logically exceed 6 characters."];
+        }
+
+        try {
+            // Guarantee exactly one match checking both structurally and temporally natively
+            $stmt = $this->db->prepare("SELECT id FROM users WHERE reset_token = :token AND reset_token_expires > NOW() LIMIT 1");
+            $stmt->execute([':token' => $token]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$user) {
+                return ["status" => "error", "message" => "Reset token is invalid or mathematically expired."];
+            }
+
+            // Mathematically execute password rotation locking out previous hashes
+            $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
+            $updateStmt = $this->db->prepare("UPDATE users SET password_hash = :hash, reset_token = NULL, reset_token_expires = NULL WHERE id = :id");
+            $updateStmt->execute([':hash' => $newHash, ':id' => $user['id']]);
+
+            return ["status" => "success", "message" => "Password physically updated! You may now login."];
+
+        } catch (PDOException $e) {
+            error_log("Reset Password Error: " . $e->getMessage());
+            return ["status" => "error", "message" => "Server logic array crashed."];
+        }
     }
 }
