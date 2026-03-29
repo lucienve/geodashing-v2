@@ -23,6 +23,20 @@ window.calculateDistance = function (lat1, lon1, lat2, lon2) {
     return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
+/**
+ * Escapes raw strings for safe HTML injection, preventing XSS.
+ */
+window.escapeHTML = function(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
+
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Explicit Routing Logic Dictionary
     const routes = {

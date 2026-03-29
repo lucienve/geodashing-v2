@@ -5,9 +5,18 @@
  */
 
 const API = {
-    // Shared structural headers blocking CSRF and triggering JSON returns natively
-    headers: {
-        'Accept': 'application/json'
+    getCsrfToken: function() {
+        const match = document.cookie.match(new RegExp('(^| )csrf_token=([^;]+)'));
+        return match ? match[2] : '';
+    },
+
+    getHeaders: function() {
+        const h = { 'Accept': 'application/json' };
+        const token = this.getCsrfToken();
+        if (token) {
+            h['X-CSRF-Token'] = token;
+        }
+        return h;
     },
 
     /**
@@ -18,7 +27,7 @@ const API = {
         try {
             const res = await fetch('backend/api/report.php', {
                 method: 'POST',
-                headers: this.headers,
+                headers: this.getHeaders(),
                 body: formData // Specifically bypassing Content-Type override allowing multipart/form-data bounding natively!
             });
             return await res.json();
@@ -32,7 +41,7 @@ const API = {
         try {
             const res = await fetch('backend/api/edit.php', {
                 method: 'POST',
-                headers: this.headers,
+                headers: this.getHeaders(),
                 body: formData // Same multipart wrapper supporting JSON strings and Image Binaries
             });
             return await res.json();
@@ -57,7 +66,7 @@ const API = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    ...this.headers
+                    ...this.getHeaders()
                 },
                 body: data.toString()
             });
@@ -82,7 +91,7 @@ const API = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    ...this.headers
+                    ...this.getHeaders()
                 },
                 body: data.toString()
             });
@@ -106,7 +115,7 @@ const API = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    ...this.headers
+                    ...this.getHeaders()
                 },
                 body: data.toString()
             });
@@ -132,7 +141,7 @@ const API = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    ...this.headers
+                    ...this.getHeaders()
                 },
                 body: data.toString()
             });
@@ -150,7 +159,7 @@ const API = {
         try {
             const res = await fetch('backend/api/auth.php?action=logout', {
                 method: 'POST',
-                headers: this.headers
+                headers: this.getHeaders()
             });
             return await res.json();
         } catch (e) {
@@ -172,7 +181,7 @@ const API = {
 
             const res = await fetch(url, {
                 method: 'GET',
-                headers: this.headers
+                headers: this.getHeaders()
             });
             return await res.json();
         } catch (e) {
@@ -188,7 +197,7 @@ const API = {
         try {
             const res = await fetch('backend/api/auth.php?action=session', {
                 method: 'POST', // Auth endpoint enforces POST mapped strictly
-                headers: this.headers
+                headers: this.getHeaders()
             });
             return await res.json();
         } catch (e) {
@@ -203,7 +212,7 @@ const API = {
         try {
             const res = await fetch('backend/api/auth.php?action=resend_verification', {
                 method: 'POST',
-                headers: this.headers
+                headers: this.getHeaders()
             });
             return await res.json();
         } catch (e) {

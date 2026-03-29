@@ -9,7 +9,7 @@
 
 // Bypass procedural logic during PHPUnit inclusion
 if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
-    session_start();
+    require_once __DIR__ . '/../session.php';
     header('Content-Type: application/json');
     require_once __DIR__ . '/../Database.php';
 

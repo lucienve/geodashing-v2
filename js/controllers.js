@@ -100,7 +100,7 @@ document.addEventListener('routeLoaded', (e) => {
 
                             let html = `
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                                    <span style="font-size:0.9rem; color:var(--accent-amber); font-weight:bold;">${index + 1}. ${visit.username}</span>
+                                    <span style="font-size:0.9rem; color:var(--accent-amber); font-weight:bold;">${index + 1}. ${window.escapeHTML(visit.username)}</span>
                                     <span style="font-size:0.8rem; color:var(--accent-green); border:1px solid var(--accent-green); padding:2px 6px;">+${visit.score_awarded} PT</span>
                                 </div>
                                 <div style="color:#888; font-size:0.75rem; margin-bottom:1rem;">> LOG_TIME: ${tStr}</div>
@@ -119,7 +119,7 @@ document.addEventListener('routeLoaded', (e) => {
                                 html += `<div style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px dashed #444;">`;
 
                                 if (visit.notes) {
-                                    html += `<p style="color:#ddd; margin-bottom:1rem; font-style:italic;">"${visit.notes}"</p>`;
+                                    html += `<p style="color:#ddd; margin-bottom:1rem; font-style:italic;">"${window.escapeHTML(visit.notes)}"</p>`;
                                 }
 
                                 if (visit.photos && visit.photos.length > 0) {
@@ -744,7 +744,7 @@ document.addEventListener('routeLoaded', (e) => {
                         html += `
                             <tr style="border-bottom:1px solid #222; transition: background 0.2s;">
                                 <td style="padding:10px; ${rankStyle}">#${row.rank}</td>
-                                <td style="padding:10px; color:var(--text-main); font-family:var(--font-mono);">${row.username}</td>
+                                <td style="padding:10px; color:var(--text-main); font-family:var(--font-mono);">${window.escapeHTML(row.username)}</td>
                                 <td style="padding:10px; color:var(--accent-amber); text-align:right;">${row.total_score}</td>
                                 <td style="padding:10px; color:var(--text-muted); text-align:right;">${row.total_finds}</td>
                             </tr>
