@@ -315,13 +315,13 @@ document.addEventListener('routeLoaded', (e) => {
     // ==========================================================
     // Controller: AUTHENTICATION MODULE (#login)
     // ==========================================================
-    if (route === '#login') {
+    if (route.startsWith('#login')) {
         const loginForm = document.getElementById('form-login');
         const signupForm = document.getElementById('form-signup');
         const loginFeedback = document.getElementById('login-feedback');
         const signupFeedback = document.getElementById('signup-feedback');
 
-        const urlArgs = fullHash || '';
+        const urlArgs = route || '';
         const user = window.currentUser || null;
 
         // CSS Tab Toggles Native Integration
