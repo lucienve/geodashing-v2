@@ -128,42 +128,32 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await API.checkSession();
             if (res.status === 'success') {
                 window.currentUser = res; // Bind the full Payload (including is_verified) globally
-                authBtn.innerText = `LOGOUT [${res.username}]`;
-                authBtn.href = '#';
+                if (res.is_verified === 0) {
+                    // Force the Nav Auth button to direct unverified states to the login panel
+                    authBtn.innerText = `UNVERIFIED [CLICK TO RESEND]`;
+                    authBtn.href = '#login';
+                    authBtn.style.color = "var(--accent-amber)";
+                    
+                    // Natively detaching previous listeners to prevent stack duplications
+                    const newBtn = authBtn.cloneNode(true);
+                    authBtn.replaceWith(newBtn);
+                } else {
+                    // Standard authorized routing
+                    authBtn.innerText = `LOGOUT [${res.username}]`;
+                    authBtn.href = '#';
 
-                // Natively detaching previous listeners to prevent stack duplications
-                const newBtn = authBtn.cloneNode(true);
-                authBtn.replaceWith(newBtn);
+                    // Natively detaching previous listeners to prevent stack duplications
+                    const newBtn = authBtn.cloneNode(true);
+                    authBtn.replaceWith(newBtn);
 
-                newBtn.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    await API.logout();
-                    window.location.reload(); // Physical purge resets the SPA safely
-                });
+                    newBtn.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        await API.logout();
+                        window.location.reload(); // Physical purge resets the SPA safely
+                    });
+                }
 
                 if (fab) fab.classList.remove('d-none');
-
-                // Display the Global Notice natively grabbing the click event for the Email re-route
-                const verifyBanner = document.getElementById('verify-banner');
-                const verifyBtn = document.getElementById('resend-verify-btn');
-                if (verifyBanner && verifyBtn) {
-                    if (res.is_verified === 0) {
-                        verifyBanner.classList.remove('d-none');
-                        verifyBtn.onclick = async () => {
-                            verifyBtn.innerText = "SENDING...";
-                            const resendRes = await API.resendVerification();
-                            if (resendRes.status === 'success') {
-                                verifyBtn.innerText = "Mail sent - Please check your inbox.";
-                                verifyBtn.style.color = "var(--accent-green)";
-                            } else {
-                                verifyBtn.innerText = `ERROR: ${resendRes.message}`;
-                                verifyBtn.style.color = "var(--accent-red)";
-                            }
-                        };
-                    } else {
-                        verifyBanner.classList.add('d-none');
-                    }
-                }
             } else {
                 window.currentUser = null;
                 authBtn.innerText = `Player login`;

@@ -334,89 +334,135 @@ document.addEventListener('routeLoaded', (e) => {
         const toggleLogin = document.getElementById('toggle-login');
         const loginPane = document.getElementById('login-pane');
         const signupPane = document.getElementById('signup-pane');
+        const verifyPane = document.getElementById('verify-pane');
 
-        if (toggleSignup && toggleLogin && loginPane && signupPane) {
-            toggleSignup.addEventListener('click', (ev) => {
-                ev.preventDefault();
-                loginPane.style.display = 'none';
-                signupPane.style.display = 'block';
-            });
-            toggleLogin.addEventListener('click', (ev) => {
-                ev.preventDefault();
-                signupPane.style.display = 'none';
-                loginPane.style.display = 'block';
-            });
-        }
+        // Execute a native promise directly to mathematically prevent DOM race conditions against app.js
+        API.checkSession().then(authRes => {
+            if (authRes.status === 'success' && authRes.is_verified === 0 && verifyPane) {
+                if (loginPane) loginPane.style.display = 'none';
+                if (signupPane) signupPane.style.display = 'none';
+                verifyPane.classList.remove('d-none');
 
-        if (loginForm) {
-            loginForm.addEventListener('submit', async (ev) => {
-                ev.preventDefault();
-                const btn = document.getElementById('btn-submit-login');
-                btn.disabled = true;
-                btn.innerText = "AUTHENTICATING...";
+                const resendBtn = document.getElementById('resend-verify-btn');
+                const logoutBtn = document.getElementById('verify-logout-btn');
+                const verifyFeedback = document.getElementById('verify-feedback');
 
-                const user = document.getElementById('login-username').value;
-                const pass = document.getElementById('login-password').value;
-
-                const res = await API.login(user, pass);
-                if (res.status === 'success') {
-                    loginFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] Login Successful.</div>`;
-                    if (typeof window.updateAuthState === 'function') window.updateAuthState();
-                    setTimeout(() => window.location.hash = '#home', 800);
-                } else {
-                    loginFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${res.message}</div>`;
-                    btn.disabled = false;
-                    btn.innerText = "LOGIN";
+                if (resendBtn) {
+                    resendBtn.addEventListener('click', async () => {
+                        resendBtn.innerText = "Sending Email...";
+                        resendBtn.disabled = true;
+                        const resendRes = await API.resendVerification();
+                        if (resendRes.status === 'success') {
+                            verifyFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] NETWORK SYNC: Email sent successfully! Check your inbox.</div>`;
+                            resendBtn.innerText = "Email Sent";
+                        } else {
+                            verifyFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${resendRes.message}</div>`;
+                            resendBtn.innerText = "Click here to resend validation email";
+                            resendBtn.disabled = false;
+                        }
+                    });
                 }
-            });
-        }
-
-        if (signupForm) {
-            const signupBtn = document.getElementById('btn-submit-signup');
-            const pass1 = document.getElementById('signup-password');
-            const pass2 = document.getElementById('signup-password-verify');
-
-            // Dynamically validate matching passwords natively locking the submission button
-            const validatePasswords = () => {
-                if (pass1.value.length >= 6 && pass1.value === pass2.value) {
-                    signupBtn.disabled = false;
-                    pass2.style.borderColor = "var(--accent-green)";
-                } else {
-                    signupBtn.disabled = true;
-                    if (pass2.value.length > 0) {
-                        pass2.style.borderColor = "var(--accent-red)";
-                    } else {
-                        pass2.style.borderColor = "var(--text-muted)";
-                    }
+                if (logoutBtn) {
+                    logoutBtn.addEventListener('click', async () => {
+                        await API.logout();
+                        window.location.reload();
+                    });
                 }
-            };
-
-            if (pass1 && pass2) {
-                pass1.addEventListener('input', validatePasswords);
-                pass2.addEventListener('input', validatePasswords);
+                return; // Prevent standard forms from attaching if verified
             }
 
-            signupForm.addEventListener('submit', async (ev) => {
-                ev.preventDefault();
-                signupBtn.disabled = true;
-                signupBtn.innerText = "CREATING PROFILE...";
+            // --- STANDARD LOGIN HOOKS ---
+            if (toggleSignup && toggleLogin && loginPane && signupPane) {
+                toggleSignup.addEventListener('click', (ev) => {
+                    ev.preventDefault();
+                    loginPane.style.display = 'none';
+                    signupPane.style.display = 'block';
+                });
+                toggleLogin.addEventListener('click', (ev) => {
+                    ev.preventDefault();
+                    signupPane.style.display = 'none';
+                    loginPane.style.display = 'block';
+                });
+            }
 
-                const user = document.getElementById('signup-username').value;
-                const email = document.getElementById('signup-email').value;
-                const pass = pass1.value;
+            if (loginForm) {
+                loginForm.addEventListener('submit', async (ev) => {
+                    ev.preventDefault();
+                    const btn = document.getElementById('btn-submit-login');
+                    btn.disabled = true;
+                    btn.innerText = "AUTHENTICATING...";
 
-                const res = await API.signup(user, email, pass);
-                if (res.status === 'success') {
-                    signupFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] WELCOME: Account created.</div>`;
-                    if (typeof window.updateAuthState === 'function') window.updateAuthState();
-                    setTimeout(() => window.location.hash = '#home', 800);
-                } else {
-                    signupFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${res.message}</div>`;
-                    signupBtn.disabled = false;
-                    signupBtn.innerText = "CREATE ACCOUNT";
+                    const user = document.getElementById('login-username').value;
+                    const pass = document.getElementById('login-password').value;
+
+                    const res = await API.login(user, pass);
+                    if (res.status === 'success') {
+                        loginFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] Login Successful.</div>`;
+                        if (typeof window.updateAuthState === 'function') window.updateAuthState();
+
+                        // Route unverified directly to the verify-pane natively!
+                        if (res.is_verified === 0) {
+                            setTimeout(() => window.location.reload(), 400);
+                        } else {
+                            setTimeout(() => window.location.hash = '#home', 800);
+                        }
+                    } else {
+                        loginFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${res.message}</div>`;
+                        btn.disabled = false;
+                        btn.innerText = "LOGIN";
+                    }
+                });
+            }
+
+            if (signupForm) {
+                const signupBtn = document.getElementById('btn-submit-signup');
+                const pass1 = document.getElementById('signup-password');
+                const pass2 = document.getElementById('signup-password-verify');
+
+                // Dynamically validate matching passwords natively locking the submission button
+                const validatePasswords = () => {
+                    if (pass1.value.length >= 6 && pass1.value === pass2.value) {
+                        signupBtn.disabled = false;
+                        pass2.style.borderColor = "var(--accent-green)";
+                    } else {
+                        signupBtn.disabled = true;
+                        if (pass2.value.length > 0) {
+                            pass2.style.borderColor = "var(--accent-red)";
+                        } else {
+                            pass2.style.borderColor = "var(--text-muted)";
+                        }
+                    }
+                };
+
+                if (pass1 && pass2) {
+                    pass1.addEventListener('input', validatePasswords);
+                    pass2.addEventListener('input', validatePasswords);
                 }
-            });
-        }
+
+                signupForm.addEventListener('submit', async (ev) => {
+                    ev.preventDefault();
+                    signupBtn.disabled = true;
+                    signupBtn.innerText = "CREATING PROFILE...";
+
+                    const user = document.getElementById('signup-username').value;
+                    const email = document.getElementById('signup-email').value;
+                    const pass = pass1.value;
+
+                    const res = await API.signup(user, email, pass);
+                    if (res.status === 'success') {
+                        signupFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] WELCOME: Account created.</div>`;
+                        if (typeof window.updateAuthState === 'function') window.updateAuthState();
+
+                        // Route instantly securely to the new verification pane!
+                        setTimeout(() => window.location.reload(), 400);
+                    } else {
+                        signupFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${res.message}</div>`;
+                        signupBtn.disabled = false;
+                        signupBtn.innerText = "CREATE ACCOUNT";
+                    }
+                });
+            }
+        }); // Close the API.checkSession Promise wrapper
     }
 
     // ==========================================================
@@ -559,7 +605,7 @@ document.addEventListener('routeLoaded', (e) => {
             API.getLeaderboard().then(json => {
                 if (json.status === 'success') {
                     const data = json.data;
-                    
+
                     if (data.length === 0) {
                         tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);">[ NO STATISTICAL DATA PRESENT ]</td></tr>`;
                         return;
@@ -572,7 +618,7 @@ document.addEventListener('routeLoaded', (e) => {
                         if (row.rank === 1) rankStyle = "color:var(--accent-amber); font-weight:bold;";
                         else if (row.rank === 2) rankStyle = "color:#ccc; font-weight:bold;";
                         else if (row.rank === 3) rankStyle = "color:#b08d55; font-weight:bold;"; // Bronze
-                        
+
                         html += `
                             <tr style="border-bottom:1px solid #222; transition: background 0.2s;">
                                 <td style="padding:10px; ${rankStyle}">#${row.rank}</td>
@@ -582,7 +628,7 @@ document.addEventListener('routeLoaded', (e) => {
                             </tr>
                         `;
                     });
-                    
+
                     tbody.innerHTML = html;
                 } else {
                     tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--accent-red);">[-] CRITICAL UPLINK FAILURE: ${json.message}</td></tr>`;
