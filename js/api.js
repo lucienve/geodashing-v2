@@ -30,7 +30,11 @@ const API = {
                 headers: this.getHeaders(),
                 body: formData // Specifically bypassing Content-Type override allowing multipart/form-data bounding natively!
             });
-            return await res.json();
+            const data = await res.json();
+            if (data.status === 'success' && window.trackEvent) {
+                window.trackEvent('visit_logged', { points: data.points, distance: data.distance });
+            }
+            return data;
         } catch (e) {
             console.error(e);
             return { status: 'error', message: 'API Network Timeout!' };
@@ -95,7 +99,11 @@ const API = {
                 },
                 body: data.toString()
             });
-            return await res.json();
+            const json = await res.json();
+            if (json.status === 'success' && window.trackEvent) {
+                window.trackEvent('sign_up');
+            }
+            return json;
         } catch (e) {
             console.error(e);
             return { status: 'error', message: 'Registration Network Failure!' };

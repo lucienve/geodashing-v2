@@ -80,7 +80,23 @@
         <span class="fab-text">LOG VISIT</span>
     </a>
 
+    <!-- Cookie Consent Banner -->
+    <div id="cookie-consent-banner" class="d-none"
+        style="position:fixed; bottom:0; left:0; right:0; background:var(--bg-panel); border-top:1px solid var(--accent-amber); padding:1rem; z-index:9999; display:flex; justify-content:space-between; align-items:center;">
+        <div style="font-size:0.9rem; color:var(--text-main); font-family:var(--font-mono);">
+            We use Google Analytics to learn how players find and use the site, and to improve the Geodashing
+            experience. Do you accept diagnostic cookies?
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button onclick="window.acceptCookies()" class="btn btn-outline"
+                style="border-color:var(--accent-green); color:var(--accent-green);">ACCEPT</button>
+            <button onclick="window.denyCookies()" class="btn btn-outline"
+                style="border-color:var(--accent-red); color:var(--accent-red);">DENY</button>
+        </div>
+    </div>
+
     <!-- Core Javascript (Load order matters here) -->
+    <script src="js/analytics.js"></script>
     <script src="js/api.js"></script>
     <script src="js/controllers.js"></script>
     <script src="js/app.js"></script>

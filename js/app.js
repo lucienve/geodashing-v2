@@ -60,6 +60,10 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadRoute() {
         const fullHash = window.location.hash || '#home';
 
+        if (window.trackPageview) {
+            window.trackPageview(fullHash);
+        }
+
         // Strip out query parameters cleanly so the dictionary perfectly understands `#dashpoint?id=123`
         const hash = fullHash.split('?')[0];
 
