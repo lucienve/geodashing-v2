@@ -44,7 +44,7 @@ CREATE TABLE games (
 
 -- 5. Dashpoints (The ~31,000 generated coordinates)
 CREATE TABLE dashpoints (
-    id VARCHAR(20) PRIMARY KEY, -- Utilizing custom formats like GD-01-XXXX if desired
+    id VARCHAR(20) PRIMARY KEY, -- Format like GD01-ABCD
     game_id INT NOT NULL,
     location POINT SRID 4326 NOT NULL,
     country_code VARCHAR(10),
