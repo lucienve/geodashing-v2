@@ -35,7 +35,7 @@ CREATE TABLE team_members (
 -- 4. Games (Represents a 1-month period)
 CREATE TABLE games (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(128) NOT NULL, -- Format: "April 2026 Dash" or simply "Game 1"
+    title VARCHAR(255) NOT NULL, -- Format: "The game title"
     start_time DATETIME NOT NULL,
     end_time DATETIME NOT NULL,
     is_active BOOLEAN DEFAULT FALSE,

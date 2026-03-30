@@ -14,7 +14,7 @@ try {
     $db = Database::getConnection();
     
     // We strictly pull the singular active game month
-    $stmt = $db->prepare("SELECT id, start_time, end_time FROM games WHERE is_active = TRUE ORDER BY id DESC LIMIT 1");
+    $stmt = $db->prepare("SELECT id, title, start_time, end_time FROM games WHERE is_active = TRUE ORDER BY id DESC LIMIT 1");
     $stmt->execute();
     $game = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -23,17 +23,18 @@ try {
             "status" => "success",
             "data" => [
                 "game_id" => (int)$game['id'],
+                "title" => $game['title'],
                 "start_time" => $game['start_time'],
                 "end_time" => $game['end_time']
             ]
         ]);
     } else {
         http_response_code(404);
-        echo json_encode(["status" => "error", "message" => "No active game matrix found locally."]);
+        echo json_encode(["status" => "error", "message" => "No active game found."]);
     }
 
 } catch (Exception $e) {
-    error_log("Game API RUPTURE: " . $e->getMessage());
+    error_log("Game API Error: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(["status" => "error", "message" => "Database link severed completely."]);
+    echo json_encode(["status" => "error", "message" => "Database connection failed."]);
 }

@@ -131,11 +131,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (json.status === 'success') {
                 const headerGameId = document.getElementById('header-game-id');
                 if (headerGameId) {
-                    headerGameId.innerText = `[ GAME ${json.data.game_id} ]`;
+                    const d = new Date(json.data.start_time);
+                    const monthYear = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                    const titleStr = json.data.title ? `: ${json.data.title}` : '';
+                    headerGameId.innerText = `Game ${json.data.game_id}${titleStr} (${monthYear})`;
                 }
             }
         })
-        .catch(err => console.error("Could not fetch active GDx game strictly for visual banner."));
+        .catch(err => console.error("Could not fetch active game configuration."));
 
     // 5. Native Javascript Session Bootstrapper dynamically driving the Nav Auth state securely
     window.updateAuthState = async function () {

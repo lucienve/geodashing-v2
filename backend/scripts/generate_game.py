@@ -48,12 +48,13 @@ def get_db_connection(config_path: str) -> mysql.connector.connection.MySQLConne
     except mysql.connector.Error as e:
         raise Exception(f"Database Connection Error: {e}")
 
-def seed_database(points: List[Point], config_path: str) -> None:
+def seed_database(points: List[Point], config_path: str, game_title: str) -> None:
     """Seeds the newly generated Dashpoints into tracking tables along with a new active Game state.
 
     Args:
         points (List[Point]): Mathematically verified Point geometries to insert.
         config_path (str): The path to the PHP backend config.ini.
+        game_title (str): Brief descriptive title of the game.
         
     Raises:
         Exception: General sql error handling wrapper for safe failure.
@@ -65,7 +66,6 @@ def seed_database(points: List[Point], config_path: str) -> None:
         
         # 1. Define the game constraints
         now = datetime.now()
-        game_name = now.strftime("%B %Y Dash")
         start_time = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         _, last_day = calendar.monthrange(now.year, now.month)
         end_time = now.replace(day=last_day, hour=23, minute=59, second=59, microsecond=0)
@@ -75,12 +75,12 @@ def seed_database(points: List[Point], config_path: str) -> None:
         cursor.execute("UPDATE games SET is_active = FALSE")
         
         # 3. Insert the new active game
-        print(f"Initializing new game: '{game_name}'...")
+        print(f"Initializing new game with title '{game_title}'...")
         insert_game_sql = """
-            INSERT INTO games (name, start_time, end_time, is_active)
+            INSERT INTO games (title, start_time, end_time, is_active)
             VALUES (%s, %s, %s, True)
         """
-        cursor.execute(insert_game_sql, (game_name, start_time, end_time))
+        cursor.execute(insert_game_sql, (game_title, start_time, end_time))
         game_id = cursor.lastrowid
         
         # 4. Insert all valid dashpoints
@@ -208,6 +208,12 @@ if __name__ == "__main__":
         default=31000,
         help="The total number of dashpoints to randomly distribute on Earth (default: 31000)"
     )
+    parser.add_argument(
+        '-t', '--title',
+        type=str,
+        required=True,
+        help="Brief descriptive title of the game (max 40 chars)"
+    )
     args = parser.parse_args()
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -222,7 +228,7 @@ if __name__ == "__main__":
         points = generate_valid_dashpoints(target_count=target, land_zip_path=zip_path, lakes_zip_path=lakes_zip)
         
         # 2. Upload to MySQL
-        seed_database(points, config_path)
+        seed_database(points, config_path, args.title)
         
     except Exception as e:
         print(f"\nExecution Error: {e}")

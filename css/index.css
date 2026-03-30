@@ -130,6 +130,19 @@ body, html {
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
 }
 
+#header-game-id {
+  color: var(--accent-green);
+  font-size: 0.8rem;
+  margin-left: 15px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 350px;
+  display: inline-block;
+  vertical-align: bottom;
+}
+
 .nav-links {
   display: flex;
   gap: 2rem;
@@ -361,8 +374,15 @@ body, html {
     display: block; /* Reveal Hamburger natively */
   }
   
+  
   #app-content {
     max-width: 100%;
     padding: 1rem;
+  }
+
+  #header-game-id {
+    max-width: 140px; /* Constrain long titles strictly safely on mobile grids */
+    font-size: 0.65rem;
+    margin-left: 8px;
   }
 }
