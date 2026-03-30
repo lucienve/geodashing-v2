@@ -335,6 +335,11 @@ document.addEventListener('routeLoaded', (e) => {
 
                         btnGeo.innerText = "SYNC LIVE GPS";
                         btnGeo.style.color = ""; // Reset inline CSS
+
+                        // Trigger a map refresh to implicitly update the dashpoint marker's state and colors
+                        if (typeof map !== 'undefined' && map && typeof google !== 'undefined' && google.maps) {
+                            google.maps.event.trigger(map, 'idle');
+                        }
                     } else {
                         feedbackStatus.innerHTML = `<div class="alert alert-error">[-] Upload rejected: ${result.message}</div>`;
                     }
