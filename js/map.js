@@ -7,6 +7,44 @@
 
 let map;
 let activeMarkers = [];
+let appClusterer = null;
+
+// Custom Algorithm for mapping Visited State priorities to Grouped Containers
+const customClusterRenderer = {
+    render: function ({ count, position, markers }) {
+        let maxVisit = 0;
+        // Prioritize finding visited nodes within the bucket
+        markers.forEach(m => {
+            if (m.visitCount > maxVisit) {
+                maxVisit = m.visitCount;
+            }
+        });
+
+        let bgColor = "#ef4444"; // Default Red: Everything is unvisited
+        let rimColor = "#7f1d1d";
+
+        if (maxVisit === 1) {
+            bgColor = "#10b981"; // Green: Contains a visited point
+            rimColor = "#064e3b";
+        } else if (maxVisit > 1) {
+            bgColor = "#facc15"; // Yellow: Contains a heavy-traffic point
+            rimColor = "#713f12";
+        }
+
+        const pinView = new google.maps.marker.PinElement({
+            background: bgColor,
+            borderColor: rimColor,
+            glyph: String(count),
+            glyphColor: "#ffffff",
+            scale: 1.2
+        });
+
+        return new google.maps.marker.AdvancedMarkerElement({
+            position: position,
+            content: pinView
+        });
+    }
+};
 
 // CRITICAL: This exact function name is explicitly triggered by the Google Maps `<script>` callback string natively in index.html!
 window.initMap = function () {
@@ -60,10 +98,10 @@ window.initMap = function () {
 
         // Add Custom "My Location" Button mapped securely to the Google Control Position array natively
         const locationButton = document.createElement("button");
-        
+
         // Material Design "My Location" SVG
         const myLocationSvg = `<svg focusable="false" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 18px; height: 18px; fill: currentColor; display: block; margin: auto;"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"></path></svg>`;
-        
+
         locationButton.innerHTML = myLocationSvg;
         locationButton.style.backgroundColor = "rgba(0,0,0,0.8)";
         locationButton.style.border = "1px solid var(--accent-amber)";
@@ -118,7 +156,11 @@ function refreshDashpoints(bounds) {
  */
 function plotVectors(pointsArray) {
     // Flush old markers
-    activeMarkers.forEach(m => m.setMap(null));
+    if (appClusterer) {
+        appClusterer.clearMarkers();
+    } else {
+        activeMarkers.forEach(m => m.setMap(null));
+    }
     activeMarkers = [];
 
     pointsArray.forEach(pt => {
@@ -149,10 +191,12 @@ function plotVectors(pointsArray) {
 
         const marker = new google.maps.marker.AdvancedMarkerElement({
             position: { lat: parseFloat(pt.lat), lng: parseFloat(pt.lon) },
-            map: map,
             title: `Dashpoint ${pt.id}`,
             content: pinView
         });
+
+        // Store state natively on the marker object for the Cluster Renderer
+        marker.visitCount = vCount;
 
         // AdvancedMarkerElement strictly enforces `gmp-click` mapping directly bypassing legacy DOM bubble overlaps perfectly!
         marker.addListener('gmp-click', () => {
@@ -161,4 +205,14 @@ function plotVectors(pointsArray) {
 
         activeMarkers.push(marker);
     });
+
+    if (!appClusterer) {
+        appClusterer = new markerClusterer.MarkerClusterer({
+            map: map,
+            markers: activeMarkers,
+            renderer: customClusterRenderer
+        });
+    } else {
+        appClusterer.addMarkers(activeMarkers);
+    }
 }
