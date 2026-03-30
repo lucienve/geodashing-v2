@@ -1,70 +1,66 @@
 <div class="template-view" id="view-report">
     <a href="#home" class="close-btn" aria-label="Close View">&times;</a>
     <h2>LOG A VISIT</h2>
-    
+
     <div id="report-feedback"></div>
 
     <form id="form-report" enctype="multipart/form-data">
-        <div class="form-group" style="text-align:center; padding-bottom: 1.5rem; margin-bottom: 1.5rem; border-bottom: 1px dashed var(--accent-amber-glow);">
+        <div class="form-group"
+            style="text-align:center; padding-bottom: 1.5rem; margin-bottom: 1.5rem; border-bottom: 1px dashed var(--accent-amber-glow);">
             <label style="color:var(--text-muted); letter-spacing: 2px; font-size: 0.75rem;">DASHPOINT</label>
             <!-- Hidden input for the POST request, displayed as a header -->
-            <input type="text" 
-                   id="dashpoint_id" 
-                   name="dashpoint_id" 
-                   placeholder="GD001-XXXX"
-                   style="background:transparent; border:none; color:var(--accent-amber); font-size:2rem; font-weight:700; font-family:var(--font-mono); text-align:center; width:100%; pointer-events:none; outline:none; margin-top:0.5rem;" 
-                   readonly>
+            <input type="text" id="dashpoint_id" name="dashpoint_id" placeholder="GD001-XXXX"
+                style="background:transparent; border:none; color:var(--accent-amber); font-size:2rem; font-weight:700; font-family:var(--font-mono); text-align:center; width:100%; pointer-events:none; outline:none; margin-top:0.5rem;"
+                readonly>
         </div>
 
         <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:0.4rem;">
-             <label style="color:var(--text-muted); font-size:0.85rem; padding-bottom:0; margin-bottom:0;">VISIT COORDINATES [REQUIRED]</label>
-             <button type="button" class="btn btn-secondary" id="btn-geolocation" style="padding:0.3rem 0.6rem; font-size:0.7rem; width:auto; border-color:var(--accent-green); color:var(--accent-green); margin-bottom:0; line-height:1;">
-                 SYNC LIVE GPS
-             </button>
+            <label style="color:var(--text-muted); font-size:0.85rem; padding-bottom:0; margin-bottom:0;">VISIT
+                COORDINATES [REQUIRED]</label>
+            <button type="button" class="btn btn-secondary" id="btn-geolocation"
+                style="padding:0.3rem 0.6rem; font-size:0.7rem; width:auto; border-color:var(--accent-green); color:var(--accent-green); margin-bottom:0; line-height:1;">
+                SYNC LIVE GPS
+            </button>
         </div>
-        
+
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1.25rem;">
             <div class="form-group" style="margin-bottom:0;">
                 <!-- Latitude input -->
-                <input type="text" 
-                       inputmode="decimal"
-                       id="input-lat" 
-                       name="lat" 
-                       class="data-input" 
-                       placeholder="Lat: 42.1234" 
-                       oninput="this.value = this.value.replace(/[^0-9.\-]/g, '');"
-                       required>
+                <input type="text" inputmode="decimal" id="input-lat" name="lat" class="data-input"
+                    placeholder="Lat: 42.1234" oninput="this.value = this.value.replace(/[^0-9.\-]/g, '');" required>
             </div>
-            
+
             <div class="form-group" style="margin-bottom:0;">
                 <!-- Longitude input -->
-                <input type="text" 
-                       inputmode="decimal"
-                       id="input-lon" 
-                       name="lon" 
-                       class="data-input" 
-                       placeholder="Lon: -71.1234" 
-                       oninput="this.value = this.value.replace(/[^0-9.\-]/g, '');"
-                       required>
+                <input type="text" inputmode="decimal" id="input-lon" name="lon" class="data-input"
+                    placeholder="Lon: -71.1234" oninput="this.value = this.value.replace(/[^0-9.\-]/g, '');" required>
             </div>
         </div>
 
         <div class="form-group">
             <label>Visit photos [OPTIONAL]</label>
-            <small style="color:var(--accent-amber); display:block; margin-bottom:0.5rem; font-size:0.75rem;">Limit 10 Photos</small>
-            <input type="file" 
-                   name="photos[]" 
-                   accept="image/*" 
-                   capture="environment" 
-                   class="data-input" 
-                   style="font-size:0.8rem;"
-                   multiple>
+            <small style="color:var(--accent-amber); display:block; margin-bottom:0.5rem; font-size:0.75rem;">Limit 10
+                Photos</small>
+
+            <input type="file" id="input-photos" name="photos[]" accept="image/*" multiple style="display: none;">
+
+            <button type="button" class="btn btn-secondary" id="btn-add-photos"
+                style="width: 100%; border: 1px dashed var(--accent-amber); display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem; color: var(--accent-amber); background: rgba(255, 183, 3, 0.05); margin-bottom: 0;">
+                ADD PHOTOS
+            </button>
+            <div id="photo-preview-grid"
+                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 0.5rem; margin-top: 1rem;">
+            </div>
         </div>
 
         <div class="form-group">
             <label style="color:var(--text-muted); font-size:0.85rem;">Log [REQUIRED]</label>
-            <textarea id="log-textarea" name="notes" class="data-input" rows="8" maxlength="10000" style="font-family:var(--font-mono); font-size:0.85rem; line-height:1.4;" placeholder="Tell us about your visit! What did you see?" required></textarea>
-            <div id="char-counter" style="text-align:right; font-size:0.75rem; color:var(--accent-amber); margin-top:0.3rem;">10,000 chars remaining</div>
+            <textarea id="log-textarea" name="notes" class="data-input" rows="8" maxlength="10000"
+                style="font-family:var(--font-mono); font-size:0.85rem; line-height:1.4;"
+                placeholder="Tell us about your visit! What did you see?" required></textarea>
+            <div id="char-counter"
+                style="text-align:right; font-size:0.75rem; color:var(--accent-amber); margin-top:0.3rem;">10,000 chars
+                remaining</div>
         </div>
 
         <button type="submit" class="btn btn-primary" id="btn-submit-report">

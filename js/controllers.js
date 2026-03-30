@@ -165,6 +165,42 @@ document.addEventListener('routeLoaded', (e) => {
         const latInput = document.getElementById('input-lat');
         const lonInput = document.getElementById('input-lon');
 
+        const btnAddPhotos = document.getElementById('btn-add-photos');
+        const inputPhotos = document.getElementById('input-photos');
+        const previewGrid = document.getElementById('photo-preview-grid');
+        
+        let selectedFiles = []; // Track to enforce limit and show previews
+
+        if (btnAddPhotos && inputPhotos) {
+            btnAddPhotos.addEventListener('click', () => {
+                inputPhotos.click();
+            });
+
+            inputPhotos.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                if (files.length > 10) {
+                    alert("Maximum 10 photos allowed.");
+                    // In a DataTransfer object we can filter the files back to 10
+                    const dt = new DataTransfer();
+                    files.slice(0, 10).forEach(file => dt.items.add(file));
+                    inputPhotos.files = dt.files;
+                }
+                
+                // Clear previous previews
+                previewGrid.innerHTML = '';
+                Array.from(inputPhotos.files).forEach(file => {
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    img.style.width = '100%';
+                    img.style.height = '60px';
+                    img.style.objectFit = 'cover';
+                    img.style.borderRadius = '4px';
+                    img.style.border = '1px solid var(--accent-amber)';
+                    previewGrid.appendChild(img);
+                });
+            });
+        }
+
         // If they click map markers, the ID gets injected into the URL ?id=GD...
         // We parse that securely out of the SPA Routing hash!
         if (route.includes('?')) {
