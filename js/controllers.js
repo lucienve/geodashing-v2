@@ -189,7 +189,7 @@ document.addEventListener('routeLoaded', (e) => {
                             latInput.value = position.coords.latitude.toFixed(6);
                             lonInput.value = position.coords.longitude.toFixed(6);
 
-                            btnGeo.innerText = "[ COORDINATES SYNCED ]";
+                            btnGeo.innerText = "SYNCED";
                             btnGeo.style.color = "var(--accent-green)";
                             btnGeo.style.borderColor = "var(--accent-green)";
                         },
@@ -297,7 +297,7 @@ document.addEventListener('routeLoaded', (e) => {
                         reportForm.reset();
                         document.getElementById('dashpoint_id').value = targetPersistence;
 
-                        btnGeo.innerText = "[ SYNC LIVE GPS ]";
+                        btnGeo.innerText = "SYNC LIVE GPS";
                         btnGeo.style.color = ""; // Reset inline CSS
                     } else {
                         feedbackStatus.innerHTML = `<div class="alert alert-error">[-] Upload rejected: ${result.message}</div>`;
