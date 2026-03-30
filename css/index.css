@@ -364,6 +364,81 @@ body, html {
   display: none !important;
 }
 
+/* FAB Styling */
+.fab {
+  position: fixed;
+  bottom: calc(5rem + env(safe-area-inset-bottom)); /* higher to avoid map terms & cookie */
+  right: 1.5rem;
+  padding: 0.8rem 1.2rem;
+  border-radius: 50px;
+  background: var(--accent-amber);
+  color: #000;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  text-decoration: none;
+  z-index: 900;
+  box-shadow: 0 4px 15px var(--accent-amber-glow);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.fab:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.6);
+}
+
+/* Mobile Nav Drawer Global Styles (Hidden by right coordinate) */
+#mobile-nav-drawer {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 250px;
+  height: 100vh;
+  z-index: 1000;
+  background: var(--bg-glass-heavy);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-left: var(--border-neon);
+  box-shadow: -10px 0 30px rgba(0,0,0,0.8);
+  transition: right 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  pointer-events: auto;
+}
+
+#mobile-nav-drawer.open {
+  right: 0;
+}
+
+#mobile-close-btn {
+  align-self: flex-end;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  margin-bottom: 2rem;
+  line-height: 1;
+  padding: 0;
+}
+
+#mobile-close-btn:hover {
+  color: var(--accent-red);
+}
+
+.mobile-nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.mobile-nav-links .nav-link {
+  font-size: 1.1rem;
+}
+
 /* Responsive Overrides (Mobile First) */
 @media (max-width: 768px) {
   #desktop-links {
@@ -374,15 +449,46 @@ body, html {
     display: block; /* Reveal Hamburger natively */
   }
   
+  #top-nav {
+    padding: 0.5rem 1rem;
+  }
   
-  #app-content {
-    max-width: 100%;
-    padding: 1rem;
+  .logo {
+    font-size: 1.1rem;
+  }
+  
+  .version-tag {
+    display: none;
+  }
+  
+  #header-game-id {
+    max-width: none;
+    font-size: 0.75rem;
+    margin-left: 6px;
+    white-space: normal;
   }
 
-  #header-game-id {
-    max-width: 140px; /* Constrain long titles strictly safely on mobile grids */
-    font-size: 0.65rem;
-    margin-left: 8px;
+  #app-content {
+    max-width: 100%;
+    padding: 0;
+    position: relative; /* Anchor for absolute sheet */
+  }
+  
+  .template-view {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    border-radius: 16px 16px 0 0;
+    padding: 1.5rem 1rem calc(1.5rem + env(safe-area-inset-bottom));
+    animation: slideUpBottom 0.3s ease-out forwards;
+    max-height: 85vh;
+    overflow-y: auto;
+    border-bottom: none;
+  }
+
+  @keyframes slideUpBottom {
+    from { opacity: 0; transform: translateY(100%); }
+    to { opacity: 1; transform: translateY(0); }
   }
 }

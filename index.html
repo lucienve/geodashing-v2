@@ -65,6 +65,20 @@
             <button id="mobile-menu-btn" class="btn btn-outline glow-box">☰</button>
         </nav>
 
+        <!-- Mobile Navigation Drawer -->
+        <div id="mobile-nav-drawer" class="glass-panel">
+            <button id="mobile-close-btn" class="btn btn-outline glow-box">&times;</button>
+            <div class="mobile-nav-links">
+                <a href="#home" class="nav-link active">Map</a>
+                <a href="#leaderboard" class="nav-link">Leaderboard</a>
+                <a href="#about" class="nav-link">About</a>
+                <a href="#how-to" class="nav-link">How to Play</a>
+                <a href="#contact" class="nav-link">Contact</a>
+                <a href="#search" class="nav-link">Export Data</a>
+                <a href="#login" id="mobile-nav-auth-btn" class="nav-link highlight">Player login</a>
+            </div>
+        </div>
+
         <!-- Layer 2: The Router Content Injector.
              When the URL hash changes (e.g., `#report`), app.js dynamically fetches 
              the template and places the HTML into this container. -->
@@ -81,7 +95,7 @@
 
     <!-- Cookie Consent Banner -->
     <div id="cookie-consent-banner" class="d-none"
-        style="position:fixed; bottom:0; left:0; right:0; background:var(--bg-panel); border-top:1px solid var(--accent-amber); padding:1rem; z-index:9999; display:flex; justify-content:space-between; align-items:center;">
+        style="position:fixed; bottom:calc(1rem + env(safe-area-inset-bottom)); left:1rem; right:1rem; background:rgba(15, 15, 15, 0.98); border:1px solid var(--accent-amber); border-radius:8px; padding:1rem; z-index:9999; display:flex; justify-content:space-between; align-items:center; box-shadow:0 10px 30px rgba(0,0,0,0.9);">
         <div style="font-size:0.9rem; color:var(--text-main); font-family:var(--font-mono);">
             We use Google Analytics to learn how players find and use the site, and to improve the Geodashing
             experience. Do you accept diagnostic cookies?

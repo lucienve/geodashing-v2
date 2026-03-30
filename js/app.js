@@ -56,8 +56,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const contentDiv = document.getElementById('app-content');
     const navLinks = document.querySelectorAll('.nav-link');
 
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const mobileNavDrawer = document.getElementById('mobile-nav-drawer');
+    const mobileCloseBtn = document.getElementById('mobile-close-btn');
+
+    if (mobileMenuBtn && mobileNavDrawer) {
+        mobileMenuBtn.addEventListener('click', () => {
+            mobileNavDrawer.classList.add('open');
+        });
+    }
+
+    if (mobileCloseBtn && mobileNavDrawer) {
+        mobileCloseBtn.addEventListener('click', () => {
+            mobileNavDrawer.classList.remove('open');
+        });
+    }
+
     // 2. Bounding the SPA state natively
     async function loadRoute() {
+        if (mobileNavDrawer) {
+            mobileNavDrawer.classList.remove('open');
+        }
         const fullHash = window.location.hash || '#home';
 
         if (window.trackPageview) {
@@ -142,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 5. Native Javascript Session Bootstrapper dynamically driving the Nav Auth state securely
     window.updateAuthState = async function () {
-        const authBtn = document.getElementById('nav-auth-btn');
+        const authBtns = [document.getElementById('nav-auth-btn'), document.getElementById('mobile-nav-auth-btn')].filter(Boolean);
         const fab = document.getElementById('fab-report');
 
         try {
@@ -150,38 +169,39 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.status === 'success') {
                 window.currentUser = res; // Bind the full Payload (including is_verified) globally
                 if (res.is_verified === 0) {
-                    // Force the Nav Auth button to direct unverified states to the login panel
-                    authBtn.innerText = `UNVERIFIED [CLICK TO RESEND]`;
-                    authBtn.href = '#login';
-                    authBtn.style.color = "var(--accent-amber)";
-                    
-                    // Natively detaching previous listeners to prevent stack duplications
-                    const newBtn = authBtn.cloneNode(true);
-                    authBtn.replaceWith(newBtn);
+                    authBtns.forEach(btn => {
+                        btn.innerText = `UNVERIFIED [CLICK TO RESEND]`;
+                        btn.href = '#login';
+                        btn.style.color = "var(--accent-amber)";
+                        const newBtn = btn.cloneNode(true);
+                        btn.replaceWith(newBtn);
+                    });
                 } else {
-                    // Standard authorized routing
-                    authBtn.innerText = `LOGOUT [${res.username}]`;
-                    authBtn.href = '#';
+                    authBtns.forEach(btn => {
+                        btn.innerText = `LOGOUT [${res.username}]`;
+                        btn.href = '#';
 
-                    // Natively detaching previous listeners to prevent stack duplications
-                    const newBtn = authBtn.cloneNode(true);
-                    authBtn.replaceWith(newBtn);
+                        const newBtn = btn.cloneNode(true);
+                        btn.replaceWith(newBtn);
 
-                    newBtn.addEventListener('click', async (e) => {
-                        e.preventDefault();
-                        await API.logout();
-                        window.location.reload(); // Physical purge resets the SPA safely
+                        newBtn.addEventListener('click', async (e) => {
+                            e.preventDefault();
+                            await API.logout();
+                            window.location.reload(); 
+                        });
                     });
                 }
 
                 if (fab) fab.classList.remove('d-none');
             } else {
                 window.currentUser = null;
-                authBtn.innerText = `Player login`;
-                authBtn.href = '#login';
+                authBtns.forEach(btn => {
+                    btn.innerText = `Player login`;
+                    btn.href = '#login';
 
-                const newBtn = authBtn.cloneNode(true);
-                authBtn.replaceWith(newBtn);
+                    const newBtn = btn.cloneNode(true);
+                    btn.replaceWith(newBtn);
+                });
 
                 if (fab) fab.classList.add('d-none');
 
