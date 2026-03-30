@@ -7,8 +7,29 @@ import numpy as np
 import geopandas as gpd
 from datetime import datetime
 from shapely.geometry import Point
-from typing import List
+from typing import List, Set, Tuple
 import mysql.connector
+
+def load_blocklist(bad_words_path: str) -> set:
+    if not os.path.exists(bad_words_path):
+        return set()
+    with open(bad_words_path, 'r') as f:
+        return set(line.strip().upper() for line in f if len(line.strip()) == 4)
+
+def int_to_letters(index: int) -> str:
+    result = []
+    for _ in range(4):
+        result.append(chr(65 + (index % 26)))
+        index //= 26
+    return "".join(reversed(result))
+
+def generate_valid_sequence_id(start_index: int, blocklist: set) -> tuple:
+    current = start_index
+    while True:
+        seq = int_to_letters(current)
+        if seq not in blocklist:
+            return seq, current + 1
+        current += 1
 
 def get_db_connection(config_path: str) -> mysql.connector.connection.MySQLConnection:
     """Establishes a connection to the MySQL database securely via config.ini.
@@ -48,13 +69,14 @@ def get_db_connection(config_path: str) -> mysql.connector.connection.MySQLConne
     except mysql.connector.Error as e:
         raise Exception(f"Database Connection Error: {e}")
 
-def seed_database(points: List[Point], config_path: str, game_title: str) -> None:
+def seed_database(points: List[Point], config_path: str, game_title: str, bad_words_path: str) -> None:
     """Seeds the newly generated Dashpoints into tracking tables along with a new active Game state.
 
     Args:
         points (List[Point]): Mathematically verified Point geometries to insert.
         config_path (str): The path to the PHP backend config.ini.
         game_title (str): Brief descriptive title of the game.
+        bad_words_path (str): Path to the profanity filter blocklist.
         
     Raises:
         Exception: General sql error handling wrapper for safe failure.
@@ -84,7 +106,11 @@ def seed_database(points: List[Point], config_path: str, game_title: str) -> Non
         game_id = cursor.lastrowid
         
         # 4. Insert all valid dashpoints
-        print(f"Bulk inserting {len(points)} Dashpoints for Game ID format GD{game_id:02d}...")
+        print(f"Bulk inserting {len(points)} Dashpoints for Game ID format GD{game_id:03d}...")
+        
+        # Load profanity blocklist
+        blocklist = load_blocklist(bad_words_path)
+        current_seq_index = 0
         
         # Format the parameters for chunked execution
         # Process in batches of 5000 to prevent overwhelming MySQL's statement packet limits
@@ -97,8 +123,8 @@ def seed_database(points: List[Point], config_path: str, game_title: str) -> Non
         for i in range(0, len(points), batch_size):
             batch_data = []
             for j, point in enumerate(points[i:i+batch_size]):
-                point_index = i + j + 1
-                dashpoint_id = f"GD{game_id:02d}-{point_index:05d}"
+                seq_str, current_seq_index = generate_valid_sequence_id(current_seq_index, blocklist)
+                dashpoint_id = f"GD{game_id:03d}-{seq_str}"
                 # MySQL 8 SRID 4326 strictly enforces (Latitude Longitude) coordinate ordering
                 wkt_string = f"POINT({point.y} {point.x})"
                 batch_data.append((dashpoint_id, game_id, wkt_string))
@@ -220,6 +246,7 @@ if __name__ == "__main__":
     zip_path = os.path.join(current_dir, '../../data/ne_10m_land.zip')
     lakes_zip = os.path.join(current_dir, '../../data/ne_10m_lakes.zip')
     config_path = os.path.join(current_dir, '../config.ini')
+    bad_words_path = os.path.join(current_dir, '../../data/bad_words.txt')
     
     try:
         # 1. Generate Points dynamically bound to the user's explicit CLI count
@@ -228,7 +255,7 @@ if __name__ == "__main__":
         points = generate_valid_dashpoints(target_count=target, land_zip_path=zip_path, lakes_zip_path=lakes_zip)
         
         # 2. Upload to MySQL
-        seed_database(points, config_path, args.title)
+        seed_database(points, config_path, args.title, bad_words_path)
         
     except Exception as e:
         print(f"\nExecution Error: {e}")

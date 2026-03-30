@@ -138,13 +138,13 @@ class MediaServiceTest extends TestCase
         $fakeObject->expects($this->once())->method('exists')->willReturn(true);
         $fakeObject->expects($this->once())->method('delete');
         
-        // Assert that exactly 'visits/GD01/my_pic.jpg' is passed natively to the Google Bucket Object request
+        // Assert that exactly 'visits/GD001/my_pic.jpg' is passed natively to the Google Bucket Object request
         $this->bucketMock->expects($this->once())
              ->method('object')
-             ->with('visits/GD01/my_pic.jpg')
+             ->with('visits/GD001/my_pic.jpg')
              ->willReturn($fakeObject);
 
-        $urlsToDelete = ['https://storage.googleapis.com/geodashing-test-blobs/visits/GD01/my_pic.jpg'];
+        $urlsToDelete = ['https://storage.googleapis.com/geodashing-test-blobs/visits/GD001/my_pic.jpg'];
         $service->deletePhotos($urlsToDelete);
     }
 }

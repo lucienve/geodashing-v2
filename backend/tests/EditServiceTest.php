@@ -40,7 +40,7 @@ class EditServiceTest extends TestCase
         $stmtMock->method('fetch')->willReturn(false); // Simulates standard DB fail natively
         $this->pdoMock->method('prepare')->willReturn($stmtMock);
 
-        $result = $this->editService->processEdit(1, 'GD01-999', 'Hacking attempt', '[]');
+        $result = $this->editService->processEdit(1, 'GD001-AAAA', 'Hacking attempt', '[]');
 
         $this->assertEquals("error", $result['status']);
         $this->assertEquals(403, $result['code']);
@@ -79,7 +79,7 @@ class EditServiceTest extends TestCase
              ->method('deletePhotos')
              ->with(['https://storage.googleapis.com/b/historic_1.jpg']);
 
-        $result = $this->editService->processEdit(1, 'GD01-001', 'Changed notes.', $keptRaw, null);
+        $result = $this->editService->processEdit(1, 'GD001-AAAB', 'Changed notes.', $keptRaw, null);
 
         $this->assertEquals("success", $result['status']);
         // Assert the returned mutated array natively ONLY has `historic_2`!
@@ -127,7 +127,7 @@ class EditServiceTest extends TestCase
              ]);
 
         // Submit the mathematical mutation!
-        $result = $this->editService->processEdit(1, 'GD01-001', 'Updating photos.', json_encode($keptStrings), $newFilesMock);
+        $result = $this->editService->processEdit(1, 'GD001-AAAB', 'Updating photos.', json_encode($keptStrings), $newFilesMock);
 
         // It should rigidly abort completely mapping a 400!
         $this->assertEquals("error", $result['status']);

@@ -18,7 +18,7 @@ class DashpointServiceTest extends TestCase
 
     public function testGetDashpointDetailsSuccess()
     {
-        $dashpointId = 'GD01-1A2B';
+        $dashpointId = 'GD001-AAAA';
 
         // 1. Mock the first query pulling target metadata (Location)
         $stmtMock1 = $this->createMock(PDOStatement::class);
@@ -67,7 +67,7 @@ class DashpointServiceTest extends TestCase
         $this->assertEquals(39.8283, $result['lat']);
         $this->assertCount(1, $result['visits']);
         $this->assertEquals('LucienDashes', $result['visits'][0]['username']);
-        
+
         // Ensure the JSON parser successfully mapped the raw string back into a PHP Array natively
         $this->assertIsArray($result['visits'][0]['photos']);
         $this->assertEquals('/uploads/pic1.jpg', $result['visits'][0]['photos'][0]);
@@ -75,13 +75,13 @@ class DashpointServiceTest extends TestCase
 
     public function testGetDashpointDetailsNotFound()
     {
-        $dashpointId = 'GD01-GHOST';
+        $dashpointId = 'GD001-GHOS';
 
         $stmtMock1 = $this->createMock(PDOStatement::class);
         $stmtMock1->expects($this->once())
             ->method('execute')
             ->willReturn(true);
-            
+
         // Simulating the PDO engine returning `false` natively when a Dashpoint lacks physical mapping
         $stmtMock1->expects($this->once())
             ->method('fetch')

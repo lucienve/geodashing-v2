@@ -36,7 +36,7 @@ class ReportServiceTest extends TestCase
         $userMock->method('fetch')->willReturn(['is_verified' => 0]);
         $this->pdoMock->method('prepare')->willReturn($userMock);
 
-        $result = $this->reportService->processVisit(1, 'GD01-99999', 40.0, -75.0);
+        $result = $this->reportService->processVisit(1, 'GD001-XXXX', 40.0, -75.0);
 
         $this->assertEquals('error', $result['status']);
         $this->assertEquals('Account not verified. Please check your email to activate your account before logging Dashpoints.', $result['message']);
@@ -58,7 +58,7 @@ class ReportServiceTest extends TestCase
             ->method('prepare')
             ->willReturnOnConsecutiveCalls($userMock, $distMock);
 
-        $result = $this->reportService->processVisit(1, 'GD01-99999', 40.0, -75.0);
+        $result = $this->reportService->processVisit(1, 'GD001-XXXX', 40.0, -75.0);
 
         $this->assertEquals('error', $result['status']);
         $this->assertEquals('Invalid Dashpoint ID.', $result['message']);
@@ -81,7 +81,7 @@ class ReportServiceTest extends TestCase
             ->method('prepare')
             ->willReturnOnConsecutiveCalls($userMock, $distMock);
 
-        $result = $this->reportService->processVisit(1, 'GD01-00001', 40.0, -75.0);
+        $result = $this->reportService->processVisit(1, 'GD001-AAAA', 40.0, -75.0);
 
         $this->assertEquals('error', $result['status']);
         $this->assertStringContainsString('Visit rejected', $result['message']);
@@ -122,7 +122,7 @@ class ReportServiceTest extends TestCase
             ->method('prepare')
             ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock);
 
-        $result = $this->reportService->processVisit(1, 'GD01-00001', 40.0, -75.0);
+        $result = $this->reportService->processVisit(1, 'GD001-AAAA', 40.0, -75.0);
 
         $this->assertEquals('success', $result['status']);
         $this->assertEquals(45, $result['distance']);
