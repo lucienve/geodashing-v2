@@ -162,7 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // 5. Native Javascript Session Bootstrapper dynamically driving the Nav Auth state securely
     window.updateAuthState = async function () {
         const authBtns = [document.getElementById('nav-auth-btn'), document.getElementById('mobile-nav-auth-btn')].filter(Boolean);
-        const fab = document.getElementById('fab-report');
 
         try {
             const res = await API.checkSession();
@@ -191,8 +190,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                     });
                 }
-
-                if (fab) fab.classList.remove('d-none');
             } else {
                 window.currentUser = null;
                 authBtns.forEach(btn => {
@@ -202,8 +199,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const newBtn = btn.cloneNode(true);
                     btn.replaceWith(newBtn);
                 });
-
-                if (fab) fab.classList.add('d-none');
 
                 const verifyBanner = document.getElementById('verify-banner');
                 if (verifyBanner) verifyBanner.classList.add('d-none');

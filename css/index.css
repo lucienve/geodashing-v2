@@ -364,31 +364,6 @@ body, html {
   display: none !important;
 }
 
-/* FAB Styling */
-.fab {
-  position: fixed;
-  bottom: calc(5rem + env(safe-area-inset-bottom)); /* higher to avoid map terms & cookie */
-  right: 1.5rem;
-  padding: 0.8rem 1.2rem;
-  border-radius: 50px;
-  background: var(--accent-amber);
-  color: #000;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  text-decoration: none;
-  z-index: 900;
-  box-shadow: 0 4px 15px var(--accent-amber-glow);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.fab:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.6);
-}
-
 /* Mobile Nav Drawer Global Styles (Hidden by right coordinate) */
 #mobile-nav-drawer {
   position: fixed;
