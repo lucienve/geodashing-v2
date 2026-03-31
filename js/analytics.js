@@ -31,7 +31,7 @@ window.initAnalyticsConfig = function () {
     }
 }
 
-window.acceptCookies = function () {
+function acceptCookies() {
     localStorage.setItem('ga_consent', 'granted');
     const banner = document.getElementById('cookie-consent-banner');
     if (banner) banner.parentElement.removeChild(banner);
@@ -43,7 +43,7 @@ window.acceptCookies = function () {
     }
 }
 
-window.denyCookies = function () {
+function denyCookies() {
     localStorage.setItem('ga_consent', 'denied');
     const banner = document.getElementById('cookie-consent-banner');
     if (banner) banner.parentElement.removeChild(banner);
@@ -70,4 +70,14 @@ window.trackEvent = function (eventName, params = {}) {
 // Kickoff
 document.addEventListener('DOMContentLoaded', () => {
     window.initAnalyticsConfig();
+    
+    const acceptBtn = document.getElementById('btn-accept-cookies');
+    if (acceptBtn) {
+        acceptBtn.addEventListener('click', acceptCookies);
+    }
+    
+    const denyBtn = document.getElementById('btn-deny-cookies');
+    if (denyBtn) {
+        denyBtn.addEventListener('click', denyCookies);
+    }
 });

@@ -87,16 +87,13 @@
     </div>
 
     <!-- Cookie Consent Banner -->
-    <div id="cookie-consent-banner" class="d-none"
-        style="position:fixed; bottom:calc(1rem + env(safe-area-inset-bottom)); left:1rem; right:1rem; background:rgba(15, 15, 15, 0.98); border:1px solid var(--accent-amber); border-radius:8px; padding:1rem; z-index:9999; display:flex; justify-content:space-between; align-items:center; box-shadow:0 10px 30px rgba(0,0,0,0.9);">
-        <div style="font-size:0.9rem; color:var(--text-main); font-family:var(--font-mono);">
+    <div id="cookie-consent-banner" class="d-none cookie-banner">
+        <div class="cookie-text">
             We use minimal analytics to improve your Geodashing experience. Accept diagnostic cookies?
         </div>
-        <div style="display:flex; gap:10px;">
-            <button onclick="window.acceptCookies()" class="btn btn-outline"
-                style="border-color:var(--accent-green); color:var(--accent-green);">ACCEPT</button>
-            <button onclick="window.denyCookies()" class="btn btn-outline"
-                style="border-color:var(--accent-red); color:var(--accent-red);">DENY</button>
+        <div class="cookie-buttons">
+            <button id="btn-accept-cookies" class="btn btn-outline btn-accept">ACCEPT</button>
+            <button id="btn-deny-cookies" class="btn btn-outline btn-deny">DENY</button>
         </div>
     </div>
 
