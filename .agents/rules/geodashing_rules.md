@@ -1,32 +1,37 @@
-# Development Guidelines
-## Global Rules
-* **No Unrequested Features:** Implement only what is explicitly asked for in the prompt. Do not over-engineer or add "nice-to-have" features unless approved.
-* **Error Handling:** Always include try/except blocks for file I/O, database connections, and external requests. Fail gracefully.
+---
+trigger: always_on
+description: Core constraints, architectural directives, and coding standards for the Geodashing V2 project.
+---
 
-## Backend (Python)
-* **Style:** Strictly adhere to PEP 8 standards.  Use type hints.
-* **Testing:** Write unit tests using `pytest` for all core logic, especially for the geographical distance calculations (Haversine formula) and the 500m water-exclusion logic.
-* **Documentation:** Use clear docstrings (Google style) for all functions and classes.
-* **Dependencies:** Use `pip` and a `requirements.txt` file for dependency management.
-* **Database:** Use the `mysql-connector-python` (or PHP equivalent) driver; do not use an ORM. Use parameterized queries or prepared statements for all MySQL interactions to prevent SQL injection. Do not use raw string interpolation for SQL queries.
+# Geodashing V2 Context & Directives
 
-## Backend (PHP)
-* **Style:** Strictly adhere to PSR standards.
-* **Database:** Use the mysql driver; do not use an ORM. Use prepared statements for all MySQL interactions to prevent SQL injection. Do not use raw string interpolation for SQL queries.
-* **Testing:** Use PHPUnit for unit testing.
-* **Documentation:** Use clear docstrings (PHPDoc style) for all functions and classes.
+You are working on the Geodashing V2 project. You must strictly adhere to these constraints and coding standards at all times to ensure project consistency.
 
-## Software versions
-* Use the following versions of software:
-    * PHP 8.3.6
-    * MySQL 8.4.8
-    * Python 3.12
+## 1. Core Operating Principles
+- **Scope Constriction:** Implement strictly what is explicitly requested. Do not over-engineer solutions or add unrequested "nice-to-have" features.
+- **Resilient Execution:** Always wrap file I/O operations, database queries, and external network/API requests in robust error handling blocks (`try/except` in Python, `try/catch` in JS/PHP). Always fail gracefully.
+- **Security Posture:** Never commit secrets, credentials, or API keys. Hardcode no sensitive data. Credentials must be read from files that are not tracked in .git, or other means to keep them from being exposed in github or source control.
+- **Version Control:** When asked to generate commit messages, mandate the Conventional Commits format (e.g., `feat: [message]`, `fix: [message]`).
 
-## Frontend (Vanilla JS/HTML/CSS)
-* **Frameworks:** Do not introduce React, Vue, or other heavy frameworks. Stick strictly to vanilla JavaScript (ES6+), semantic HTML5, and CSS3.
-* **Performance:** Code must be usable by mobile browsers and desktop browsers alike. Avoid heavy libraries unless there is a compelling reason.
-* **Separation of Concerns:** Keep HTML, CSS, and JS in separate files. Do not use inline styles or inline event handlers.
+## 2. Infrastructure Target Versions
+Ensure all code and syntax is explicitly compatible with the following versions:
+- **PHP:** `8.3.6`
+- **MySQL:** `8.4.8`
+- **Python:** `3.12`
 
-## Git & Version Control
-* **Commit Messages:** If asked to generate a commit message, use the Conventional Commits format (e.g., `feat: add distance calculation logic`, `fix: correct tie-breaking query`).
-* **Secrets:** Do not commit secrets, API keys, or sensitive credentials to version control. Use `.env` files for local development configuration and ensure they are added to `.gitignore`.
+## 3. Backend Directives: Python
+- **Syntax / Style:** Strictly follow PEP 8. Type hints are absolutely mandatory for all function signatures and complex variables.
+- **Documentation:** Use Google-style docstrings for all modules, classes, and exposed functions.
+- **Testing:** Use `pytest`. Test core logic rigorously.
+- **Dependencies:** Manage dependencies using standard `pip` with a virtual environment (venv) and maintain an up-to-date `requirements.txt`.
+- **Database Rules:** Connect using `mysql-connector-python`. **Do not use an ORM**. You must use strictly parameterized queries / prepared statements for all database interactions. String interpolation or concatenation for SQL queries is strictly forbidden to prevent SQL injections.
+
+## 4. Backend Directives: PHP
+- **Documentation:** Utilize clear PHPDoc-style block comments (`/** ... */`) for functions, classes, and properties.
+- **Testing:** Employ `PHPUnit` for all backend unit testing.
+- **Database Rules:** Connect using the native MySQL driver (e.g. PDO). **Do not use an ORM**. You must use prepared statements for all database interactions. Raw string interpolation for SQL queries is strictly forbidden.
+
+## 5. Frontend & UI Directives
+- **Stack Limitations:** Stick strictly to Vanilla JavaScript (ES6+), semantic HTML5, and vanilla CSS3. **Do not use React, Vue, Svelte, or any heavy frontend frameworks.**
+- **Responsiveness:** Ensure layouts are highly responsive and accessible on both mobile and desktop. Refrain from importing heavy external JS/CSS dependencies unless explicitly approved by the user.
+- **Separation of Concerns:** HTML, CSS, and JS logic must be completely decoupled into separate files. Inline styles (`style="..."`) and inline event handlers (`onclick="..."`) are strictly prohibited in the markup.
