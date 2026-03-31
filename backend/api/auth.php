@@ -176,6 +176,10 @@ class AuthService
             return ["status" => "error", "message" => "All fields are required"];
         }
 
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return ["status" => "error", "message" => "Invalid email format. Please provide a structurally valid email address."];
+        }
+
         // Utilizing robust underlying native algorithm (bcrypt currently via PASSWORD_DEFAULT)
         $hash = password_hash($password, PASSWORD_DEFAULT);
 
