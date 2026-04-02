@@ -37,9 +37,5 @@ data/
 # AI Assistant & Tool Configuration
 .gemini/
 .antigravity/
-.agents/
-.agent/
-_agents/
-_agent/
 .cursorignore
 .cursorindexingignore
