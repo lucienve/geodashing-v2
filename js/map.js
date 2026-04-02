@@ -89,12 +89,40 @@ window.initMap = function () {
     // 3. Optional Geographic Snapping Routine
     // Request user location dropping them perfectly into their active regional gaming sector
     if (navigator.geolocation) {
+        let userLocationMarker = null;
+        
+        // Google Maps style blue dot SVG for current location
+        const userLocationWrapper = document.createElement("div");
+        userLocationWrapper.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" style="filter: drop-shadow(0px 0px 4px rgba(0,0,0,0.4));">
+                <circle cx="12" cy="12" r="10" fill="rgba(66, 133, 244, 0.3)" />
+                <circle cx="12" cy="12" r="6" fill="#4285F4" stroke="#ffffff" stroke-width="2"/>
+            </svg>
+        `;
+
+        // Center map initially
         navigator.geolocation.getCurrentPosition((position) => {
             map.setCenter({ lat: position.coords.latitude, lng: position.coords.longitude });
             map.setZoom(11); // Snap dynamically tightly matching typical hunting zones implicitly
         }, () => {
             console.log("Geolocation mapping completely refused or unavailable on this terminal.");
         });
+
+        // Continuously update user marker
+        navigator.geolocation.watchPosition((position) => {
+            const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
+            if (!userLocationMarker) {
+                userLocationMarker = new google.maps.marker.AdvancedMarkerElement({
+                    map: map,
+                    position: pos,
+                    content: userLocationWrapper,
+                    title: "Your Location",
+                    zIndex: 99999
+                });
+            } else {
+                userLocationMarker.position = pos;
+            }
+        }, null, { enableHighAccuracy: true });
 
         // Add Custom "My Location" Button mapped securely to the Google Control Position array natively
         const locationButton = document.createElement("button");
