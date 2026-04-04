@@ -28,7 +28,7 @@ Ensure all code and syntax is explicitly compatible with the following versions:
 
 ## 4. Backend Directives: PHP
 - **Documentation:** Utilize clear PHPDoc-style block comments (`/** ... */`) for functions, classes, and properties.
-- **Testing:** Employ `PHPUnit` for all backend unit testing.
+- **Testing:** Employ `PHPUnit` for all backend unit testing. **You MUST put PHP test files strictly within the `backend/tests/` directory**, and mirror the logical file structure of the classes they test. Do NOT create a `tests/` directory at the project root.
 - **Dependencies:** Use 'composer' for installing dependences.  Make sure to separate development and production requirements.
 - **Database Rules:** Connect using the native MySQL driver (e.g. PDO). **Do not use an ORM**. You must use prepared statements for all database interactions. Raw string interpolation for SQL queries is strictly forbidden.
 

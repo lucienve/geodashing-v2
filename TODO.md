@@ -3,8 +3,6 @@
 This document serves as a high-level backlog for features and architectural expansions.
 
 ### 1. User Profiles & Historical Data
-*   **Persistent Profiles**: Build a `#profile` route that displays a specific user's scores and stats across all games played.
-*   **Past Game Scores**: Aggregate total lifetime points, number of Dashpoints reached, and all-time ranking.
 *   **Trophy Cabinet**: (Optional) Award digital badges for milestones (e.g. "First 100 Points" or "Dashed in 3 Countries").
 
 ### 2. Team Play Architecture

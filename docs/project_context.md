@@ -16,6 +16,8 @@ The application allows users to participate in global geographic games where the
   - Account integrity ensures login requirements for point-logging and log modification.
 - **UI/UX Directives**: 
   - Implementation requires rich aesthetics prioritizing strong responsiveness and mobile-first logic. Includes native mobile photo uploads, responsive layouts, GPS syncing, Google Maps `AdvancedMarkerElement`, and marker clustering.
+- **Testing Constraints**:
+  - PHPUnit test files must exclusively live in `backend/tests/` and mirror the structure of the classes they test, rather than in the project root.
 
 ## Detailed Milestones & Implementation History
 
@@ -38,8 +40,13 @@ The application allows users to participate in global geographic games where the
 - Implemented core exploratory features: marker clustering at high zoom levels, geographic centering controls, dynamic color styling for visited dashpoints, and interactive layer toggling.
 - Iterated heavily for mobile user experiences, trimming redundancies like extra form buttons, and perfecting GPS coordinate syncing.
 
+### 5. Historical Data & User Profiles
+- Implemented immutability controls ensuring logs and scoring for completed games are strictly locked on the backend utilizing native SQL JOIN checks.
+- Constructed a global UI paradigm mapping past games to global states allowing the user to context-switch effortlessly between historical snapshots over the entire frontend (Map, Leaderboard).
+- Constructed dynamic `#profile` single page architecture, aggregating total lifetime points, dashpoints accessed, and a complete ledger of previous historical games.
+
 ## Current Plan / Roadmap (Aggregated)
-1. **User Profiles**: Expand the API to track and present persistent user profiles, historical aggregated game scores, and a 'Trophy Cabinet' for milestones.
+1. **User Profiles**: Build a 'Trophy Cabinet' for milestones.
 2. **Team Play Ecosystem**: 
    - Construct services for Team Creation/Joining. 
    - Restructure UI (`LeaderboardService.php`) and templates to dynamically support toggling between `SOLO` and `TEAM` rankings.
