@@ -38,6 +38,12 @@ window.escapeHTML = function(str) {
 
 
 document.addEventListener('DOMContentLoaded', () => {
+    // 0. Global Game State Binding for Historical Tracking!
+    window.currentGameContext = {
+        id: null,
+        is_active: true
+    };
+
     // 1. Explicit Routing Logic Dictionary
     const routes = {
         '': null,
@@ -48,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         '#edit': 'templates/edit.html',
         '#search': 'templates/search.html',
         '#leaderboard': 'templates/leaderboard.html',
+        '#profile': 'templates/profile.html',
         '#about': 'templates/about.html',
         '#how-to': 'templates/how-to.html',
         '#contact': 'templates/contact.html'
@@ -55,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const contentDiv = document.getElementById('app-content');
     const navLinks = document.querySelectorAll('.nav-link');
+    const gameSelector = document.getElementById('game-selector');
 
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
     const mobileNavDrawer = document.getElementById('mobile-nav-drawer');
@@ -144,20 +152,54 @@ document.addEventListener('DOMContentLoaded', () => {
     loadRoute();
 
     // 4. One-time Global Data Boot: Pings the active game parameters explicitly into the Header Navigation Bar
-    fetch('backend/api/game.php')
-        .then(res => res.json())
-        .then(json => {
-            if (json.status === 'success') {
-                const headerGameId = document.getElementById('header-game-id');
-                if (headerGameId) {
-                    const d = new Date(json.data.start_time);
-                    const monthYear = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                    const titleStr = json.data.title ? `: ${json.data.title}` : '';
-                    headerGameId.innerText = `Game ${json.data.game_id}${titleStr} (${monthYear})`;
-                }
+    API.getGames().then(json => {
+        if (json.status === 'success' && json.data.length > 0) {
+            // Find Active Game natively
+            const activeGame = json.data.find(g => g.is_active == 1) || json.data[0];
+            
+            // Sync the Global App Context
+            window.currentGameContext = {
+                id: activeGame.id,
+                is_active: activeGame.is_active == 1
+            };
+
+            // Populate the Dropdown natively
+            if (gameSelector) {
+                gameSelector.innerHTML = '';
+                json.data.forEach(game => {
+                    const d = new Date(game.start_time);
+                    const monthYear = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                    const option = document.createElement('option');
+                    option.value = game.id;
+                    option.dataset.isActive = game.is_active;
+                    option.dataset.title = game.title;
+                    
+                    const titleStr = game.title ? `: ${game.title}` : '';
+                    option.innerText = `Game ${game.id}${titleStr} (${monthYear})`;
+                    
+                    if (game.id === activeGame.id) {
+                        option.selected = true;
+                    }
+                    gameSelector.appendChild(option);
+                });
+
+                // Bind the Context Switching Handler
+                gameSelector.addEventListener('change', (e) => {
+                    const selOpt = e.target.options[e.target.selectedIndex];
+                    window.currentGameContext.id = parseInt(e.target.value);
+                    window.currentGameContext.is_active = selOpt.dataset.isActive == '1';
+                    
+                    if (window.location.hash === '' || window.location.hash === '#home') {
+                        if (typeof refreshDashpoints === 'function' && typeof map !== 'undefined' && map) {
+                            google.maps.event.trigger(map, 'idle');
+                        }
+                    } else {
+                        loadRoute();
+                    }
+                });
             }
-        })
-        .catch(err => console.error("Could not fetch active game configuration."));
+        }
+    }).catch(err => console.error("Could not fetch active game configuration."));
 
     // 5. Native Javascript Session Bootstrapper dynamically driving the Nav Auth state securely
     window.updateAuthState = async function () {
@@ -189,6 +231,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             window.location.reload(); 
                         });
                     });
+                    
+                    const profileLink = document.getElementById('nav-profile-link');
+                    if (profileLink) {
+                        profileLink.classList.remove('d-none');
+                        profileLink.href = `#profile?id=${res.user_id}`;
+                    }
                 }
             } else {
                 window.currentUser = null;

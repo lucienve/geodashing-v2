@@ -166,6 +166,9 @@ window.initMap = function () {
  * Fetches dashpoints for the given bounding box
  */
 function refreshDashpoints(bounds) {
+    if (window.currentGameContext && window.currentGameContext.id) {
+        bounds.game_id = window.currentGameContext.id;
+    }
     const query = new URLSearchParams(bounds).toString();
 
     // Dynamically pinging the backend routing through the Apache /api/ structure securely

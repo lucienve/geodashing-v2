@@ -40,9 +40,11 @@
 
         <!-- Top Navigation -->
         <nav id="top-nav" class="glass-panel">
-            <h1 class="logo glow-text">
+            <h1 class="logo glow-text" style="display:inline-flex; align-items:center;">
                 GEODASHING<span class="version-tag">.v2</span>
-                <span id="header-game-id"></span>
+                <select id="game-selector" title="Select Game Context" style="margin-left:1rem; font-size:1.1rem; border:none; border-bottom:1px dashed var(--accent-amber); background:transparent; color:var(--accent-amber); appearance: none; outline: none; cursor:pointer; font-family:var(--font-mono); font-weight:600; padding-bottom:2px;">
+                    <option value="">[ LOADING SYSTEM... ]</option>
+                </select>
             </h1>
 
             <div id="desktop-links" class="nav-links">
@@ -58,6 +60,8 @@
                         <a href="#search" class="nav-link">Export Game Data</a>
                     </div>
                 </div>
+                <!-- Profile Link automatically injected inside the auth bootstrapper but mapping early -->
+                <a href="#profile" id="nav-profile-link" class="nav-link d-none">PROFILE</a>
                 <a href="#login" id="nav-auth-btn" class="nav-link highlight">Player login</a>
             </div>
 

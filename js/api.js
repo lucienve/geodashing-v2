@@ -56,6 +56,39 @@ const API = {
     },
 
     /**
+     * Get list of historical games
+     */
+    getGames: async function() {
+        try {
+            const res = await fetch('backend/api/games.php', {
+                method: 'GET',
+                headers: this.getHeaders()
+            });
+            return await res.json();
+        } catch (e) {
+            console.error(e);
+            return { status: 'error', message: 'API Network Timeout!' };
+        }
+    },
+
+    /**
+     * Get user profile details and historical stats
+     * @param {number} userId
+     */
+    getProfile: async function(userId) {
+        try {
+            const res = await fetch(`backend/api/profile.php?id=${userId}`, {
+                method: 'GET',
+                headers: this.getHeaders()
+            });
+            return await res.json();
+        } catch (e) {
+            console.error(e);
+            return { status: 'error', message: 'API Network Timeout!' };
+        }
+    },
+
+    /**
      * Authenticate user session
      * @param {string} username 
      * @param {string} password 

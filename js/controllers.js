@@ -55,10 +55,14 @@ document.addEventListener('routeLoaded', (e) => {
 
                     // Evaluate Ownership & Authentication dynamically wrapping the Primary Button State
                     if (btnLog) {
-                        API.checkSession().then(res => {
-                            if (res.status === 'success') {
-                                // 1. Scan the Ledger for an exact Username match proving physical ownership
-                                const userOwnedVisit = dp.visits.find(v => v.username === res.username);
+                        if (window.currentGameContext && !window.currentGameContext.is_active) {
+                            // Immutability: Purely hide actions natively representing the read-only state.
+                            btnLog.style.display = 'none';
+                        } else {
+                            API.checkSession().then(res => {
+                                if (res.status === 'success') {
+                                    // 1. Scan the Ledger for an exact Username match proving physical ownership
+                                    const userOwnedVisit = dp.visits.find(v => v.username === res.username);
                                 if (userOwnedVisit) {
                                     btnLog.innerText = "EDIT LOG";
                                     btnLog.style.background = "var(--accent-amber)";
@@ -78,6 +82,7 @@ document.addEventListener('routeLoaded', (e) => {
                                 btnLog.addEventListener('click', () => { window.location.hash = `#login`; });
                             }
                         });
+                        }
                     }
 
                     // Generate the beautiful HTML5 Ledgers directly from MySQL bounds
@@ -629,6 +634,96 @@ document.addEventListener('routeLoaded', (e) => {
     }
 
     // ==========================================================
+    // Controller: USER PROFILE (#profile)
+    // ==========================================================
+    if (route.startsWith('#profile')) {
+        let profileId = null;
+        if (route.includes('?')) {
+            const hashParams = new URLSearchParams(route.split('?')[1]);
+            profileId = hashParams.get('id');
+        }
+
+        const container = document.getElementById('profile-container');
+        if (!container) return;
+
+        if (!profileId) {
+            container.innerHTML = `<div class="alert alert-error">[-] Profile ID missing.</div>`;
+            return;
+        }
+
+        API.getProfile(profileId).then(json => {
+            if (json.status !== 'success') {
+                container.innerHTML = `<div class="alert alert-error">[-] Error loading profile data.</div>`;
+                return;
+            }
+
+            const data = json.data;
+            const u = data.user;
+            
+            // Calculate total finds client-side from games history array
+            let totalFinds = 0;
+            if (data.games && data.games.length > 0) {
+                totalFinds = data.games.reduce((acc, g) => acc + (g.visits ? g.visits.length : 0), 0);
+            }
+
+            let html = `
+                <div class="dash-block" style="margin-bottom: 2rem; border-top: 1px dashed var(--accent-green);">
+                    <h3 style="color:var(--accent-amber); font-size:1.8rem; margin-bottom:0.5rem; text-transform:uppercase;">${window.escapeHTML(u.username)}</h3>
+                    <div style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">
+                        [ JOINED: ${new Date(u.created_at).toLocaleDateString()} ]
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; border-top:1px dashed var(--text-muted); padding-top:1rem;">
+                        <div><strong style="color:var(--text-main);">TOTAL SCORE:</strong> ${u.lifetime_score} PT</div>
+                        <div><strong style="color:var(--text-main);">LIFETIME CLAIMS:</strong> ${totalFinds}</div>
+                    </div>
+                </div>
+            `;
+
+            if (data.games && data.games.length > 0) {
+                html += `<h4 style="color:var(--text-main); margin-bottom:1rem; text-transform:uppercase;">Historical Activity</h4>`;
+                
+                data.games.forEach(game => {
+                    html += `
+                        <div class="dash-block" style="margin-bottom:1rem; border-left:3px solid var(--accent-amber);">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:1rem;">
+                                <strong style="color:#ddd;">Game ${game.game_id} 
+                                    ${game.game_title ? `- ${window.escapeHTML(game.game_title)}` : ''} 
+                                    ${game.is_active ? `<span style="color:var(--accent-amber); font-size:0.8rem; margin-left:0.5rem;">[ACTIVE]</span>` : ''}
+                                </strong>
+                                <span style="color:var(--accent-green);">${game.game_total_score} PT</span>
+                            </div>
+                            <div style="font-size:0.9rem; color:var(--text-muted); border-top:1px dashed #333; padding-top:0.5rem;">
+                                ${game.game_visits_count} Recorded Logs
+                            </div>
+                            <div style="margin-top:1rem; display:grid; gap:0.5rem;">
+                    `;
+                    
+                    game.visits.forEach((v, index) => {
+                        const logTime = new Date(v.reported_time).toLocaleDateString();
+                        html += `
+                            <a href="#dashpoint?id=${v.dashpoint_id}" class="nav-link" style="display:block; padding:0.5rem; border:1px solid #333; background:rgba(0,0,0,0.3); border-radius:3px;">
+                                <div style="display:flex; justify-content:space-between;">
+                                    <span>${index + 1}. ${v.dashpoint_id}</span>
+                                    <span style="color:var(--accent-green);">+${v.score_awarded}</span>
+                                </div>
+                                <div style="font-size:0.75rem; color:#888; margin-top:0.3rem;">[ LOGGED: ${logTime} ]</div>
+                            </a>
+                        `;
+                    });
+
+                    html += `</div></div>`;
+                });
+            } else {
+                html += `<div style="text-align:center; padding:2rem; border:1px dashed #333; color:var(--text-muted);">[ NO GAME HISTORY FOUND ]</div>`;
+            }
+
+            container.innerHTML = html;
+        }).catch(err => {
+            container.innerHTML = `<div class="alert alert-error">[-] System Offline. Profile unavailable.</div>`;
+        });
+    }
+
+    // ==========================================================
     // Controller: EDIT A VISIT (#edit)
     // ==========================================================
     if (route.startsWith('#edit')) {
@@ -764,8 +859,13 @@ document.addEventListener('routeLoaded', (e) => {
     if (route === '#leaderboard') {
         const tbody = document.getElementById('leaderboard-tbody');
         if (tbody) {
+            let ldParams = '';
+            if (window.currentGameContext && window.currentGameContext.id) {
+                ldParams = `?game_id=${window.currentGameContext.id}`;
+            }
+
             // Ping the JSON endpoint directly mapping the arrays
-            API.getLeaderboard().then(json => {
+            API.getLeaderboard(ldParams).then(json => {
                 if (json.status === 'success') {
                     const data = json.data;
 
