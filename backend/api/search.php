@@ -19,6 +19,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     $s = filter_var($_GET['s'] ?? '', FILTER_VALIDATE_FLOAT);
     $e = filter_var($_GET['e'] ?? '', FILTER_VALIDATE_FLOAT);
     $w = filter_var($_GET['w'] ?? '', FILTER_VALIDATE_FLOAT);
+    $gameId = filter_var($_GET['game_id'] ?? null, FILTER_VALIDATE_INT);
 
     // Fail out safely preventing undefined spatial mapping indexes
     if ($n === false || $s === false || $e === false || $w === false) {
@@ -32,7 +33,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         $service = new SearchService($db);
         
         // Ping MySQL for the cached bounding box mapping securely
-        $points = $service->searchRegion($n, $s, $e, $w);
+        $points = $service->searchRegion($n, $s, $e, $w, $gameId ? $gameId : null);
 
         // JSON block out mapped back to browser for Leaflet/Google Maps parsing natively
         echo json_encode([

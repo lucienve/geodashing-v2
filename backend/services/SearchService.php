@@ -26,20 +26,26 @@ class SearchService
      * @param float $south Minimum Latitude
      * @param float $east  Maximum Longitude
      * @param float $west  Minimum Longitude
+     * @param int|null $gameId Optional historical Game ID
      * @return array Array of indexed geocoordinates and Dashpoint strings.
      * @throws PDOException
      */
-    public function searchRegion(float $north, float $south, float $east, float $west): array
+    public function searchRegion(float $north, float $south, float $east, float $west, ?int $gameId = null): array
     {
-        // 1. Base Query ensuring we only actively process points that belong to the LIVE Game State Month.
+        // 1. Base Query ensuring we actively process points that belong to the specified or LIVE Game State Month.
         $baseQuery = "
             SELECT d.id, ST_X(d.location) AS lat, ST_Y(d.location) AS lon, COUNT(v.id) AS visit_count 
             FROM dashpoints d
             JOIN games g ON d.game_id = g.id
             LEFT JOIN visits v ON d.id = v.dashpoint_id AND v.status = 'approved'
-            WHERE g.is_active = TRUE 
-              AND ST_X(d.location) BETWEEN :south AND :north
+            WHERE ST_X(d.location) BETWEEN :south AND :north
         ";
+        
+        if ($gameId !== null) {
+            $baseQuery .= " AND g.id = :game_id";
+        } else {
+            $baseQuery .= " AND g.is_active = TRUE";
+        }
         
         // 2. International Date Line Router Algorithm
         if ($east < $west) {
@@ -52,12 +58,18 @@ class SearchService
         
         $stmt = $this->db->prepare($sql);
         
-        $stmt->execute([
+        $params = [
             ':south' => $south,
             ':north' => $north,
             ':west' => $west,
             ':east' => $east
-        ]);
+        ];
+        
+        if ($gameId !== null) {
+            $params[':game_id'] = $gameId;
+        }
+        
+        $stmt->execute($params);
         
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
         

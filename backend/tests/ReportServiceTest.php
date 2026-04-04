@@ -75,7 +75,7 @@ class ReportServiceTest extends TestCase
 
         $distMock = $this->createMock(PDOStatement::class);
         // Simulates MySQL ST_Distance_Sphere returning exactly 101 meters
-        $distMock->method('fetch')->willReturn(['distance_meters' => 101.5]); 
+        $distMock->method('fetch')->willReturn(['distance_meters' => 101.5, 'is_active' => 1]); 
         
         $this->pdoMock->expects($this->exactly(2))
             ->method('prepare')
@@ -99,7 +99,7 @@ class ReportServiceTest extends TestCase
 
         // 1. Mock the Distance Calculation (Returns 45 meters)
         $distMock = $this->createMock(PDOStatement::class);
-        $distMock->method('fetch')->willReturn(['distance_meters' => 45.0]);
+        $distMock->method('fetch')->willReturn(['distance_meters' => 45.0, 'is_active' => 1]);
         
         // 2. Mock the Duplicate Check (Returns false, meaning no existing visit)
         $duplicateMock = $this->createMock(PDOStatement::class);
@@ -127,5 +127,28 @@ class ReportServiceTest extends TestCase
         $this->assertEquals('success', $result['status']);
         $this->assertEquals(45, $result['distance']);
         $this->assertEquals(3, $result['points']);
+    }
+
+    /**
+     * Verifies that the service rejects logging to an inactive game dashpoint.
+     */
+    #[Test]
+    public function processVisitRejectsInactiveGame()
+    {
+        $userMock = $this->createMock(PDOStatement::class);
+        $userMock->method('fetch')->willReturn(['is_verified' => 1]);
+
+        $distMock = $this->createMock(PDOStatement::class);
+        // Simulates returning 45 meters but belongs to inactive game
+        $distMock->method('fetch')->willReturn(['distance_meters' => 45.0, 'is_active' => 0]); 
+        
+        $this->pdoMock->expects($this->exactly(2))
+            ->method('prepare')
+            ->willReturnOnConsecutiveCalls($userMock, $distMock);
+
+        $result = $this->reportService->processVisit(1, 'GD001-AAAA', 40.0, -75.0);
+
+        $this->assertEquals('error', $result['status']);
+        $this->assertStringContainsString('Target dashpoint belongs to an inactive game', $result['message']);
     }
 }

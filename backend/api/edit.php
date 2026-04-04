@@ -99,12 +99,23 @@ class EditService
         if (!is_array($keptPhotos)) $keptPhotos = [];
 
         // 1. Security Check: Assert Structural Database Ownership natively
-        $stmt = $this->db->prepare("SELECT id, photos FROM visits WHERE user_id = :uid AND dashpoint_id = :dpid LIMIT 1");
+        $stmt = $this->db->prepare("
+            SELECT v.id, v.photos, g.is_active 
+            FROM visits v
+            JOIN dashpoints d ON v.dashpoint_id = d.id
+            JOIN games g ON d.game_id = g.id
+            WHERE v.user_id = :uid AND v.dashpoint_id = :dpid 
+            LIMIT 1
+        ");
         $stmt->execute([':uid' => $userId, ':dpid' => $dashpointId]);
         $visit = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$visit) {
             return ["status" => "error", "message" => "System fault: Modification rejected. You can exclusively edit Dashpoints you have physically captured!", "code" => 403];
+        }
+
+        if (!$visit['is_active']) {
+            return ["status" => "error", "message" => "Modification rejected: Historical game logs are strictly immutable.", "code" => 403];
         }
 
         $visitId = $visit['id'];

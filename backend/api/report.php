@@ -141,9 +141,10 @@ class ReportService
         $wkt = "POINT($lat $lon)";
 
         $distStmt = $this->db->prepare("
-            SELECT ST_Distance_Sphere(location, ST_GeomFromText(:wkt, 4326)) AS distance_meters
-            FROM dashpoints 
-            WHERE id = :id 
+            SELECT ST_Distance_Sphere(d.location, ST_GeomFromText(:wkt, 4326)) AS distance_meters, g.is_active
+            FROM dashpoints d
+            JOIN games g ON d.game_id = g.id
+            WHERE d.id = :id 
             LIMIT 1
         ");
         $distStmt->execute([':wkt' => $wkt, ':id' => $dashpointId]);
@@ -151,6 +152,10 @@ class ReportService
 
         if (!$result) {
             return ["status" => "error", "message" => "Invalid Dashpoint ID."];
+        }
+        
+        if (!$result['is_active']) {
+            return ["status" => "error", "message" => "Target dashpoint belongs to an inactive game. Legacy claims are prohibited!"];
         }
 
         $distance = (int) round($result['distance_meters']);

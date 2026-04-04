@@ -81,4 +81,31 @@ class SearchServiceTest extends TestCase
         $this->assertEquals('GD001-SAMO', $result[1]['id']);
         $this->assertEquals(5, $result[1]['visit_count']);
     }
+
+    /**
+     * Verifies that injecting an explicit Game ID natively overrides the is_active mapping
+     * correctly binding historical boundaries directly to the target configuration.
+     */
+    #[Test]
+    public function processesHistoricalGameIdFilterNatively()
+    {
+        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock->method('fetchAll')->willReturn([
+            ['id' => 'GD001-XXXX', 'lat' => 45.0, 'lon' => -70.0, 'visit_count' => 3]
+        ]);
+        
+        $this->pdoMock->expects($this->once())
+            ->method('prepare')
+            ->with($this->logicalAnd(
+                 $this->stringContains('g.id = :game_id'),
+                 $this->logicalNot($this->stringContains('g.is_active = TRUE'))
+             ))
+            ->willReturn($stmtMock);
+
+        $result = $this->searchService->searchRegion(50.0, 40.0, -60.0, -80.0, 999);
+
+        $this->assertCount(1, $result);
+        $this->assertEquals('GD001-XXXX', $result[0]['id']);
+        $this->assertEquals(3, $result[0]['visit_count']);
+    }
 }
