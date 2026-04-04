@@ -22,7 +22,15 @@ class AuthServiceTest extends TestCase
     protected function setUp(): void
     {
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->authService = new AuthService($this->pdoMock);
+        
+        // Instantiate a partial mock exclusively locking out the physical mail router
+        $this->authService = $this->getMockBuilder(AuthService::class)
+            ->setConstructorArgs([$this->pdoMock])
+            ->onlyMethods(['executeMail'])
+            ->getMock();
+            
+        // Globally nullify side-effects by forcing true return silently
+        $this->authService->method('executeMail')->willReturn(true);
     }
 
     #[Test]

@@ -56,6 +56,7 @@ class EditServiceTest extends TestCase
         $stmtMock = $this->createMock(PDOStatement::class);
         $stmtMock->method('fetch')->willReturn([
             'id' => 10,
+            'is_active' => 1,
             'photos' => json_encode([
                 ['url' => 'https://storage.googleapis.com/b/historic_1.jpg', 'lat' => null, 'lon' => null],
                 ['url' => 'https://storage.googleapis.com/b/historic_2.jpg', 'lat' => null, 'lon' => null]
@@ -66,7 +67,7 @@ class EditServiceTest extends TestCase
         $updateStmtMock->expects($this->once())->method('execute'); // Ensure the DB updates securely
 
         $this->pdoMock->method('prepare')->willReturnCallback(function($sql) use ($stmtMock, $updateStmtMock) {
-            if (strpos($sql, 'SELECT id') !== false) return $stmtMock;
+            if (strpos($sql, 'SELECT v.id') !== false) return $stmtMock;
             if (strpos($sql, 'UPDATE visits') !== false) return $updateStmtMock;
             return $this->createMock(PDOStatement::class);
         });
@@ -105,6 +106,7 @@ class EditServiceTest extends TestCase
         $stmtMock = $this->createMock(PDOStatement::class);
         $stmtMock->method('fetch')->willReturn([
             'id' => 10,
+            'is_active' => 1,
             'photos' => json_encode($existingPhotos)
         ]);
         $this->pdoMock->method('prepare')->willReturn($stmtMock);
@@ -132,5 +134,26 @@ class EditServiceTest extends TestCase
         // It should rigidly abort completely mapping a 400!
         $this->assertEquals("error", $result['status']);
         $this->assertEquals(400, $result['code']);
+    }
+
+    /**
+     * Asserts that editing aborts when targeting a past/inactive game.
+     */
+    #[Test]
+    public function processEditRejectsInactiveGame()
+    {
+        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock->method('fetch')->willReturn([
+            'id' => 10,
+            'is_active' => 0,
+            'photos' => '[]'
+        ]);
+        $this->pdoMock->method('prepare')->willReturn($stmtMock);
+
+        $result = $this->editService->processEdit(1, 'GD001-XXXX', 'Changing notes', '[]');
+
+        $this->assertEquals("error", $result['status']);
+        $this->assertEquals(403, $result['code']);
+        $this->assertEquals('Modification rejected: Historical game logs are strictly immutable.', $result['message']);
     }
 }

@@ -306,7 +306,7 @@ class AuthService
         $headers .= "X-Mailer: PHP/" . phpversion();
 
         // The 5th parameter securely overrides the 'MAIL FROM' Envelope Sender dynamically bypassing Postfix default arrays!
-        @mail($email, $subject, $message, $headers, "-fno-reply@geodashing.org");
+        $this->executeMail($email, $subject, $message, $headers, "-fno-reply@geodashing.org");
     }
 
     /**
@@ -367,7 +367,15 @@ class AuthService
         $headers .= "Reply-To: no-reply@geodashing.org\r\n";
         $headers .= "X-Mailer: PHP/" . phpversion();
 
-        @mail($email, $subject, $message, $headers, "-fno-reply@geodashing.org");
+        $this->executeMail($email, $subject, $message, $headers, "-fno-reply@geodashing.org");
+    }
+
+    /**
+     * Executes the physical mail payload. Protected specifically to allow PHPUnit mocking.
+     */
+    protected function executeMail(string $to, string $subject, string $message, string $headers, string $additional_params): bool
+    {
+        return @mail($to, $subject, $message, $headers, $additional_params);
     }
 
     /**
