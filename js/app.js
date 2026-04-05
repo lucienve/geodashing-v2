@@ -44,6 +44,88 @@ document.addEventListener('DOMContentLoaded', () => {
         is_active: true
     };
 
+    // --- BEGIN NAVIGATION BUILDER ---
+    const APP_NAVIGATION = [
+        { text: 'MAP', mobileText: 'Map', href: '#home', defaultActive: true },
+        { text: 'LEADERBOARD', mobileText: 'Leaderboard', href: '#leaderboard' },
+        { 
+            text: 'HELP ▾', isDropdown: true, children: [
+                { text: 'About', href: '#about' },
+                { text: 'How to Play', href: '#how-to' },
+                { text: 'Contact', href: '#contact' },
+                { text: 'Export Game Data', mobileText: 'Export Data', href: '#search' }
+            ] 
+        },
+        { text: 'PROFILE', mobileText: 'Profile', href: '#profile', idDesktop: 'nav-profile-link', idMobile: 'mobile-nav-profile-link', extraClasses: 'd-none' }
+    ];
+
+    function renderNavigation() {
+        const desktopContainer = document.getElementById('desktop-links');
+        const mobileContainer = document.querySelector('.mobile-nav-links');
+        const desktopAuthBtn = document.getElementById('nav-auth-btn');
+        const mobileAuthBtn = document.getElementById('mobile-nav-auth-btn');
+
+        APP_NAVIGATION.forEach(item => {
+            if (item.isDropdown) {
+                // Desktop Dropdown
+                if (desktopContainer && desktopAuthBtn) {
+                    const dropDiv = document.createElement('div');
+                    dropDiv.className = 'dropdown';
+                    const mainLink = document.createElement('a');
+                    mainLink.href = '#';
+                    mainLink.className = 'nav-link';
+                    mainLink.innerText = item.text;
+                    const dropContent = document.createElement('div');
+                    dropContent.className = 'dropdown-content';
+                    item.children.forEach(child => {
+                        const childLink = document.createElement('a');
+                        childLink.href = child.href;
+                        childLink.className = 'nav-link';
+                        childLink.innerText = child.text;
+                        dropContent.appendChild(childLink);
+                    });
+                    dropDiv.appendChild(mainLink);
+                    dropDiv.appendChild(dropContent);
+                    desktopContainer.insertBefore(dropDiv, desktopAuthBtn);
+                }
+
+                // Mobile Flat rendering (Help items are flattened directly into the drawer)
+                if (mobileContainer && mobileAuthBtn) {
+                    item.children.forEach(child => {
+                        const childLink = document.createElement('a');
+                        childLink.href = child.href;
+                        childLink.className = 'nav-link';
+                        childLink.innerText = child.mobileText || child.text;
+                        mobileContainer.insertBefore(childLink, mobileAuthBtn);
+                    });
+                }
+            } else {
+                // Desktop Link
+                if (desktopContainer && desktopAuthBtn) {
+                    const link = document.createElement('a');
+                    link.href = item.href;
+                    link.className = 'nav-link' + (item.defaultActive ? ' active' : '') + (item.extraClasses ? ' ' + item.extraClasses : '');
+                    if (item.idDesktop) link.id = item.idDesktop;
+                    link.innerText = item.text;
+                    desktopContainer.insertBefore(link, desktopAuthBtn);
+                }
+                
+                // Mobile Link
+                if (mobileContainer && mobileAuthBtn) {
+                    const link = document.createElement('a');
+                    link.href = item.href;
+                    link.className = 'nav-link' + (item.defaultActive ? ' active' : '') + (item.extraClasses ? ' ' + item.extraClasses : '');
+                    if (item.idMobile) link.id = item.idMobile;
+                    link.innerText = item.mobileText || item.text;
+                    mobileContainer.insertBefore(link, mobileAuthBtn);
+                }
+            }
+        });
+    }
+
+    renderNavigation();
+    // --- END NAVIGATION BUILDER ---
+
     // 1. Explicit Routing Logic Dictionary
     const routes = {
         '': null,

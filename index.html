@@ -48,20 +48,7 @@
             </h1>
 
             <div id="desktop-links" class="nav-links">
-                <a href="#home" class="nav-link active">MAP</a>
-                <a href="#leaderboard" class="nav-link">LEADERBOARD</a>
-                <!-- Pure CSS Help Dropdown Native Component -->
-                <div class="dropdown">
-                    <a href="#" class="nav-link">HELP ▾</a>
-                    <div class="dropdown-content">
-                        <a href="#about" class="nav-link">About</a>
-                        <a href="#how-to" class="nav-link">How to Play</a>
-                        <a href="#contact" class="nav-link">Contact</a>
-                        <a href="#search" class="nav-link">Export Game Data</a>
-                    </div>
-                </div>
-                <!-- Profile Link automatically injected inside the auth bootstrapper but mapping early -->
-                <a href="#profile" id="nav-profile-link" class="nav-link d-none">PROFILE</a>
+                <!-- Standard navigation links are dynamically generated in app.js via the APP_NAVIGATION array -->
                 <a href="#login" id="nav-auth-btn" class="nav-link highlight">Player login</a>
             </div>
 
@@ -73,13 +60,7 @@
         <div id="mobile-nav-drawer" class="glass-panel">
             <button id="mobile-close-btn" class="btn btn-outline glow-box">&times;</button>
             <div class="mobile-nav-links">
-                <a href="#home" class="nav-link active">Map</a>
-                <a href="#leaderboard" class="nav-link">Leaderboard</a>
-                <a href="#about" class="nav-link">About</a>
-                <a href="#how-to" class="nav-link">How to Play</a>
-                <a href="#contact" class="nav-link">Contact</a>
-                <a href="#search" class="nav-link">Export Data</a>
-                <a href="#profile" id="mobile-nav-profile-link" class="nav-link d-none">Profile</a>
+                <!-- Standard navigation links are dynamically generated in app.js via the APP_NAVIGATION array -->
                 <a href="#login" id="mobile-nav-auth-btn" class="nav-link highlight">Player login</a>
             </div>
         </div>
