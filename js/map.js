@@ -54,7 +54,7 @@ window.initMap = function () {
         zoom: 11,
         mapId: "GEODASH-V2-MAIN", // CRITICAL: AdvancedMarkerElement absolutely requires explicitly mapping a Map ID string over Google's bounds!
         disableDefaultUI: true, // Strips out the generic Google buttons leaving an ultra-clean Terminal mapping shell
-        zoomControl: true, // Allow manual zooming if mouse-wheels fail
+        zoomControl: window.innerWidth > 768, // Only show zoom buttons on Desktop where mouse-wheels might fail; mobile users naturally pinch-to-zoom
 
         // Native Google Satellite vs Terrain toggles
         mapTypeControl: true,
@@ -64,7 +64,11 @@ window.initMap = function () {
         },
 
         backgroundColor: '#09090b',
-        mapTypeId: google.maps.MapTypeId.TERRAIN // Automatically maps natural elevations/coastlines out natively supporting the 500m buffer logic structurally!
+        mapTypeId: google.maps.MapTypeId.TERRAIN, // Automatically maps natural elevations/coastlines out natively supporting the 500m buffer logic structurally!
+
+        // CRITICAL: Google Maps operates on Layer 0 and is completely unaware of the floating Header/Footer UI on Layer 1. 
+        // We explicitly tell Google to pad its controls inward so they don't get trapped underneath the physical glassmorphism menus!
+        padding: { top: 70, bottom: window.innerWidth < 768 ? 60 : 30, left: 10, right: 10 }
     });
 
     // 2. Bind the primary map movement listener. 
