@@ -1,6 +1,23 @@
 const { test, expect } = require('@playwright/test');
 
 test.describe('Navigation Layout Constraints', () => {
+    
+    test.beforeEach(async ({ page }) => {
+        // 1. Dismiss Cookie Consent Banner globally if present so it doesn't obscure layout bounds checks
+        const cookieBanner = page.locator('.cookie-banner');
+        try {
+            if (await cookieBanner.isVisible({ timeout: 500 })) {
+                const acceptBtn = page.locator('.btn-accept');
+                if (await acceptBtn.isVisible({ timeout: 500 })) {
+                    await acceptBtn.click();
+                    await expect(cookieBanner).not.toBeVisible();
+                }
+            }
+        } catch (e) {
+            // gracefully ignore if it's not mounted yet
+        }
+    });
+
     test('Ensures the desktop and mobile menus do not exceed screen width', async ({ page, isMobile }) => {
         // Load the local server index
         await page.goto('/');
