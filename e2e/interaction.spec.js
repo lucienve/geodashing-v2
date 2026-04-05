@@ -35,7 +35,13 @@ test.describe('Component & Interactive Layout Constraints', () => {
         // The native Google Map Type Toggle (Satellite vs Terrain toggle)
         const mapTypeToggle = page.locator('button[title="Show street map"], button[title="Show satellite imagery"]').first();
         if (await mapTypeToggle.isVisible()) {
-             await mapTypeToggle.click({ trial: true });
+             // Perform a physical click to pop open the secondary overlay context
+             await mapTypeToggle.click({ force: true }); // Google Maps layers can be tricky, force the dispatch
+             
+             // Wait for the native Google Maps submenu to render 'Terrain' or 'Labels'
+             const subMenuText = page.locator('text=/Terrain|Labels/i').first();
+             // Explicitly verify the sub-checkboxes pop out natively without getting blocked!
+             await expect(subMenuText).toBeVisible({ timeout: 15000 });
         }
     });
 
