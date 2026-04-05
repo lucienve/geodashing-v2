@@ -35,6 +35,7 @@ Ensure all code and syntax is explicitly compatible with the following versions:
 ## 5. Frontend & UI Directives
 - **Stack Limitations:** Stick strictly to Vanilla JavaScript (ES6+), semantic HTML5, and vanilla CSS3. **Do not use React, Vue, Svelte, or any heavy frontend frameworks.**
 - **Responsiveness:** Ensure layouts are highly responsive and accessible on both mobile and desktop. Refrain from importing heavy external JS/CSS dependencies unless explicitly approved by the user.
+- **Automated Layout Testing:** After every substantial UI or structural change, you must automatically run the Playwright E2E suite (`npx playwright test`) to verify that the layouts correctly constrain to mathematical device viewports without overflowing.
 - **Separation of Concerns:** HTML, CSS, and JS logic must be completely decoupled into separate files. Inline styles (`style="..."`) and inline event handlers (`onclick="..."`) are strictly prohibited in the markup.
 
 ## 6. Documentation
