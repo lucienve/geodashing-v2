@@ -162,6 +162,13 @@ window.initMap = function () {
     }
 }
 
+// Expose map refresher cleanly allowing the SPA router to natively trigger the map refresh implicitly!
+window.refreshMapBounds = function() {
+    if (typeof map !== 'undefined' && map) {
+        google.maps.event.trigger(map, 'idle');
+    }
+};
+
 /**
  * Fetches dashpoints for the given bounding box
  */

@@ -190,8 +190,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.currentGameContext.is_active = selOpt.dataset.isActive == '1';
                     
                     if (window.location.hash === '' || window.location.hash === '#home') {
-                        if (typeof refreshDashpoints === 'function' && typeof map !== 'undefined' && map) {
-                            google.maps.event.trigger(map, 'idle');
+                        if (typeof window.refreshMapBounds === 'function') {
+                            window.refreshMapBounds();
                         }
                     } else {
                         loadRoute();
