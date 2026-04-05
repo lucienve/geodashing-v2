@@ -232,11 +232,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                     });
                     
-                    const profileLink = document.getElementById('nav-profile-link');
-                    if (profileLink) {
-                        profileLink.classList.remove('d-none');
-                        profileLink.href = `#profile?id=${res.user_id}`;
-                    }
+                    const profileLinks = [
+                        document.getElementById('nav-profile-link'),
+                        document.getElementById('mobile-nav-profile-link')
+                    ];
+                    profileLinks.forEach(link => {
+                        if (link) {
+                            link.classList.remove('d-none');
+                            link.href = `#profile?id=${res.user_id}`;
+                        }
+                    });
                 }
             } else {
                 window.currentUser = null;
