@@ -174,8 +174,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     option.dataset.isActive = game.is_active;
                     option.dataset.title = game.title;
                     
-                    const titleStr = game.title ? `: ${game.title}` : '';
-                    option.innerText = `Game ${game.id}${titleStr} (${monthYear})`;
+                    // Removed titleStr to keep the option text short and prevent layout overflow on mobile
+                    option.innerText = `Game ${game.id} (${monthYear})`;
                     
                     if (game.id === activeGame.id) {
                         option.selected = true;
