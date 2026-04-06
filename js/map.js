@@ -63,7 +63,7 @@ window.initMap = function () {
             style: google.maps.MapTypeControlStyle.DEFAULT
         },
 
-        backgroundColor: '#09090b',
+        // backgroundColor: '#09090b', // Removed to comply with Advanced Market mapId Cloud overrides without throwing Console Warnings
         mapTypeId: google.maps.MapTypeId.TERRAIN, // Automatically maps natural elevations/coastlines out natively supporting the 500m buffer logic structurally!
 
         // CRITICAL: Google Maps operates on Layer 0 and is completely unaware of the floating Header/Footer UI on Layer 1. 
