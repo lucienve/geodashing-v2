@@ -39,6 +39,7 @@
 body, html {
   width: 100%;
   height: 100vh;
+  height: 100dvh;
   /* Strictly lock scrolling to internal containers only, protecting Map State! */
   overflow: hidden; 
   background-color: var(--bg-dark);
@@ -56,6 +57,7 @@ body, html {
   left: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   z-index: 1; /* Locked precisely at the bottom of the visible DOM */
 }
 

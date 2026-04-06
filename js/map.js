@@ -59,7 +59,7 @@ window.initMap = function () {
         // Native Google Satellite vs Terrain toggles
         mapTypeControl: true,
         mapTypeControlOptions: {
-            position: google.maps.ControlPosition.RIGHT_BOTTOM,
+            position: google.maps.ControlPosition.LEFT_BOTTOM,
             style: google.maps.MapTypeControlStyle.DEFAULT
         },
 
