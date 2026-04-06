@@ -23,3 +23,9 @@ While the original database schema was structurally designed to support 'Teams' 
 ### 3. Geographic records
 Which the old site used to do in some way.
 *   ***Farthest east/west/north/south in a country or state
+
+### 4. Build Pipeline Modernization (Vite)
+*   **Cache Busting**: As the application scales, introduce **Vite** natively as a Vanilla JS bundler to definitively solve aggressive mobile cache stagnation.
+*   **Mechanism**: Vite uniquely hashes JS/CSS dynamically (e.g. `app.d73f.js`) into a `dist/` directory for absolute cache breakage on updates.
+*   **Template Refactor**: Consolidate the dynamic `fetch()` calls in `js/app.js` into native `import` module strings to embed templates directly into the Javascript engine.
+*   **Status**: Currently deferred to avoid adding a compile step to the lightweight PHP production deploy environment.

@@ -52,3 +52,8 @@ The application allows users to participate in global geographic games where the
    - Restructure UI (`LeaderboardService.php`) and templates to dynamically support toggling between `SOLO` and `TEAM` rankings.
    - Refactor score attribution logs to account for both individual players and their overarching teams.
 3. **Geographic Records**: Track extreme geographical records (farthest N/S/E/W traveled) per country or state.
+4. **Build Pipeline Modernization (Deferred)**:
+   - Introduce **Vite** natively as a Vanilla JS bundler to definitively solve aggressive mobile cache stagnation.
+   - **Architecture**: Vite will output to a compiled `dist/` directory, uniquely hashing JS/CSS dynamically (e.g. `app.d73f.js`) for absolute cache breakage on updates.
+   - **Templates Structure**: Migrate dynamic `fetch('templates/*.html')` API waterfalls inside `js/app.js` toward native `import` strings utilizing Vite's ES module asset compilation. This will bake template views instantaneously into the bundled JS engine script, boosting performance and permanently breaking the cache.
+   - *Note*: Currently deferred due to increased complexity of deploying the extra `npm run build` step to the lightweight PHP production environment.
