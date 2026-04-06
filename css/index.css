@@ -76,6 +76,7 @@ body, html {
   left: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   z-index: 10;
   
   /* Let clicks fall through the empty space to the Google map */
@@ -373,6 +374,7 @@ body, html {
   right: -100%;
   width: 250px;
   height: 100vh;
+  height: 100dvh;
   z-index: 1000;
   background: var(--bg-glass-heavy);
   backdrop-filter: blur(20px);

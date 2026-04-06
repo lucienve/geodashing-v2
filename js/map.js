@@ -68,7 +68,7 @@ window.initMap = function () {
 
         // CRITICAL: Google Maps operates on Layer 0 and is completely unaware of the floating Header/Footer UI on Layer 1. 
         // We explicitly tell Google to pad its controls inward so they don't get trapped underneath the physical glassmorphism menus!
-        padding: { top: 70, bottom: window.innerWidth < 768 ? 60 : 30, left: 10, right: 10 }
+        padding: { top: 70, bottom: window.innerWidth < 768 ? 140 : 30, left: 10, right: 10 }
     });
 
     // 2. Bind the primary map movement listener. 
