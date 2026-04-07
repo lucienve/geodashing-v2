@@ -18,7 +18,7 @@ You are working on the Geodashing V2 project. You must strictly adhere to these 
 Ensure all code and syntax is explicitly compatible with the following versions:
 - **PHP:** `8.3.6`
 - **MySQL:** `8.4.8`
-- **Python:** `3.12`
+- **Python:** `3.11+` (Relaxed from 3.12 to support native Debian 12 developer environments while maintaining forward-compatibility with Ubuntu production servers).
 
 ## 3. Backend Directives: Python
 - **Syntax / Style:** Strictly follow PEP 8. Type hints are absolutely mandatory for all function signatures and complex variables.
