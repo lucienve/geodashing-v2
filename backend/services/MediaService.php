@@ -55,7 +55,7 @@ class MediaService
         $normalizedFiles = $this->normalizeFilesArray($files);
         
         if (count($normalizedFiles) > 10) {
-            throw new Exception("Maximum of 10 photos allowed per visit block.");
+            throw new Exception("Maximum of 10 photos allowed per visit.");
         }
 
         foreach ($normalizedFiles as $index => $file) {
@@ -81,7 +81,7 @@ class MediaService
             $finfo = new finfo(FILEINFO_MIME_TYPE);
             $mime = $finfo->file($file['tmp_name']);
             if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'])) {
-                throw new Exception("Invalid file type explicitly blocked. Only JPEG, PNG, and WebP assets are strictly allowed.");
+                throw new Exception("Invalid file type. Only JPEG, PNG, and WebP assets are allowed.");
             }
 
             // Generate a secure unique mathematical path map locking the object structure securely in the bucket

@@ -14,7 +14,7 @@ $id = $_GET['id'] ?? null;
 
 if (!$id) {
     http_response_code(400);
-    echo json_encode(["status" => "error", "message" => "Dashpoint ID completely missing."]);
+    echo json_encode(["status" => "error", "message" => "Dashpoint ID is missing."]);
     exit;
 }
 
@@ -24,7 +24,7 @@ try {
 
     if (!$data) {
         http_response_code(404);
-        echo json_encode(["status" => "error", "message" => "Dashpoint matrix unmapped or deleted."]);
+        echo json_encode(["status" => "error", "message" => "Dashpoint not found."]);
         exit;
     }
 
@@ -36,5 +36,5 @@ try {
 } catch (Exception $e) {
     error_log("Dashpoint Fetch RUPTURE: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(["status" => "error", "message" => "Database link severed completely."]);
+    echo json_encode(["status" => "error", "message" => "Database connection failed."]);
 }

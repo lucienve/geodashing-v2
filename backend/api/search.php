@@ -24,7 +24,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     // Fail out safely preventing undefined spatial mapping indexes
     if ($n === false || $s === false || $e === false || $w === false) {
         http_response_code(400);
-        echo json_encode(['status' => 'error', 'message' => 'Missing strictly formatted spatial bounds (n, s, e, w).']);
+        echo json_encode(['status' => 'error', 'message' => 'Missing spatial bounds (n, s, e, w).']);
         exit;
     }
 
@@ -45,6 +45,6 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     } catch (Exception $e) {
         error_log("Search API Crash: " . $e->getMessage());
         http_response_code(500);
-        echo json_encode(["status" => "error", "message" => "SQL Mapping error retrieving vectors."]);
+        echo json_encode(["status" => "error", "message" => "Error retrieving dashpoints."]);
     }
 }

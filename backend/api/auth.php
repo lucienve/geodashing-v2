@@ -177,7 +177,7 @@ class AuthService
         }
 
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return ["status" => "error", "message" => "Invalid email format. Please provide a structurally valid email address."];
+            return ["status" => "error", "message" => "Invalid email format."];
         }
 
         // Utilizing robust underlying native algorithm (bcrypt currently via PASSWORD_DEFAULT)
@@ -324,7 +324,7 @@ class AuthService
 
             // Obfuscate success natively preventing account enumeration algorithms
             if (!$user) {
-                return ["status" => "success", "message" => "If that username matches our records, an email has been deployed."];
+                return ["status" => "success", "message" => "If that username matches our records, an email has been sent."];
             }
 
             // Generate a secure 64-char token
@@ -336,11 +336,11 @@ class AuthService
 
             $this->sendPasswordResetEmail($user['email'], $resetToken, $username);
 
-            return ["status" => "success", "message" => "If that username matches our records, an email has been deployed."];
+            return ["status" => "success", "message" => "If that username matches our records, an email has been sent."];
 
         } catch (PDOException $e) {
             error_log("Forgot Password Error: " . $e->getMessage());
-            return ["status" => "error", "message" => "Internal server array failure."];
+            return ["status" => "error", "message" => "Internal server error."];
         }
     }
 
@@ -388,7 +388,7 @@ class AuthService
     public function resetPassword(string $token, string $newPassword): array
     {
         if (strlen($newPassword) < 6) {
-            return ["status" => "error", "message" => "Password must logically exceed 6 characters."];
+            return ["status" => "error", "message" => "Password must exceed 6 characters."];
         }
 
         try {
@@ -398,7 +398,7 @@ class AuthService
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$user) {
-                return ["status" => "error", "message" => "Reset token is invalid or mathematically expired."];
+                return ["status" => "error", "message" => "Reset token is invalid or expired."];
             }
 
             // Mathematically execute password rotation locking out previous hashes
@@ -406,11 +406,11 @@ class AuthService
             $updateStmt = $this->db->prepare("UPDATE users SET password_hash = :hash, reset_token = NULL, reset_token_expires = NULL WHERE id = :id");
             $updateStmt->execute([':hash' => $newHash, ':id' => $user['id']]);
 
-            return ["status" => "success", "message" => "Password physically updated! You may now login."];
+            return ["status" => "success", "message" => "Password updated. You may now login."];
 
         } catch (PDOException $e) {
             error_log("Reset Password Error: " . $e->getMessage());
-            return ["status" => "error", "message" => "Server logic array crashed."];
+            return ["status" => "error", "message" => "Internal server error."];
         }
     }
 }

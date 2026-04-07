@@ -31,14 +31,14 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     // 2. Input Sanitization
     $dashpoint_id = $_POST['dashpoint_id'] ?? '';
     $notes = trim($_POST['notes'] ?? '');
-    
+
     // `kept_photos` arrives as a strict JSON string array of public URLs the user explicitly chose NOT to click [X] on
     $keptPhotosRaw = $_POST['kept_photos'] ?? '[]';
     $keptPhotos = json_decode($keptPhotosRaw, true);
     if (!is_array($keptPhotos)) {
         $keptPhotos = [];
     }
-    
+
     // Validate Log Narrative Boundaries
     if (empty($notes) || strlen($notes) > 10000) {
         http_response_code(400);
@@ -56,7 +56,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         $db = Database::getConnection();
         require_once __DIR__ . '/../services/MediaService.php';
         $keyPath = __DIR__ . '/../gcp-credentials.json';
-        
+
         $mediaService = null;
         if (file_exists($keyPath)) {
             $mediaService = new MediaService('geodashing-v2', 'geodashing-v2-blobs', $keyPath);
@@ -64,7 +64,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
 
         $editService = new EditService($db, $mediaService);
         $result = $editService->processEdit($_SESSION['user_id'], $dashpoint_id, $notes, $keptPhotosRaw, $_FILES['photos'] ?? null);
-        
+
         if ($result['status'] === 'success') {
             echo json_encode($result);
         } else {
@@ -74,7 +74,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     } catch (Exception $e) {
         error_log("Edit API Runtime Extinction: " . $e->getMessage());
         http_response_code(500);
-        echo json_encode(["status" => "error", "message" => "Failed to restructure database schema internally."]);
+        echo json_encode(["status" => "error", "message" => "Failed to update dashpoint log."]);
     }
 }
 
@@ -96,7 +96,8 @@ class EditService
     public function processEdit(int $userId, string $dashpointId, string $notes, string $keptPhotosRaw, ?array $newFiles = null): array
     {
         $keptPhotos = json_decode($keptPhotosRaw, true);
-        if (!is_array($keptPhotos)) $keptPhotos = [];
+        if (!is_array($keptPhotos))
+            $keptPhotos = [];
 
         // 1. Security Check: Assert Structural Database Ownership natively
         $stmt = $this->db->prepare("
@@ -109,18 +110,19 @@ class EditService
         ");
         $stmt->execute([':uid' => $userId, ':dpid' => $dashpointId]);
         $visit = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if (!$visit) {
-            return ["status" => "error", "message" => "System fault: Modification rejected. You can exclusively edit Dashpoints you have physically captured!", "code" => 403];
+            return ["status" => "error", "message" => "Modification rejected. You can only edit dashpoints you have visited.", "code" => 403];
         }
 
         if (!$visit['is_active']) {
-            return ["status" => "error", "message" => "Modification rejected: Historical game logs are strictly immutable.", "code" => 403];
+            return ["status" => "error", "message" => "Modification rejected. Historical game logs cannot be edited.", "code" => 403];
         }
 
         $visitId = $visit['id'];
         $dbPhotos = json_decode($visit['photos'] ?? '[]', true);
-        if(!is_array($dbPhotos)) $dbPhotos = [];
+        if (!is_array($dbPhotos))
+            $dbPhotos = [];
 
         // 2. GCP Media Synchronization (Diffing the DB against User Intent)
         $urlsToDelete = [];
@@ -138,7 +140,7 @@ class EditService
         $hasNewUploads = (!empty($newFiles) && (is_array($newFiles['error']) ? $newFiles['error'][0] : $newFiles['error']) !== UPLOAD_ERR_NO_FILE);
 
         if ((count($urlsToDelete) > 0 || $hasNewUploads) && $this->mediaService === null) {
-            return ["status" => "error", "message" => "Server missing GCP Key mappings blocking Media processing.", "code" => 500];
+            return ["status" => "error", "message" => "Server configuration error blocking media processing.", "code" => 500];
         }
 
         // 3a. Execute Physical GCP Blob Destruction natively
@@ -149,7 +151,7 @@ class EditService
                 error_log("GCP Physical Deletion Failure: " . $e->getMessage());
             }
         }
-        
+
         // 3b. Execute New GCS Binary Pipeline processing 
         if ($hasNewUploads && $this->mediaService !== null) {
             try {
@@ -158,13 +160,13 @@ class EditService
                     $finalPhotoObjects[] = $newObj;
                 }
             } catch (Exception $e) {
-                return ["status" => "error", "message" => "Physical Image Transfer Failed: " . $e->getMessage(), "code" => 400];
+                return ["status" => "error", "message" => "Image transfer failed: " . $e->getMessage(), "code" => 400];
             }
         }
 
         // 4. Structural constraint: 10 image maximum.
         if (count($finalPhotoObjects) > 10) {
-            return ["status" => "error", "message" => "Modification rejected: Maximum 10 physical media files permitted per spatial log.", "code" => 400];
+            return ["status" => "error", "message" => "Modification rejected: Maximum of 10 media files allowed per visit.", "code" => 400];
         }
 
         $finalPhotosJson = count($finalPhotoObjects) > 0 ? json_encode($finalPhotoObjects) : null;
@@ -177,7 +179,7 @@ class EditService
                 edited_at = NOW() 
             WHERE id = :id
         ");
-        
+
         $updateStmt->execute([
             ':notes' => $notes,
             ':photos' => $finalPhotosJson,
@@ -185,8 +187,8 @@ class EditService
         ]);
 
         return [
-            "status" => "success", 
-            "message" => "Field Notes successfully modified physically syncing local arrays.",
+            "status" => "success",
+            "message" => "Field notes successfully updated.",
             "data" => ["photos" => $finalPhotoObjects]
         ];
     }

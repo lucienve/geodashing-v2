@@ -24,7 +24,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             $game = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$game) {
                 http_response_code(404);
-                echo json_encode(["status" => "error", "message" => "Critical Error: Engine failed to identify an active Game State!"]);
+                echo json_encode(["status" => "error", "message" => "No active game found."]);
                 exit;
             }
             $gameId = (int)$game['id'];
@@ -45,6 +45,6 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     } catch (Exception $e) {
         error_log("Leaderboard Engine Panic: " . $e->getMessage());
         http_response_code(500);
-        echo json_encode(["status" => "error", "message" => "SQL Aggregate failure."]);
+        echo json_encode(["status" => "error", "message" => "Database aggregation error."]);
     }
 }

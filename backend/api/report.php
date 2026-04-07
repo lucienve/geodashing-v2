@@ -49,7 +49,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         $keyPath = __DIR__ . '/../gcp-credentials.json';
         if (!file_exists($keyPath)) {
             http_response_code(500);
-            echo json_encode(["status" => "error", "message" => "Server missing GCP Key mappings blocking photo payload uploads."]);
+            echo json_encode(["status" => "error", "message" => "Server configuration error blocking media uploads."]);
             exit;
         }
 
@@ -63,14 +63,14 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         } catch (Exception $e) {
             error_log("GCP Upload Error: " . $e->getMessage());
             http_response_code(400);
-            echo json_encode(["status" => "error", "message" => "Image Upload Framework Failed: " . $e->getMessage()]);
+            echo json_encode(["status" => "error", "message" => "Image upload failed: " . $e->getMessage()]);
             exit;
         }
     }
 
     if (empty($dashpoint_id) || $lat === false || $lon === false) {
         http_response_code(400);
-        echo json_encode(["status" => "error", "message" => "Invalid or missing required spatial fields"]);
+        echo json_encode(["status" => "error", "message" => "Invalid or missing required location data."]);
         exit;
     }
 
@@ -155,7 +155,7 @@ class ReportService
         }
         
         if (!$result['is_active']) {
-            return ["status" => "error", "message" => "Target dashpoint belongs to an inactive game. Legacy claims are prohibited!"];
+            return ["status" => "error", "message" => "Target dashpoint belongs to an inactive game."];
         }
 
         $distance = (int) round($result['distance_meters']);
@@ -164,7 +164,7 @@ class ReportService
         if ($distance > 100) {
             return [
                 "status" => "error",
-                "message" => "Visit rejected. You must be physically within 100 meters to claim this point. Calculated distance: {$distance}m."
+                "message" => "Visit rejected. You must be within 100 meters to claim this point. Calculated distance: {$distance}m."
             ];
         }
 
@@ -212,7 +212,7 @@ class ReportService
 
         return [
             "status" => "success",
-            "message" => "Dashpoint successfully claimed! You earned {$scoreAwarded} points.",
+            "message" => "Dashpoint successfully claimed. You earned {$scoreAwarded} points.",
             "distance" => $distance,
             "points" => $scoreAwarded
         ];
