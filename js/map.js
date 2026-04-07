@@ -52,7 +52,7 @@ window.initMap = function () {
     map = new google.maps.Map(document.getElementById("map"), {
         center: { lat: 43.0606, lng: -88.1065 }, // Brookfield, Wisconsin Default
         zoom: 11,
-        mapId: "GEODASH-V2-MAIN", // CRITICAL: AdvancedMarkerElement absolutely requires explicitly mapping a Map ID string over Google's bounds!
+        mapId: "4dedb78dd8b6780fb403a0bd", // CRITICAL: AdvancedMarkerElement absolutely requires explicitly mapping a Map ID string over Google's bounds!
         disableDefaultUI: true, // Strips out the generic Google buttons leaving an ultra-clean Terminal mapping shell
         zoomControl: window.innerWidth > 768, // Only show zoom buttons on Desktop where mouse-wheels might fail; mobile users naturally pinch-to-zoom
 
@@ -94,7 +94,7 @@ window.initMap = function () {
     // Request user location dropping them perfectly into their active regional gaming sector
     if (navigator.geolocation) {
         let userLocationMarker = null;
-        
+
         // Google Maps style blue dot SVG for current location
         const userLocationWrapper = document.createElement("div");
         userLocationWrapper.innerHTML = `
@@ -167,7 +167,7 @@ window.initMap = function () {
 }
 
 // Expose map refresher cleanly allowing the SPA router to natively trigger the map refresh implicitly!
-window.refreshMapBounds = function() {
+window.refreshMapBounds = function () {
     if (typeof map !== 'undefined' && map) {
         google.maps.event.trigger(map, 'idle');
     }
