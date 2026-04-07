@@ -38,7 +38,7 @@ window.escapeHTML = function(str) {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 0. Global Game State Binding for Historical Tracking!
+    // 0. Global game state binding for historical tracking.
     window.currentGameContext = {
         id: null,
         is_active: true
@@ -195,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Smoothly collapse the current UI out preventing janky HTML resets
             contentDiv.style.opacity = '0.3';
 
-            // Allow the router to completely purge the DOM overlay for 100% Map Views!
+            // Allow the router to purge the DOM overlay for map views.
             if (templatePath === null) {
                 setTimeout(() => {
                     contentDiv.innerHTML = '';
@@ -215,8 +215,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 contentDiv.style.opacity = '1';
 
                 // CRITICAL: Since we just dumped raw HTML into the DOM natively, 
-                // any JS listeners tied to buttons inside it must be re-bound!
-                // We fire a custom event telling `controllers.js` to wake up routing the original exact query bounds!
+                // any JS listeners tied to buttons inside it must be re-bound.
+                // We fire a custom event telling `controllers.js` to wake up and route the original query bounds.
                 document.dispatchEvent(new CustomEvent('routeLoaded', { detail: { route: fullHash } }));
             }, 100);
 
@@ -343,6 +343,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Execute the Auth loop instantly mapping the initial load!
+    // Execute the auth loop mapping the initial load.
     window.updateAuthState();
 });

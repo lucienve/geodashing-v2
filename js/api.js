@@ -28,7 +28,7 @@ const API = {
             const res = await fetch('backend/api/report.php', {
                 method: 'POST',
                 headers: this.getHeaders(),
-                body: formData // Specifically bypassing Content-Type override allowing multipart/form-data bounding natively!
+                body: formData // Bypassing Content-Type override for multipart/form-data.
             });
             const data = await res.json();
             if (data.status === 'success' && window.trackEvent) {
@@ -265,6 +265,6 @@ const API = {
 
 // Expose standard custom Event hooks so the Router can wake up templates
 document.addEventListener('routeLoaded', (e) => {
-    // When #report or #login loads dynamically, this event physical fires natively!
+    // When #report or #login loads dynamically, this event fires.
     // E.g. console.log("New UI View Array Mapped:", e.detail.route);
 });

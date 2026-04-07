@@ -71,7 +71,7 @@ def test_inland_lake_avoidance(monkeypatch):
         lakes_zip_path="mock_lakes.zip"
     )
     
-    # 4. Assert Geometric Success Array!
+    # 4. Assert geometric success array.
     assert len(valid_points) == 1, "Exactly one Dashpoint should mathematically survive!"
     assert valid_points[0].x == 3.0, "Point X did not match land bounds"
     assert valid_points[0].y == 3.0, "Point Y did not match land bounds"

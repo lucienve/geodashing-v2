@@ -75,7 +75,7 @@ class EditServiceTest extends TestCase
         // We explicitly tell the Server we ONLY want to keep `historic_2.jpg`.
         $keptRaw = json_encode(['https://storage.googleapis.com/b/historic_2.jpg']);
 
-        // Assert that the MediaService dynamically intercepts `historic_1.jpg` for explicit Destruction!
+        // Assert that the MediaService intercepts `historic_1.jpg` for destruction.
         $this->mediaMock->expects($this->once())
              ->method('deletePhotos')
              ->with(['https://storage.googleapis.com/b/historic_1.jpg']);
@@ -83,7 +83,7 @@ class EditServiceTest extends TestCase
         $result = $this->editService->processEdit(1, 'GD001-AAAB', 'Changed notes.', $keptRaw, null);
 
         $this->assertEquals("success", $result['status']);
-        // Assert the returned mutated array natively ONLY has `historic_2`!
+        // Assert the returned array only has `historic_2`.
         $this->assertCount(1, $result['data']['photos']);
         $this->assertEquals('https://storage.googleapis.com/b/historic_2.jpg', $result['data']['photos'][0]['url']);
     }
@@ -111,7 +111,7 @@ class EditServiceTest extends TestCase
         ]);
         $this->pdoMock->method('prepare')->willReturn($stmtMock);
 
-        // Simulate 3 New Binaries incoming natively making 11 total!
+        // Simulate 3 new binaries incoming, making 11 total.
         $newFilesMock = [
             'name' => ['new1.jpg', 'new2.jpg', 'new3.jpg'],
             'tmp_name' => ['/tmp/1', '/tmp/2', '/tmp/3'],
@@ -128,10 +128,10 @@ class EditServiceTest extends TestCase
                  ['url' => 'https://../new3.jpg']
              ]);
 
-        // Submit the mathematical mutation!
+        // Submit the mutation.
         $result = $this->editService->processEdit(1, 'GD001-AAAB', 'Updating photos.', json_encode($keptStrings), $newFilesMock);
 
-        // It should rigidly abort completely mapping a 400!
+        // It should abort, returning a 400.
         $this->assertEquals("error", $result['status']);
         $this->assertEquals(400, $result['code']);
     }

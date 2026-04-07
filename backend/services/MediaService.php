@@ -20,7 +20,7 @@ class MediaService
      * @param string $projectId  The GCP Architecture Project ID.
      * @param string $bucketName The dedicated GS blob storage pool name.
      * @param string $keyFilePath Absolute disk path referencing the IAM Service Account JSON key.
-     * @param StorageClient|null $storage Optional dependency injection override strictly for PHPUnit Mocking protocols!
+     * @param StorageClient|null $storage Optional dependency injection override for PHPUnit mocks.
      */
     public function __construct(string $projectId, string $bucketName, string $keyFilePath, ?StorageClient $storage = null)
     {
@@ -96,7 +96,7 @@ class MediaService
 
             // Execute the RESTful socket stream uploading binary payload natively into Google Cloud
             // Explicitly disabling resumable uploads forces a direct multipart stream natively preventing 
-            // the PHP Apache lifecycle from abandoning the background chunk process mid-upload!
+            // the PHP Apache lifecycle from abandoning the background chunk process mid-upload.
             $bucket->upload(
                 fopen($file['tmp_name'], 'r'),
                 [
@@ -105,7 +105,7 @@ class MediaService
                 ]
             );
 
-            // Extract standard EXIF GPS coordinates strictly BEFORE we physically trash the local tmp_name!
+            // Extract standard EXIF GPS coordinates before removing the local tmp_name.
             $exifData = $this->parseExifGPS($file['tmp_name']);
 
             // Construct standard GS public URL path resolving identically via HTTP
@@ -152,7 +152,7 @@ class MediaService
      */
     private function parseExifGPS(string $path): ?array
     {
-        // Suppress warnings specifically because standard WebP/PNG uploads often strictly lack EXIF headers!
+        // Suppress warnings because WebP/PNG uploads often lack EXIF headers.
         $exif = @exif_read_data($path);
         if (!$exif || !isset($exif['GPSLatitude'], $exif['GPSLongitude'], $exif['GPSLatitudeRef'], $exif['GPSLongitudeRef'])) {
             return null;

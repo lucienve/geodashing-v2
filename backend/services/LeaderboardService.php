@@ -3,7 +3,7 @@
  * LeaderboardService
  *
  * Exclusively aggregates and formally ranks active Player scores and metrics
- * utilizing mathematically strict SQL GROUP BY projections!
+ * utilizing SQL GROUP BY projections.
  */
 
 require_once __DIR__ . '/../Database.php';
@@ -20,7 +20,7 @@ class LeaderboardService
     /**
      * Executes the Solo Player Leaderboard aggregation for a specific game loop natively.
      * Evaluates `SUM(score_awarded)`, `COUNT(status=approved)`, and strictly utilizes
-     * the MAX(`reported_time`) to enforce FCFS Tie-breaking protocols!
+     * the MAX(`reported_time`) to enforce FCFS tie-breaking protocols.
      *
      * @param int $gameId The primary mathematical index representing the Monthly dashpoint matrix.
      * @param int $limit Limits the SQL loop for structural safety (Default: 100 players).
@@ -47,7 +47,7 @@ class LeaderboardService
 
         $stmt = $this->db->prepare($sql);
 
-        // Explicitly map parameter bindings using native PDO constants to prevent float cast errors on limits!
+        // Map parameter bindings using PDO constants to prevent float cast errors on limits.
         $stmt->bindValue(':game_id', $gameId, PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
@@ -68,7 +68,7 @@ class LeaderboardService
             $rowScore = (int) $row['total_score'];
             $rowTime = $row['last_find_time'];
 
-            // Natively enforce standard Competition Tie breaking math (Rank 1, 1, 3, 4) if parameters are structurally IDENTICAL!
+            // Enforce standard competition tie-breaking (Rank 1, 1, 3, 4) if parameters are identical.
             if ($prevScore !== null && $rowScore === $prevScore && $rowTime === $prevTime) {
                 // Exact identical score AND exact identical finish time. Holds the current rank string mapping structurally.
             } else {

@@ -80,7 +80,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
 
 /**
  * Encapsulates the core Field Note & Media Modification logic physically isolating 
- * the structural dependencies out for pure Unit Testing mock replacements!
+ * structural dependencies for unit testing mocks.
  */
 class EditService
 {
@@ -162,7 +162,7 @@ class EditService
             }
         }
 
-        // 4. Structural Constraint: 10 Image Maximum rigorously enforced!
+        // 4. Structural constraint: 10 image maximum.
         if (count($finalPhotoObjects) > 10) {
             return ["status" => "error", "message" => "Modification rejected: Maximum 10 physical media files permitted per spatial log.", "code" => 400];
         }

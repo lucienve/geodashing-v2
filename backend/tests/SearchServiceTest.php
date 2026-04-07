@@ -54,7 +54,7 @@ class SearchServiceTest extends TestCase
 
     /**
      * Mathematically verifies that the system gracefully detects Pacific Date Line
-     * crossings and natively splits the boundary checking bounds cleanly!
+     * crossings and splits the boundary checking bounds.
      */
     #[Test]
     public function processesAntiMeridianDateLineOveflowNatively()

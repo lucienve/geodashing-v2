@@ -1,9 +1,10 @@
 <div class="template-view" id="view-dashpoint">
     <a href="#home" class="close-btn" aria-label="Close View">&times;</a>
     <h2>DASHPOINT</h2>
-    
+
     <div class="dash-block" style="text-align:center; padding: 1.5rem; margin-bottom:1.5rem;">
-        <h3 id="dp-id-label" style="color:var(--accent-green); font-size:1.8rem; margin-bottom:0.5rem; letter-spacing:2px;">
+        <h3 id="dp-id-label"
+            style="color:var(--accent-green); font-size:1.8rem; margin-bottom:0.5rem; letter-spacing:2px;">
             [ LOADING ]
         </h3>
         <p style="color:var(--text-muted); font-size:0.8rem; letter-spacing:1px;" id="dp-coord-label">
@@ -11,15 +12,13 @@
         </p>
     </div>
 
-    <!-- Button to navigate to the Log Visit form -->
     <button type="button" class="btn btn-primary" id="btn-goto-report" style="margin-bottom:2rem; width:100%;">
         LOG VISIT
     </button>
 
     <div class="dash-block" style="border-top:1px dashed var(--text-muted); padding-top:1.5rem;">
         <label>PREVIOUS VISITS</label>
-        
-        <!-- Container for previous visits -->
+
         <div id="dp-visits-container" style="margin-top:1rem; font-size:0.85rem;">
             <p style="color:var(--text-muted); text-align:center;">Loading visits...</p>
         </div>

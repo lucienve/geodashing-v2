@@ -3,7 +3,7 @@
  * Leaderboards API Endpoint
  *
  * Provides high-speed JSON dumps containing the pre-aggregated Player Ranks
- * strictly organized by Total Points & Temporal Tie-breakers natively!
+ * organized by total points and temporal tie-breakers.
  */
 
 header('Content-Type: application/json');

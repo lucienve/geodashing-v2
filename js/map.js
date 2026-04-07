@@ -46,13 +46,13 @@ const customClusterRenderer = {
     }
 };
 
-// CRITICAL: This exact function name is explicitly triggered by the Google Maps `<script>` callback string natively in index.html!
+// CRITICAL: This exact function name is explicitly triggered by the Google Maps <script> callback string in index.html.
 window.initMap = function () {
     // 1. Instantiate the Canvas directly into the persistent Layer 0 block
     map = new google.maps.Map(document.getElementById("map"), {
         center: { lat: 43.0606, lng: -88.1065 }, // Brookfield, Wisconsin Default
         zoom: 11,
-        mapId: "4dedb78dd8b6780fb403a0bd", // CRITICAL: AdvancedMarkerElement absolutely requires explicitly mapping a Map ID string over Google's bounds!
+        mapId: "4dedb78dd8b6780fb403a0bd", // CRITICAL: AdvancedMarkerElement requires mapping a Map ID string over Google's bounds.
         disableDefaultUI: true, // Strips out the generic Google buttons leaving an ultra-clean Terminal mapping shell
         zoomControl: window.innerWidth > 768, // Only show zoom buttons on Desktop where mouse-wheels might fail; mobile users naturally pinch-to-zoom
 
@@ -64,10 +64,10 @@ window.initMap = function () {
         },
 
         // backgroundColor: '#09090b', // Removed to comply with Advanced Market mapId Cloud overrides without throwing Console Warnings
-        mapTypeId: google.maps.MapTypeId.TERRAIN, // Automatically maps natural elevations/coastlines out natively supporting the 500m buffer logic structurally!
+        mapTypeId: google.maps.MapTypeId.TERRAIN, // Maps natural elevations and coastlines, supporting the 500m buffer logic.
 
         // CRITICAL: Google Maps operates on Layer 0 and is completely unaware of the floating Header/Footer UI on Layer 1. 
-        // We explicitly tell Google to pad its controls inward so they don't get trapped underneath the physical glassmorphism menus!
+        // Add padding so controls don't get trapped underneath the UI menus.
         padding: { top: 70, bottom: window.innerWidth < 768 ? 140 : 30, left: 10, right: 10 }
     });
 
@@ -166,7 +166,7 @@ window.initMap = function () {
     }
 }
 
-// Expose map refresher cleanly allowing the SPA router to natively trigger the map refresh implicitly!
+// Expose map refresher so the SPA router can trigger a map refresh.
 window.refreshMapBounds = function () {
     if (typeof map !== 'undefined' && map) {
         google.maps.event.trigger(map, 'idle');
@@ -240,7 +240,7 @@ function plotVectors(pointsArray) {
         // Store state natively on the marker object for the Cluster Renderer
         marker.visitCount = vCount;
 
-        // AdvancedMarkerElement strictly enforces `gmp-click` mapping directly bypassing legacy DOM bubble overlaps perfectly!
+        // AdvancedMarkerElement uses `gmp-click` mapping to bypass DOM bubble overlaps.
         marker.addListener('gmp-click', () => {
             window.location.hash = `#dashpoint?id=${pt.id}`;
         });

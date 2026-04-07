@@ -18,7 +18,7 @@ document.addEventListener('routeLoaded', (e) => {
     // Controller: HOME DASHBOARD (#home)
     // ==========================================================
     if (route === '#home' || route === '') {
-        // The dashboard is now a purely transparent state allowing 100% full-screen map layouts natively!
+        // The dashboard is transparent, allowing full-screen map layouts.
         // (Game ID is now pinged globally on boot in app.js and injected directly into the header block)
     }
 
@@ -44,7 +44,7 @@ document.addEventListener('routeLoaded', (e) => {
 
         // The Button Controller logic is executed exclusively post-fetch to allow spatial ownership diffing
 
-        // Poll the new Phase 5.4 Backend directly!
+        // Poll the backend.
         fetch(`backend/api/dashpoint.php?id=${dpId}`)
             .then(res => res.json())
             .then(json => {
@@ -96,7 +96,7 @@ document.addEventListener('routeLoaded', (e) => {
                             const d = new Date(visit.reported_time);
                             const tStr = `${d.getFullYear()}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getDate().toString().padStart(2, '0')} @ ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 
-                            // Generate a pure Javascript DOM block specifically separating the rows safely!
+                            // Generate a DOM block to separate the rows.
                             const visitDiv = document.createElement('div');
                             visitDiv.style.border = '1px solid var(--text-muted)';
                             visitDiv.style.marginBottom = '1rem';
@@ -207,7 +207,7 @@ document.addEventListener('routeLoaded', (e) => {
         }
 
         // If they click map markers, the ID gets injected into the URL ?id=GD...
-        // We parse that securely out of the SPA Routing hash!
+        // Parse this from the SPA routing hash.
         if (route.includes('?')) {
             const hashParams = new URLSearchParams(route.split('?')[1]);
             const targetId = hashParams.get('id');
@@ -217,7 +217,7 @@ document.addEventListener('routeLoaded', (e) => {
             }
         }
 
-        // HTML5 Geolocation Binder - Note: Inputs are NOT readonly globally!
+        // HTML5 geolocation binder. Inputs are not globally readonly.
         if (btnGeo) {
             btnGeo.addEventListener('click', (ev) => {
                 ev.preventDefault();
@@ -247,7 +247,7 @@ document.addEventListener('routeLoaded', (e) => {
             });
         }
 
-        // Dynamic Log Character Counter natively optimizing the UX!
+        // Dynamic log character counter.
         const logArea = document.getElementById('log-textarea');
         const charCounter = document.getElementById('char-counter');
         if (logArea && charCounter) {
@@ -333,7 +333,7 @@ document.addEventListener('routeLoaded', (e) => {
                     if (result.status === 'success') {
                         feedbackStatus.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] Success! We logged your visit at ${result.distance.toFixed(1)}m. You scored ${result.points} points!</div>`;
 
-                        // Capture the Target natively before the structural form reset wipes it out!
+                        // Capture the target before the form reset.
                         const targetPersistence = document.getElementById('dashpoint_id').value;
                         reportForm.reset();
                         document.getElementById('dashpoint_id').value = targetPersistence;
@@ -394,7 +394,7 @@ document.addEventListener('routeLoaded', (e) => {
             if (verifyPane) verifyPane.style.display = 'none';
             if (forgotPane) forgotPane.style.display = 'none';
             resetPane.style.display = 'block';
-            // Do not return here so standard form hooks (including the reset form!) can bind!
+            // Do not return here so standard form hooks (including the reset form) can bind.
         } else {
             // --- DYNAMIC STATE: Fully Authenticated & Verified ---
             if (user && user.is_verified == 1) {
@@ -422,7 +422,7 @@ document.addEventListener('routeLoaded', (e) => {
                 loginFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Error: Invalid or expired verification link.</div>`;
             }
 
-            // Using double equals natively protects against weak-typed PHP JSON coercion race conditions!
+            // Using double equals protects against weak-typed JSON coercion.
             if (user && user.is_verified == 0 && verifyPane) {
                 if (loginPane) loginPane.style.display = 'none';
                 if (signupPane) signupPane.style.display = 'none';
@@ -455,7 +455,7 @@ document.addEventListener('routeLoaded', (e) => {
                 }
                 return; // Prevent standard forms from attaching if verified
             }
-        } // Close the 'resetToken else' conditional!
+        } // Close the 'resetToken else' conditional.
 
         // --- STANDARD LOGIN HOOKS ---
         if (toggleSignup && toggleLogin && toggleForgot && toggleLoginFromForgot && loginPane && signupPane && forgotPane) {
@@ -499,7 +499,7 @@ document.addEventListener('routeLoaded', (e) => {
                     loginFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] Login Successful.</div>`;
                     if (typeof window.updateAuthState === 'function') window.updateAuthState();
 
-                    // Route unverified directly to the verify-pane natively!
+                    // Route unverified users to the verify pane.
                     if (res.is_verified === 0) {
                         setTimeout(() => window.location.reload(), 400);
                     } else {
@@ -552,7 +552,7 @@ document.addEventListener('routeLoaded', (e) => {
                     signupFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] WELCOME: Account created.</div>`;
                     if (typeof window.updateAuthState === 'function') window.updateAuthState();
 
-                    // Route instantly securely to the new verification pane!
+                    // Route to the new verification pane.
                     setTimeout(() => window.location.reload(), 400);
                 } else {
                     signupFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${res.message}</div>`;
@@ -772,7 +772,7 @@ document.addEventListener('routeLoaded', (e) => {
 
                     let keptPhotosArray = [];
 
-                    // 3. Render Historical Blobs identically wrapping them in Deletion Callbacks natively!
+                    // 3. Render historical blobs and wrap them in deletion callbacks.
                     if (userVisit.photos && userVisit.photos.length > 0) {
                         existingPhotosContainer.innerHTML = ''; // Pop the generic "None" message
 
@@ -806,7 +806,7 @@ document.addEventListener('routeLoaded', (e) => {
                             delBtn.style.borderRadius = '3px';
 
                             delBtn.onclick = () => {
-                                // Physically purge the URL from the mathematical retained struct natively!
+                                // Purge the URL from the retained struct.
                                 keptPhotosArray = keptPhotosArray.filter(u => u !== urlStr);
                                 keptPhotosInput.value = JSON.stringify(keptPhotosArray);
                                 wrap.remove();
@@ -907,7 +907,7 @@ document.addEventListener('routeLoaded', (e) => {
     // ==========================================================
     if (['#about', '#how-to', '#contact'].includes(route)) {
         // Custom API querying is strictly unnecessary for entirely static views.
-        // `app.js` performs the native physical DOM injection automatically via `<main id="app-content">`!
+        // `app.js` performs DOM injection via `<main id="app-content">`.
     }
 
     // ==========================================================
@@ -938,9 +938,9 @@ document.addEventListener('routeLoaded', (e) => {
                 const sw = new google.maps.LatLng(b.s, b.w);
                 const ne = new google.maps.LatLng(b.n, b.e);
                 const googleBounds = new google.maps.LatLngBounds(sw, ne);
-                map.fitBounds(googleBounds); // Physically wraps the map!
+                map.fitBounds(googleBounds); // Wraps the map.
 
-                // Jump the UI router back to the Home Dashboard instantly revealing the results!
+                // Return to the home dashboard to display results.
                 window.location.hash = '#home';
             });
         }

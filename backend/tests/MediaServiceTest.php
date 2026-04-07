@@ -61,7 +61,7 @@ class MediaServiceTest extends TestCase
 
     /**
      * Asserts that when PHP silently drops an oversized payload natively matching UPLOAD_ERR_INI_SIZE
-     * the pipeline explosively blows up routing the failure physically back to the UI!
+     * the pipeline fails and routes the failure back to the UI.
      */
     #[Test]
     public function processUploadCatchesPhpIniSizeLimits()
@@ -79,20 +79,20 @@ class MediaServiceTest extends TestCase
         $this->expectException(Exception::class);
         $this->expectExceptionMessage("Payload exceeds PHP 'upload_max_filesize' limits");
 
-        // The sequence must abort completely prior to resolving GCP streams!
+        // The sequence must abort prior to resolving GCP streams.
         $service->uploadPhotos($fakeFiles, 'GD-TEST', 1);
     }
     
     /**
-     * Asserts that successfully validated uploads forcibly return an explicit associative Object array structurally!
+     * Asserts that successfully validated uploads return an associative array.
      */
     #[Test]
     public function processUploadReturnsAssociatedObjectArrays()
     {
         $service = new MediaService('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock);
         
-        // Construct a safe, raw mock JPEG physically mapped to the local test OS using Magic Hex Bytes alone!
-        // This ensures finfo(FILEINFO_MIME_TYPE) securely identifies it as 'image/jpeg' without requiring ext-gd rendering!
+        // Construct a raw mock JPEG using magic hex bytes.
+        // This ensures finfo(FILEINFO_MIME_TYPE) identifies it as 'image/jpeg' without requiring ext-gd rendering.
         $tempFile = tempnam(sys_get_temp_dir(), 'fktst');
         file_put_contents($tempFile, "\xFF\xD8\xFF\xE0\x00\x10\x4A\x46\x49\x46\x00\x01\x01\x01");
         
@@ -117,7 +117,7 @@ class MediaServiceTest extends TestCase
         $this->assertArrayHasKey('lon', $result[0]);
         $this->assertStringContainsString("geodashing-test-blobs", $result[0]['url']);
         
-        // Without an actual EXIF data package specifically baked into our mock JPEG bytes, coordinates MUST strictly resolve null!
+        // Without an EXIF data package in our mock JPEG, coordinates must resolve to null.
         $this->assertNull($result[0]['lat']);
         $this->assertNull($result[0]['lon']);
         

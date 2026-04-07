@@ -40,7 +40,7 @@ test.describe('Component & Interactive Layout Constraints', () => {
              
              // Wait for the native Google Maps submenu to render 'Terrain' or 'Labels'
              const subMenuText = page.locator('text=/Terrain|Labels/i').first();
-             // Explicitly verify the sub-checkboxes pop out natively without getting blocked!
+             // Verify the sub-checkboxes pop out without getting blocked.
              await expect(subMenuText).toBeVisible({ timeout: 15000 });
         }
     });

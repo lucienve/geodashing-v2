@@ -44,7 +44,7 @@ test.describe('Navigation Layout Constraints', () => {
             const box = await mobileDrawer.boundingBox();
             expect(box).not.toBeNull();
             
-            // Critical Assertion: The drawer must not bleed off the right or left edge of the phone!
+            // Critical assertion: The drawer must not bleed off the right or left edge of the phone.
             expect(box.x).toBeGreaterThanOrEqual(0);
             expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
         } else {

@@ -305,7 +305,7 @@ class AuthService
         $headers .= "Reply-To: no-reply@geodashing.org\r\n";
         $headers .= "X-Mailer: PHP/" . phpversion();
 
-        // The 5th parameter securely overrides the 'MAIL FROM' Envelope Sender dynamically bypassing Postfix default arrays!
+        // The 5th parameter overrides the 'MAIL FROM' envelope sender, bypassing Postfix defaults.
         $this->executeMail($email, $subject, $message, $headers, "-fno-reply@geodashing.org");
     }
 

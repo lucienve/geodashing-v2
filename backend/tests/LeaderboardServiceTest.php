@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
  * LeaderboardServiceTest
  *
  * Verifies the mathematical aggregation, rank mapping, and explicit temporal 
- * Tie-Breaker algorithms cleanly parsing exactly identical players iteratively!
+ * Tie-breaker algorithms parsing identical players.
  */
 #[CoversClass(LeaderboardService::class)]
 #[AllowMockObjectsWithoutExpectations]
@@ -28,7 +28,7 @@ class LeaderboardServiceTest extends TestCase
 
     /**
      * Asserts that when two players tie with the exact same Score `(20)`, the one 
-     * whose `last_find_time` is mathematically *earlier* gets the higher `#Rank`!
+     * whose `last_find_time` is *earlier* gets the higher rank.
      */
     #[Test]
     public function getSoloRankingsProperlyResolvesTieBreakersNatively()
@@ -48,7 +48,7 @@ class LeaderboardServiceTest extends TestCase
 
         $this->assertCount(3, $rankings);
 
-        // Assert strictly that Alpha and Bravo tied on 20 points, but Alpha finished first mathematically!
+        // Assert that Alpha and Bravo tied on 20 points, but Alpha finished first.
         $this->assertEquals(1, $rankings[0]['rank']);
         $this->assertEquals('Alpha', $rankings[0]['username']);
 
@@ -61,7 +61,7 @@ class LeaderboardServiceTest extends TestCase
 
     /**
      * Asserts that if two players log the exact same score at the exact same identical second,
-     * the system natively awards them the identical Rank integer mapping!
+     * the system awards them the identical rank.
      */
     #[Test]
     public function getSoloRankingsHandlesExactSimultaneousTiesProperly()
@@ -80,16 +80,16 @@ class LeaderboardServiceTest extends TestCase
 
         $this->assertCount(3, $rankings);
 
-        // Delta and Echo structurally hold identically equal values natively! Both earn Rank #1.
+        // Delta and Echo hold equal values. Both earn Rank #1.
         $this->assertEquals(1, $rankings[0]['rank']);
         $this->assertEquals(1, $rankings[1]['rank']);
         
-        // Foxtrot mathematically follows, inheriting the ordinal index #3!
+        // Foxtrot follows, inheriting the ordinal index #3.
         $this->assertEquals(3, $rankings[2]['rank']);
     }
 
     /**
-     * Asserts returning standard empty arrays gracefully handles edge bounds structurally!
+     * Asserts returning empty arrays gracefully handles edge bounds.
      */
     #[Test]
     public function getSoloRankingsHandlesEmptySetsSafely()
