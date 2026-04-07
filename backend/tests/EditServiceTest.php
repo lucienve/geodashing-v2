@@ -142,6 +142,11 @@ class EditServiceTest extends TestCase
     #[Test]
     public function processEditRejectsInactiveGame()
     {
+        $userId = 1;
+        $dashpointId = 'GD001-XXXX';
+        $notes = 'Changing notes';
+        $keptPhotosRaw = '[]';
+
         $stmtMock = $this->createMock(PDOStatement::class);
         $stmtMock->method('fetch')->willReturn([
             'id' => 10,
@@ -150,10 +155,10 @@ class EditServiceTest extends TestCase
         ]);
         $this->pdoMock->method('prepare')->willReturn($stmtMock);
 
-        $result = $this->editService->processEdit(1, 'GD001-XXXX', 'Changing notes', '[]');
+        $result = $this->editService->processEdit($userId, $dashpointId, $notes, $keptPhotosRaw);
 
         $this->assertEquals("error", $result['status']);
         $this->assertEquals(403, $result['code']);
-        $this->assertEquals('Modification rejected: Historical game logs are strictly immutable.', $result['message']);
+        $this->assertEquals('Modification rejected. Historical game logs cannot be edited.', $result['message']);
     }
 }
