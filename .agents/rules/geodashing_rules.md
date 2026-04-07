@@ -12,6 +12,7 @@ You are working on the Geodashing V2 project. You must strictly adhere to these 
 - **Resilient Execution:** Always wrap file I/O operations, database queries, and external network/API requests in robust error handling blocks (`try/except` in Python, `try/catch` in JS/PHP). Always fail gracefully.
 - **Security Posture:** Never commit secrets, credentials, or API keys. Do not hardcode sensitive data. Credentials must be read from files that are not tracked in .git, or other means to keep them from being exposed in github or source control.
 - **Version Control:** When asked to generate commit messages, mandate the Conventional Commits format (e.g., `feat: [message]`, `fix: [message]`).
+- **Comment Style:** Maintain a calm, professional, and informative tone in all code comments. Do not use exclamation marks or overly dramatic language (e.g., "explosively", "rigidly", "physically", "natively").
 
 ## 2. Infrastructure Target Versions
 Ensure all code and syntax is explicitly compatible with the following versions:
