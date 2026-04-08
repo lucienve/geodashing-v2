@@ -130,7 +130,8 @@ document.addEventListener('routeLoaded', (e) => {
                                 if (visit.photos && visit.photos.length > 0) {
                                     html += `<div style="display:grid; grid-template-columns: 1fr; gap:1rem;">`;
                                     visit.photos.forEach(photo => {
-                                        let imgHtml = `<img src="${photo.url}" style="width:100%; height:auto; border:1px solid var(--accent-amber); cursor:pointer;" loading="lazy" onclick="if(window.trackEvent) window.trackEvent('view_photo', { dashpoint_id: '${dp.id}', image_url: '${photo.url}' })">`;
+                                        const eventData = JSON.stringify({ dashpoint_id: dp.id, image_url: photo.url });
+                                        let imgHtml = `<img src="${window.escapeHTML(photo.url)}" style="width:100%; height:auto; border:1px solid var(--accent-amber); cursor:pointer;" loading="lazy" onclick="if(window.trackEvent) window.trackEvent('view_photo', ${window.escapeHTML(eventData)})">`;
 
                                         if (photo.lat !== null && photo.lon !== null && dp.lat !== undefined) {
                                             // Native JS Haversine Distance Mapper cleanly invoking the global SPA utility
