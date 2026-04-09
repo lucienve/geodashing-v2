@@ -29,6 +29,7 @@ try {
         $updateStmt->execute([':id' => $user['id']]);
 
         // Mark the user as logged in.
+        session_regenerate_id(true);
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['is_verified'] = 1;
 
