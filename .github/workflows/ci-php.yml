@@ -1,0 +1,37 @@
+name: PHP Tests
+
+on:
+  push:
+    branches: [ "master", "main" ]
+    paths:
+      - 'backend/**/*.php'
+      - 'composer.json'
+      - 'composer.lock'
+      - '.github/workflows/ci-php.yml'
+  pull_request:
+    branches: [ "master", "main" ]
+    paths:
+      - 'backend/**/*.php'
+      - 'composer.json'
+      - 'composer.lock'
+      - '.github/workflows/ci-php.yml'
+  workflow_dispatch:
+
+jobs:
+  php-tests:
+    name: PHP Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql
+
+      - name: Install Dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Run PHPUnit
+        run: vendor/bin/phpunit backend/tests/

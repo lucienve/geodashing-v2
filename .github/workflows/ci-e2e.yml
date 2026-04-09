@@ -1,47 +1,35 @@
-name: Automated tests
+name: E2E Playwright Tests
 
 on:
+  push:
+    branches: [ "master", "main" ]
+    paths:
+      - 'js/**'
+      - 'css/**'
+      - 'e2e/**'
+      - 'backend/**/*.php'
+      - 'templates/**'
+      - 'index.html'
+      - 'package.json'
+      - 'playwright.config.js'
+      - 'schema.sql'
+      - '.github/workflows/ci-e2e.yml'
+  pull_request:
+    branches: [ "master", "main" ]
+    paths:
+      - 'js/**'
+      - 'css/**'
+      - 'e2e/**'
+      - 'backend/**/*.php'
+      - 'templates/**'
+      - 'index.html'
+      - 'package.json'
+      - 'playwright.config.js'
+      - 'schema.sql'
+      - '.github/workflows/ci-e2e.yml'
   workflow_dispatch:
 
 jobs:
-  php-tests:
-    name: PHP Unit Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.3'
-          extensions: pdo_mysql
-
-      - name: Install Dependencies
-        run: composer install --prefer-dist --no-progress
-
-      - name: Run PHPUnit
-        run: vendor/bin/phpunit backend/tests/
-
-  python-tests:
-    name: Python Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run Pytest
-        run: PYTHONPATH=. pytest backend/tests/
-
   playwright-tests:
     name: Playwright E2E Tests
     runs-on: ubuntu-latest
@@ -85,11 +73,8 @@ jobs:
 
       - name: Initialize Database Schema & Inject Dummy Data
         run: |
-          # 1. Load the physical tables
           mysql -h 127.0.0.1 -u root -pdefault_root_pass geodashing < schema.sql
           
-          # 2. Inject one live game context explicitly to ensure the Playwright Layouts 
-          # that bind to historical data or current state don't hit 404s/empty states.
           mysql -h 127.0.0.1 -u root -pdefault_root_pass geodashing -e "
             INSERT INTO games (id, title, start_time, end_time, is_active) 
             VALUES (1, 'CI Test Game', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 30 DAY), TRUE);
