@@ -55,7 +55,7 @@ class MediaService
         $normalizedFiles = $this->normalizeFilesArray($files);
         
         if (count($normalizedFiles) > 10) {
-            throw new Exception("Maximum of 10 photos allowed per visit.");
+            throw new Exception("Maximum of 10 photos allowed per visit block.");
         }
 
         foreach ($normalizedFiles as $index => $file) {
@@ -85,13 +85,22 @@ class MediaService
             }
 
             // Generate a secure unique mathematical path map locking the object structure securely in the bucket
-            $extension = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'jpg';
+            $mimeToExt = [
+                'image/jpeg' => 'jpg',
+                'image/png'  => 'png',
+                'image/webp' => 'webp'
+            ];
+            $extension = $mimeToExt[$mime] ?? 'jpg';
+            
+            // Path traversal protection neutralizing directory escapes
+            $safeDashpointId = preg_replace('/[^a-zA-Z0-9_-]/', '', $dashpointId);
+
             $objectName = sprintf("visits/%s/%d_%s_%d.%s", 
-                $dashpointId, 
+                $safeDashpointId, 
                 $userId, 
                 date('YmdHis'), 
                 $index, 
-                strtolower($extension)
+                $extension
             );
 
             // Execute the RESTful socket stream uploading binary payload natively into Google Cloud

@@ -130,7 +130,8 @@ document.addEventListener('routeLoaded', (e) => {
                                 if (visit.photos && visit.photos.length > 0) {
                                     html += `<div style="display:grid; grid-template-columns: 1fr; gap:1rem;">`;
                                     visit.photos.forEach(photo => {
-                                        let imgHtml = `<img src="${photo.url}" style="width:100%; height:auto; border:1px solid var(--accent-amber); cursor:pointer;" loading="lazy" onclick="if(window.trackEvent) window.trackEvent('view_photo', { dashpoint_id: '${dp.id}', image_url: '${photo.url}' })">`;
+                                        let encodedUrl = encodeURI(photo.url);
+                                        let imgHtml = `<img src="${encodedUrl}" class="log-photo" data-dpid="${window.escapeHTML(dp.id)}" data-url="${encodedUrl}" style="width:100%; height:auto; border:1px solid var(--accent-amber); cursor:pointer;" loading="lazy">`;
 
                                         if (photo.lat !== null && photo.lon !== null && dp.lat !== undefined) {
                                             // Native JS Haversine Distance Mapper cleanly invoking the global SPA utility
@@ -149,6 +150,20 @@ document.addEventListener('routeLoaded', (e) => {
                             }
 
                             visitDiv.innerHTML = html;
+
+                            // Bind click listeners natively to completely avoid attribute breakouts
+                            const photoImgs = visitDiv.querySelectorAll('img.log-photo');
+                            photoImgs.forEach(img => {
+                                img.addEventListener('click', function() {
+                                    if(window.trackEvent) {
+                                        window.trackEvent('view_photo', { 
+                                            dashpoint_id: this.getAttribute('data-dpid'), 
+                                            image_url: this.getAttribute('data-url') 
+                                        });
+                                    }
+                                });
+                            });
+
                             visitsContainer.appendChild(visitDiv);
                         });
                     }
