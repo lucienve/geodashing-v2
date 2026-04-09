@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: Automated tests
 
 on:
   workflow_dispatch:
@@ -40,7 +40,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Pytest
-        run: pytest backend/tests/
+        run: PYTHONPATH=. pytest backend/tests/
 
   playwright-tests:
     name: Playwright E2E Tests
@@ -91,8 +91,8 @@ jobs:
           # 2. Inject one live game context explicitly to ensure the Playwright Layouts 
           # that bind to historical data or current state don't hit 404s/empty states.
           mysql -h 127.0.0.1 -u root -pdefault_root_pass geodashing -e "
-            INSERT INTO games (start_date, end_date) 
-            VALUES (DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 30 DAY));
+            INSERT INTO games (id, title, start_time, end_time, is_active) 
+            VALUES (1, 'CI Test Game', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 30 DAY), TRUE);
           "
 
       - name: Install Node Dependencies
