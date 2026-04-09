@@ -1,43 +1,13 @@
-/**
- * Geodashing Vanilla SPA Router Engine
- * 
- * Intercepts completely native browser URL hashes (e.g. domain.com/#login) 
- * intercepting standard navigation and transparently loading HTML chunks over the map dynamically.
- */
-/**
- * Global Haversine Math Core
- * Calculates the precise physical distance in meters across the spherical curvature of the Earth.
- */
-window.calculateDistance = function (lat1, lon1, lat2, lon2) {
-    const r = 6371e3; // Earth radius in meters
-    const rad = Math.PI / 180;
-    const phi1 = lat1 * rad;
-    const phi2 = lat2 * rad;
-    const deltaPhi = (lat2 - lat1) * rad;
-    const deltaLambda = (lon2 - lon1) * rad;
+import re
 
-    const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
-        Math.cos(phi1) * Math.cos(phi2) *
-        Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+with open('js/app.js', 'r') as f:
+    content = f.read()
 
-    return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-};
+parts = content.split("document.addEventListener('DOMContentLoaded', () => {")
 
-/**
- * Escapes raw strings for safe HTML injection, preventing XSS.
- */
-window.escapeHTML = function(str) {
-    if (!str) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-};
+pre_dom = parts[0]
 
-
-function initGlobalState() {
+new_functions = """function initGlobalState() {
     // 0. Global game state binding for historical tracking.
     window.currentGameContext = {
         id: null,
@@ -50,13 +20,13 @@ function initNavigation() {
     const APP_NAVIGATION = [
         { text: 'MAP', mobileText: 'Map', href: '#home', defaultActive: true },
         { text: 'LEADERBOARD', mobileText: 'Leaderboard', href: '#leaderboard' },
-        { 
+        {
             text: 'HELP ▾', isDropdown: true, children: [
                 { text: 'About', href: '#about' },
                 { text: 'How to Play', href: '#how-to' },
                 { text: 'Contact', href: '#contact' },
                 { text: 'Export Game Data', mobileText: 'Export Data', href: '#search' }
-            ] 
+            ]
         },
         { text: 'PROFILE', mobileText: 'Profile', href: '#profile', idDesktop: 'nav-profile-link', idMobile: 'mobile-nav-profile-link', extraClasses: 'd-none' }
     ];
@@ -212,7 +182,7 @@ function initRouting() {
                 contentDiv.innerHTML = html;
                 contentDiv.style.opacity = '1';
 
-                // CRITICAL: Since we just dumped raw HTML into the DOM natively, 
+                // CRITICAL: Since we just dumped raw HTML into the DOM natively,
                 // any JS listeners tied to buttons inside it must be re-bound.
                 // We fire a custom event telling `controllers.js` to wake up and route the original query bounds.
                 document.dispatchEvent(new CustomEvent('routeLoaded', { detail: { route: fullHash } }));
@@ -240,7 +210,7 @@ function initGameContext() {
         if (json.status === 'success' && json.data.length > 0) {
             // Find Active Game natively
             const activeGame = json.data.find(g => g.is_active == 1) || json.data[0];
-            
+
             // Sync the Global App Context
             window.currentGameContext.id = activeGame.id;
             window.currentGameContext.is_active = activeGame.is_active == 1;
@@ -255,10 +225,10 @@ function initGameContext() {
                     option.value = game.id;
                     option.dataset.isActive = game.is_active;
                     option.dataset.title = game.title;
-                    
+
                     // Removed titleStr to keep the option text short and prevent layout overflow on mobile
                     option.innerText = `Game ${game.id} (${monthYear})`;
-                    
+
                     if (game.id === activeGame.id) {
                         option.selected = true;
                     }
@@ -270,7 +240,7 @@ function initGameContext() {
                     const selOpt = e.target.options[e.target.selectedIndex];
                     window.currentGameContext.id = parseInt(e.target.value);
                     window.currentGameContext.is_active = selOpt.dataset.isActive == '1';
-                    
+
                     if (window.location.hash === '' || window.location.hash === '#home') {
                         if (typeof window.refreshMapBounds === 'function') {
                             window.refreshMapBounds();
@@ -314,10 +284,10 @@ function initAuthState() {
                         newBtn.addEventListener('click', async (e) => {
                             e.preventDefault();
                             await API.logout();
-                            window.location.reload(); 
+                            window.location.reload();
                         });
                     });
-                    
+
                     const profileLinks = [
                         document.getElementById('nav-profile-link'),
                         document.getElementById('mobile-nav-profile-link')
@@ -358,3 +328,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initGameContext();
     initAuthState();
 });
+"""
+
+with open('js/app.js', 'w') as f:
+    f.write(pre_dom + new_functions)
+
+print("Done writing app.js")
