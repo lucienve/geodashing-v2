@@ -13,7 +13,7 @@ test.describe('Navigation Layout Constraints', () => {
                     await expect(cookieBanner).not.toBeVisible();
                 }
             }
-        } catch (e) {
+        } catch (_e) {
             // gracefully ignore if it's not mounted yet
         }
     });

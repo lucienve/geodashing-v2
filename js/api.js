@@ -4,6 +4,7 @@
  * Exposes asynchronous functions mapping the UI to the backend API.
  */
 
+// eslint-disable-next-line no-unused-vars
 const API = {
     getCsrfToken: function() {
         const match = document.cookie.match(new RegExp('(^| )csrf_token=([^;]+)'));
@@ -241,7 +242,7 @@ const API = {
                 headers: this.getHeaders()
             });
             return await res.json();
-        } catch (e) {
+        } catch (_e) {
             return { status: 'error', message: 'Session Network Failure!' };
         }
     },
@@ -264,7 +265,7 @@ const API = {
 };
 
 // Expose standard custom Event hooks so the Router can wake up templates
-document.addEventListener('routeLoaded', (e) => {
+document.addEventListener('routeLoaded', (_e) => {
     // When #report or #login loads dynamically, this event fires.
     // E.g. console.log("New UI View Array Mapped:", e.detail.route);
 });

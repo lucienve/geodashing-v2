@@ -283,7 +283,7 @@ function initGameContext() {
                 });
             }
         }
-    }).catch(err => console.error("Could not fetch active game configuration."));
+    }).catch(_err => console.error("Could not fetch active game configuration."));
 }
 
 function initAuthState() {
@@ -342,7 +342,7 @@ function initAuthState() {
                 const verifyBanner = document.getElementById('verify-banner');
                 if (verifyBanner) verifyBanner.classList.add('d-none');
             }
-        } catch (e) {
+        } catch (_e) {
             console.error("Session integrity check failed.");
         }
     };

@@ -21,7 +21,7 @@ test.describe('Component & Interactive Layout Constraints', () => {
         }
     });
 
-    test('Map controls render safely above OS bounds', async ({ page, isMobile }) => {
+    test('Map controls render safely above OS bounds', async ({ page, _isMobile }) => {
         // Find the custom "My Location" SVG button
         const recenterBtn = page.locator('button[title="Recenter Map on Current Location"]');
         

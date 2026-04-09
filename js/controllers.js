@@ -189,6 +189,7 @@ document.addEventListener('routeLoaded', (e) => {
         const inputPhotos = document.getElementById('input-photos');
         const previewGrid = document.getElementById('photo-preview-grid');
         
+        // eslint-disable-next-line no-unused-vars
         let selectedFiles = []; // Track to enforce limit and show previews
 
         if (btnAddPhotos && inputPhotos) {
@@ -363,7 +364,7 @@ document.addEventListener('routeLoaded', (e) => {
                     } else {
                         feedbackStatus.innerHTML = `<div class="alert alert-error">[-] Upload rejected: ${result.message}</div>`;
                     }
-                } catch (err) {
+                } catch (_err) {
                     feedbackStatus.innerHTML = `<div class="alert alert-error">[-] Error: Upload failed.</div>`;
                 }
 
@@ -733,7 +734,7 @@ document.addEventListener('routeLoaded', (e) => {
             }
 
             container.innerHTML = html;
-        }).catch(err => {
+        }).catch(_err => {
             container.innerHTML = `<div class="alert alert-error">[-] System Offline. Profile unavailable.</div>`;
         });
     }
@@ -859,7 +860,7 @@ document.addEventListener('routeLoaded', (e) => {
                         submitBtn.disabled = false;
                         submitBtn.innerText = "SAVE EDITS";
                     }
-                } catch (err) {
+                } catch (_err) {
                     statusDiv.innerHTML = `<div class="alert alert-error">[-] System error.</div>`;
                     submitBtn.disabled = false;
                     submitBtn.innerText = "COMMIT REVISION";
@@ -911,7 +912,7 @@ document.addEventListener('routeLoaded', (e) => {
                 } else {
                     tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--accent-red);">[-] Global rankings currently unavailable.</td></tr>`;
                 }
-            }).catch(err => {
+            }).catch(_err => {
                 tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--accent-red);">[-] SYNC RUPTURED: Network Timeout.</td></tr>`;
             });
         }
