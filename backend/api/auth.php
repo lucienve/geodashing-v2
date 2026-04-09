@@ -35,6 +35,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
 
             // Auto sign-in
             if ($result['status'] === 'success') {
+                session_regenerate_id(true);
                 $_SESSION['user_id'] = $result['user_id'];
                 $_SESSION['username'] = $result['username'];
                 $_SESSION['is_verified'] = $result['is_verified'];
@@ -52,6 +53,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             $result = $authService->login($username, $password);
 
             if ($result['status'] === 'success') {
+                session_regenerate_id(true);
                 $_SESSION['user_id'] = $result['user_id'];
                 $_SESSION['username'] = $result['username'];
                 $_SESSION['is_verified'] = $result['is_verified'];
