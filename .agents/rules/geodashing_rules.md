@@ -7,12 +7,8 @@ description: Core constraints, architectural directives, and coding standards fo
 
 You are working on the Geodashing V2 project. You must strictly adhere to these constraints and coding standards at all times to ensure project consistency.
 
-## 1. Core Operating Principles
-- **Scope Constriction:** Implement strictly what is explicitly requested. Do not over-engineer solutions or add unrequested "nice-to-have" features.
-- **Resilient Execution:** Always wrap file I/O operations, database queries, and external network/API requests in robust error handling blocks (`try/except` in Python, `try/catch` in JS/PHP). Always fail gracefully.
-- **Security Posture:** Never commit secrets, credentials, or API keys. Do not hardcode sensitive data. Credentials must be read from files that are not tracked in .git, or other means to keep them from being exposed in github or source control.
+## 1. Project Specific Principles
 - **Version Control:** When asked to generate commit messages, mandate the Conventional Commits format (e.g., `feat: [message]`, `fix: [message]`).
-- **Comment Style:** Maintain a calm, professional, and informative tone in all code comments. Do not use exclamation marks or overly dramatic language (e.g., "explosively", "rigidly", "physically", "natively").
 
 ## 2. Infrastructure Target Versions
 Ensure all code and syntax is explicitly compatible with the following versions:
@@ -20,11 +16,7 @@ Ensure all code and syntax is explicitly compatible with the following versions:
 - **MySQL:** `8.4.8`
 - **Python:** `3.11+` (Relaxed from 3.12 to support native Debian 12 developer environments while maintaining forward-compatibility with Ubuntu production servers).
 
-## 3. Backend Directives: Python
-- **Syntax / Style:** Strictly follow PEP 8. Type hints are absolutely mandatory for all function signatures and complex variables.
-- **Documentation:** Use Google-style docstrings for all modules, classes, and exposed functions.
-- **Testing:** Use `pytest` for python. Test core logic rigorously.
-- **Dependencies:** Manage dependencies using standard `pip` with a virtual environment (venv) and maintain an up-to-date `requirements.txt`.
+## 3. Backend Directives: Python Architecture
 - **Database Rules:** Connect using `mysql-connector-python`. **Do not use an ORM**. You must use strictly parameterized queries / prepared statements for all database interactions. String interpolation or concatenation for SQL queries is strictly forbidden to prevent SQL injections.
 
 ## 4. Backend Directives: PHP
@@ -39,6 +31,3 @@ Ensure all code and syntax is explicitly compatible with the following versions:
 - **Automated Layout Testing:** After every substantial UI or structural change, you must automatically run the Playwright E2E suite (`npx playwright test`) to verify that the layouts correctly constrain to mathematical device viewports without overflowing.
 - **Separation of Concerns:** HTML, CSS, and JS logic must be completely decoupled into separate files. Inline styles (`style="..."`) and inline event handlers (`onclick="..."`) are strictly prohibited in the markup.
 - **Validation:** ESLint must be utilized to catch syntax errors and undefined variables prior to any commit (`npm run lint`).
-
-## 6. Documentation
-- **Project information:** Summarize our current plan, completed tasks, and architectural decisions into docs/project_context.md, and keep up to date with major changes.
