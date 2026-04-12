@@ -1,0 +1,4 @@
+-r requirements.txt
+pytest>=8.0.0
+pylint>=3.0.0
+yapf>=0.40.0
