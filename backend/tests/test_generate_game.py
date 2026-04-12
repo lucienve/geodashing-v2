@@ -1,9 +1,13 @@
 """Tests for the Geodashing V2 point generator script."""
 
+from unittest.mock import MagicMock
+
 import geopandas as gpd
 from shapely.geometry import Point, Polygon, box
 
-from backend.scripts.generate_game import (generate_spherical_points,
+from backend.scripts.generate_game import (_bulk_insert_dashpoints,
+                                           _initialize_new_game,
+                                           generate_spherical_points,
                                            generate_valid_dashpoints,
                                            int_to_letters)
 
@@ -92,3 +96,57 @@ def test_int_to_letters():
     assert int_to_letters(25) == "AAAZ"
     assert int_to_letters(26) == "AABA"
     assert int_to_letters(27) == "AABB"
+
+
+def test_initialize_new_game():
+    """Verify that starting a new game successfully updates the DB state."""
+    mock_cursor = MagicMock()
+    mock_cursor.lastrowid = 42
+
+    game_id = _initialize_new_game(mock_cursor, "Global Dash")
+
+    assert game_id == 42
+    # Verify the initial retirement of old games ran
+    mock_cursor.execute.assert_any_call("UPDATE games SET is_active = FALSE")
+
+    # Verify the parameter-bound database insert
+    assert mock_cursor.execute.call_count == 2
+    args = mock_cursor.execute.call_args_list[1][0]
+    query = args[0]
+    payload = args[1]
+
+    assert "INSERT INTO games" in query
+    assert payload[0] == "Global Dash"
+
+
+def test_bulk_insert_dashpoints(monkeypatch):
+    """Verify that multiple generated points are chunked and executed properly."""
+    # Mock away blocklist reading logic
+    monkeypatch.setattr('backend.scripts.generate_game.load_blocklist',
+                        lambda path: set())
+
+    mock_cursor = MagicMock()
+    points = [Point(10, 20), Point(-30, 40)]
+
+    _bulk_insert_dashpoints(mock_cursor,
+                            points,
+                            game_id=7,
+                            bad_words_path="mock/path")
+
+    assert mock_cursor.executemany.call_count == 1
+    args = mock_cursor.executemany.call_args[0]
+
+    query = args[0]
+    batch_data = args[1]
+
+    assert "INSERT INTO dashpoints" in query
+    assert len(batch_data) == 2
+
+    # Validate correct param formatting including POINT(lat lon) strictness
+    assert batch_data[0][0] == "GD007-AAAA"
+    assert batch_data[0][1] == 7
+    assert batch_data[0][2] == "POINT(20.0 10.0)"
+
+    assert batch_data[1][0] == "GD007-AAAB"
+    assert batch_data[1][1] == 7
+    assert batch_data[1][2] == "POINT(40.0 -30.0)"
