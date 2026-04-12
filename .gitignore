@@ -45,3 +45,7 @@ node_modules/
 e2e-results/
 playwright-report/
 test-results/
+
+# Agent Rules
+.agents/rules/*
+!.agents/rules/geodashing_rules.md
