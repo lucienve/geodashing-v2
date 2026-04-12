@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock
 
 import geopandas as gpd
+import mysql.connector.cursor
 from shapely.geometry import Point, Polygon, box
 
 from backend.scripts.generate_game import (_bulk_insert_dashpoints,
@@ -100,7 +101,7 @@ def test_int_to_letters():
 
 def test_initialize_new_game():
     """Verify that starting a new game successfully updates the DB state."""
-    mock_cursor = MagicMock()
+    mock_cursor = MagicMock(spec=mysql.connector.cursor.MySQLCursor)
     mock_cursor.lastrowid = 42
 
     game_id = _initialize_new_game(mock_cursor, "Global Dash")
@@ -125,7 +126,7 @@ def test_bulk_insert_dashpoints(monkeypatch):
     monkeypatch.setattr('backend.scripts.generate_game.load_blocklist',
                         lambda path: set())
 
-    mock_cursor = MagicMock()
+    mock_cursor = MagicMock(spec=mysql.connector.cursor.MySQLCursor)
     points = [Point(10, 20), Point(-30, 40)]
 
     _bulk_insert_dashpoints(mock_cursor,
