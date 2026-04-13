@@ -886,7 +886,7 @@ document.addEventListener('routeLoaded', (e) => {
                     const data = json.data;
 
                     if (data.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);">[ NO STATISTICAL DATA PRESENT ]</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);">[ NO LOGS YET ]</td></tr>`;
                         return;
                     }
 
