@@ -6,9 +6,13 @@
  * pushing image binary arrays directly into the distributed geodashing-v2-blobs bucket.
  */
 
-// Load Composer autoload specifically for Google Cloud Storage Library mapping
-require_once __DIR__ . '/../../vendor/autoload.php';
+namespace App\Services;
 
+// Load Composer autoload specifically for Google Cloud Storage Library mapping
+// require_once __DIR__ . '/../../vendor/autoload.php';
+
+use Exception;
+use finfo;
 use Google\Cloud\Storage\StorageClient;
 
 class MediaService

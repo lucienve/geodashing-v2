@@ -1,4 +1,10 @@
 <?php
+
+namespace App\Services;
+
+use PDO;
+use PDOException;
+
 /**
  * SearchService
  *
@@ -6,8 +12,6 @@
  * MySQL 8 engine natively, routing frontend coordinates reliably 
  * across boundaries like the International Date Line.
  */
-
-require_once __DIR__ . '/../Database.php';
 
 class SearchService
 {

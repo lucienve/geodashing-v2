@@ -8,10 +8,12 @@
 
 header('Content-Type: application/json');
 
+use App\Services\SearchService;
+
 // If HTTP executes directly (no require)
 if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
+    require_once __DIR__ . '/../../vendor/autoload.php';
     require_once __DIR__ . '/../Database.php';
-    require_once __DIR__ . '/../services/SearchService.php';
 
     // Extract boundaries dynamically mapped from the frontend Map viewport bounds
     // Examples: n = 43.12, s = 42.10, e = -70.30, w = -71.50

@@ -1,8 +1,10 @@
 <?php
+
+namespace App\Tests;
+
+use Exception;
+use App\Services\MediaService;
 use PHPUnit\Framework\TestCase;
-
-require_once __DIR__ . '/../services/MediaService.php';
-
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;

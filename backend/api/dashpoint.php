@@ -6,20 +6,22 @@
  * all historically recorded Finders out of the `visits` and `users` table.
  */
 
-header('Content-Type: application/json');
+use App\Services\DashpointService;
 
-require_once __DIR__ . '/../services/DashpointService.php';
+if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
+    require_once __DIR__ . '/../../vendor/autoload.php';
+    header('Content-Type: application/json');
 
-$id = $_GET['id'] ?? null;
+    $id = $_GET['id'] ?? null;
 
-if (!$id) {
-    http_response_code(400);
-    echo json_encode(["status" => "error", "message" => "Dashpoint ID is missing."]);
-    exit;
-}
+    if (!$id) {
+        http_response_code(400);
+        echo json_encode(["status" => "error", "message" => "Dashpoint ID is missing."]);
+        exit;
+    }
 
-try {
-    $service = new DashpointService();
+    try {
+        $service = new DashpointService();
     $data = $service->getDashpointDetails($id);
 
     if (!$data) {
@@ -33,8 +35,9 @@ try {
         "data" => $data
     ]);
 
-} catch (Exception $e) {
-    error_log("Dashpoint Fetch RUPTURE: " . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(["status" => "error", "message" => "Database connection failed."]);
+    } catch (Exception $e) {
+        error_log("Dashpoint Fetch RUPTURE: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(["status" => "error", "message" => "Database connection failed."]);
+    }
 }

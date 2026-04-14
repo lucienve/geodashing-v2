@@ -1,12 +1,15 @@
 <?php
+
+namespace App\Services;
+
+use PDO;
+
 /**
  * LeaderboardService
  *
  * Exclusively aggregates and formally ranks active Player scores and metrics
  * utilizing SQL GROUP BY projections.
  */
-
-require_once __DIR__ . '/../Database.php';
 
 class LeaderboardService
 {

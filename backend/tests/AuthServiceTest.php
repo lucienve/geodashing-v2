@@ -1,8 +1,12 @@
 <?php
+
+namespace App\Tests;
+
+use PDO;
+use PDOException;
+use PDOStatement;
+use App\Services\AuthService;
 use PHPUnit\Framework\TestCase;
-
-require_once __DIR__ . '/../api/auth.php';
-
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;

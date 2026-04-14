@@ -7,21 +7,26 @@
 
 header('Content-Type: application/json');
 
-require_once __DIR__ . '/../Database.php';
+use App\Services\GameService;
 
-try {
-    $db = Database::getConnection();
-    
-    $stmt = $db->query("SELECT id, title, start_time, end_time, is_active FROM games ORDER BY id DESC");
-    $games = $stmt->fetchAll(PDO::FETCH_ASSOC);
+if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
+    require_once __DIR__ . '/../../vendor/autoload.php';
+    require_once __DIR__ . '/../Database.php';
 
-    echo json_encode([
-        "status" => "success",
-        "data" => $games
-    ]);
+    try {
+        $db = Database::getConnection();
+        $gameService = new GameService($db);
+        
+        $games = $gameService->getAllGames();
 
-} catch (Exception $e) {
-    error_log("Games API Error: " . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(["status" => "error", "message" => "Database connection failed."]);
+        echo json_encode([
+            "status" => "success",
+            "data" => $games
+        ]);
+
+    } catch (Exception $e) {
+        error_log("Games API Error: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(["status" => "error", "message" => "Database connection failed."]);
+    }
 }

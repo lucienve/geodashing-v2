@@ -4,7 +4,10 @@
  * 
  * Intercepts the GET payload shipped via the PHP mail() engine.
  */
+use App\Services\AuthService;
+
 require_once __DIR__ . '/../session.php';
+require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/../Database.php';
 
 $token = $_GET['token'] ?? '';
@@ -17,20 +20,14 @@ if (empty($token)) {
 
 try {
     $db = Database::getConnection();
+    $authService = new AuthService($db);
+    
+    $result = $authService->verifyEmail($token);
 
-    // Evaluate the physical token strictly matching the Users table
-    $stmt = $db->prepare("SELECT id FROM users WHERE verification_token = :token AND is_verified = 0 LIMIT 1");
-    $stmt->execute([':token' => $token]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($user) {
-        // Formally verify the account and aggressively purge the token array
-        $updateStmt = $db->prepare("UPDATE users SET is_verified = 1, verification_token = NULL WHERE id = :id");
-        $updateStmt->execute([':id' => $user['id']]);
-
+    if ($result['status'] === 'success') {
         // Mark the user as logged in.
         session_regenerate_id(true);
-        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['user_id'] = $result['user_id'];
         $_SESSION['is_verified'] = 1;
 
         // Redirect with success anchor

@@ -1,9 +1,19 @@
 <?php
 
+namespace App\Tests;
+
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
+use App\Services\DashpointService;
+use PDO;
+use PDOStatement;
 
 require_once __DIR__ . '/../services/DashpointService.php';
 
+#[CoversClass(DashpointService::class)]
+#[AllowMockObjectsWithoutExpectations]
 class DashpointServiceTest extends TestCase
 {
     private $pdoMock;

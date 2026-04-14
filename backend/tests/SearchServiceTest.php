@@ -1,11 +1,16 @@
 <?php
+
+namespace App\Tests;
+
 use PHPUnit\Framework\TestCase;
-
-require_once __DIR__ . '/../services/SearchService.php';
-
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
+use App\Services\SearchService;
+use PDO;
+use PDOStatement;
+
+require_once __DIR__ . '/../services/SearchService.php';
 
 /**
  * SearchServiceTest

@@ -1,5 +1,9 @@
 <?php
 
+namespace App\Services;
+
+use PDO;
+
 require_once __DIR__ . '/../Database.php';
 
 class DashpointService
@@ -9,7 +13,7 @@ class DashpointService
     public function __construct(?PDO $db = null)
     {
         // Permits dependency injection for PHPUnit Testing natively isolating the Database
-        $this->db = $db ?: Database::getConnection();
+        $this->db = $db ?: \Database::getConnection();
     }
 
     /**

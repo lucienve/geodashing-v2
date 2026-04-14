@@ -1,9 +1,12 @@
 <?php
+
+namespace App\Tests;
+
+use PDO;
+use PDOStatement;
+use App\Services\EditService;
+use App\Services\MediaService;
 use PHPUnit\Framework\TestCase;
-
-require_once __DIR__ . '/../api/edit.php';
-require_once __DIR__ . '/../services/MediaService.php';
-
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;

@@ -8,9 +8,11 @@
 
 header('Content-Type: application/json');
 
+use App\Services\LeaderboardService;
+
 if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
+    require_once __DIR__ . '/../../vendor/autoload.php';
     require_once __DIR__ . '/../Database.php';
-    require_once __DIR__ . '/../services/LeaderboardService.php';
 
     try {
         $db = Database::getConnection();
