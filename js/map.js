@@ -8,6 +8,7 @@
 let map;
 let activeMarkers = [];
 let appClusterer = null;
+let activeCircles = [];
 
 // Custom Algorithm for mapping Visited State priorities to Grouped Containers
 const customClusterRenderer = {
@@ -88,6 +89,18 @@ window.initMap = function () {
         };
 
         refreshDashpoints(searchMatrix);
+    });
+
+    // 2b. Listen for zoom changes to toggle 100m dashpoint radius visibility
+    google.maps.event.addListener(map, 'zoom_changed', function () {
+        const showCircles = map.getZoom() >= 14;
+        activeCircles.forEach(c => {
+            if (showCircles && !c.getMap()) {
+                c.setMap(map);
+            } else if (!showCircles && c.getMap()) {
+                c.setMap(null);
+            }
+        });
     });
 
     // 3. Optional Geographic Snapping Routine
@@ -197,13 +210,16 @@ function refreshDashpoints(bounds) {
  * Natively purges the DOM rendering structure allocating entirely fresh Google Map Marker objects
  */
 function plotVectors(pointsArray) {
-    // Flush old markers
+    // Flush old markers and circles
     if (appClusterer) {
         appClusterer.clearMarkers();
     } else {
         activeMarkers.forEach(m => m.setMap(null));
     }
     activeMarkers = [];
+
+    activeCircles.forEach(c => c.setMap(null));
+    activeCircles = [];
 
     pointsArray.forEach(pt => {
         let vCount = 0;
@@ -246,6 +262,21 @@ function plotVectors(pointsArray) {
         });
 
         activeMarkers.push(marker);
+
+        // Draw 100m radius circle (only visible at high zoom levels > 14)
+        const circle = new google.maps.Circle({
+            strokeColor: rimColor,
+            strokeOpacity: 0.8,
+            strokeWeight: 1,
+            fillColor: bgColor,
+            fillOpacity: 0.15,
+            map: map.getZoom() >= 14 ? map : null,
+            center: { lat: parseFloat(pt.lat), lng: parseFloat(pt.lon) },
+            radius: 100,
+            clickable: false // Ensure circles don't block clicking pins / dragging the map
+        });
+        
+        activeCircles.push(circle);
     });
 
     if (!appClusterer) {
