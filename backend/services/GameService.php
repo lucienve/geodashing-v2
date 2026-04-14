@@ -16,6 +16,11 @@ class GameService
 {
     private PDO $db;
 
+    /**
+     * Constructor.
+     *
+     * @param PDO $db The PDO connection.
+     */
     public function __construct(PDO $db)
     {
         $this->db = $db;

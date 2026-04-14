@@ -166,7 +166,7 @@ class AuthService
     {
         $verifyLink = "https://geodashing.org/backend/api/verify.php?token=" . $token;
         $subject = "Verify your account on Geodashing V2";
-        $message = "Welcome to Geodashing V2!\n\nPlease finalize your account registration by clicking the link natively below:\n\n" . $verifyLink . "\n\nWelcome to the game!";
+        $message = "Welcome to Geodashing V2!\n\nPlease finalize your account registration by clicking the link below:\n\n" . $verifyLink . "\n\nWelcome to the game!";
 
         $headers = "From: no-reply@geodashing.org\r\n";
         $headers .= "Reply-To: no-reply@geodashing.org\r\n";
@@ -189,7 +189,7 @@ class AuthService
             $stmt->execute([':username' => $username]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            // Obfuscate success natively preventing account enumeration algorithms
+            // Obfuscate success to prevent account enumeration
             if (!$user) {
                 return ["status" => "success", "message" => "If that username matches our records, an email has been sent."];
             }
@@ -225,9 +225,9 @@ class AuthService
         $subject = "Password Reset Request for Geodashing V2";
         $message = "Hello " . $username . ",\n\nWe received a request to reset your password on Geodashing V2.\n\n";
         $message .= "If you did not make this request, please safely ignore this email.\n\n";
-        $message .= "Otherwise, physically click the highly-secure link below to establish a new credential:\n\n";
+        $message .= "Otherwise, please click the link below to establish a new password:\n\n";
         $message .= $resetLink . "\n\n";
-        $message .= "This link algorithmically expires in exactly 1 hour for your protection.";
+        $message .= "This link expires in exactly 1 hour for your protection.";
 
         $headers = "From: no-reply@geodashing.org\r\n";
         $headers .= "Reply-To: no-reply@geodashing.org\r\n";
@@ -237,7 +237,7 @@ class AuthService
     }
 
     /**
-     * Executes the physical mail payload. Protected specifically to allow PHPUnit mocking.
+     * Executes email delivery. Protected specifically to allow PHPUnit mocking.
      */
     protected function executeMail(string $to, string $subject, string $message, string $headers, string $additional_params): bool
     {
@@ -245,7 +245,7 @@ class AuthService
     }
 
     /**
-     * Executes the mechanical password override tracking validation metrics strictly natively.
+     * Executes password reset and tracks validation metrics.
      *
      * @param string $token
      * @param string $newPassword
@@ -258,7 +258,7 @@ class AuthService
         }
 
         try {
-            // Guarantee exactly one match checking both structurally and temporally natively
+            // Guarantee exactly one match checking both structurally and temporally
             $stmt = $this->db->prepare("SELECT id FROM users WHERE reset_token = :token AND reset_token_expires > NOW() LIMIT 1");
             $stmt->execute([':token' => $token]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -267,7 +267,7 @@ class AuthService
                 return ["status" => "error", "message" => "Reset token is invalid or expired."];
             }
 
-            // Mathematically execute password rotation locking out previous hashes
+            // Execute password rotation locking out previous hashes
             $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
             $updateStmt = $this->db->prepare("UPDATE users SET password_hash = :hash, reset_token = NULL, reset_token_expires = NULL WHERE id = :id");
             $updateStmt->execute([':hash' => $newHash, ':id' => $user['id']]);
@@ -294,7 +294,7 @@ class AuthService
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($user) {
-                // Formally verify the account and aggressively purge the token array
+                // Formally verify the account and clear the token
                 $updateStmt = $this->db->prepare("UPDATE users SET is_verified = 1, verification_token = NULL WHERE id = :id");
                 $updateStmt->execute([':id' => $user['id']]);
 

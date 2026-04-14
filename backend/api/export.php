@@ -94,7 +94,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         // Output raw buffer bytes mapping HTTP stream correctly
         echo $dom->saveXML();
     } catch (Exception $e) {
-        error_log("XML Export API Crash: " . $e->getMessage());
+        error_log("XML Export API Error: " . $e->getMessage());
         http_response_code(500);
         exit("Failed rendering XML layout globally.");
     }

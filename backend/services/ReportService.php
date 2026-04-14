@@ -11,7 +11,8 @@ use PDOException;
  * Class ReportService
  *
  * Encapsulates the core business logic required to validate proximity
- * and persist Dashpoint visits, architected this way to allow for PHPUnit testing.
+ * Encapsulates the core business logic required to validate proximity
+ * and persist Dashpoint visits, designed to allow for PHPUnit testing.
  */
 class ReportService
 {
@@ -104,7 +105,7 @@ class ReportService
 
         $scoreAwarded = 1; // Default minimum score for latecomers
         if ($previousClaims === 0) {
-            $scoreAwarded = 3; // First to physically network the claim
+            $scoreAwarded = 3; // First to secure the claim
         } elseif ($previousClaims === 1) {
             $scoreAwarded = 2; // Second to claim
         }

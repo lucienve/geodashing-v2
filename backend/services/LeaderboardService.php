@@ -9,25 +9,29 @@ use PDO;
 /**
  * LeaderboardService
  *
- * Exclusively aggregates and formally ranks active Player scores and metrics
- * utilizing SQL GROUP BY projections.
+ * Aggregates and ranks active player scores utilizing SQL GROUP BY projections.
  */
 
 class LeaderboardService
 {
     private PDO $db;
 
+    /**
+     * Constructor.
+     *
+     * @param PDO $db The PDO connection.
+     */
     public function __construct(PDO $db)
     {
         $this->db = $db;
     }
 
     /**
-     * Executes the Solo Player Leaderboard aggregation for a specific game loop natively.
-     * Evaluates `SUM(score_awarded)`, `COUNT(status=approved)`, and strictly utilizes
+     * Calculates the Solo Player Leaderboard rankings for a specific game.
+     * Evaluates `SUM(score_awarded)`, `COUNT(status=approved)`, and utilizes
      * the MAX(`reported_time`) to enforce FCFS tie-breaking protocols.
      *
-     * @param int $gameId The primary mathematical index representing the Monthly dashpoint matrix.
+     * @param int $gameId The Monthly game ID.
      * @param int $limit Limits the SQL loop for structural safety (Default: 100 players).
      * @return array Ranked struct mapping [`rank`, `username`, `total_score`, `total_finds`, `last_find_time`]
      */
@@ -52,7 +56,7 @@ class LeaderboardService
 
         $stmt = $this->db->prepare($sql);
 
-        // Map parameter bindings using PDO constants to prevent float cast errors on limits.
+        // Map parameter bindings using PDO constants.
         $stmt->bindValue(':game_id', $gameId, PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
@@ -62,7 +66,7 @@ class LeaderboardService
             return [];
         }
 
-        // Rigorously format and calculate ordinal ranking (`#1`, `#2`) logically to account for exact ties perfectly.
+        // Calculate ordinal ranking accounting for exact ties.
         $mappedRankings = [];
         $currentRank = 1;
         $idx = 1;

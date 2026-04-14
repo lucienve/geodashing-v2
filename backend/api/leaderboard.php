@@ -47,7 +47,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             "data" => $ranks
         ]);
     } catch (Exception $e) {
-        error_log("Leaderboard Engine Panic: " . $e->getMessage());
+        error_log("Leaderboard API Error: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(["status" => "error", "message" => "Database aggregation error."]);
     }

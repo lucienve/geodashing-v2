@@ -11,7 +11,7 @@ use PDOException;
  * SearchService
  *
  * Executes highly optimized spatial bounding box queries against the
- * MySQL 8 engine natively, routing frontend coordinates reliably
+ * MySQL 8 engine, routing frontend coordinates reliably
  * across boundaries like the International Date Line.
  */
 
@@ -19,6 +19,11 @@ class SearchService
 {
     private PDO $db;
 
+    /**
+     * Constructor.
+     *
+     * @param PDO $db The PDO connection.
+     */
     public function __construct(PDO $db)
     {
         $this->db = $db;
@@ -26,7 +31,7 @@ class SearchService
 
     /**
      * Retrieves all active dashpoints within the specified geographic rectangle.
-     * Natively supports anti-meridian wrapping seamlessly for Pacific maps.
+     * Supports anti-meridian wrapping seamlessly for Pacific maps.
      *
      * @param float $north Maximum Latitude
      * @param float $south Minimum Latitude
@@ -79,7 +84,7 @@ class SearchService
 
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Natively return an empty PHP array over 'false' for clean mapping APIs
+        // Return an empty PHP array over 'false' for clean mapping APIs
         return $results !== false ? $results : [];
     }
 }

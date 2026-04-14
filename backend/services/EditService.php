@@ -8,7 +8,9 @@ use PDO;
 use Exception;
 
 /**
- * Encapsulates the core Field Note & Media Modification logic physically isolating
+ * Class EditService
+ *
+ * Encapsulates the core Field Note & Media Modification logic, isolating
  * structural dependencies for unit testing mocks.
  */
 class EditService
@@ -16,12 +18,28 @@ class EditService
     private PDO $db;
     private ?MediaService $mediaService;
 
+    /**
+     * Constructor.
+     *
+     * @param PDO $db The PDO connection.
+     * @param MediaService|null $mediaService The media service handler.
+     */
     public function __construct(PDO $db, ?MediaService $mediaService = null)
     {
         $this->db = $db;
         $this->mediaService = $mediaService;
     }
 
+    /**
+     * Updates an existing visit record with new notes and conditionally managed photos.
+     *
+     * @param int $userId The authenticated user ID.
+     * @param string $dashpointId The target dashpoint ID.
+     * @param string $notes The new text narrative.
+     * @param string $keptPhotosRaw JSON string array of image URLs to keep.
+     * @param array|null $newFiles The new `$_FILES` structurally mapped image uploads.
+     * @return array Status array ready for JSON response encoding.
+     */
     public function processEdit(int $userId, string $dashpointId, string $notes, string $keptPhotosRaw, ?array $newFiles = null): array
     {
         $keptPhotos = json_decode($keptPhotosRaw, true);
@@ -29,7 +47,7 @@ class EditService
             $keptPhotos = [];
         }
 
-        // 1. Security Check: Assert Structural Database Ownership natively
+        // 1. Security Check: Verify visit existence and edit permissions
         $stmt = $this->db->prepare("
             SELECT v.id, v.photos, g.is_active 
             FROM visits v
@@ -74,7 +92,7 @@ class EditService
             return ["status" => "error", "message" => "Server configuration error blocking media processing.", "code" => 500];
         }
 
-        // 3a. Execute Physical GCP Blob Destruction natively
+        // 3a. Delete GCP objects that were removed
         if (count($urlsToDelete) > 0 && $this->mediaService !== null) {
             try {
                 $this->mediaService->deletePhotos($urlsToDelete);
@@ -83,7 +101,7 @@ class EditService
             }
         }
 
-        // 3b. Execute New GCS Binary Pipeline processing
+        // 3b. Upload new GCS objects
         if ($hasNewUploads && $this->mediaService !== null) {
             try {
                 $newUploadObjects = $this->mediaService->uploadPhotos($newFiles, $dashpointId, $userId);

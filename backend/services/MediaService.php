@@ -5,8 +5,8 @@ declare(strict_types=1);
 /**
  * MediaService
  *
- * Handles file validation and Google Cloud Storage SDK integration natively
- * pushing image binary arrays directly into the distributed geodashing-v2-blobs bucket.
+ * Handles file validation and Google Cloud Storage SDK integration,
+ * pushing image files into the Cloud Storage bucket.
  */
 
 namespace App\Services;
@@ -71,7 +71,7 @@ class MediaService
                 continue;
             }
 
-            // Explosively intercept physical block drops cleanly routing the failure to the UI
+            // Intercept upload errors cleanly routing the failure to the UI
             if ($file['error'] !== UPLOAD_ERR_OK) {
                 $errMap = [
                     UPLOAD_ERR_INI_SIZE => "Payload exceeds PHP 'upload_max_filesize' limits (Current default is likely 2MB).",
@@ -137,8 +137,8 @@ class MediaService
     }
 
     /**
-     * Physically parses public Google URLs natively routing them back into structural Object paths
-     * and rigidly detonates the physical blob exclusively inside the user's tied bucket.
+     * Parses public Google URLs routing them back into internal object paths
+     * and deletes the object strictly inside the bucket.
      *
      * @param string[] $urls An array of raw Google Cloud Storage URL strings natively.
      */

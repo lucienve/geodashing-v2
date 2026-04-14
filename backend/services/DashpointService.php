@@ -8,10 +8,20 @@ use PDO;
 
 require_once __DIR__ . '/../Database.php';
 
+/**
+ * Class DashpointService
+ *
+ * Encapsulates data fetching operations for Dashpoints and associated visits.
+ */
 class DashpointService
 {
     private PDO $db;
 
+    /**
+     * Constructor.
+     *
+     * @param PDO|null $db The PDO database connection.
+     */
     public function __construct(?PDO $db = null)
     {
         // Permits dependency injection for PHPUnit Testing natively isolating the Database
@@ -19,7 +29,10 @@ class DashpointService
     }
 
     /**
-     * Resolves metadata for a Dashpoint alongside universally joined Historic Visit Ledgers
+     * Resolves metadata for a Dashpoint alongside globally joined visit data.
+     *
+     * @param string $dashpointId The unique dashpoint ID.
+     * @return array|null The dashpoint details and visit list, or null if not found.
      */
     public function getDashpointDetails(string $dashpointId): ?array
     {

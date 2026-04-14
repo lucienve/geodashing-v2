@@ -16,6 +16,11 @@ class ProfileService
 {
     private PDO $db;
 
+    /**
+     * Constructor.
+     *
+     * @param PDO $db The PDO connection.
+     */
     public function __construct(PDO $db)
     {
         $this->db = $db;
@@ -60,7 +65,7 @@ class ProfileService
         $stmtLogs->execute([':user_id' => $userId]);
         $logs = $stmtLogs->fetchAll(PDO::FETCH_ASSOC);
 
-        // 3. Aggregate Data natively mapping by Game ID
+        // 3. Aggregate data mapping by Game ID
         $totalScore = 0;
         $gamesHistory = [];
 

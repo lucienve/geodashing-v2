@@ -38,7 +38,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         "data" => $data
         ]);
     } catch (Exception $e) {
-        error_log("Dashpoint Fetch RUPTURE: " . $e->getMessage());
+        error_log("Dashpoint API Error: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(["status" => "error", "message" => "Database connection failed."]);
     }
