@@ -41,7 +41,9 @@ function initGlobalState() {
     // 0. Global game state binding for historical tracking.
     window.currentGameContext = {
         id: null,
-        is_active: true
+        is_active: true,
+        title: '',
+        monthYear: ''
     };
 }
 
@@ -241,9 +243,11 @@ function initGameContext() {
             // Find Active Game natively
             const activeGame = json.data.find(g => g.is_active == 1) || json.data[0];
             
-            // Sync the Global App Context
             window.currentGameContext.id = activeGame.id;
             window.currentGameContext.is_active = activeGame.is_active == 1;
+            window.currentGameContext.title = activeGame.title;
+            const activeD = new Date(activeGame.start_time);
+            window.currentGameContext.monthYear = activeD.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
             // Populate the Dropdown natively
             if (gameSelector) {
@@ -255,6 +259,7 @@ function initGameContext() {
                     option.value = game.id;
                     option.dataset.isActive = game.is_active;
                     option.dataset.title = game.title;
+                    option.dataset.monthYear = monthYear;
                     
                     // Removed titleStr to keep the option text short and prevent layout overflow on mobile
                     option.innerText = `Game ${game.id} (${monthYear})`;
@@ -270,6 +275,8 @@ function initGameContext() {
                     const selOpt = e.target.options[e.target.selectedIndex];
                     window.currentGameContext.id = parseInt(e.target.value);
                     window.currentGameContext.is_active = selOpt.dataset.isActive == '1';
+                    window.currentGameContext.title = selOpt.dataset.title;
+                    window.currentGameContext.monthYear = selOpt.dataset.monthYear;
                     
                     if (window.location.hash === '' || window.location.hash === '#home') {
                         if (typeof window.refreshMapBounds === 'function') {

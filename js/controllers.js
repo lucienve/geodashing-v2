@@ -878,6 +878,10 @@ document.addEventListener('routeLoaded', (e) => {
             let ldParams = '';
             if (window.currentGameContext && window.currentGameContext.id) {
                 ldParams = `?game_id=${window.currentGameContext.id}`;
+                const cycleTitle = document.getElementById('leaderboard-cycle-title');
+                if (cycleTitle && window.currentGameContext.title) {
+                    cycleTitle.innerText = `${window.currentGameContext.monthYear} - Game ${window.currentGameContext.id}: ${window.escapeHTML(window.currentGameContext.title)}`;
+                }
             }
 
             // Ping the JSON endpoint directly mapping the arrays
