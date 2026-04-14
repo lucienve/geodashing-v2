@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Games API Endpoint
  *
@@ -14,16 +15,15 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     require_once __DIR__ . '/../Database.php';
 
     try {
-        $db = Database::getConnection();
+        $db = \App\Database::getConnection();
         $gameService = new GameService($db);
-        
+
         $games = $gameService->getAllGames();
 
         echo json_encode([
             "status" => "success",
             "data" => $games
         ]);
-
     } catch (Exception $e) {
         error_log("Games API Error: " . $e->getMessage());
         http_response_code(500);

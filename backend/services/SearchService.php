@@ -8,8 +8,8 @@ use PDOException;
 /**
  * SearchService
  *
- * Executes highly optimized spatial bounding box queries against the 
- * MySQL 8 engine natively, routing frontend coordinates reliably 
+ * Executes highly optimized spatial bounding box queries against the
+ * MySQL 8 engine natively, routing frontend coordinates reliably
  * across boundaries like the International Date Line.
  */
 
@@ -44,13 +44,13 @@ class SearchService
             LEFT JOIN visits v ON d.id = v.dashpoint_id AND v.status = 'approved'
             WHERE ST_X(d.location) BETWEEN :south AND :north
         ";
-        
+
         if ($gameId !== null) {
             $baseQuery .= " AND g.id = :game_id";
         } else {
             $baseQuery .= " AND g.is_active = TRUE";
         }
-        
+
         // 2. International Date Line Router Algorithm
         if ($east < $west) {
             // Box mathematically crossed the Anti-Meridian -> Break query into two global hemispheres safely
@@ -59,24 +59,24 @@ class SearchService
             // Standard Euclidean Bounding Box mapping
             $sql = $baseQuery . " AND ST_Y(d.location) BETWEEN :west AND :east GROUP BY d.id";
         }
-        
+
         $stmt = $this->db->prepare($sql);
-        
+
         $params = [
             ':south' => $south,
             ':north' => $north,
             ':west' => $west,
             ':east' => $east
         ];
-        
+
         if ($gameId !== null) {
             $params[':game_id'] = $gameId;
         }
-        
+
         $stmt->execute($params);
-        
+
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // Natively return an empty PHP array over 'false' for clean mapping APIs
         return $results !== false ? $results : [];
     }

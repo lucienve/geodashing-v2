@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Profile API Endpoint
  *
@@ -22,7 +23,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     }
 
     try {
-        $db = Database::getConnection();
+        $db = \App\Database::getConnection();
         $service = new ProfileService($db);
         $data = $service->getProfileSettings($userId);
 
@@ -36,7 +37,6 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             "status" => "success",
             "data" => $data
         ]);
-
     } catch (Exception $e) {
         error_log("Profile API Error: " . $e->getMessage());
         http_response_code(500);

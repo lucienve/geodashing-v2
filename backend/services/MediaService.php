@@ -1,4 +1,5 @@
 <?php
+
 /**
  * MediaService
  *
@@ -29,7 +30,7 @@ class MediaService
     public function __construct(string $projectId, string $bucketName, string $keyFilePath, ?StorageClient $storage = null)
     {
         $this->bucketName = $bucketName;
-        
+
         if ($storage !== null) {
             $this->storage = $storage;
         } else {
@@ -57,7 +58,7 @@ class MediaService
 
         // Normalize the heavily disjointed $_FILES multi-upload array architecture into an iterable linear map
         $normalizedFiles = $this->normalizeFilesArray($files);
-        
+
         if (count($normalizedFiles) > 10) {
             throw new Exception("Maximum of 10 photos allowed per visit block.");
         }
@@ -65,9 +66,9 @@ class MediaService
         foreach ($normalizedFiles as $index => $file) {
             // Silently skip if no file was uploaded
             if ($file['error'] === UPLOAD_ERR_NO_FILE || empty($file['tmp_name'])) {
-                continue; 
+                continue;
             }
-            
+
             // Explosively intercept physical block drops cleanly routing the failure to the UI
             if ($file['error'] !== UPLOAD_ERR_OK) {
                 $errMap = [
@@ -80,7 +81,7 @@ class MediaService
                 $msg = $errMap[$file['error']] ?? "Raw PHP System Error Code: {$file['error']}";
                 throw new Exception($msg);
             }
-            
+
             // Server-side strict MIME validation preventing remote exploits
             $finfo = new finfo(FILEINFO_MIME_TYPE);
             $mime = $finfo->file($file['tmp_name']);
@@ -95,20 +96,21 @@ class MediaService
                 'image/webp' => 'webp'
             ];
             $extension = $mimeToExt[$mime] ?? 'jpg';
-            
+
             // Path traversal protection neutralizing directory escapes
             $safeDashpointId = preg_replace('/[^a-zA-Z0-9_-]/', '', $dashpointId);
 
-            $objectName = sprintf("visits/%s/%d_%s_%d.%s", 
-                $safeDashpointId, 
-                $userId, 
-                date('YmdHis'), 
-                $index, 
+            $objectName = sprintf(
+                "visits/%s/%d_%s_%d.%s",
+                $safeDashpointId,
+                $userId,
+                date('YmdHis'),
+                $index,
                 $extension
             );
 
             // Execute the RESTful socket stream uploading binary payload natively into Google Cloud
-            // Explicitly disabling resumable uploads forces a direct multipart stream natively preventing 
+            // Explicitly disabling resumable uploads forces a direct multipart stream natively preventing
             // the PHP Apache lifecycle from abandoning the background chunk process mid-upload.
             $bucket->upload(
                 fopen($file['tmp_name'], 'r'),
@@ -135,7 +137,7 @@ class MediaService
     /**
      * Physically parses public Google URLs natively routing them back into structural Object paths
      * and rigidly detonates the physical blob exclusively inside the user's tied bucket.
-     * 
+     *
      * @param string[] $urls An array of raw Google Cloud Storage URL strings natively.
      */
     public function deletePhotos(array $urls): void
@@ -147,8 +149,8 @@ class MediaService
             // Strip the public HTTP prefix natively to isolate the internal Object mapping (e.g. 'visits/GD01/1_pic')
             if (strpos($url, $prefix) === 0) {
                 $objectName = substr($url, strlen($prefix));
-                
-                // Execute the explicit REST deletion hook synchronously 
+
+                // Execute the explicit REST deletion hook synchronously
                 $object = $bucket->object($objectName);
                 if ($object->exists()) {
                     $object->delete();
@@ -159,7 +161,7 @@ class MediaService
 
     /**
      * Extracts and calculates EXIF GPS data from an image file natively.
-     * 
+     *
      * @param string $path Local absolute path to the uploaded image binary.
      * @return array|null Null if no EXIF exists or if coordinates are missing.
      */
@@ -191,7 +193,7 @@ class MediaService
         $seconds = count($exifCoord) > 2 ? $this->evalExifFraction($exifCoord[2]) : 0;
 
         $decimal = $degrees + ($minutes / 60) + ($seconds / 3600);
-        
+
         $hemi = strtoupper(trim($hemi));
         if ($hemi === 'S' || $hemi === 'W') {
             $decimal *= -1;
@@ -203,12 +205,18 @@ class MediaService
     /**
      * Evaluates PHP's physical EXIF integer fractions (e.g. "42/1") cleanly.
      */
-    private function evalExifFraction($fraction): float 
+    private function evalExifFraction($fraction): float
     {
         $parts = explode('/', (string)$fraction);
-        if (count($parts) <= 0) return 0.0;
-        if (count($parts) == 1) return (float)$parts[0];
-        if ($parts[1] == 0) return 0.0; 
+        if (count($parts) <= 0) {
+            return 0.0;
+        }
+        if (count($parts) == 1) {
+            return (float)$parts[0];
+        }
+        if ($parts[1] == 0) {
+            return 0.0;
+        }
         return (float)$parts[0] / (float)$parts[1];
     }
 
@@ -219,7 +227,7 @@ class MediaService
     private function normalizeFilesArray(array $files): array
     {
         $normalized = [];
-        // Determine whether HTML explicitly passed a single file or a multi-part array map 
+        // Determine whether HTML explicitly passed a single file or a multi-part array map
         if (!is_array($files['name'])) {
             return [$files];
         }

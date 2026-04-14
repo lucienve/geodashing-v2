@@ -13,7 +13,7 @@ class DashpointService
     public function __construct(?PDO $db = null)
     {
         // Permits dependency injection for PHPUnit Testing natively isolating the Database
-        $this->db = $db ?: \Database::getConnection();
+        $this->db = $db ?: \App\Database::getConnection();
     }
 
     /**
@@ -40,7 +40,7 @@ class DashpointService
         ");
         $vStmt->execute(['id' => $dashpointId]);
         $visits = $vStmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // 3. Decode the raw JSON photographic arrays safely for the UI Carousel parser statically
         foreach ($visits as &$v) {
             $v['photos'] = json_decode($v['photos'], true) ?: [];

@@ -10,8 +10,6 @@ use App\Services\ReportService;
 use PDO;
 use PDOStatement;
 
-require_once __DIR__ . '/../api/report.php';
-
 /**
  * ReportServiceTest
  *
@@ -80,8 +78,8 @@ class ReportServiceTest extends TestCase
 
         $distMock = $this->createMock(PDOStatement::class);
         // Simulates MySQL ST_Distance_Sphere returning exactly 101 meters
-        $distMock->method('fetch')->willReturn(['distance_meters' => 101.5, 'is_active' => 1]); 
-        
+        $distMock->method('fetch')->willReturn(['distance_meters' => 101.5, 'is_active' => 1]);
+
         $this->pdoMock->expects($this->exactly(2))
             ->method('prepare')
             ->willReturnOnConsecutiveCalls($userMock, $distMock);
@@ -105,7 +103,7 @@ class ReportServiceTest extends TestCase
         // 1. Mock the Distance Calculation (Returns 45 meters)
         $distMock = $this->createMock(PDOStatement::class);
         $distMock->method('fetch')->willReturn(['distance_meters' => 45.0, 'is_active' => 1]);
-        
+
         // 2. Mock the Duplicate Check (Returns false, meaning no existing visit)
         $duplicateMock = $this->createMock(PDOStatement::class);
         $duplicateMock->method('fetch')->willReturn(false);
@@ -113,11 +111,11 @@ class ReportServiceTest extends TestCase
         // 3. Mock the Team ID fetch (Returns null, meaning user is flying solo)
         $teamMock = $this->createMock(PDOStatement::class);
         $teamMock->method('fetch')->willReturn(false);
-        
+
         // 4. Mock the Native FCFS Scoring check (0 previous claims = 3 points)
         $scoreMock = $this->createMock(PDOStatement::class);
         $scoreMock->method('fetch')->willReturn(['previous_claims' => 0]);
-        
+
         // 5. Mock the final Insert
         $insertMock = $this->createMock(PDOStatement::class);
         $insertMock->expects($this->once())->method('execute')->willReturn(true);
@@ -145,8 +143,8 @@ class ReportServiceTest extends TestCase
 
         $distMock = $this->createMock(PDOStatement::class);
         // Simulates returning 45 meters but belongs to inactive game
-        $distMock->method('fetch')->willReturn(['distance_meters' => 45.0, 'is_active' => 0]); 
-        
+        $distMock->method('fetch')->willReturn(['distance_meters' => 45.0, 'is_active' => 0]);
+
         $this->pdoMock->expects($this->exactly(2))
             ->method('prepare')
             ->willReturnOnConsecutiveCalls($userMock, $distMock);

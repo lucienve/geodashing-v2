@@ -28,7 +28,7 @@ class MediaServiceTest extends TestCase
     {
         // Mock the native Google Cloud Bucket Object
         $this->bucketMock = $this->createMock(Bucket::class);
-        
+
         // Mock the overarching StorageClient to prevent live backend credentials scanning
         $this->storageMock = $this->createMock(StorageClient::class);
         $this->storageMock->method('bucket')->willReturn($this->bucketMock);
@@ -43,7 +43,7 @@ class MediaServiceTest extends TestCase
     {
         // Inject the Google Mocks safely wrapping the logic
         $service = new MediaService('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock);
-        
+
         // Fabricate a monolithic payload containing precisely 11 identical inputs
         $fakeFiles = [
             'name' => array_fill(0, 11, 'exploit_file.jpg'),
@@ -69,7 +69,7 @@ class MediaServiceTest extends TestCase
     public function processUploadCatchesPhpIniSizeLimits()
     {
         $service = new MediaService('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock);
-        
+
         $fakeFiles = [
             'name' => ['too_big.jpg'],
             'type' => ['image/jpeg'],
@@ -84,7 +84,7 @@ class MediaServiceTest extends TestCase
         // The sequence must abort prior to resolving GCP streams.
         $service->uploadPhotos($fakeFiles, 'GD-TEST', 1);
     }
-    
+
     /**
      * Asserts that successfully validated uploads return an associative array.
      */
@@ -92,12 +92,12 @@ class MediaServiceTest extends TestCase
     public function processUploadReturnsAssociatedObjectArrays()
     {
         $service = new MediaService('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock);
-        
+
         // Construct a raw mock JPEG using magic hex bytes.
         // This ensures finfo(FILEINFO_MIME_TYPE) identifies it as 'image/jpeg' without requiring ext-gd rendering.
         $tempFile = tempnam(sys_get_temp_dir(), 'fktst');
         file_put_contents($tempFile, "\xFF\xD8\xFF\xE0\x00\x10\x4A\x46\x49\x46\x00\x01\x01\x01");
-        
+
         $fakeFiles = [
             'name' => ['valid_pic.jpg'],
             'type' => ['image/jpeg'],
@@ -110,7 +110,7 @@ class MediaServiceTest extends TestCase
         $this->bucketMock->expects($this->once())->method('upload');
 
         $result = $service->uploadPhotos($fakeFiles, 'GD-TEST', 1);
-        
+
         // Assert exactly correct Object mapping parameters preventing frontend array collisions
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
@@ -118,28 +118,28 @@ class MediaServiceTest extends TestCase
         $this->assertArrayHasKey('lat', $result[0]);
         $this->assertArrayHasKey('lon', $result[0]);
         $this->assertStringContainsString("geodashing-test-blobs", $result[0]['url']);
-        
+
         // Without an EXIF data package in our mock JPEG, coordinates must resolve to null.
         $this->assertNull($result[0]['lat']);
         $this->assertNull($result[0]['lon']);
-        
+
         // Trash the local mock mapping safely
         unlink($tempFile);
     }
 
     /**
-     * Asserts that passing public GCS URLs dynamically routes to the underlying raw bucket 
+     * Asserts that passing public GCS URLs dynamically routes to the underlying raw bucket
      * objects uniquely isolating the structural deletions correctly.
      */
     #[Test]
     public function processDeleteIsolatesGcsObjectPrefix()
     {
         $service = new MediaService('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock);
-        
+
         $fakeObject = $this->createMock(\Google\Cloud\Storage\StorageObject::class);
         $fakeObject->expects($this->once())->method('exists')->willReturn(true);
         $fakeObject->expects($this->once())->method('delete');
-        
+
         // Assert that exactly 'visits/GD001/my_pic.jpg' is passed natively to the Google Bucket Object request
         $this->bucketMock->expects($this->once())
              ->method('object')

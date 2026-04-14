@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Leaderboards API Endpoint
  *
@@ -15,7 +16,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     require_once __DIR__ . '/../Database.php';
 
     try {
-        $db = Database::getConnection();
+        $db = \App\Database::getConnection();
 
         // 1. Identify the logical Game Loop constraints
         $gameId = filter_var($_GET['game_id'] ?? null, FILTER_VALIDATE_INT);
@@ -34,7 +35,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
 
         // 2. Instantiate the Mathematical Aggregator Engine natively
         $leaderboardService = new LeaderboardService($db);
-        
+
         // 3. Extract the clean arrays strictly isolating Solo logic bounds
         $ranks = $leaderboardService->getSoloRankings($gameId, 100);
 
@@ -43,7 +44,6 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             "game_id" => $gameId,
             "data" => $ranks
         ]);
-
     } catch (Exception $e) {
         error_log("Leaderboard Engine Panic: " . $e->getMessage());
         http_response_code(500);

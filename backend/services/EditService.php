@@ -6,7 +6,7 @@ use PDO;
 use Exception;
 
 /**
- * Encapsulates the core Field Note & Media Modification logic physically isolating 
+ * Encapsulates the core Field Note & Media Modification logic physically isolating
  * structural dependencies for unit testing mocks.
  */
 class EditService
@@ -23,8 +23,9 @@ class EditService
     public function processEdit(int $userId, string $dashpointId, string $notes, string $keptPhotosRaw, ?array $newFiles = null): array
     {
         $keptPhotos = json_decode($keptPhotosRaw, true);
-        if (!is_array($keptPhotos))
+        if (!is_array($keptPhotos)) {
             $keptPhotos = [];
+        }
 
         // 1. Security Check: Assert Structural Database Ownership natively
         $stmt = $this->db->prepare("
@@ -48,8 +49,9 @@ class EditService
 
         $visitId = $visit['id'];
         $dbPhotos = json_decode($visit['photos'] ?? '[]', true);
-        if (!is_array($dbPhotos))
+        if (!is_array($dbPhotos)) {
             $dbPhotos = [];
+        }
 
         // 2. GCP Media Synchronization (Diffing the DB against User Intent)
         $urlsToDelete = [];
@@ -79,7 +81,7 @@ class EditService
             }
         }
 
-        // 3b. Execute New GCS Binary Pipeline processing 
+        // 3b. Execute New GCS Binary Pipeline processing
         if ($hasNewUploads && $this->mediaService !== null) {
             try {
                 $newUploadObjects = $this->mediaService->uploadPhotos($newFiles, $dashpointId, $userId);

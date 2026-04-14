@@ -1,8 +1,9 @@
 <?php
+
 /**
  * Dashpoint Historical Details Endpoint
  *
- * Retrieves the explicit coordinates for a single Dashpoint and mathematically joins 
+ * Retrieves the explicit coordinates for a single Dashpoint and mathematically joins
  * all historically recorded Finders out of the `visits` and `users` table.
  */
 
@@ -22,19 +23,18 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
 
     try {
         $service = new DashpointService();
-    $data = $service->getDashpointDetails($id);
+        $data = $service->getDashpointDetails($id);
 
-    if (!$data) {
-        http_response_code(404);
-        echo json_encode(["status" => "error", "message" => "Dashpoint not found."]);
-        exit;
-    }
+        if (!$data) {
+            http_response_code(404);
+            echo json_encode(["status" => "error", "message" => "Dashpoint not found."]);
+            exit;
+        }
 
-    echo json_encode([
+        echo json_encode([
         "status" => "success",
         "data" => $data
-    ]);
-
+        ]);
     } catch (Exception $e) {
         error_log("Dashpoint Fetch RUPTURE: " . $e->getMessage());
         http_response_code(500);

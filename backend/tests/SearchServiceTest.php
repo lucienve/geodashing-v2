@@ -10,8 +10,6 @@ use App\Services\SearchService;
 use PDO;
 use PDOStatement;
 
-require_once __DIR__ . '/../services/SearchService.php';
-
 /**
  * SearchServiceTest
  *
@@ -43,7 +41,7 @@ class SearchServiceTest extends TestCase
         $stmtMock->method('fetchAll')->willReturn([
             ['id' => 'GD001-AAAA', 'lat' => 45.0, 'lon' => -70.0, 'visit_count' => 0]
         ]);
-        
+
         // Assert the SQL string securely binds a strict monolithic coordinate matrix expecting Longitudes on ST_Y
         $this->pdoMock->expects($this->once())
             ->method('prepare')
@@ -69,7 +67,7 @@ class SearchServiceTest extends TestCase
             ['id' => 'GD001-FIJI', 'lat' => -18.0, 'lon' => 179.9, 'visit_count' => 1],
             ['id' => 'GD001-SAMO', 'lat' => -13.0, 'lon' => -171.0, 'visit_count' => 5]
         ]);
-        
+
         // Assert the SQL definitively overrides the WHERE clause mapping dual hemispheres via ST_Y Longitudes natively
         $this->pdoMock->expects($this->once())
             ->method('prepare')
@@ -82,7 +80,7 @@ class SearchServiceTest extends TestCase
         $this->assertCount(2, $result);
         $this->assertEquals('GD001-FIJI', $result[0]['id']);
         $this->assertEquals(1, $result[0]['visit_count']);
-        
+
         $this->assertEquals('GD001-SAMO', $result[1]['id']);
         $this->assertEquals(5, $result[1]['visit_count']);
     }
@@ -98,13 +96,13 @@ class SearchServiceTest extends TestCase
         $stmtMock->method('fetchAll')->willReturn([
             ['id' => 'GD001-XXXX', 'lat' => 45.0, 'lon' => -70.0, 'visit_count' => 3]
         ]);
-        
+
         $this->pdoMock->expects($this->once())
             ->method('prepare')
             ->with($this->logicalAnd(
-                 $this->stringContains('g.id = :game_id'),
-                 $this->logicalNot($this->stringContains('g.is_active = TRUE'))
-             ))
+                $this->stringContains('g.id = :game_id'),
+                $this->logicalNot($this->stringContains('g.is_active = TRUE'))
+            ))
             ->willReturn($stmtMock);
 
         $result = $this->searchService->searchRegion(50.0, 40.0, -60.0, -80.0, 999);

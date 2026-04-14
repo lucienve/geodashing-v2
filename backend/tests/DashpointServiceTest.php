@@ -10,8 +10,6 @@ use App\Services\DashpointService;
 use PDO;
 use PDOStatement;
 
-require_once __DIR__ . '/../services/DashpointService.php';
-
 #[CoversClass(DashpointService::class)]
 #[AllowMockObjectsWithoutExpectations]
 class DashpointServiceTest extends TestCase

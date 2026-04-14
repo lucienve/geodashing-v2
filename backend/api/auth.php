@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Authentication API Endpoint
  *
@@ -7,6 +8,8 @@
  * @package Geodashing\API
  */
 
+use App\Services\AuthService;
+
 // Bypass procedural logic during PHPUnit inclusion
 if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     require_once __DIR__ . '/../../vendor/autoload.php';
@@ -14,8 +17,6 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     header('Content-Type: application/json');
     require_once __DIR__ . '/../Database.php';
 
-    use App\Services\AuthService;
-    
     $action = $_GET['action'] ?? '';
 
     // Enforce POST
@@ -26,7 +27,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     }
 
     try {
-        $db = Database::getConnection();
+        $db = \App\Database::getConnection();
         $authService = new AuthService($db);
 
         if ($action === 'signup') {
@@ -48,7 +49,6 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
                 http_response_code(400);
             }
             echo json_encode($result);
-
         } elseif ($action === 'login') {
             $username = trim($_POST['username'] ?? '');
             $password = $_POST['password'] ?? '';
@@ -65,12 +65,10 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
                 http_response_code(401);
             }
             echo json_encode($result);
-
         } elseif ($action === 'logout') {
             session_unset();
             session_destroy();
             echo json_encode(["status" => "success", "message" => "Logged out successfully"]);
-
         } elseif ($action === 'resend_verification') {
             // Securely demand a populated active session dynamically preventing spam hooks
             if (!isset($_SESSION['user_id'])) {
@@ -91,7 +89,6 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
                 http_response_code(500);
             }
             echo json_encode($result);
-
         } elseif ($action === 'forgot_password') {
             $username = trim($_POST['username'] ?? '');
             if (empty($username)) {
@@ -100,10 +97,10 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
                 exit;
             }
             $result = $authService->forgotPassword($username);
-            if ($result['status'] !== 'success')
+            if ($result['status'] !== 'success') {
                 http_response_code(400);
+            }
             echo json_encode($result);
-
         } elseif ($action === 'reset_password') {
             $token = trim($_POST['token'] ?? '');
             $password = $_POST['password'] ?? '';
@@ -113,10 +110,10 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
                 exit;
             }
             $result = $authService->resetPassword($token, $password);
-            if ($result['status'] !== 'success')
+            if ($result['status'] !== 'success') {
                 http_response_code(400);
+            }
             echo json_encode($result);
-
         } elseif ($action === 'session') {
             // Native session state retrieval explicitly mapping memory back to the SPA
             if (isset($_SESSION['user_id']) && isset($_SESSION['username'])) {
@@ -130,12 +127,10 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
                 http_response_code(401);
                 echo json_encode(["status" => "error", "message" => "No active session"]);
             }
-
         } else {
             http_response_code(400);
             echo json_encode(["status" => "error", "message" => "Invalid action specified."]);
         }
-
     } catch (Exception $e) {
         error_log("Auth API Error: " . $e->getMessage());
         http_response_code(500);

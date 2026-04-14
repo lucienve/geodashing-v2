@@ -1,23 +1,30 @@
 <?php
 
-class Database {
+namespace App;
+
+use PDO;
+use Exception;
+
+class Database
+{
     private static $pdo = null;
 
     /**
      * Initializes and returns the PDO connection to MySQL.
      * Implements a singleton pattern to reuse the same connection.
-     * 
+     *
      * @return PDO
      * @throws Exception If connection fails or config is missing.
      */
-    public static function getConnection() {
+    public static function getConnection()
+    {
         if (self::$pdo === null) {
             $configPath = __DIR__ . '/config.ini';
-            
+
             if (!file_exists($configPath)) {
                 throw new Exception("Configuration file not found. Ensure backend/config.ini exists.");
             }
-            
+
             $config = parse_ini_file($configPath);
             if ($config === false) {
                 throw new Exception("Error parsing the configuration file.");
@@ -31,7 +38,7 @@ class Database {
             $charset = 'utf8mb4';
 
             $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=$charset";
-            
+
             $options = [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION, // Throw exceptions on SQL errors
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,       // Return associative arrays by default
@@ -46,7 +53,7 @@ class Database {
                 throw new \Exception("Database connection failed. Please check the server logs.");
             }
         }
-        
+
         return self::$pdo;
     }
 }

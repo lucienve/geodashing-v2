@@ -14,7 +14,7 @@ use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 /**
  * EditServiceTest
  *
- * Physically verifies the backend Diff logic ensuring edits strictly validate 
+ * Physically verifies the backend Diff logic ensuring edits strictly validate
  * Session ownership, safely orchestrate GCP Deletions, and rigidly enforce Image Counts.
  */
 #[CoversClass(EditService::class)]
@@ -33,7 +33,7 @@ class EditServiceTest extends TestCase
     }
 
     /**
-     * Asserts that editing fundamentally aborts securely if the user physically 
+     * Asserts that editing fundamentally aborts securely if the user physically
      * tries to modify a Dashpoint log they do not natively own.
      */
     #[Test]
@@ -50,7 +50,7 @@ class EditServiceTest extends TestCase
     }
 
     /**
-     * Asserts that legacy photos mapped in the Database that are mathematically excluded 
+     * Asserts that legacy photos mapped in the Database that are mathematically excluded
      * from the incoming `kept_photos` JSON payload are structurally dumped to GCP Deletion.
      */
     #[Test]
@@ -65,13 +65,17 @@ class EditServiceTest extends TestCase
                 ['url' => 'https://storage.googleapis.com/b/historic_2.jpg', 'lat' => null, 'lon' => null]
             ])
         ]);
-        
+
         $updateStmtMock = $this->createMock(PDOStatement::class);
         $updateStmtMock->expects($this->once())->method('execute'); // Ensure the DB updates securely
 
-        $this->pdoMock->method('prepare')->willReturnCallback(function($sql) use ($stmtMock, $updateStmtMock) {
-            if (strpos($sql, 'SELECT v.id') !== false) return $stmtMock;
-            if (strpos($sql, 'UPDATE visits') !== false) return $updateStmtMock;
+        $this->pdoMock->method('prepare')->willReturnCallback(function ($sql) use ($stmtMock, $updateStmtMock) {
+            if (strpos($sql, 'SELECT v.id') !== false) {
+                return $stmtMock;
+            }
+            if (strpos($sql, 'UPDATE visits') !== false) {
+                return $updateStmtMock;
+            }
             return $this->createMock(PDOStatement::class);
         });
 
@@ -97,7 +101,7 @@ class EditServiceTest extends TestCase
     #[Test]
     public function processEditRestrictsMaximumImageMerges()
     {
-        // Simulate a database row with 8 physical binaries 
+        // Simulate a database row with 8 physical binaries
         $existingPhotos = [];
         $keptStrings = [];
         for ($i = 0; $i < 8; $i++) {
@@ -122,7 +126,7 @@ class EditServiceTest extends TestCase
             'error' => [UPLOAD_ERR_OK, UPLOAD_ERR_OK, UPLOAD_ERR_OK]
         ];
 
-        // Ensure MediaService physically uploads the 3 new ones securely 
+        // Ensure MediaService physically uploads the 3 new ones securely
         $this->mediaMock->expects($this->once())
              ->method('uploadPhotos')
              ->willReturn([

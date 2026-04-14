@@ -1,6 +1,7 @@
 {
     "require-dev": {
-        "phpunit/phpunit": "^12.5"
+        "phpunit/phpunit": "^12.5",
+        "squizlabs/php_codesniffer": "^4.0"
     },
     "require": {
         "google/cloud-storage": "^1.50"
@@ -11,5 +12,11 @@
             "App\\Services\\": "backend/services/",
             "App\\Tests\\": "backend/tests/"
         }
+    },
+    "scripts": {
+        "test": "phpunit backend/tests/",
+        "lint:syntax": "find backend/ -type f -name '*.php' -exec php -l {} \\; | grep -v 'No syntax errors detected' || true",
+        "lint": "phpcs --standard=phpcs.xml backend/",
+        "lint:fix": "phpcbf --standard=phpcs.xml backend/"
     }
 }

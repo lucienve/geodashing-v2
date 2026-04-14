@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Reporting API Endpoint
  *
@@ -77,7 +78,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     }
 
     try {
-        $db = Database::getConnection();
+        $db = \App\Database::getConnection();
         $service = new ReportService($db);
         $result = $service->processVisit($_SESSION['user_id'], $dashpoint_id, $lat, $lon, $notes, $photosJson);
 
@@ -85,7 +86,6 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             http_response_code(400);
         }
         echo json_encode($result);
-
     } catch (Exception $e) {
         error_log("Report API Error: " . $e->getMessage());
         http_response_code(500);

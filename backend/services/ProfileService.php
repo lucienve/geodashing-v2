@@ -21,7 +21,7 @@ class ProfileService
 
     /**
      * Get profile metrics for a specific user.
-     * 
+     *
      * @param int $userId The ID of the user.
      * @return array|null Returns array of user data and games history or null if user not found.
      */
@@ -53,7 +53,7 @@ class ProfileService
             WHERE v.user_id = :user_id AND v.status = 'approved'
             ORDER BY g.id DESC, v.reported_time DESC
         ";
-        
+
         $stmtLogs = $this->db->prepare($query);
         $stmtLogs->execute([':user_id' => $userId]);
         $logs = $stmtLogs->fetchAll(PDO::FETCH_ASSOC);

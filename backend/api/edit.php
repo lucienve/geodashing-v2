@@ -1,13 +1,17 @@
 <?php
+
 /**
  * Post-Log Editing API Endpoint
  *
- * Allows authenticated users to safely modify their Field Notes or append/delete 
- * physical tracking photos without triggering or modifying the 100m Geolocation 
+ * Allows authenticated users to safely modify their Field Notes or append/delete
+ * physical tracking photos without triggering or modifying the 100m Geolocation
  * bounds natively locked during the initial claim.
  *
  * @package Geodashing\API
  */
+
+use App\Services\EditService;
+use App\Services\MediaService;
 
 // Native Execution Gateway
 if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
@@ -15,9 +19,6 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     require_once __DIR__ . '/../session.php';
     header('Content-Type: application/json');
     require_once __DIR__ . '/../Database.php';
-
-    use App\Services\EditService;
-    use App\Services\MediaService;
 
     // 1. Strict Authentication Boundary
     if (!isset($_SESSION['user_id'])) {
@@ -57,7 +58,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     }
 
     try {
-        $db = Database::getConnection();
+        $db = \App\Database::getConnection();
         $keyPath = __DIR__ . '/../gcp-credentials.json';
 
         $mediaService = null;

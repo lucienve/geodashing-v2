@@ -67,7 +67,7 @@ class ReportService
         if (!$result) {
             return ["status" => "error", "message" => "Invalid Dashpoint ID."];
         }
-        
+
         if (!$result['is_active']) {
             return ["status" => "error", "message" => "Target dashpoint belongs to an inactive game."];
         }

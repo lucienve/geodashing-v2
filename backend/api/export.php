@@ -1,4 +1,5 @@
 <?php
+
 /**
  * XML Waypoints Export Utility
  *
@@ -19,7 +20,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     $s = filter_var($_GET['s'] ?? '', FILTER_VALIDATE_FLOAT);
     $e = filter_var($_GET['e'] ?? '', FILTER_VALIDATE_FLOAT);
     $w = filter_var($_GET['w'] ?? '', FILTER_VALIDATE_FLOAT);
-    
+
     // Default the payload syntax to GPX architectures dynamically
     $format = $_GET['format'] ?? 'gpx';
 
@@ -29,7 +30,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     }
 
     try {
-        $db = Database::getConnection();
+        $db = \App\Database::getConnection();
         $service = new SearchService($db);
         $points = $service->searchRegion($n, $s, $e, $w);
 
@@ -41,46 +42,46 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             // Force strict caching overrides tricking browser into saving files natively
             header('Content-Type: application/gpx+xml');
             header('Content-Disposition: attachment; filename="geodashing_v2_export.gpx"');
-            
+
             $gpx = $dom->createElement('gpx');
             $gpx->setAttribute('version', '1.1');
             $gpx->setAttribute('creator', 'Geodashing V2 API Engine');
             $gpx->setAttribute('xmlns', 'http://www.topografix.com/GPX/1/1');
             $dom->appendChild($gpx);
-            
+
             foreach ($points as $pt) {
-                // Strict WP bounds 
+                // Strict WP bounds
                 $wpt = $dom->createElement('wpt');
                 $wpt->setAttribute('lat', (string)$pt['lat']);
                 $wpt->setAttribute('lon', (string)$pt['lon']);
-                
+
                 $name = $dom->createElement('name', htmlspecialchars($pt['id']));
                 $wpt->appendChild($name);
-                
+
                 $gpx->appendChild($wpt);
             }
         } elseif ($format === 'loc') {
             // Geocaching legacy LOC formats
             header('Content-Type: application/xml');
             header('Content-Disposition: attachment; filename="geodashing_v2_export.loc"');
-            
+
             $loc = $dom->createElement('loc');
             $loc->setAttribute('version', '1.0');
             $loc->setAttribute('src', 'Geodashing V2 System');
             $dom->appendChild($loc);
-            
+
             foreach ($points as $pt) {
                 $waypoint = $dom->createElement('waypoint');
-                
+
                 $name = $dom->createElement('name');
                 $name->setAttribute('id', htmlspecialchars($pt['id']));
                 $waypoint->appendChild($name);
-                
+
                 $coord = $dom->createElement('coord');
                 $coord->setAttribute('lat', (string)$pt['lat']);
                 $coord->setAttribute('lon', (string)$pt['lon']);
                 $waypoint->appendChild($coord);
-                
+
                 $loc->appendChild($waypoint);
             }
         } else {
@@ -90,7 +91,6 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
 
         // Output raw buffer bytes mapping HTTP stream correctly
         echo $dom->saveXML();
-
     } catch (Exception $e) {
         error_log("XML Export API Crash: " . $e->getMessage());
         http_response_code(500);

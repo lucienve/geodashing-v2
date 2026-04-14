@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Vector Search API Endpoint
  *
@@ -31,19 +32,18 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     }
 
     try {
-        $db = Database::getConnection();
+        $db = \App\Database::getConnection();
         $service = new SearchService($db);
-        
+
         // Ping MySQL for the cached bounding box mapping securely
         $points = $service->searchRegion($n, $s, $e, $w, $gameId ? $gameId : null);
 
         // JSON block out mapped back to browser for Leaflet/Google Maps parsing natively
         echo json_encode([
-            "status" => "success", 
-            "count" => count($points), 
+            "status" => "success",
+            "count" => count($points),
             "data" => $points
         ]);
-        
     } catch (Exception $e) {
         error_log("Search API Crash: " . $e->getMessage());
         http_response_code(500);

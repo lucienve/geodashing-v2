@@ -1,9 +1,11 @@
 <?php
+
 /**
  * Email Verification Endpoint
- * 
+ *
  * Intercepts the GET payload shipped via the PHP mail() engine.
  */
+
 use App\Services\AuthService;
 
 require_once __DIR__ . '/../session.php';
@@ -19,9 +21,9 @@ if (empty($token)) {
 }
 
 try {
-    $db = Database::getConnection();
+    $db = \App\Database::getConnection();
     $authService = new AuthService($db);
-    
+
     $result = $authService->verifyEmail($token);
 
     if ($result['status'] === 'success') {
@@ -38,7 +40,6 @@ try {
         header("Location: ../../index.html#login?error=invalid_token");
         exit;
     }
-
 } catch (Exception $e) {
     error_log("Verification Endpoint Failure: " . $e->getMessage());
     header("Location: ../../index.html#home");

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Global Session and Security Bootstrapper
  */
@@ -39,12 +40,12 @@ setcookie('csrf_token', $_SESSION['csrf_token'], [
 // This allows initial unauthenticated POST operations (like login, signup) to establish state seamlessly.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SESSION['user_id'])) {
     $providedToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
-    
+
     if (empty($providedToken) || !hash_equals($_SESSION['csrf_token'], $providedToken)) {
         header('Content-Type: application/json');
         http_response_code(403);
         echo json_encode([
-            "status" => "error", 
+            "status" => "error",
             "message" => "Security Validation Failed. Invalid or missing CSRF token."
         ]);
         exit;

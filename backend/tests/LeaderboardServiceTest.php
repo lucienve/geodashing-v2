@@ -10,12 +10,10 @@ use App\Services\LeaderboardService;
 use PDO;
 use PDOStatement;
 
-require_once __DIR__ . '/../services/LeaderboardService.php';
-
 /**
  * LeaderboardServiceTest
  *
- * Verifies the mathematical aggregation, rank mapping, and explicit temporal 
+ * Verifies the mathematical aggregation, rank mapping, and explicit temporal
  * Tie-breaker algorithms parsing identical players.
  */
 #[CoversClass(LeaderboardService::class)]
@@ -32,21 +30,21 @@ class LeaderboardServiceTest extends TestCase
     }
 
     /**
-     * Asserts that when two players tie with the exact same Score `(20)`, the one 
+     * Asserts that when two players tie with the exact same Score `(20)`, the one
      * whose `last_find_time` is *earlier* gets the higher rank.
      */
     #[Test]
     public function getSoloRankingsProperlyResolvesTieBreakersNatively()
     {
         $stmtMock = $this->createMock(PDOStatement::class);
-        
+
         // Simulating the MySQL Engine natively returning an Array sorted `ORDER BY total_score DESC, last_find_time ASC`
         $stmtMock->method('fetchAll')->willReturn([
             ['user_id' => 1, 'username' => 'Alpha', 'total_score' => 20, 'total_finds' => 10, 'last_find_time' => '2026-03-01 12:00:00'],
             ['user_id' => 2, 'username' => 'Bravo', 'total_score' => 20, 'total_finds' => 8,  'last_find_time' => '2026-03-01 13:00:00'],
             ['user_id' => 3, 'username' => 'Charlie', 'total_score' => 15, 'total_finds' => 5,  'last_find_time' => '2026-03-05 10:00:00']
         ]);
-        
+
         $this->pdoMock->method('prepare')->willReturn($stmtMock);
 
         $rankings = $this->leaderboardService->getSoloRankings(1);
@@ -72,13 +70,13 @@ class LeaderboardServiceTest extends TestCase
     public function getSoloRankingsHandlesExactSimultaneousTiesProperly()
     {
         $stmtMock = $this->createMock(PDOStatement::class);
-        
+
         $stmtMock->method('fetchAll')->willReturn([
             ['user_id' => 4, 'username' => 'Delta', 'total_score' => 50, 'total_finds' => 20, 'last_find_time' => '2026-03-10 12:00:00'],
             ['user_id' => 5, 'username' => 'Echo', 'total_score' => 50, 'total_finds' => 20, 'last_find_time' => '2026-03-10 12:00:00'],
             ['user_id' => 6, 'username' => 'Foxtrot', 'total_score' => 10, 'total_finds' => 4, 'last_find_time' => '2026-03-11 12:00:00']
         ]);
-        
+
         $this->pdoMock->method('prepare')->willReturn($stmtMock);
 
         $rankings = $this->leaderboardService->getSoloRankings(1);
@@ -88,7 +86,7 @@ class LeaderboardServiceTest extends TestCase
         // Delta and Echo hold equal values. Both earn Rank #1.
         $this->assertEquals(1, $rankings[0]['rank']);
         $this->assertEquals(1, $rankings[1]['rank']);
-        
+
         // Foxtrot follows, inheriting the ordinal index #3.
         $this->assertEquals(3, $rankings[2]['rank']);
     }
@@ -101,7 +99,7 @@ class LeaderboardServiceTest extends TestCase
     {
         $stmtMock = $this->createMock(PDOStatement::class);
         $stmtMock->method('fetchAll')->willReturn([]); // Simulate ZERO results
-        
+
         $this->pdoMock->method('prepare')->willReturn($stmtMock);
 
         $rankings = $this->leaderboardService->getSoloRankings(999);

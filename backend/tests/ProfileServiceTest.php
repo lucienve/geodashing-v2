@@ -10,8 +10,6 @@ use App\Services\ProfileService;
 use PDO;
 use PDOStatement;
 
-require_once __DIR__ . '/../api/profile.php';
-
 /**
  * ProfileServiceTest
  */
@@ -78,12 +76,12 @@ class ProfileServiceTest extends TestCase
                       ->willReturnOnConsecutiveCalls($stmtUserMock, $stmtLogsMock);
 
         $result = $this->profileService->getProfileSettings(1);
-        
+
         $this->assertNotNull($result);
         $this->assertEquals(1, $result['user']['id']);
         $this->assertEquals('testuser', $result['user']['username']);
         $this->assertEquals(5, $result['user']['lifetime_score']);
-        
+
         $this->assertCount(1, $result['games']);
         $this->assertEquals(1, $result['games'][0]['game_id']);
         $this->assertEquals(5, $result['games'][0]['game_total_score']);

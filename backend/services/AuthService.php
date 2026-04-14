@@ -71,7 +71,6 @@ class AuthService
                 "username" => $username,
                 "is_verified" => 0
             ];
-
         } catch (PDOException $e) {
             if ($e->getCode() == 23000) { // Catch MySQL unique constraint violations natively against user data
                 return ["status" => "error", "message" => "That username or email already exists"];
@@ -113,7 +112,6 @@ class AuthService
             }
 
             return ["status" => "error", "message" => "Invalid credentials"];
-
         } catch (PDOException $e) {
             error_log("Login Logic Error: " . $e->getMessage());
             return ["status" => "error", "message" => "Login failed due to internal server error"];
@@ -150,7 +148,6 @@ class AuthService
             $this->sendVerificationEmail($user['email'], $token);
 
             return ["status" => "success", "message" => "Verification email resent successfully."];
-
         } catch (PDOException $e) {
             error_log("Resend Verification Error: " . $e->getMessage());
             return ["status" => "error", "message" => "Failed to resend email."];
@@ -159,7 +156,7 @@ class AuthService
 
     /**
      * Helper routine to construct and explicitly dispatch the Geodashing.org Verification Email.
-     * 
+     *
      * @param string $email
      * @param string $token
      */
@@ -179,7 +176,7 @@ class AuthService
 
     /**
      * Issues a time-bound cryptographically secure Reset Token for the User.
-     * 
+     *
      * @param string $username
      * @return array Status array
      */
@@ -205,7 +202,6 @@ class AuthService
             $this->sendPasswordResetEmail($user['email'], $resetToken, $username);
 
             return ["status" => "success", "message" => "If that username matches our records, an email has been sent."];
-
         } catch (PDOException $e) {
             error_log("Forgot Password Error: " . $e->getMessage());
             return ["status" => "error", "message" => "Internal server error."];
@@ -214,7 +210,7 @@ class AuthService
 
     /**
      * Helper routine to explicitly dispatch the Password Reset Email.
-     * 
+     *
      * @param string $email
      * @param string $token
      * @param string $username
@@ -248,7 +244,7 @@ class AuthService
 
     /**
      * Executes the mechanical password override tracking validation metrics strictly natively.
-     * 
+     *
      * @param string $token
      * @param string $newPassword
      * @return array Status array
@@ -275,7 +271,6 @@ class AuthService
             $updateStmt->execute([':hash' => $newHash, ':id' => $user['id']]);
 
             return ["status" => "success", "message" => "Password updated. You may now login."];
-
         } catch (PDOException $e) {
             error_log("Reset Password Error: " . $e->getMessage());
             return ["status" => "error", "message" => "Internal server error."];
@@ -284,7 +279,7 @@ class AuthService
 
     /**
      * Verifies the email token strictly natively.
-     * 
+     *
      * @param string $token
      * @return array Status array with user data on success
      */
