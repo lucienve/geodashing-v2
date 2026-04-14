@@ -1,13 +1,13 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * Dashpoint Historical Details Endpoint
  *
  * Retrieves the explicit coordinates for a single Dashpoint and mathematically joins
  * all historically recorded Finders out of the `visits` and `users` table.
  */
+
+declare(strict_types=1);
 
 use App\Services\DashpointService;
 

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * Post-Log Editing API Endpoint
  *
@@ -11,6 +9,8 @@ declare(strict_types=1);
  *
  * @package Geodashing\API
  */
+
+declare(strict_types=1);
 
 use App\Services\EditService;
 use App\Services\MediaService;

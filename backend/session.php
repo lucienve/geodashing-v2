@@ -1,10 +1,10 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * Global Session and Security Bootstrapper
  */
+
+declare(strict_types=1);
 
 // 1. Enforce strict session cookie parameters
 session_set_cookie_params([

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * Authentication API Endpoint
  *
@@ -9,6 +7,8 @@ declare(strict_types=1);
  *
  * @package Geodashing\API
  */
+
+declare(strict_types=1);
 
 use App\Services\AuthService;
 

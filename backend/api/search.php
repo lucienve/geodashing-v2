@@ -1,13 +1,13 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * Vector Search API Endpoint
  *
  * Exposes a generic JSON array mapper for frontend map rendering blocks,
  * parsing bounding box filters natively preventing rendering overload on mobile.
  */
+
+declare(strict_types=1);
 
 header('Content-Type: application/json');
 

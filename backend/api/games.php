@@ -1,12 +1,12 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * Games API Endpoint
  *
  * Retrieves the full list of historical and active games.
  */
+
+declare(strict_types=1);
 
 header('Content-Type: application/json');
 

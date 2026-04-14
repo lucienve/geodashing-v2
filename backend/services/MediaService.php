@@ -2,13 +2,6 @@
 
 declare(strict_types=1);
 
-/**
- * MediaService
- *
- * Handles file validation and Google Cloud Storage SDK integration,
- * pushing image files into the Cloud Storage bucket.
- */
-
 namespace App\Services;
 
 // Load Composer autoload specifically for Google Cloud Storage Library mapping
@@ -18,6 +11,12 @@ use Exception;
 use finfo;
 use Google\Cloud\Storage\StorageClient;
 
+/**
+ * MediaService
+ *
+ * Handles file validation and Google Cloud Storage SDK integration,
+ * pushing image files into the Cloud Storage bucket.
+ */
 class MediaService
 {
     private StorageClient $storage;

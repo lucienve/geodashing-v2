@@ -1,12 +1,12 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * Email Verification Endpoint
  *
  * Intercepts the GET payload shipped via the PHP mail() engine.
  */
+
+declare(strict_types=1);
 
 use App\Services\AuthService;
 

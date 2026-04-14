@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * Reporting API Endpoint
  *
@@ -10,6 +8,8 @@ declare(strict_types=1);
  *
  * @package Geodashing\API
  */
+
+declare(strict_types=1);
 
 // If we are executing this file directly (not importing it for testing)
 use App\Services\MediaService;

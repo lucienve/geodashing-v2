@@ -1,13 +1,13 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * Leaderboards API Endpoint
  *
  * Provides high-speed JSON dumps containing the pre-aggregated Player Ranks
  * organized by total points and temporal tie-breakers.
  */
+
+declare(strict_types=1);
 
 header('Content-Type: application/json');
 

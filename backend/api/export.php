@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * XML Waypoints Export Utility
  *
@@ -9,6 +7,8 @@ declare(strict_types=1);
  * purely into GPS-compatible schema wrappers (.gpx, .loc). Natively pushes HTTP
  * headers simulating file downloads on web browsers.
  */
+
+declare(strict_types=1);
 
 use App\Services\SearchService;
 

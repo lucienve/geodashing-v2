@@ -1,13 +1,13 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * Game State API Endpoint
  *
  * Lightweight public metric returning the current active monthly configuration
  * from the database, feeding the Javascript Dashboard Countdown Timer.
  */
+
+declare(strict_types=1);
 
 header('Content-Type: application/json');
 
