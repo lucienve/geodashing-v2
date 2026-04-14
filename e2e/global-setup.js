@@ -11,7 +11,7 @@ module.exports = async (config) => {
     try {
         // Execute the native shell script to bootstrap test schema and prevent divergence
         // Setting stdio: 'inherit' routes the output visually for the developer
-        execSync(`"${scriptPath}"`, { stdio: 'inherit' });
+        execSync(`bash "${scriptPath}"`, { stdio: 'inherit' });
         console.log('Database synchronization complete!\n');
     } catch (error) {
         console.error('\nERROR: Failed to initialize E2E test database!');
