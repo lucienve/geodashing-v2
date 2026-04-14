@@ -45,6 +45,13 @@ The application allows users to participate in global geographic games where the
 - Constructed a global UI paradigm mapping past games to global states allowing the user to context-switch effortlessly between historical snapshots over the entire frontend (Map, Leaderboard).
 - Constructed dynamic `#profile` single page architecture, aggregating total lifetime points, dashpoints accessed, and a complete ledger of previous historical games.
 
+### 6. Backend Modernization & Rule Compliance
+- Migrated all monolithic PHP API scripts into dedicated PSR-4 namespaced Service classes.
+- Enabled native Composer autoloading mapped to the `backend/` directory, establishing structured unit testing capabilities.
+- Enforced strict PSR-12 formatting across the entire backend verified natively via `phpcs`.
+- Integrated `declare(strict_types=1);` natively into every PHP file to strictly enforce type safety.
+- Added comprehensive PHPDoc documentation across all Service layers and stripped dramatic/unprofessional tones from logging, strictly complying with new engineering standards.
+
 ## Current Plan / Roadmap (Aggregated)
 1. **User Profiles**: Build a 'Trophy Cabinet' for milestones.
 2. **Team Play Ecosystem**: 
