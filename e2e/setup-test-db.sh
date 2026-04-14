@@ -38,10 +38,26 @@ echo "Loading schema.sql..."
 grep -v -E -i "^USE " schema.sql | mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME"
 
 # 3. Inject shared Mock Testing Data
-echo "Injecting mock CI Test Game..."
+echo "Injecting mock CI Test Game, User, and Dashpoint..."
+
+# Generate a valid PHP password hash natively
+PASSWORD_HASH=$(php -r "echo password_hash('testpass', PASSWORD_DEFAULT);")
+
 mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "
+    -- Game 1
     INSERT INTO games (id, title, start_time, end_time, is_active) 
     VALUES (1, 'CI Test Game', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 30 DAY), TRUE);
+    
+    -- Test User
+    INSERT INTO users (id, username, email, password_hash, is_verified)
+    VALUES (1, 'TestUser', 'testuser@example.com', '${PASSWORD_HASH}', TRUE);
+    
+    -- Test Dashpoint inside Game 1
+    -- ST_GeomFromText uses Longitude Latitude or Latitude Longitude based on MySQL 8.0 geographic SRID 4326.
+    -- In MySQL 8, SRID 4326 interprets coordinates as (Latitude, Longitude).
+    -- So Point(40.7128, -74.0060) is NYC.
+    INSERT INTO dashpoints (id, game_id, location, country_code, state_province)
+    VALUES ('GD001-AAAA', 1, ST_GeomFromText('POINT(40.7128 -74.0060)', 4326), 'US', 'NY');
 "
 
 echo "Test database initialized successfully!"

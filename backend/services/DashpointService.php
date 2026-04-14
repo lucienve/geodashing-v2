@@ -58,7 +58,7 @@ class DashpointService
 
         // 3. Decode the raw JSON photographic arrays safely for the UI Carousel parser statically
         foreach ($visits as &$v) {
-            $v['photos'] = json_decode($v['photos'], true) ?: [];
+            $v['photos'] = json_decode($v['photos'] ?? '[]', true) ?: [];
         }
 
         return [
