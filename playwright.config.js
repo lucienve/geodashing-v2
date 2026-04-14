@@ -26,8 +26,10 @@ module.exports = defineConfig({
     },
   ],
 
+  globalSetup: require.resolve('./e2e/global-setup.js'),
+
   webServer: {
-    command: 'php -S localhost:8080',
+    command: 'APP_ENV=testing php -S localhost:8080',
     url: 'http://localhost:8080',
     reuseExistingServer: !process.env.CI,
   },

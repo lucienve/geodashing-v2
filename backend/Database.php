@@ -32,11 +32,20 @@ class Database
                 throw new Exception("Error parsing the configuration file.");
             }
 
-            $host = $config['DB_HOST'] ?? '127.0.0.1';
-            $port = $config['DB_PORT'] ?? '3306';
-            $db   = $config['DB_NAME'] ?? 'geodashing';
-            $user = $config['DB_USER'] ?? 'geodashing';
-            $pass = $config['DB_PASS'] ?? '';
+            // Intercept credentials securely for the E2E testing framework
+            if ((getenv('APP_ENV') ?: ($_ENV['APP_ENV'] ?? '')) === 'testing') {
+                $host = '127.0.0.1';
+                $port = $config['DB_PORT'] ?? '3306';
+                $db   = 'geodashing_test';
+                $user = 'geodashing_test';
+                $pass = 'geodashing_test_secure_pass';
+            } else {
+                $host = $config['DB_HOST'] ?? '127.0.0.1';
+                $port = $config['DB_PORT'] ?? '3306';
+                $db   = $config['DB_NAME'] ?? 'geodashing';
+                $user = $config['DB_USER'] ?? 'geodashing';
+                $pass = $config['DB_PASS'] ?? '';
+            }
             $charset = 'utf8mb4';
 
             $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=$charset";

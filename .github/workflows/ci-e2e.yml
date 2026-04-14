@@ -38,7 +38,7 @@ jobs:
         image: mysql:8.4
         env:
           MYSQL_ROOT_PASSWORD: default_root_pass
-          MYSQL_DATABASE: geodashing
+          MYSQL_DATABASE: geodashing_test
         ports:
           - 3306:3306
         options: >-
@@ -76,12 +76,13 @@ jobs:
 
       - name: Initialize Database Schema & Inject Dummy Data
         run: |
-          mysql -h 127.0.0.1 -u root -pdefault_root_pass geodashing < schema.sql
-          
-          mysql -h 127.0.0.1 -u root -pdefault_root_pass geodashing -e "
-            INSERT INTO games (id, title, start_time, end_time, is_active) 
-            VALUES (1, 'CI Test Game', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 30 DAY), TRUE);
-          "
+          ./e2e/setup-test-db.sh
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: root
+          DB_PASS: default_root_pass
+          DB_NAME: geodashing_test
 
       - name: Install Node Dependencies
         run: npm install
@@ -91,6 +92,12 @@ jobs:
 
       - name: Run Playwright Tests
         run: npx playwright test
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: root
+          DB_PASS: default_root_pass
+          DB_NAME: geodashing_test
 
       - name: Upload Playwright Artifacts
         uses: actions/upload-artifact@v4
