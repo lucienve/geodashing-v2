@@ -241,6 +241,12 @@ class AuthService
      */
     protected function executeMail(string $to, string $subject, string $message, string $headers, string $additional_params): bool
     {
+        // Bypass physical SMTP interaction during E2E testing
+        if ((getenv('APP_ENV') ?: ($_ENV['APP_ENV'] ?? '')) === 'testing') {
+            error_log("APP_ENV=testing: Suppressed physical email transmission to $to");
+            return true;
+        }
+
         return @mail($to, $subject, $message, $headers, $additional_params);
     }
 
