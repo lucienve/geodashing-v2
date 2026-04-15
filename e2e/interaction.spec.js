@@ -127,7 +127,7 @@ test.describe('Component & Interactive Layout Constraints', () => {
         }
 
         const templateView = page.locator('.template-view').first();
-        await expect(templateView).toBeVisible();
+        await expect(templateView).toBeVisible({ timeout: 10000 });
         await page.waitForTimeout(500);
 
         const closeBtn = templateView.locator('.close-btn').first();

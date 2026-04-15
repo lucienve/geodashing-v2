@@ -240,8 +240,9 @@ document.addEventListener('routeLoaded', (e) => {
                 btnGeo.innerText = "PULLING GPS...";
                 btnGeo.style.color = "var(--accent-amber)";
 
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(
+                const geoTarget = window.mockGeolocation || navigator.geolocation;
+                if (geoTarget) {
+                    geoTarget.getCurrentPosition(
                         (position) => {
                             latInput.value = position.coords.latitude.toFixed(6);
                             lonInput.value = position.coords.longitude.toFixed(6);

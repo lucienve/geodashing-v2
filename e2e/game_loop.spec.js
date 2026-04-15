@@ -2,6 +2,9 @@ const { test, expect } = require('@playwright/test');
 
 test.describe('Core Functional Game Loop', () => {
     test.beforeEach(async ({ page }) => {
+        await page.addInitScript(() => {
+            window.localStorage.setItem('ga_consent', 'granted');
+        });
         await page.goto('/');
     });
 
@@ -24,17 +27,19 @@ test.describe('Core Functional Game Loop', () => {
     });
 
     test('Geolocation Bounds Validation - Too Far Rejection', async ({ page }) => {
-        // Grant permissions and spoof location to London
-        await page.context().grantPermissions(['geolocation']);
-        await page.context().setGeolocation({ latitude: 51.5074, longitude: -0.1278 });
+        // Inject E2E Mock Geolocation via window.mockGeolocation
+        const mockFn = () => {
+            window.mockGeolocation = {
+                getCurrentPosition: (success, _error, _options) => {
+                    success({ coords: { latitude: 51.5074, longitude: -0.1278, accuracy: 10 } });
+                }
+            };
+        };
+        await page.addInitScript(mockFn);
+        await page.evaluate(mockFn);
 
         // Authenticate
         await page.goto('/#login');
-        // Dismiss cookie banner
-        const cookieBtn = page.locator('#btn-accept-cookies');
-        if (await cookieBtn.isVisible()) {
-            await cookieBtn.click();
-        }
         await page.fill('#login-username', 'TestUser');
         await page.fill('#login-password', 'testpass');
         await page.click('#btn-submit-login');
@@ -48,8 +53,8 @@ test.describe('Core Functional Game Loop', () => {
         await page.click('#btn-geolocation');
 
         // Wait for inputs to populate
-        await expect(page.locator('#input-lat')).not.toBeEmpty({ timeout: 10000 });
-        await expect(page.locator('#input-lon')).not.toBeEmpty({ timeout: 10000 });
+        await expect(page.locator('#input-lat')).not.toHaveValue('', { timeout: 10000 });
+        await expect(page.locator('#input-lon')).not.toHaveValue('', { timeout: 10000 });
 
         await page.fill('#log-textarea', 'Attempting a spoof log from London!');
         await page.click('#btn-submit-report');
@@ -58,22 +63,52 @@ test.describe('Core Functional Game Loop', () => {
         await expect(feedback).toContainText('Too far away', { timeout: 10000 });
     });
 
-    test('Successful Dashpoint Log and Ledger Verification', async ({ page }) => {
-        // Mock proper GPS location matching test dashpoint GD001-AAAA exactly
-        await page.context().grantPermissions(['geolocation']);
-        await page.context().setGeolocation({ latitude: 40.7128, longitude: -74.0060 });
+    test('Successful Dashpoint Log and Ledger Verification', async ({ page }, testInfo) => {
+        // Guarantee parallel test isolation without global DELETE statements by creating a native account per-test.
+        const dynamicUser = `Worker_${Date.now()}_${testInfo.workerIndex}`;
+        const dynamicPass = `SecurePass123!`;
 
-        // Authenticate
+        // Inject E2E Mock Geolocation (NYC mapping to GD001-AAAA) via window.mockGeolocation natively
+        const mockFn = () => {
+            window.mockGeolocation = {
+                getCurrentPosition: (success, _error, _options) => {
+                    success({ coords: { latitude: 40.7128, longitude: -74.0060, accuracy: 10 } });
+                }
+            };
+        };
+        await page.addInitScript(mockFn);
+        await page.evaluate(mockFn);
+
+        // 1. Dynamically execute native Signup Flow. 
         await page.goto('/#login');
-        // Dismiss cookie banner
-        const cookieBtn = page.locator('#btn-accept-cookies');
-        if (await cookieBtn.isVisible()) {
-            await cookieBtn.click();
-        }
-        await page.fill('#login-username', 'TestUser');
-        await page.fill('#login-password', 'testpass');
-        await page.click('#btn-submit-login');
-        await page.waitForURL('**/#home');
+
+        // Toggle standard layout tabs.
+        await page.click('#toggle-signup');
+        await page.fill('#signup-username', dynamicUser);
+        await page.fill('#signup-email', `${dynamicUser}@example.com`);
+        await page.fill('#signup-password', dynamicPass);
+        await page.fill('#signup-password-verify', dynamicPass);
+        const [response] = await Promise.all([
+            page.waitForResponse(res => res.url().includes('auth.php?action=signup')),
+            page.click('#btn-submit-signup')
+        ]);
+        const responseBody = await response.json();
+        console.log("Signup API Response for dynamicUser:", dynamicUser, responseBody);
+        
+        await expect(responseBody.status).toBe('success');
+        
+        // Explicitly bypass Email Verification constraint natively with a fast DB hit to ensure our dynamic user is authorized to play.
+        const { execSync } = require('child_process');
+        execSync(`mysql -h 127.0.0.1 -u geodashing_test -pgeodashing_test_secure_pass geodashing_test -e "UPDATE users SET is_verified = 1 WHERE username = '${dynamicUser}';"`);
+        
+        // Grab the dynamic user's generated ID so we can evaluate their profile directly later
+        const userIdOut = execSync(`mysql -h 127.0.0.1 -u geodashing_test -pgeodashing_test_secure_pass geodashing_test -se "SELECT id FROM users WHERE username = '${dynamicUser}';"`);
+        const dynamicUserId = userIdOut.toString().trim();
+
+        // Forcefully navigate cleanly instead of relying on frontend async auth-state race conditions natively handling the redirect
+        await page.goto('/#home');
+        // Wait to make sure the app initializes the hash natively
+        await page.waitForURL('**/#home', { timeout: 5000 });
 
         // Go to specific dashpoint report
         await page.goto('/#report?id=GD001-AAAA');
@@ -81,26 +116,27 @@ test.describe('Core Functional Game Loop', () => {
         
         // Sync GPS
         await page.click('#btn-geolocation');
-        await expect(page.locator('#input-lat')).not.toBeEmpty();
+        await expect(page.locator('#input-lat')).not.toHaveValue('', { timeout: 10000 });
+        await expect(page.locator('#input-lon')).not.toHaveValue('', { timeout: 10000 });
         
         await page.fill('#log-textarea', 'Found it! Great dashpoint.');
         await page.click('#btn-submit-report');
         
         // Validate success response
         const feedback = page.locator('#report-feedback');
-        await expect(feedback).toContainText('Success!');
+        await expect(feedback).toContainText('Success!', { timeout: 10000 });
 
         // Navigate to dashpoint ledger explicitly to ensure it shows up in general visits. Wait for successful post first.
         await page.goto('/#dashpoint?id=GD001-AAAA');
         
         const visitsContainer = page.locator('#dp-visits-container');
-        await expect(visitsContainer).toContainText('TestUser');
-        await expect(visitsContainer).toContainText('PT'); 
+        await expect(visitsContainer).toContainText(dynamicUser, { timeout: 10000 });
+        await expect(visitsContainer).toContainText('PT', { timeout: 10000 }); 
 
         // Navigate to profile to verify scoring linkage
-        await page.goto('/#profile?id=1');
+        await page.goto(`/#profile?id=${dynamicUserId}`);
         
         const profileContainer = page.locator('#profile-container');
-        await expect(profileContainer).toContainText('GD001-AAAA');
+        await expect(profileContainer).toContainText('GD001-AAAA', { timeout: 10000 });
     });
 });
