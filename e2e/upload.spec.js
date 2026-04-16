@@ -72,14 +72,15 @@ test.describe('Photo Upload Integration', () => {
         // Let's assert the visit ledger contains the image natively
         await page.goto('/#dashpoint?id=GD001-AAAA');
         const visitsContainer = page.locator('#dp-visits-container');
-        await expect(visitsContainer).toContainText(dynamicUser, { timeout: 10000 });
+        const userVisit = visitsContainer.locator('> div').filter({ hasText: dynamicUser });
+        await expect(userVisit).toBeVisible({ timeout: 10000 });
 
         // Expand the UI mapping to natively render the DOM tree visibility constraints
-        await page.locator('#dp-visits-container button', { hasText: 'VIEW DETAILS' }).first().click();
+        await userVisit.locator('button', { hasText: 'VIEW DETAILS' }).click();
 
         // Ensure an img tag with the mapped public URL is visible logically
         // We know the mock emulator binds to http://127.0.0.1:4443
-        const loadedImage = page.locator('#dp-visits-container img');
+        const loadedImage = userVisit.locator('img');
         await expect(loadedImage.first()).toBeVisible({ timeout: 10000 });
 
         // Logically verify the image src is hitting our emulator
