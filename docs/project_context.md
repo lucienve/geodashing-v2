@@ -57,6 +57,7 @@ The application allows users to participate in global geographic games where the
 - Established a hermetic testing environment by isolating E2E execution exclusively to a dedicated `geodashing_test` database, completely preventing accidental pollution of the live development schema.
 - Built a unified database bootstrapping script (`e2e/setup-test-db.sh`) which is directly consumed by the CI workflow and automatically evaluated by a Playwright global setup hook (`e2e/global-setup.js`) locally.
 - Implemented secure environment interception within `backend/Database.php` routing securely to test credentials dynamically via `APP_ENV=testing` without altering any configuration states. 
+- Integrated `fsouza/fake-gcs-server` functionally bypassing all real-world Google Cloud Storage APIs ensuring hermetic E2E tests for photo uploads.
 
 ## Current Plan / Roadmap (Aggregated)
 1. **User Profiles**: Build a 'Trophy Cabinet' for milestones.

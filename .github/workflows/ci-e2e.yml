@@ -51,6 +51,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Initialize GCS Emulator
+        run: |
+          docker run -d -v $PWD/e2e/gcs-data:/data -p 4443:4443 fsouza/fake-gcs-server -scheme http -public-host 127.0.0.1:4443 -data /data
+
       - name: Setup PHP (for native development server)
         uses: shivammathur/setup-php@v2
         with:
@@ -100,6 +104,7 @@ jobs:
           DB_USER: root
           DB_PASS: default_root_pass
           DB_NAME: geodashing_test
+          GCS_EMULATOR_HOST: http://127.0.0.1:4443
 
       - name: Upload Playwright Artifacts
         uses: actions/upload-artifact@v4

@@ -35,11 +35,19 @@ class MediaService
         if ($storage !== null) {
             $this->storage = $storage;
         } else {
-            // Natively bridge the production GCP sockets safely wrapping the IAM config map
-            $this->storage = new StorageClient([
+            $config = [
                 'projectId' => $projectId,
                 'keyFilePath' => $keyFilePath
-            ]);
+            ];
+
+            // When in E2E testing, aggressively re-route GCP storage requests to the local emulator mapping
+            if (getenv('APP_ENV') === 'testing' && getenv('GCS_EMULATOR_HOST')) {
+                $config['apiEndpoint'] = getenv('GCS_EMULATOR_HOST');
+                // The emulator does not execute strict checking on Service Account IAM keys natively.
+            }
+
+            // Natively bridge the production GCP sockets safely wrapping the IAM config map
+            $this->storage = new StorageClient($config);
         }
     }
 
@@ -124,9 +132,13 @@ class MediaService
             // Extract standard EXIF GPS coordinates before removing the local tmp_name.
             $exifData = $this->parseExifGPS($file['tmp_name']);
 
+            $publicDomain = (getenv('APP_ENV') === 'testing' && getenv('GCS_EMULATOR_HOST'))
+                ? getenv('GCS_EMULATOR_HOST')
+                : "https://storage.googleapis.com";
+
             // Construct standard GS public URL path resolving identically via HTTP
             $urls[] = [
-                'url' => "https://storage.googleapis.com/{$this->bucketName}/{$objectName}",
+                'url' => "{$publicDomain}/{$this->bucketName}/{$objectName}",
                 'lat' => $exifData ? $exifData['lat'] : null,
                 'lon' => $exifData ? $exifData['lon'] : null
             ];
@@ -144,7 +156,11 @@ class MediaService
     public function deletePhotos(array $urls): void
     {
         $bucket = $this->storage->bucket($this->bucketName);
-        $prefix = "https://storage.googleapis.com/{$this->bucketName}/";
+        $publicDomain = (getenv('APP_ENV') === 'testing' && getenv('GCS_EMULATOR_HOST'))
+            ? getenv('GCS_EMULATOR_HOST')
+            : "https://storage.googleapis.com";
+
+        $prefix = "{$publicDomain}/{$this->bucketName}/";
 
         foreach ($urls as $url) {
             // Strip the public HTTP prefix natively to isolate the internal Object mapping (e.g. 'visits/GD01/1_pic')
