@@ -28,7 +28,7 @@ class MediaService
      * @param string $keyFilePath Absolute disk path referencing the IAM Service Account JSON key.
      * @param StorageClient|null $storage Optional dependency injection override for PHPUnit mocks.
      */
-    public function __construct(string $projectId, string $bucketName, string $keyFilePath, ?StorageClient $storage = null)
+    public function __construct(string $projectId, string $bucketName, ?string $keyFilePath = null, ?StorageClient $storage = null)
     {
         $this->bucketName = $bucketName;
 
@@ -37,12 +37,16 @@ class MediaService
         } else {
             $config = [
                 'projectId' => $projectId,
-                'keyFilePath' => $keyFilePath
             ];
+
+            if ($keyFilePath !== null) {
+                $config['keyFilePath'] = $keyFilePath;
+            }
 
             // When in E2E testing, aggressively re-route GCP storage requests to the local emulator mapping
             if (getenv('APP_ENV') === 'testing' && getenv('GCS_EMULATOR_HOST')) {
                 $config['apiEndpoint'] = getenv('GCS_EMULATOR_HOST');
+                $config['hasAuthentication'] = false; // Disable auth for the emulator
                 // The emulator does not execute strict checking on Service Account IAM keys natively.
             }
 

@@ -52,7 +52,9 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     // 2.5 Optional Media Processing Pipeline
     if (!empty($_FILES['photos']) && (is_array($_FILES['photos']['error']) ? $_FILES['photos']['error'][0] : $_FILES['photos']['error']) !== UPLOAD_ERR_NO_FILE) {
         $keyPath = __DIR__ . '/../gcp-credentials.json';
-        if (!file_exists($keyPath)) {
+        $isTesting = getenv('APP_ENV') === 'testing';
+        
+        if (!$isTesting && !file_exists($keyPath)) {
             http_response_code(500);
             echo json_encode(["status" => "error", "message" => "Server configuration error blocking media uploads."]);
             exit;
@@ -60,7 +62,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
 
         try {
             // Instantiate securely with user's explicitly provided Geodashing GCP identifiers
-            $mediaService = new MediaService('geodashing-v2', 'geodashing-v2-blobs', $keyPath);
+            $mediaService = new MediaService('geodashing-v2', 'geodashing-v2-blobs', $isTesting ? null : $keyPath);
             $urls = $mediaService->uploadPhotos($_FILES['photos'], $dashpoint_id, $_SESSION['user_id']);
             if (!empty($urls)) {
                 $photosJson = json_encode($urls);
