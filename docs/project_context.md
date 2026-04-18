@@ -29,6 +29,7 @@ The application allows users to participate in global geographic games where the
 ### 2. Core API Layer & Authentication
 - Built PHP endpoints for authentication, securely logging users in, mandating secure email verifications, and facilitating password resets.
 - Added comprehensive reporting features including the ability for users to append logs up to 10k characters. Enabled capabilities for users to dynamically edit their own prior log entries.
+- Implemented automated HTML email notifications that dispatch dashpoint log details (including inline photos and real-time scoring updates) to a configured mailing list immediately after a successful dashpoint claim.
 - Developed RESTful search and export endpoints for dashpoints.
 
 ### 3. Media Capabilities

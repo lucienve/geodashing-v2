@@ -127,11 +127,86 @@ class ReportService
             ':photos' => $photosJson
         ]);
 
+        $userStmt = $this->db->prepare("SELECT username FROM users WHERE id = :uid LIMIT 1");
+        $userStmt->execute([':uid' => $userId]);
+        $userRow = $userStmt->fetch(PDO::FETCH_ASSOC);
+        $username = $userRow ? $userRow['username'] : 'Unknown User';
+
+        $totalScoreStmt = $this->db->prepare("SELECT SUM(score_awarded) AS total FROM visits WHERE user_id = :uid");
+        $totalScoreStmt->execute([':uid' => $userId]);
+        $totalScoreRow = $totalScoreStmt->fetch(PDO::FETCH_ASSOC);
+        $totalPoints = $totalScoreRow ? (int) $totalScoreRow['total'] : $scoreAwarded;
+
+        $this->sendVisitReportEmail($username, $dashpointId, $distance, $scoreAwarded, $totalPoints, $notes, $photosJson);
+
         return [
             "status" => "success",
             "message" => "Dashpoint successfully claimed. You earned {$scoreAwarded} points.",
             "distance" => $distance,
             "points" => $scoreAwarded
         ];
+    }
+
+    /**
+     * Constructs and dispatches an HTML email to the mailing list detailing the new Dashpoint visit.
+     */
+    private function sendVisitReportEmail(string $username, string $dashpointId, int $distance, int $points, int $totalPoints, ?string $notes, ?string $photosJson): void
+    {
+        $configPath = __DIR__ . '/../config.ini';
+        $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
+        $toList = $config['MAILING_LIST_ADDRESS'] ?? '';
+
+        if (empty($toList)) {
+            return;
+        }
+
+        $subject = "New Dashpoint Log: {$username} claimed {$dashpointId}";
+        
+        $message = "<html><body>";
+        $message .= "<h2>New Dashpoint Log</h2>";
+        $message .= "<p><strong>User:</strong> " . htmlspecialchars($username) . "</p>";
+        $message .= "<p><strong>Dashpoint:</strong> " . htmlspecialchars($dashpointId) . "</p>";
+        $message .= "<p><strong>Distance:</strong> {$distance} meters</p>";
+        $message .= "<p><strong>Points Gained:</strong> {$points}</p>";
+        $message .= "<p><strong>New Total Points:</strong> {$totalPoints}</p>";
+        
+        if (!empty($notes)) {
+            $message .= "<h3>Field Notes</h3>";
+            $message .= "<p>" . nl2br(htmlspecialchars($notes)) . "</p>";
+        }
+
+        if (!empty($photosJson)) {
+            $photos = json_decode($photosJson, true);
+            if (is_array($photos) && count($photos) > 0) {
+                $message .= "<h3>Photos</h3>";
+                foreach ($photos as $photoUrl) {
+                    $message .= "<div style='margin-bottom: 10px;'><img src='" . htmlspecialchars($photoUrl, ENT_QUOTES, 'UTF-8') . "' alt='Dashpoint Photo' style='max-width: 100%; height: auto;' /></div>";
+                }
+            }
+        }
+        
+        $message .= "</body></html>";
+
+        $headers = "From: no-reply@geodashing.org\r\n";
+        $headers .= "Reply-To: no-reply@geodashing.org\r\n";
+        $headers .= "MIME-Version: 1.0\r\n";
+        $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+        $headers .= "X-Mailer: PHP/" . phpversion();
+
+        $this->executeMail($toList, $subject, $message, $headers, "-fno-reply@geodashing.org");
+    }
+
+    /**
+     * Executes email delivery. Protected specifically to allow PHPUnit mocking.
+     */
+    protected function executeMail(string $to, string $subject, string $message, string $headers, string $additional_params): bool
+    {
+        // Bypass physical SMTP interaction during E2E testing
+        if ((getenv('APP_ENV') ?: ($_ENV['APP_ENV'] ?? '')) === 'testing') {
+            error_log("APP_ENV=testing: Suppressed physical email transmission to $to");
+            return true;
+        }
+
+        return @mail($to, $subject, $message, $headers, $additional_params);
     }
 }
