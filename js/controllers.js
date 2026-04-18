@@ -212,13 +212,24 @@ document.addEventListener('routeLoaded', (e) => {
                 Array.from(inputPhotos.files).forEach(file => {
                     const img = document.createElement('img');
                     img.src = URL.createObjectURL(file);
+                    img.classList.add('photo-preview-item');
                     img.style.width = '100%';
                     img.style.height = '60px';
-                    img.style.objectFit = 'cover';
-                    img.style.borderRadius = '4px';
                     img.style.border = '1px solid var(--accent-amber)';
                     previewGrid.appendChild(img);
                 });
+            });
+        }
+
+        // Add sanitization listeners to coordinates
+        if (latInput) {
+            latInput.addEventListener('input', function() {
+                this.value = this.value.replace(/[^0-9.-]/g, '');
+            });
+        }
+        if (lonInput) {
+            lonInput.addEventListener('input', function() {
+                this.value = this.value.replace(/[^0-9.-]/g, '');
             });
         }
 
@@ -238,7 +249,7 @@ document.addEventListener('routeLoaded', (e) => {
             btnGeo.addEventListener('click', (ev) => {
                 ev.preventDefault();
                 btnGeo.innerText = "PULLING GPS...";
-                btnGeo.style.color = "var(--accent-amber)";
+                btnGeo.classList.add('btn-loading');
 
                 const geoTarget = window.mockGeolocation || navigator.geolocation;
                 if (geoTarget) {
@@ -247,18 +258,21 @@ document.addEventListener('routeLoaded', (e) => {
                             latInput.value = position.coords.latitude.toFixed(6);
                             lonInput.value = position.coords.longitude.toFixed(6);
 
+                            btnGeo.classList.remove('btn-loading');
                             btnGeo.innerText = "SYNCED";
                             btnGeo.style.color = "var(--accent-green)";
                             btnGeo.style.borderColor = "var(--accent-green)";
                         },
                         (error) => {
                             console.error(error);
+                            btnGeo.classList.remove('btn-loading');
                             btnGeo.innerText = "GPS CAPTURE FAILED";
                             btnGeo.style.color = "var(--accent-red)";
                         },
                         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                     );
                 } else {
+                    btnGeo.classList.remove('btn-loading');
                     btnGeo.innerText = "BROWSER REJECTED GPS";
                 }
             });

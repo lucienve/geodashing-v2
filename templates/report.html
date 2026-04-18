@@ -5,62 +5,48 @@
     <div id="report-feedback"></div>
 
     <form id="form-report" enctype="multipart/form-data">
-        <div class="form-group"
-            style="text-align:center; padding-bottom: 1.5rem; margin-bottom: 1.5rem; border-bottom: 1px dashed var(--accent-amber-glow);">
-            <label style="color:var(--text-muted); letter-spacing: 2px; font-size: 0.75rem;">DASHPOINT</label>
+        <div class="form-group dashpoint-header">
+            <label class="dashpoint-label">DASHPOINT</label>
             <!-- Hidden input for the POST request, displayed as a header -->
-            <input type="text" id="dashpoint_id" name="dashpoint_id" placeholder="GD001-XXXX"
-                style="background:transparent; border:none; color:var(--accent-amber); font-size:2rem; font-weight:700; font-family:var(--font-mono); text-align:center; width:100%; pointer-events:none; outline:none; margin-top:0.5rem;"
-                readonly>
+            <input type="text" id="dashpoint_id" name="dashpoint_id" placeholder="GD001-XXXX" class="dashpoint-id-badge" readonly>
         </div>
 
-        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:0.4rem;">
-            <label style="color:var(--text-muted); font-size:0.85rem; padding-bottom:0; margin-bottom:0;">VISIT
-                COORDINATES [REQUIRED]</label>
-            <button type="button" class="btn btn-secondary" id="btn-geolocation"
-                style="padding:0.3rem 0.6rem; font-size:0.7rem; width:auto; border-color:var(--accent-green); color:var(--accent-green); margin-bottom:0; line-height:1;">
+        <div class="form-group-flex">
+            <label class="form-group-flex-label">VISIT COORDINATES [REQUIRED]</label>
+            <button type="button" class="btn btn-secondary btn-sync-gps" id="btn-geolocation">
                 SYNC LIVE GPS
             </button>
         </div>
 
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1.25rem;">
-            <div class="form-group" style="margin-bottom:0;">
+        <div class="grid-2-col">
+            <div class="form-group mb-0">
                 <!-- Latitude input -->
-                <input type="text" inputmode="decimal" id="input-lat" name="lat" class="data-input"
-                    placeholder="Lat: 42.1234" oninput="this.value = this.value.replace(/[^0-9.\-]/g, '');" required>
+                <input type="text" inputmode="decimal" id="input-lat" name="lat" class="data-input" placeholder="Lat: 42.1234" required>
             </div>
 
-            <div class="form-group" style="margin-bottom:0;">
+            <div class="form-group mb-0">
                 <!-- Longitude input -->
-                <input type="text" inputmode="decimal" id="input-lon" name="lon" class="data-input"
-                    placeholder="Lon: -71.1234" oninput="this.value = this.value.replace(/[^0-9.\-]/g, '');" required>
+                <input type="text" inputmode="decimal" id="input-lon" name="lon" class="data-input" placeholder="Lon: -71.1234" required>
             </div>
         </div>
 
         <div class="form-group">
             <label>Visit photos [OPTIONAL]</label>
-            <small style="color:var(--accent-amber); display:block; margin-bottom:0.5rem; font-size:0.75rem;">Limit 10
-                Photos</small>
+            <small class="photo-limit-text">Limit 10 Photos</small>
 
             <input type="file" id="input-photos" name="photos[]" accept="image/*" multiple style="display: none;">
 
-            <button type="button" class="btn btn-secondary" id="btn-add-photos"
-                style="width: 100%; border: 1px dashed var(--accent-amber); display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem; color: var(--accent-amber); background: rgba(255, 183, 3, 0.05); margin-bottom: 0;">
+            <button type="button" class="btn btn-secondary btn-add-photos" id="btn-add-photos">
                 ADD PHOTOS
             </button>
-            <div id="photo-preview-grid"
-                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 0.5rem; margin-top: 1rem;">
+            <div id="photo-preview-grid" class="photo-preview-grid">
             </div>
         </div>
 
         <div class="form-group">
-            <label style="color:var(--text-muted); font-size:0.85rem;">Log [REQUIRED]</label>
-            <textarea id="log-textarea" name="notes" class="data-input" rows="8" maxlength="10000"
-                style="font-family:var(--font-mono); font-size:0.85rem; line-height:1.4;"
-                placeholder="Tell us about your visit! What did you see?" required></textarea>
-            <div id="char-counter"
-                style="text-align:right; font-size:0.75rem; color:var(--accent-amber); margin-top:0.3rem;">10,000 chars
-                remaining</div>
+            <label class="log-label">Log [REQUIRED]</label>
+            <textarea id="log-textarea" name="notes" class="data-input log-textarea" rows="8" maxlength="10000" placeholder="Tell us about your visit! What did you see?" required></textarea>
+            <div id="char-counter" class="char-counter">10,000 chars remaining</div>
         </div>
 
         <button type="submit" class="btn btn-primary" id="btn-submit-report">

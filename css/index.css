@@ -511,3 +511,154 @@ body, html {
   border-color: var(--accent-red);
   color: var(--accent-red);
 }
+
+/* -------------------------------------------------------------------------
+   Report Overlay Styles
+------------------------------------------------------------------------- */
+.dashpoint-header {
+  text-align: center;
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px dashed var(--accent-amber-glow);
+}
+
+.dashpoint-label {
+  color: var(--text-muted);
+  letter-spacing: 2px;
+  font-size: 0.75rem;
+}
+
+.dashpoint-id-badge {
+  background: transparent;
+  border: none;
+  color: var(--accent-amber);
+  font-size: 2rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  text-align: center;
+  width: 100%;
+  pointer-events: none;
+  outline: none;
+  margin-top: 0.5rem;
+  text-shadow: 0 0 10px var(--accent-amber-glow);
+}
+
+.form-group-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 0.4rem;
+}
+
+.form-group-flex-label {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.btn-sync-gps {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.7rem;
+  width: auto;
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+  margin-bottom: 0;
+  line-height: 1;
+}
+
+.grid-2-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 480px) {
+  .grid-2-col {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+
+.mb-0 {
+  margin-bottom: 0 !important;
+}
+
+.photo-limit-text {
+  color: var(--accent-amber);
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.btn-add-photos {
+  width: 100%;
+  border: 1px dashed var(--accent-amber);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  color: var(--accent-amber);
+  background: rgba(255, 183, 3, 0.05);
+  margin-bottom: 0;
+}
+
+.photo-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.photo-preview-item {
+  transition: transform 0.2s ease;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.photo-preview-item:hover {
+  transform: scale(1.05);
+}
+
+.log-label {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.log-textarea {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.char-counter {
+  text-align: right;
+  font-size: 0.75rem;
+  color: var(--accent-amber);
+  margin-top: 0.3rem;
+  transition: color 0.3s ease;
+}
+
+/* Spinner Animation for buttons */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.btn-loading {
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.btn-loading::after {
+  content: '';
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-left: 0.5em;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: text-bottom;
+}
