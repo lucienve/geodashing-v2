@@ -4,6 +4,7 @@ services:
   # Natively initializes the mock Playwright database matching the CI
   mysql:
     image: mysql:8.4
+    restart: unless-stopped
     ports:
       - "3306:3306"
     environment:
@@ -20,6 +21,7 @@ services:
   # Natively mocks the Google Cloud Storage backend API
   fake-gcs-server:
     image: fsouza/fake-gcs-server
+    restart: unless-stopped
     ports:
       - "4443:4443"
     volumes:
