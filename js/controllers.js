@@ -348,7 +348,7 @@ document.addEventListener('routeLoaded', (e) => {
                     const result = await API.logVisit(formData);
 
                     if (result.status === 'success') {
-                        feedbackStatus.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] Success! We logged your visit at ${result.distance.toFixed(1)}m. You scored ${result.points} points!</div>`;
+                        feedbackStatus.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] Success! We logged your visit at ${userLat.toFixed(5)}, ${userLon.toFixed(5)} at a distance of ${result.distance.toFixed(1)}m from the point. You scored ${result.points} points!</div>`;
 
                         // Capture the target before the form reset.
                         const targetPersistence = document.getElementById('dashpoint_id').value;
