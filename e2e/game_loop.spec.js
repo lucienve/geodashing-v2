@@ -10,18 +10,18 @@ test.describe('Core Functional Game Loop', () => {
 
     test('Authenticate via Login UI', async ({ page }) => {
         await page.goto('/#login');
-        
+
         // Wait for login view to be visible
         await expect(page.locator('#view-login')).toBeVisible();
-        
+
         await page.fill('#login-username', 'TestUser');
         await page.fill('#login-password', 'testpass');
         await page.click('#btn-submit-login');
-        
+
         // Expect auth state to update globally. The label becomes LOGOUT [TestUser].
         // Because of the 800ms redirect in app.js, we should wait for #home
         await page.waitForURL('**/#home');
-        
+
         const desktopAuthBtn = page.locator('#nav-auth-btn');
         await expect(desktopAuthBtn).toContainText('LOGOUT [TestUser]');
     });
@@ -48,7 +48,7 @@ test.describe('Core Functional Game Loop', () => {
         // Go to specific dashpoint report
         await page.goto('/#report?id=GD001-AAAA');
         await expect(page.locator('#dashpoint_id')).toHaveValue('GD001-AAAA', { timeout: 10000 });
-        
+
         // Sync GPS
         await page.click('#btn-geolocation');
 
@@ -58,7 +58,7 @@ test.describe('Core Functional Game Loop', () => {
 
         await page.fill('#log-textarea', 'Attempting a spoof log from London!');
         await page.click('#btn-submit-report');
-        
+
         const feedback = page.locator('#report-feedback');
         await expect(feedback).toContainText('Too far away', { timeout: 10000 });
     });
@@ -94,13 +94,13 @@ test.describe('Core Functional Game Loop', () => {
         ]);
         const responseBody = await response.json();
         console.log("Signup API Response for dynamicUser:", dynamicUser, responseBody);
-        
+
         await expect(responseBody.status).toBe('success');
-        
+
         // Explicitly bypass Email Verification constraint natively with a fast DB hit to ensure our dynamic user is authorized to play.
         const { execSync } = require('child_process');
         execSync(`mysql -h 127.0.0.1 -u geodashing_test -pgeodashing_test_secure_pass geodashing_test -e "UPDATE users SET is_verified = 1 WHERE username = '${dynamicUser}';"`);
-        
+
         // Grab the dynamic user's generated ID so we can evaluate their profile directly later
         const userIdOut = execSync(`mysql -h 127.0.0.1 -u geodashing_test -pgeodashing_test_secure_pass geodashing_test -se "SELECT id FROM users WHERE username = '${dynamicUser}';"`);
         const dynamicUserId = userIdOut.toString().trim();
@@ -113,29 +113,29 @@ test.describe('Core Functional Game Loop', () => {
         // Go to specific dashpoint report
         await page.goto('/#report?id=GD001-AAAA');
         await expect(page.locator('#dashpoint_id')).toHaveValue('GD001-AAAA');
-        
+
         // Sync GPS
         await page.click('#btn-geolocation');
         await expect(page.locator('#input-lat')).not.toHaveValue('', { timeout: 10000 });
         await expect(page.locator('#input-lon')).not.toHaveValue('', { timeout: 10000 });
-        
+
         await page.fill('#log-textarea', 'Found it! Great dashpoint.');
         await page.click('#btn-submit-report');
-        
+
         // Validate success response
         const feedback = page.locator('#report-feedback');
         await expect(feedback).toContainText('Success!', { timeout: 10000 });
 
         // Navigate to dashpoint ledger explicitly to ensure it shows up in general visits. Wait for successful post first.
         await page.goto('/#dashpoint?id=GD001-AAAA');
-        
+
         const visitsContainer = page.locator('#dp-visits-container');
         await expect(visitsContainer).toContainText(dynamicUser, { timeout: 10000 });
-        await expect(visitsContainer).toContainText('PT', { timeout: 10000 }); 
+        await expect(visitsContainer).toContainText('PT', { timeout: 10000 });
 
         // Navigate to profile to verify scoring linkage
         await page.goto(`/#profile?id=${dynamicUserId}`);
-        
+
         const profileContainer = page.locator('#profile-container');
         await expect(profileContainer).toContainText('GD001-AAAA', { timeout: 10000 });
     });

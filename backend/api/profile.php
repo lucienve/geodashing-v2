@@ -16,7 +16,7 @@ use App\Services\ProfileService;
 if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     header('Content-Type: application/json');
 
-    $userId = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT);
+    $username = $_GET['username'] ?? null;
 
     if (!$userId) {
         http_response_code(400);

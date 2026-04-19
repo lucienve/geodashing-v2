@@ -63,25 +63,25 @@ document.addEventListener('routeLoaded', (e) => {
                                 if (res.status === 'success') {
                                     // 1. Scan the Ledger for an exact Username match proving physical ownership
                                     const userOwnedVisit = dp.visits.find(v => v.username === res.username);
-                                if (userOwnedVisit) {
-                                    btnLog.innerText = "EDIT LOG";
-                                    btnLog.style.background = "var(--accent-amber)";
-                                    btnLog.style.color = "#000";
-                                    btnLog.style.border = "none";
-                                    btnLog.addEventListener('click', () => { window.location.hash = `#edit?id=${dp.id}`; });
+                                    if (userOwnedVisit) {
+                                        btnLog.innerText = "EDIT LOG";
+                                        btnLog.style.background = "var(--accent-amber)";
+                                        btnLog.style.color = "#000";
+                                        btnLog.style.border = "none";
+                                        btnLog.addEventListener('click', () => { window.location.hash = `#edit?id=${dp.id}`; });
+                                    } else {
+                                        btnLog.innerText = "LOG VISIT";
+                                        btnLog.addEventListener('click', () => { window.location.hash = `#report?id=${dp.id}`; });
+                                    }
                                 } else {
-                                    btnLog.innerText = "LOG VISIT";
-                                    btnLog.addEventListener('click', () => { window.location.hash = `#report?id=${dp.id}`; });
+                                    // 2. Unauthenticated Identity - Enforce Login Array Flow 
+                                    btnLog.innerText = "LOGIN TO LOG VISIT";
+                                    btnLog.style.background = "transparent";
+                                    btnLog.style.color = "var(--accent-red)";
+                                    btnLog.style.border = "1px solid var(--accent-red)";
+                                    btnLog.addEventListener('click', () => { window.location.hash = `#login`; });
                                 }
-                            } else {
-                                // 2. Unauthenticated Identity - Enforce Login Array Flow 
-                                btnLog.innerText = "LOGIN TO LOG VISIT";
-                                btnLog.style.background = "transparent";
-                                btnLog.style.color = "var(--accent-red)";
-                                btnLog.style.border = "1px solid var(--accent-red)";
-                                btnLog.addEventListener('click', () => { window.location.hash = `#login`; });
-                            }
-                        });
+                            });
                         }
                     }
 
@@ -154,11 +154,11 @@ document.addEventListener('routeLoaded', (e) => {
                             // Bind click listeners natively to completely avoid attribute breakouts
                             const photoImgs = visitDiv.querySelectorAll('img.log-photo');
                             photoImgs.forEach(img => {
-                                img.addEventListener('click', function() {
-                                    if(window.trackEvent) {
-                                        window.trackEvent('view_photo', { 
-                                            dashpoint_id: this.getAttribute('data-dpid'), 
-                                            image_url: this.getAttribute('data-url') 
+                                img.addEventListener('click', function () {
+                                    if (window.trackEvent) {
+                                        window.trackEvent('view_photo', {
+                                            dashpoint_id: this.getAttribute('data-dpid'),
+                                            image_url: this.getAttribute('data-url')
                                         });
                                     }
                                 });
@@ -188,7 +188,7 @@ document.addEventListener('routeLoaded', (e) => {
         const btnAddPhotos = document.getElementById('btn-add-photos');
         const inputPhotos = document.getElementById('input-photos');
         const previewGrid = document.getElementById('photo-preview-grid');
-        
+
         // eslint-disable-next-line no-unused-vars
         let selectedFiles = []; // Track to enforce limit and show previews
 
@@ -206,7 +206,7 @@ document.addEventListener('routeLoaded', (e) => {
                     files.slice(0, 10).forEach(file => dt.items.add(file));
                     inputPhotos.files = dt.files;
                 }
-                
+
                 // Clear previous previews
                 previewGrid.innerHTML = '';
                 Array.from(inputPhotos.files).forEach(file => {
@@ -222,20 +222,15 @@ document.addEventListener('routeLoaded', (e) => {
         }
 
         // Add sanitization listeners to coordinates
-        const sanitizeCoordinate = function() {
-            // Convert typographical dashes/minus signs to standard hyphen
-            let val = this.value.replace(/[\u2013\u2014\u2212]/g, '-');
-            val = val.replace(/[^0-9.-]/g, '');
-            if (this.value !== val) {
-                this.value = val;
-            }
-        };
-
         if (latInput) {
-            latInput.addEventListener('blur', sanitizeCoordinate);
+            latInput.addEventListener('input', function () {
+                this.value = this.value.replace(/[^0-9.-]/g, '');
+            });
         }
         if (lonInput) {
-            lonInput.addEventListener('blur', sanitizeCoordinate);
+            lonInput.addEventListener('input', function () {
+                this.value = this.value.replace(/[^0-9.-]/g, '');
+            });
         }
 
         // If they click map markers, the ID gets injected into the URL ?id=GD...
@@ -698,7 +693,7 @@ document.addEventListener('routeLoaded', (e) => {
 
             const data = json.data;
             const u = data.user;
-            
+
             // Calculate total finds client-side from games history array
             let totalFinds = 0;
             if (data.games && data.games.length > 0) {
@@ -720,7 +715,7 @@ document.addEventListener('routeLoaded', (e) => {
 
             if (data.games && data.games.length > 0) {
                 html += `<h4 style="color:var(--text-main); margin-bottom:1rem; text-transform:uppercase;">Historical Activity</h4>`;
-                
+
                 data.games.forEach(game => {
                     html += `
                         <div class="dash-block" style="margin-bottom:1rem; border-left:3px solid var(--accent-amber);">
@@ -732,11 +727,11 @@ document.addEventListener('routeLoaded', (e) => {
                                 <span style="color:var(--accent-green);">${game.game_total_score} PT</span>
                             </div>
                             <div style="font-size:0.9rem; color:var(--text-muted); border-top:1px dashed #333; padding-top:0.5rem;">
-                                ${game.visits ? game.visits.length : 0} Recorded Logs
+                                ${game.game_visits_count} Recorded Logs
                             </div>
                             <div style="margin-top:1rem; display:grid; gap:0.5rem;">
                     `;
-                    
+
                     game.visits.forEach((v, index) => {
                         const logTime = new Date(v.reported_time).toLocaleDateString();
                         html += `

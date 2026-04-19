@@ -6,12 +6,12 @@
 
 // eslint-disable-next-line no-unused-vars
 const API = {
-    getCsrfToken: function() {
+    getCsrfToken: function () {
         const match = document.cookie.match(new RegExp('(^| )csrf_token=([^;]+)'));
         return match ? match[2] : '';
     },
 
-    getHeaders: function() {
+    getHeaders: function () {
         const h = { 'Accept': 'application/json' };
         const token = this.getCsrfToken();
         if (token) {
@@ -59,7 +59,7 @@ const API = {
     /**
      * Get list of historical games
      */
-    getGames: async function() {
+    getGames: async function () {
         try {
             const res = await fetch('backend/api/games.php', {
                 method: 'GET',
@@ -74,9 +74,9 @@ const API = {
 
     /**
      * Get user profile details and historical stats
-     * @param {number} userId
+     * @param {string} username
      */
-    getProfile: async function(userId) {
+    getProfile: async function (userId) {
         try {
             const res = await fetch(`backend/api/profile.php?id=${userId}`, {
                 method: 'GET',

@@ -1,10 +1,10 @@
 const { execSync } = require('child_process');
 const path = require('path');
 
-module.exports = async (_config) => {
+module.exports = async (config) => {
     console.log('\n--- Playwright Global Setup ---');
     console.log('Synchronizing E2E Test Database...');
-    
+
     // Resolve path securely against repository root (which is parent of e2e/)
     const scriptPath = path.resolve(__dirname, 'setup-test-db.sh');
 

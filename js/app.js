@@ -26,7 +26,7 @@ window.calculateDistance = function (lat1, lon1, lat2, lon2) {
 /**
  * Escapes raw strings for safe HTML injection, preventing XSS.
  */
-window.escapeHTML = function(str) {
+window.escapeHTML = function (str) {
     if (!str) return '';
     return String(str)
         .replace(/&/g, '&amp;')
@@ -52,13 +52,13 @@ function initNavigation() {
     const APP_NAVIGATION = [
         { text: 'MAP', mobileText: 'Map', href: '#home', defaultActive: true },
         { text: 'LEADERBOARD', mobileText: 'Leaderboard', href: '#leaderboard' },
-        { 
+        {
             text: 'HELP ▾', isDropdown: true, children: [
                 { text: 'About', href: '#about' },
                 { text: 'How to Play', href: '#how-to' },
                 { text: 'Contact', href: '#contact' },
                 { text: 'Export Game Data', mobileText: 'Export Data', href: '#search' }
-            ] 
+            ]
         },
         { text: 'PROFILE', mobileText: 'Profile', href: '#profile', idDesktop: 'nav-profile-link', idMobile: 'mobile-nav-profile-link', extraClasses: 'd-none' }
     ];
@@ -242,7 +242,7 @@ function initGameContext() {
         if (json.status === 'success' && json.data.length > 0) {
             // Find Active Game natively
             const activeGame = json.data.find(g => g.is_active == 1) || json.data[0];
-            
+
             window.currentGameContext.id = activeGame.id;
             window.currentGameContext.is_active = activeGame.is_active == 1;
             window.currentGameContext.title = activeGame.title;
@@ -260,10 +260,10 @@ function initGameContext() {
                     option.dataset.isActive = game.is_active;
                     option.dataset.title = game.title;
                     option.dataset.monthYear = monthYear;
-                    
+
                     // Removed titleStr to keep the option text short and prevent layout overflow on mobile
                     option.innerText = `Game ${game.id} (${monthYear})`;
-                    
+
                     if (game.id === activeGame.id) {
                         option.selected = true;
                     }
@@ -277,7 +277,7 @@ function initGameContext() {
                     window.currentGameContext.is_active = selOpt.dataset.isActive == '1';
                     window.currentGameContext.title = selOpt.dataset.title;
                     window.currentGameContext.monthYear = selOpt.dataset.monthYear;
-                    
+
                     if (window.location.hash === '' || window.location.hash === '#home') {
                         if (typeof window.refreshMapBounds === 'function') {
                             window.refreshMapBounds();
@@ -321,10 +321,10 @@ function initAuthState() {
                         newBtn.addEventListener('click', async (e) => {
                             e.preventDefault();
                             await API.logout();
-                            window.location.reload(); 
+                            window.location.reload();
                         });
                     });
-                    
+
                     const profileLinks = [
                         document.getElementById('nav-profile-link'),
                         document.getElementById('mobile-nav-profile-link')

@@ -29,7 +29,7 @@ class ProfileService
     /**
      * Get profile metrics for a specific user.
      *
-     * @param int $userId The ID of the user.
+     * @param string $username The username of the user.
      * @return array|null Returns array of user data and games history or null if user not found.
      */
     public function getProfileSettings(int $userId): ?array
@@ -70,25 +70,25 @@ class ProfileService
         $gamesHistory = [];
 
         foreach ($logs as $log) {
-            $totalScore += (int)$log['score_awarded'];
+            $totalScore += (int) $log['score_awarded'];
             $gId = $log['game_id'];
 
             if (!isset($gamesHistory[$gId])) {
                 $gamesHistory[$gId] = [
                     'game_id' => $gId,
                     'title' => $log['game_title'],
-                    'is_active' => (bool)$log['game_is_active'],
+                    'is_active' => (bool) $log['game_is_active'],
                     'game_total_score' => 0,
                     'visits' => []
                 ];
             }
 
-            $gamesHistory[$gId]['game_total_score'] += (int)$log['score_awarded'];
+            $gamesHistory[$gId]['game_total_score'] += (int) $log['score_awarded'];
             $gamesHistory[$gId]['visits'][] = [
                 'visit_id' => $log['visit_id'],
                 'dashpoint_id' => $log['dashpoint_id'],
-                'score_awarded' => (int)$log['score_awarded'],
-                'distance_meters' => (int)$log['distance_meters'],
+                'score_awarded' => (int) $log['score_awarded'],
+                'distance_meters' => (int) $log['distance_meters'],
                 'reported_time' => $log['reported_time']
             ];
         }

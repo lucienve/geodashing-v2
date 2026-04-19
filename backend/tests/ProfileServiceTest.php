@@ -74,8 +74,8 @@ class ProfileServiceTest extends TestCase
         ]);
 
         $this->pdoMock->expects($this->exactly(2))
-                      ->method('prepare')
-                      ->willReturnOnConsecutiveCalls($stmtUserMock, $stmtLogsMock);
+            ->method('prepare')
+            ->willReturnOnConsecutiveCalls($stmtUserMock, $stmtLogsMock);
 
         $result = $this->profileService->getProfileSettings(1);
 
