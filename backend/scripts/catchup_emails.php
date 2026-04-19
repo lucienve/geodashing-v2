@@ -1,7 +1,8 @@
 <?php
+
 /**
  * catchup_emails.php
- * 
+ *
  * One-off script to manually dispatch HTML emails for Dashpoint visits
  * that were logged prior to the email notification feature.
  */
@@ -14,7 +15,7 @@ use App\Services\ReportService;
 
 try {
     $db = Database::getConnection();
-    
+
     // IMPORTANT: Edit the WHERE clause below to isolate only the visits you want to send emails for.
     // For example: WHERE v.id IN (10, 11, 12) or WHERE v.reported_time > '2026-04-18 00:00:00'
     $stmt = $db->query("
@@ -23,7 +24,7 @@ try {
         JOIN users u ON v.user_id = u.id
         -- WHERE v.id IN (...)
     ");
-    
+
     $visits = $stmt->fetchAll();
 
     if (!$visits) {
@@ -41,7 +42,7 @@ try {
 
     foreach ($visits as $visit) {
         $userId = $visit['user_id'];
-        
+
         // Calculate the user's current total score
         $totalScoreStmt = $db->prepare("SELECT SUM(score_awarded) AS total FROM visits WHERE user_id = :uid");
         $totalScoreStmt->execute([':uid' => $userId]);
@@ -49,22 +50,21 @@ try {
         $totalPoints = $totalScoreRow ? (int) $totalScoreRow['total'] : (int)$visit['score_awarded'];
 
         echo "-> Sending email for dashpoint {$visit['dashpoint_id']} logged by {$visit['username']}...\n";
-        
+
         // Invoke the private method securely
         $method->invoke(
-            $reportService, 
-            $visit['username'], 
-            $visit['dashpoint_id'], 
-            (int)$visit['distance_meters'], 
-            (int)$visit['score_awarded'], 
-            $totalPoints, 
-            $visit['notes'], 
+            $reportService,
+            $visit['username'],
+            $visit['dashpoint_id'],
+            (int)$visit['distance_meters'],
+            (int)$visit['score_awarded'],
+            $totalPoints,
+            $visit['notes'],
             $visit['photos']
         );
     }
-    
-    echo "Done catching up!\n";
 
+    echo "Done catching up!\n";
 } catch (Exception $e) {
     echo "Error: " . $e->getMessage() . "\n";
 }

@@ -53,7 +53,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     if (!empty($_FILES['photos']) && (is_array($_FILES['photos']['error']) ? $_FILES['photos']['error'][0] : $_FILES['photos']['error']) !== UPLOAD_ERR_NO_FILE) {
         $keyPath = __DIR__ . '/../gcp-credentials.json';
         $isTesting = getenv('APP_ENV') === 'testing';
-        
+
         if (!$isTesting && !file_exists($keyPath)) {
             http_response_code(500);
             echo json_encode(["status" => "error", "message" => "Server configuration error blocking media uploads."]);
