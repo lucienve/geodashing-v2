@@ -166,7 +166,8 @@ class ReportService
         $message .= "<h2>New Dashpoint Log</h2>";
         $profileUrl = "https://www.geodashing.org/#profile?username=" . urlencode($username);
         $message .= "<p><strong>User:</strong> <a href='" . htmlspecialchars($profileUrl, ENT_QUOTES, 'UTF-8') . "'>" . htmlspecialchars($username) . "</a></p>";
-        $message .= "<p><strong>Dashpoint:</strong> " . htmlspecialchars($dashpointId) . "</p>";
+        $dashpointUrl = "https://www.geodashing.org/#dashpoint?id=" . urlencode($dashpointId);
+        $message .= "<p><strong>Dashpoint:</strong> <a href='" . htmlspecialchars($dashpointUrl, ENT_QUOTES, 'UTF-8') . "'>" . htmlspecialchars($dashpointId) . "</a></p>";
         $message .= "<p><strong>Distance:</strong> {$distance} meters</p>";
         $message .= "<p><strong>Points Gained:</strong> {$points}</p>";
         $message .= "<p><strong>New Total Points:</strong> {$totalPoints}</p>";

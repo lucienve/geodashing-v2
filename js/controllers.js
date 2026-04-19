@@ -746,7 +746,7 @@ document.addEventListener('routeLoaded', (e) => {
                     game.visits.forEach((v, index) => {
                         const logTime = new Date(v.reported_time).toLocaleDateString();
                         html += `
-                            <a href="#dashpoint?id=${v.dashpoint_id}" class="nav-link" style="display:block; padding:0.5rem; border:1px solid #333; background:rgba(0,0,0,0.3); border-radius:3px;">
+                            <a href="https://www.geodashing.org/#dashpoint?id=${v.dashpoint_id}" class="nav-link" style="display:block; padding:0.5rem; border:1px solid #333; background:rgba(0,0,0,0.3); border-radius:3px;">
                                 <div style="display:flex; justify-content:space-between;">
                                     <span>${index + 1}. ${v.dashpoint_id}</span>
                                     <span style="color:var(--accent-green);">+${v.score_awarded}</span>
