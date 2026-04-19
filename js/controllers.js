@@ -53,6 +53,12 @@ document.addEventListener('routeLoaded', (e) => {
                     if (dpIdLabel) dpIdLabel.innerText = `${dp.id}`;
                     if (dpCoordLabel) dpCoordLabel.innerText = `[ LAT: ${dp.lat.toFixed(5)} | LON: ${dp.lon.toFixed(5)} ]`;
 
+                    // Recenter the map on the loaded dashpoint and set zoom to city-level
+                    if (typeof map !== 'undefined' && map && typeof google !== 'undefined' && google.maps) {
+                        map.setCenter({ lat: parseFloat(dp.lat), lng: parseFloat(dp.lon) });
+                        map.setZoom(10);
+                    }
+
                     // Evaluate Ownership & Authentication dynamically wrapping the Primary Button State
                     if (btnLog) {
                         if (window.currentGameContext && !window.currentGameContext.is_active) {
