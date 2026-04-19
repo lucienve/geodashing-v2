@@ -1,7 +1,7 @@
 const { execSync } = require('child_process');
 const path = require('path');
 
-module.exports = async (config) => {
+module.exports = async (_config) => {
     console.log('\n--- Playwright Global Setup ---');
     console.log('Synchronizing E2E Test Database...');
 

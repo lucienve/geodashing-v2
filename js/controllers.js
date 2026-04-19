@@ -222,6 +222,15 @@ document.addEventListener('routeLoaded', (e) => {
         }
 
         // Add sanitization listeners to coordinates
+        const sanitizeCoordinate = function () {
+            // Convert typographical dashes/minus signs to standard hyphen
+            let val = this.value.replace(/[\u2013\u2014\u2212]/g, '-');
+            val = val.replace(/[^0-9.-]/g, '');
+            if (this.value !== val) {
+                this.value = val;
+            }
+        };
+
         if (latInput) {
             latInput.addEventListener('blur', sanitizeCoordinate);
         }
