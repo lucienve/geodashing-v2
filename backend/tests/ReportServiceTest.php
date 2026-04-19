@@ -122,10 +122,18 @@ class ReportServiceTest extends TestCase
         $insertMock = $this->createMock(PDOStatement::class);
         $insertMock->expects($this->once())->method('execute')->willReturn(true);
 
+        // 6. Mock Username lookup
+        $usernameMock = $this->createMock(PDOStatement::class);
+        $usernameMock->method('fetch')->willReturn(['username' => 'TestUser']);
+
+        // 7. Mock Total Score lookup
+        $totalScoreMock = $this->createMock(PDOStatement::class);
+        $totalScoreMock->method('fetch')->willReturn(['total' => 15]);
+
         // Chain the PDO prepares to return the distinct statements sequentially in order
-        $this->pdoMock->expects($this->exactly(6))
+        $this->pdoMock->expects($this->exactly(8))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock);
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock, $usernameMock, $totalScoreMock);
 
         $result = $this->reportService->processVisit(1, 'GD001-AAAA', 40.0, -75.0);
 

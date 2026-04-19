@@ -223,14 +223,10 @@ document.addEventListener('routeLoaded', (e) => {
 
         // Add sanitization listeners to coordinates
         if (latInput) {
-            latInput.addEventListener('input', function () {
-                this.value = this.value.replace(/[^0-9.-]/g, '');
-            });
+            latInput.addEventListener('blur', sanitizeCoordinate);
         }
         if (lonInput) {
-            lonInput.addEventListener('input', function () {
-                this.value = this.value.replace(/[^0-9.-]/g, '');
-            });
+            lonInput.addEventListener('blur', sanitizeCoordinate);
         }
 
         // If they click map markers, the ID gets injected into the URL ?id=GD...
@@ -923,7 +919,11 @@ document.addEventListener('routeLoaded', (e) => {
                         html += `
                             <tr style="border-bottom:1px solid #222; transition: background 0.2s;">
                                 <td style="padding:10px; ${rankStyle}">#${row.rank}</td>
-                                <td style="padding:10px; color:var(--text-main); font-family:var(--font-mono);">${window.escapeHTML(row.username)}</td>
+                                <td style="padding:10px; font-family:var(--font-mono);">
+                                    <a href="#profile?username=${encodeURIComponent(row.username)}" style="color:var(--text-main); text-decoration:none;">
+                                        ${window.escapeHTML(row.username)}
+                                    </a>
+                                </td>
                                 <td style="padding:10px; color:var(--accent-amber); text-align:right;">${row.total_score}</td>
                                 <td style="padding:10px; color:var(--text-muted); text-align:right;">${row.total_finds}</td>
                             </tr>

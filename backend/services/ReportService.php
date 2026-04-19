@@ -161,15 +161,16 @@ class ReportService
         }
 
         $subject = "New Dashpoint Log: {$username} claimed {$dashpointId}";
-        
+
         $message = "<html><body>";
         $message .= "<h2>New Dashpoint Log</h2>";
-        $message .= "<p><strong>User:</strong> " . htmlspecialchars($username) . "</p>";
+        $profileUrl = "https://www.geodashing.org/#profile?username=" . urlencode($username);
+        $message .= "<p><strong>User:</strong> <a href='" . htmlspecialchars($profileUrl, ENT_QUOTES, 'UTF-8') . "'>" . htmlspecialchars($username) . "</a></p>";
         $message .= "<p><strong>Dashpoint:</strong> " . htmlspecialchars($dashpointId) . "</p>";
         $message .= "<p><strong>Distance:</strong> {$distance} meters</p>";
         $message .= "<p><strong>Points Gained:</strong> {$points}</p>";
         $message .= "<p><strong>New Total Points:</strong> {$totalPoints}</p>";
-        
+
         if (!empty($notes)) {
             $message .= "<h3>Field Notes</h3>";
             $message .= "<p>" . nl2br(htmlspecialchars($notes)) . "</p>";
@@ -184,7 +185,7 @@ class ReportService
                 }
             }
         }
-        
+
         $message .= "</body></html>";
 
         $headers = "From: no-reply@geodashing.org\r\n";
