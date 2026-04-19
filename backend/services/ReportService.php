@@ -193,13 +193,13 @@ class ReportService
 
         $message .= "</body></html>";
 
-        $headers = "From: no-reply@geodashing.org\r\n";
-        $headers .= "Reply-To: no-reply@geodashing.org\r\n";
+        $headers = "From: Geodashing Emails <tracker@geodashing.org>\r\n";
+        $headers .= "Reply-To: Geodashing Emails <tracker@geodashing.org>\r\n";
         $headers .= "MIME-Version: 1.0\r\n";
         $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
         $headers .= "X-Mailer: PHP/" . phpversion();
 
-        $this->executeMail($toList, $subject, $message, $headers, "-fno-reply@geodashing.org");
+        $this->executeMail($toList, $subject, $message, $headers, "-ftracker@geodashing.org");
     }
 
     /**
