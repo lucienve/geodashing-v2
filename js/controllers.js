@@ -732,7 +732,7 @@ document.addEventListener('routeLoaded', (e) => {
                                 <span style="color:var(--accent-green);">${game.game_total_score} PT</span>
                             </div>
                             <div style="font-size:0.9rem; color:var(--text-muted); border-top:1px dashed #333; padding-top:0.5rem;">
-                                ${game.game_visits_count} Recorded Logs
+                                ${game.visits ? game.visits.length : 0} Recorded Logs
                             </div>
                             <div style="margin-top:1rem; display:grid; gap:0.5rem;">
                     `;
