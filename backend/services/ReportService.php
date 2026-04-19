@@ -180,8 +180,12 @@ class ReportService
             $photos = json_decode($photosJson, true);
             if (is_array($photos) && count($photos) > 0) {
                 $message .= "<h3>Photos</h3>";
-                foreach ($photos as $photoUrl) {
-                    $message .= "<div style='margin-bottom: 10px;'><img src='" . htmlspecialchars($photoUrl, ENT_QUOTES, 'UTF-8') . "' alt='Dashpoint Photo' style='max-width: 100%; height: auto;' /></div>";
+                foreach ($photos as $photoObj) {
+                    if (is_array($photoObj) && isset($photoObj['url'])) {
+                        $message .= "<div style='margin-bottom: 10px;'><img src='" . htmlspecialchars($photoObj['url'], ENT_QUOTES, 'UTF-8') . "' alt='Dashpoint Photo' style='max-width: 100%; height: auto;' /></div>";
+                    } elseif (is_string($photoObj)) {
+                        $message .= "<div style='margin-bottom: 10px;'><img src='" . htmlspecialchars($photoObj, ENT_QUOTES, 'UTF-8') . "' alt='Dashpoint Photo' style='max-width: 100%; height: auto;' /></div>";
+                    }
                 }
             }
         }

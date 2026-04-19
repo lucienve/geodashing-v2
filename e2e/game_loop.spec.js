@@ -101,10 +101,6 @@ test.describe('Core Functional Game Loop', () => {
         const { execSync } = require('child_process');
         execSync(`mysql -h 127.0.0.1 -u geodashing_test -pgeodashing_test_secure_pass geodashing_test -e "UPDATE users SET is_verified = 1 WHERE username = '${dynamicUser}';"`);
 
-        // Grab the dynamic user's generated ID so we can evaluate their profile directly later
-        const userIdOut = execSync(`mysql -h 127.0.0.1 -u geodashing_test -pgeodashing_test_secure_pass geodashing_test -se "SELECT id FROM users WHERE username = '${dynamicUser}';"`);
-        const dynamicUserId = userIdOut.toString().trim();
-
         // Forcefully navigate cleanly instead of relying on frontend async auth-state race conditions natively handling the redirect
         await page.goto('/#home');
         // Wait to make sure the app initializes the hash natively
@@ -134,7 +130,7 @@ test.describe('Core Functional Game Loop', () => {
         await expect(visitsContainer).toContainText('PT', { timeout: 10000 });
 
         // Navigate to profile to verify scoring linkage
-        await page.goto(`/#profile?id=${dynamicUserId}`);
+        await page.goto(`/#profile?username=${encodeURIComponent(dynamicUser)}`);
 
         const profileContainer = page.locator('#profile-container');
         await expect(profileContainer).toContainText('GD001-AAAA', { timeout: 10000 });

@@ -32,11 +32,11 @@ class ProfileService
      * @param string $username The username of the user.
      * @return array|null Returns array of user data and games history or null if user not found.
      */
-    public function getProfileSettings(int $userId): ?array
+    public function getProfileSettings(string $username): ?array
     {
         // 1. Get User Core Details
-        $stmtUser = $this->db->prepare("SELECT id, username, created_at FROM users WHERE id = :id");
-        $stmtUser->execute([':id' => $userId]);
+        $stmtUser = $this->db->prepare("SELECT id, username, created_at FROM users WHERE username = :username");
+        $stmtUser->execute([':username' => $username]);
         $user = $stmtUser->fetch(PDO::FETCH_ASSOC);
 
         if (!$user) {
@@ -62,7 +62,7 @@ class ProfileService
         ";
 
         $stmtLogs = $this->db->prepare($query);
-        $stmtLogs->execute([':user_id' => $userId]);
+        $stmtLogs->execute([':user_id' => $user['id']]);
         $logs = $stmtLogs->fetchAll(PDO::FETCH_ASSOC);
 
         // 3. Aggregate data mapping by Game ID

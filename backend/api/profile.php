@@ -18,16 +18,16 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
 
     $username = $_GET['username'] ?? null;
 
-    if (!$userId) {
+    if (!$username) {
         http_response_code(400);
-        echo json_encode(["status" => "error", "message" => "Valid User ID required."]);
+        echo json_encode(["status" => "error", "message" => "Valid username required."]);
         exit;
     }
 
     try {
         $db = \App\Database::getConnection();
         $service = new ProfileService($db);
-        $data = $service->getProfileSettings($userId);
+        $data = $service->getProfileSettings($username);
 
         if (!$data) {
             http_response_code(404);

@@ -35,7 +35,7 @@ class ProfileServiceTest extends TestCase
         $stmtMock->method('fetch')->willReturn(false);
         $this->pdoMock->method('prepare')->willReturn($stmtMock);
 
-        $result = $this->profileService->getProfileSettings(999);
+        $result = $this->profileService->getProfileSettings('nonexistentuser');
         $this->assertNull($result);
     }
 
@@ -77,7 +77,7 @@ class ProfileServiceTest extends TestCase
             ->method('prepare')
             ->willReturnOnConsecutiveCalls($stmtUserMock, $stmtLogsMock);
 
-        $result = $this->profileService->getProfileSettings(1);
+        $result = $this->profileService->getProfileSettings('testuser');
 
         $this->assertNotNull($result);
         $this->assertEquals(1, $result['user']['id']);

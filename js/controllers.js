@@ -676,21 +676,21 @@ document.addEventListener('routeLoaded', (e) => {
     // Controller: USER PROFILE (#profile)
     // ==========================================================
     if (route.startsWith('#profile')) {
-        let profileId = null;
+        let profileUsername = null;
         if (route.includes('?')) {
             const hashParams = new URLSearchParams(route.split('?')[1]);
-            profileId = hashParams.get('id');
+            profileUsername = hashParams.get('username');
         }
 
         const container = document.getElementById('profile-container');
         if (!container) return;
 
-        if (!profileId) {
-            container.innerHTML = `<div class="alert alert-error">[-] Profile ID missing.</div>`;
+        if (!profileUsername) {
+            container.innerHTML = `<div class="alert alert-error">[-] Profile username missing.</div>`;
             return;
         }
 
-        API.getProfile(profileId).then(json => {
+        API.getProfile(profileUsername).then(json => {
             if (json.status !== 'success') {
                 container.innerHTML = `<div class="alert alert-error">[-] Error loading profile data.</div>`;
                 return;

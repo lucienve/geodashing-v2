@@ -76,9 +76,9 @@ const API = {
      * Get user profile details and historical stats
      * @param {string} username
      */
-    getProfile: async function (userId) {
+    getProfile: async function (username) {
         try {
-            const res = await fetch(`backend/api/profile.php?id=${userId}`, {
+            const res = await fetch(`backend/api/profile.php?username=${encodeURIComponent(username)}`, {
                 method: 'GET',
                 headers: this.getHeaders()
             });

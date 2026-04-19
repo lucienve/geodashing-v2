@@ -332,7 +332,7 @@ function initAuthState() {
                     profileLinks.forEach(link => {
                         if (link) {
                             link.classList.remove('d-none');
-                            link.href = `#profile?id=${res.user_id}`;
+                            link.href = `#profile?username=${encodeURIComponent(res.username)}`;
                         }
                     });
                 }
