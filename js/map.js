@@ -72,6 +72,9 @@ window.initMap = function () {
         padding: { top: 70, bottom: window.innerWidth < 768 ? 140 : 30, left: 10, right: 10 }
     });
 
+    // Expose the native map instance globally specifically for E2E Testing evaluation
+    window.__geodashingMap = map;
+
     // 2. Bind the primary map movement listener. 
     // 'idle' fires when a user finishes sliding/zooming their map
     google.maps.event.addListener(map, 'idle', function () {
