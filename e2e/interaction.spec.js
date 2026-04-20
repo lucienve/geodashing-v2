@@ -7,8 +7,8 @@ test.describe('Component & Interactive Layout Constraints', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/');
 
-        // Let the SPA router and dynamic Map layer settle
-        await page.waitForTimeout(800);
+        // Let the SPA router and dynamic Map layer settle natively
+        await page.waitForLoadState('networkidle');
 
         // 1. Dismiss Cookie Consent Banner if present
         const cookieBanner = page.locator('.cookie-banner');
@@ -58,7 +58,7 @@ test.describe('Component & Interactive Layout Constraints', () => {
         for (const route of routes) {
             // Re-center application safely before each interaction
             await page.goto('/');
-            await page.waitForTimeout(500); // Allow DOM reset
+            await page.waitForLoadState('networkidle'); // Allow DOM reset natively
 
             if (isMobile) {
                 // Open Hamburger
@@ -84,7 +84,6 @@ test.describe('Component & Interactive Layout Constraints', () => {
             // We must wait for the template-view to be fetched and sliding animation to finish
             const templateView = page.locator('.template-view').first();
             await expect(templateView).toBeVisible();
-            await page.waitForTimeout(500); 
 
             // Verify a Close button exists and is correctly structured
             const closeBtn = templateView.locator('.close-btn').first();
@@ -115,7 +114,7 @@ test.describe('Component & Interactive Layout Constraints', () => {
 
     test('Login screen invokes and explicitly bounds text securely', async ({ page, isMobile }) => {
         await page.goto('/');
-        await page.waitForTimeout(500);
+        await page.waitForLoadState('networkidle');
 
         if (isMobile) {
             const menuBtn = page.locator('#mobile-menu-btn');
@@ -128,7 +127,6 @@ test.describe('Component & Interactive Layout Constraints', () => {
 
         const templateView = page.locator('.template-view').first();
         await expect(templateView).toBeVisible({ timeout: 10000 });
-        await page.waitForTimeout(500);
 
         const closeBtn = templateView.locator('.close-btn').first();
         await expect(closeBtn).toBeVisible();

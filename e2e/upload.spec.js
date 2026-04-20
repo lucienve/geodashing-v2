@@ -45,11 +45,9 @@ test.describe('Photo Upload Integration', () => {
         const { execSync } = require('child_process');
         execSync(`mysql -h 127.0.0.1 -u geodashing_test -pgeodashing_test_secure_pass geodashing_test -e "UPDATE users SET is_verified = 1 WHERE username = '${dynamicUser}';"`);
 
-        // Wait for the native reload timeout (2000ms) triggered in controllers.js
-        // to complete so it doesn't race with our subsequent navigations
-        await page.waitForTimeout(3000);
-
-        // Force navigate home to apply auth
+        // Wait dynamically for the frontend to naturally redirect to login (1.5s delay)
+        // to clear the setTimeout race condition, then force navigate to home.
+        await page.waitForURL('**/#login', { timeout: 5000 });
         await page.goto('/#home');
         await page.waitForURL('**/#home', { timeout: 5000 });
 

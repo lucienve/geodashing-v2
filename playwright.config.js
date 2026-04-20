@@ -4,7 +4,7 @@ module.exports = defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   retries: 2,
-  workers: 2,
+  workers: process.env.CI ? 2 : undefined,
   reporter: [['html', { open: 'never' }]],
   use: {
     baseURL: 'http://localhost:8081',

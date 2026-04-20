@@ -23,7 +23,7 @@ test.describe('Navigation Layout Constraints', () => {
         await page.goto('/');
 
         // Let the router and dynamically injected JS run
-        await page.waitForTimeout(500);
+        await page.waitForLoadState('networkidle');
 
         // Get the accurate viewport size Playwright is emulating
         const viewport = page.viewportSize();
@@ -68,7 +68,7 @@ test.describe('Navigation Layout Constraints', () => {
         }
 
         await page.goto('/');
-        await page.waitForTimeout(500);
+        await page.waitForLoadState('networkidle');
         
         const dropdown = page.locator('.dropdown-content');
         const helpLink = page.locator('.dropdown');
