@@ -117,10 +117,12 @@ window.initMap = function () {
             </svg>
         `;
 
-        // Center map initially
+        // Center map initially, unless the user is explicitly deep-linked to a dashpoint
         navigator.geolocation.getCurrentPosition((position) => {
-            map.setCenter({ lat: position.coords.latitude, lng: position.coords.longitude });
-            map.setZoom(11); // Snap dynamically tightly matching typical hunting zones implicitly
+            if (!window.location.hash.startsWith('#dashpoint')) {
+                map.setCenter({ lat: position.coords.latitude, lng: position.coords.longitude });
+                map.setZoom(11); // Snap dynamically tightly matching typical hunting zones implicitly
+            }
         }, () => {
             console.log("Geolocation mapping completely refused or unavailable on this terminal.");
         });
