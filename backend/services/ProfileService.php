@@ -48,6 +48,7 @@ class ProfileService
             SELECT 
                 v.id AS visit_id,
                 v.score_awarded,
+                v.is_attempt,
                 v.reported_time,
                 v.distance_meters,
                 d.id AS dashpoint_id,
@@ -88,6 +89,7 @@ class ProfileService
                 'visit_id' => $log['visit_id'],
                 'dashpoint_id' => $log['dashpoint_id'],
                 'score_awarded' => (int) $log['score_awarded'],
+                'is_attempt' => (bool) $log['is_attempt'],
                 'distance_meters' => (int) $log['distance_meters'],
                 'reported_time' => $log['reported_time']
             ];

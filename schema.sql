@@ -78,6 +78,7 @@ CREATE TABLE visits (
     
     -- Scoring state
     score_awarded INT DEFAULT 0, -- Caches 3, 2, or 1 based on PHP evaluation logic
+    is_attempt BOOLEAN DEFAULT FALSE, -- True if the user logged this as a 0-point attempt
     status ENUM('pending', 'approved', 'rejected') DEFAULT 'approved',
     
     FOREIGN KEY (dashpoint_id) REFERENCES dashpoints(id) ON DELETE CASCADE,

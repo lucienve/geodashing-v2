@@ -84,7 +84,8 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     try {
         $db = \App\Database::getConnection();
         $service = new ReportService($db);
-        $result = $service->processVisit($_SESSION['user_id'], $dashpoint_id, $lat, $lon, $notes, $photosJson);
+        $is_attempt = filter_var($_POST['is_attempt'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $result = $service->processVisit($_SESSION['user_id'], $dashpoint_id, $lat, $lon, $is_attempt, $notes, $photosJson);
 
         if ($result['status'] === 'error') {
             http_response_code(400);

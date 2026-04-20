@@ -164,4 +164,47 @@ class ReportServiceTest extends TestCase
         $this->assertEquals('error', $result['status']);
         $this->assertStringContainsString('Target dashpoint belongs to an inactive game', $result['message']);
     }
+
+    /**
+     * Verifies that the service accepts an attempt even if the distance is > 100 meters, awarding 0 points.
+     */
+    #[Test]
+    public function processVisitAcceptsAttemptOver100Meters()
+    {
+        $userMock = $this->createMock(PDOStatement::class);
+        $userMock->method('fetch')->willReturn(['is_verified' => 1]);
+
+        $distMock = $this->createMock(PDOStatement::class);
+        $distMock->method('fetch')->willReturn(['distance_meters' => 150.0, 'is_active' => 1]);
+
+        $duplicateMock = $this->createMock(PDOStatement::class);
+        // Duplicate check query shouldn't fail attempt anyway because of !$isAttempt in logic
+        $duplicateMock->method('fetch')->willReturn(false);
+
+        $teamMock = $this->createMock(PDOStatement::class);
+        $teamMock->method('fetch')->willReturn(false);
+
+        $scoreMock = $this->createMock(PDOStatement::class);
+        $scoreMock->method('fetch')->willReturn(['previous_claims' => 0]);
+
+        $insertMock = $this->createMock(PDOStatement::class);
+        $insertMock->expects($this->once())->method('execute')->willReturn(true);
+
+        $usernameMock = $this->createMock(PDOStatement::class);
+        $usernameMock->method('fetch')->willReturn(['username' => 'TestUser']);
+
+        $totalScoreMock = $this->createMock(PDOStatement::class);
+        $totalScoreMock->method('fetch')->willReturn(['total' => 15]);
+
+        $this->pdoMock->expects($this->exactly(8))
+            ->method('prepare')
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock, $usernameMock, $totalScoreMock);
+
+        $result = $this->reportService->processVisit(1, 'GD001-AAAA', 40.0, -75.0, true);
+
+        $this->assertEquals('success', $result['status']);
+        $this->assertEquals(150, $result['distance']);
+        $this->assertEquals(0, $result['points']);
+        $this->assertStringContainsString('Attempt logged.', $result['message']);
+    }
 }

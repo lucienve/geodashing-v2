@@ -109,10 +109,16 @@ document.addEventListener('routeLoaded', (e) => {
                             visitDiv.style.padding = '1rem';
                             visitDiv.style.background = 'rgba(0, 0, 0, 0.4)';
 
+                            const isAttempt = visit.is_attempt == 1 || visit.is_attempt === true;
+                            const titleColor = isAttempt ? '#888' : 'var(--accent-amber)';
+                            const scoreLabel = isAttempt ? 'ATTEMPT' : `+${visit.score_awarded} PT`;
+                            const scoreColor = isAttempt ? '#888' : 'var(--accent-green)';
+                            const scoreBorder = isAttempt ? '1px solid #888' : '1px solid var(--accent-green)';
+
                             let html = `
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                                    <span style="font-size:0.9rem; color:var(--accent-amber); font-weight:bold;">${index + 1}. ${window.escapeHTML(visit.username)}</span>
-                                    <span style="font-size:0.8rem; color:var(--accent-green); border:1px solid var(--accent-green); padding:2px 6px;">+${visit.score_awarded} PT</span>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; opacity:${isAttempt ? '0.7' : '1'};">
+                                    <span style="font-size:0.9rem; color:${titleColor}; font-weight:bold;">${index + 1}. ${window.escapeHTML(visit.username)}</span>
+                                    <span style="font-size:0.8rem; color:${scoreColor}; border:${scoreBorder}; padding:2px 6px;">${scoreLabel}</span>
                                 </div>
                                 <div style="color:#888; font-size:0.75rem; margin-bottom:1rem;">> LOG_TIME: ${tStr}</div>
                             `;
@@ -358,8 +364,10 @@ document.addEventListener('routeLoaded', (e) => {
 
                     const distance = window.calculateDistance(userLat, userLon, targetLat, targetLon);
 
-                    // Reject log client-side before photo transfers 
-                    if (distance > 100) {
+                    const isAttempt = document.getElementById('input-is-attempt').checked;
+
+                    // Reject log client-side before photo transfers if not an attempt
+                    if (!isAttempt && distance > 100) {
                         feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Too far away. You are <strong>${distance.toFixed(1)}m</strong> from the dashpoint. You must be within 100m.</div>`;
                         submitBtn.disabled = false;
                         submitBtn.innerText = "SUBMIT LOG";
@@ -373,7 +381,11 @@ document.addEventListener('routeLoaded', (e) => {
                     const result = await API.logVisit(formData);
 
                     if (result.status === 'success') {
-                        feedbackStatus.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] Success! We logged your visit at ${userLat.toFixed(5)}, ${userLon.toFixed(5)} at a distance of ${result.distance.toFixed(1)}m from the point. You scored ${result.points} points!</div>`;
+                        if (isAttempt) {
+                            feedbackStatus.innerHTML = `<div class="alert" style="color:var(--accent-amber); border:1px solid var(--accent-amber);">[+] Attempt logged. We saved your attempt at ${userLat.toFixed(5)}, ${userLon.toFixed(5)} (${result.distance.toFixed(1)}m away). You earned 0 points.</div>`;
+                        } else {
+                            feedbackStatus.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] Success! We logged your visit at ${userLat.toFixed(5)}, ${userLon.toFixed(5)} at a distance of ${result.distance.toFixed(1)}m from the point. You scored ${result.points} points!</div>`;
+                        }
 
                         // Capture the target before the form reset.
                         const targetPersistence = document.getElementById('dashpoint_id').value;
@@ -745,11 +757,17 @@ document.addEventListener('routeLoaded', (e) => {
 
                     game.visits.forEach((v, index) => {
                         const logTime = new Date(v.reported_time).toLocaleDateString();
+                        const isAttempt = v.is_attempt == 1 || v.is_attempt === true;
+                        const scoreLabel = isAttempt ? 'ATTEMPT' : `+${v.score_awarded}`;
+                        const scoreColor = isAttempt ? '#888' : 'var(--accent-green)';
+                        const borderStyle = isAttempt ? '1px dashed #555' : '1px solid #333';
+                        const textOpacity = isAttempt ? '0.7' : '1';
+
                         html += `
-                            <a href="https://www.geodashing.org/#dashpoint?id=${v.dashpoint_id}" class="nav-link" style="display:block; padding:0.5rem; border:1px solid #333; background:rgba(0,0,0,0.3); border-radius:3px;">
+                            <a href="https://www.geodashing.org/#dashpoint?id=${v.dashpoint_id}" class="nav-link" style="display:block; padding:0.5rem; border:${borderStyle}; background:rgba(0,0,0,0.3); border-radius:3px; opacity:${textOpacity};">
                                 <div style="display:flex; justify-content:space-between;">
-                                    <span>${index + 1}. ${v.dashpoint_id}</span>
-                                    <span style="color:var(--accent-green);">+${v.score_awarded}</span>
+                                    <span style="color:${isAttempt ? '#888' : 'inherit'}">${index + 1}. ${v.dashpoint_id}</span>
+                                    <span style="color:${scoreColor};">${scoreLabel}</span>
                                 </div>
                                 <div style="font-size:0.75rem; color:#888; margin-top:0.3rem;">[ LOGGED: ${logTime} ]</div>
                             </a>

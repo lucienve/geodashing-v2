@@ -63,6 +63,59 @@ test.describe('Core Functional Game Loop', () => {
         await expect(feedback).toContainText('Too far away', { timeout: 10000 });
     });
 
+    test('Geolocation Bounds Validation - Successful Attempt Logging', async ({ page }, testInfo) => {
+        // Inject E2E Mock Geolocation via window.mockGeolocation
+        const mockFn = () => {
+            window.mockGeolocation = {
+                getCurrentPosition: (success, _error, _options) => {
+                    success({ coords: { latitude: 51.5074, longitude: -0.1278, accuracy: 10 } }); // Far from NYC
+                }
+            };
+        };
+        await page.addInitScript(mockFn);
+        await page.evaluate(mockFn);
+
+        const dynamicUser = `Attempter_${Date.now()}_${testInfo.workerIndex}`;
+        const dynamicPass = `SecurePass123!`;
+        
+        await page.goto('/#login');
+        await page.click('#toggle-signup');
+        await page.fill('#signup-username', dynamicUser);
+        await page.fill('#signup-email', `${dynamicUser}@example.com`);
+        await page.fill('#signup-password', dynamicPass);
+        await page.fill('#signup-password-verify', dynamicPass);
+        
+        const [response] = await Promise.all([
+            page.waitForResponse(res => res.url().includes('auth.php?action=signup')),
+            page.click('#btn-submit-signup')
+        ]);
+        
+        const { execSync } = require('child_process');
+        execSync(`mysql -h 127.0.0.1 -u geodashing_test -pgeodashing_test_secure_pass geodashing_test -e "UPDATE users SET is_verified = 1 WHERE username = '${dynamicUser}';"`);
+
+        await page.waitForURL('**/#login', { timeout: 5000 });
+        await page.goto('/#home');
+        await page.waitForURL('**/#home', { timeout: 5000 });
+
+        // Go to specific dashpoint report
+        await page.goto('/#report?id=GD001-AAAA');
+        await expect(page.locator('#dashpoint_id')).toHaveValue('GD001-AAAA', { timeout: 10000 });
+
+        // Sync GPS
+        await page.click('#btn-geolocation');
+        await expect(page.locator('#input-lat')).not.toHaveValue('', { timeout: 10000 });
+        await expect(page.locator('#input-lon')).not.toHaveValue('', { timeout: 10000 });
+
+        // Check Attempt
+        await page.check('#input-is-attempt');
+
+        await page.fill('#log-textarea', 'Logging an attempt from London!');
+        await page.click('#btn-submit-report');
+
+        const feedback = page.locator('#report-feedback');
+        await expect(feedback).toContainText('Attempt logged.', { timeout: 10000 });
+    });
+
     test('Successful Dashpoint Log and Ledger Verification', async ({ page }, testInfo) => {
         test.setTimeout(60000);
 
