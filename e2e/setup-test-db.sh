@@ -20,6 +20,19 @@ fi
 echo "Connecting to MySQL at $DB_HOST:$DB_PORT with user $DB_USER..."
 echo "Target Database: $DB_NAME"
 
+echo "Waiting for MySQL to become ready (up to 30s)..."
+for i in {1..30}; do
+    if mysqladmin ping -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" --silent; then
+        echo "MySQL is ready!"
+        break
+    fi
+    if [ $i -eq 30 ]; then
+        echo "ERROR: MySQL did not become ready in time."
+        exit 1
+    fi
+    sleep 1
+done
+
 # 1. Drop existing tables (to ensure clean slate without needing DROP DATABASE permissions everywhere)
 # We can just drop the tables individually or just use a helper pipeline if we have DROP DATABASE rights.
 # Rather than trying to DROP/CREATE the entire database without root privileges, we just drop the tables if they exist.

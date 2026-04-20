@@ -3,6 +3,18 @@ const path = require('path');
 
 module.exports = async (_config) => {
     console.log('\n--- Playwright Global Setup ---');
+
+    if (!process.env.CI) {
+        console.log('Local environment detected: Starting Docker containers...');
+        try {
+            const composePath = path.resolve(__dirname, 'docker-compose.yml');
+            execSync(`docker-compose -f "${composePath}" up -d`, { stdio: 'inherit' });
+        } catch (error) {
+            console.error('\nERROR: Failed to start Docker containers via docker-compose!');
+            throw error;
+        }
+    }
+
     console.log('Synchronizing E2E Test Database...');
 
     // Resolve path securely against repository root (which is parent of e2e/)
