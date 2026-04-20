@@ -64,6 +64,8 @@ test.describe('Core Functional Game Loop', () => {
     });
 
     test('Successful Dashpoint Log and Ledger Verification', async ({ page }, testInfo) => {
+        test.setTimeout(60000);
+
         // Guarantee parallel test isolation without global DELETE statements by creating a native account per-test.
         const dynamicUser = `Worker_${Date.now()}_${testInfo.workerIndex}`;
         const dynamicPass = `SecurePass123!`;
@@ -100,6 +102,10 @@ test.describe('Core Functional Game Loop', () => {
         // Explicitly bypass Email Verification constraint natively with a fast DB hit to ensure our dynamic user is authorized to play.
         const { execSync } = require('child_process');
         execSync(`mysql -h 127.0.0.1 -u geodashing_test -pgeodashing_test_secure_pass geodashing_test -e "UPDATE users SET is_verified = 1 WHERE username = '${dynamicUser}';"`);
+
+        // Wait for the native reload timeout (2000ms) triggered in controllers.js
+        // to complete so it doesn't race with our subsequent navigations
+        await page.waitForTimeout(3000);
 
         // Forcefully navigate cleanly instead of relying on frontend async auth-state race conditions natively handling the redirect
         await page.goto('/#home');
