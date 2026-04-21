@@ -5,14 +5,19 @@
     Require all denied
 </FilesMatch>
 
-# 2. Block direct HTTP web browser execution of backend test suites and vendor frameworks using ModRewrite
+# 2. Routing Rules
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteRule "(^|/)(tests|vendor)(/|$)" - [F,L]
     
-    # 2.1 Route sitemap.xml to dynamic PHP generation service
+    # Route sitemap.xml to dynamic PHP generation service
     RewriteRule ^sitemap\.xml$ api/sitemap.php [L]
 </IfModule>
 
 # 3. Disable directory browsing globally (preventing users from seeing lists of files)
 Options -Indexes
+
+# 4. Security Headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+</IfModule>
