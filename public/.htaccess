@@ -9,6 +9,9 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteRule "(^|/)(tests|vendor)(/|$)" - [F,L]
+    
+    # 2.1 Route sitemap.xml to dynamic PHP generation service
+    RewriteRule ^sitemap\.xml$ api/sitemap.php [L]
 </IfModule>
 
 # 3. Disable directory browsing globally (preventing users from seeing lists of files)

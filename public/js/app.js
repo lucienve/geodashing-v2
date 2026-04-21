@@ -167,7 +167,27 @@ function initRouting() {
         if (mobileNavDrawer) {
             mobileNavDrawer.classList.remove('open');
         }
-        const fullHash = window.location.hash || '#home';
+        
+        let fullHash = window.location.hash;
+        
+        // SEO-friendly Query Parameter Fallback for indexing
+        const urlParams = new URLSearchParams(window.location.search);
+        if (!fullHash && urlParams.has('dashpoint')) {
+            fullHash = `#dashpoint?id=${urlParams.get('dashpoint')}`;
+        } else if (!fullHash) {
+            fullHash = '#home';
+        }
+
+        // Dynamically maintain the Canonical URL for Search Engines
+        const canonicalTag = document.getElementById('canonical-link');
+        if (canonicalTag) {
+            if (fullHash.startsWith('#dashpoint?id=')) {
+                const dpId = fullHash.split('?id=')[1];
+                canonicalTag.href = `https://www.geodashing.org/?dashpoint=${dpId}`;
+            } else {
+                canonicalTag.href = `https://www.geodashing.org/`;
+            }
+        }
 
         if (window.trackPageview) {
             window.trackPageview(fullHash);
