@@ -164,7 +164,7 @@ class AuthService
      */
     private function sendVerificationEmail(string $email, string $token): void
     {
-        $verifyLink = "https://geodashing.org/backend/api/verify.php?token=" . $token;
+        $verifyLink = "https://geodashing.org/api/verify.php?token=" . $token;
         $subject = "Verify your account on Geodashing V2";
         $message = "Welcome to Geodashing V2!\n\nPlease finalize your account registration by clicking the link below:\n\n" . $verifyLink . "\n\nWelcome to the game!";
 

@@ -15,9 +15,9 @@ use App\Services\AuthService;
 // Bypass procedural logic during PHPUnit inclusion
 if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     require_once __DIR__ . '/../../vendor/autoload.php';
-    require_once __DIR__ . '/../session.php';
+    require_once __DIR__ . '/../../backend/session.php';
     header('Content-Type: application/json');
-    require_once __DIR__ . '/../Database.php';
+    require_once __DIR__ . '/../../backend/Database.php';
 
     $action = $_GET['action'] ?? '';
 

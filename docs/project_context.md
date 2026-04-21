@@ -7,7 +7,7 @@ The application allows users to participate in global geographic games where the
 ## Architectural Decisions
 - **Core Stack**: 
   - **Frontend**: Vanilla JS (ES6+), Semantic HTML5, Vanilla CSS3. **No Heavy Frameworks** (React/Vue/etc. are strictly prohibited). Logic is decoupled into separate files (`api.js`, `app.js`, `controllers.js`, `map.js`).
-  - **Backend**: Primary API layer written in **PHP 8.3.6** (`backend/api`) supplemented with **Python 3.12** for server-side scripts / game generation algorithms (`generate_game.py`).
+  - **Backend**: Primary API layer written in **PHP 8.3.6** (`public/api`) supplemented with **Python 3.12** for server-side scripts / game generation algorithms (`generate_game.py`).
   - **Database**: **MySQL 8.4.8** using native drivers (PDO for PHP, `mysql-connector-python` for Python). **No ORM is used**. All queries are securely handled via explicit parameterized statements.
   - **Media Storage**: Google Cloud Storage buckets handle user-uploaded photos natively via PHP APIs.
 - **Security Posture**: 

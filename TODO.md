@@ -16,7 +16,7 @@ While the original database schema was structurally designed to support 'Teams' 
     *   The SQL aggregation must `SUM()` the total points of *all* approved visits fired by any player mathematically bound to the same `team_id`.
 *   **The UI Switcher:**
     *   Re-introduce the `[ SOLO | TEAM ]` Glassmorphism toggle inside `templates/leaderboard.html`.
-    *   Hook `js/controllers.js` to clear the table DOM and conditionally fetch `/backend/api/leaderboard.php?type=team`.
+    *   Hook `js/controllers.js` to clear the table DOM and conditionally fetch `/api/leaderboard.php?type=team`.
 *   **Player Logs & Attribution:**
     *   Update the `Log Visit` logic so that when a player successfully secures a Dashpoint, the resulting global ticker announcement natively attributes the visual points to both the Player *and* their Team.
 

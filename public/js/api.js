@@ -26,7 +26,7 @@ const API = {
      */
     logVisit: async function (formData) {
         try {
-            const res = await fetch('backend/api/report.php', {
+            const res = await fetch('api/report.php', {
                 method: 'POST',
                 headers: this.getHeaders(),
                 body: formData // Bypassing Content-Type override for multipart/form-data.
@@ -44,7 +44,7 @@ const API = {
 
     editVisit: async function (formData) {
         try {
-            const res = await fetch('backend/api/edit.php', {
+            const res = await fetch('api/edit.php', {
                 method: 'POST',
                 headers: this.getHeaders(),
                 body: formData // Same multipart wrapper supporting JSON strings and Image Binaries
@@ -61,7 +61,7 @@ const API = {
      */
     getGames: async function () {
         try {
-            const res = await fetch('backend/api/games.php', {
+            const res = await fetch('api/games.php', {
                 method: 'GET',
                 headers: this.getHeaders()
             });
@@ -78,7 +78,7 @@ const API = {
      */
     getProfile: async function (username) {
         try {
-            const res = await fetch(`backend/api/profile.php?username=${encodeURIComponent(username)}`, {
+            const res = await fetch(`api/profile.php?username=${encodeURIComponent(username)}`, {
                 method: 'GET',
                 headers: this.getHeaders()
             });
@@ -100,7 +100,7 @@ const API = {
             data.append('username', username);
             data.append('password', password);
 
-            const res = await fetch('backend/api/auth.php?action=login', {
+            const res = await fetch('api/auth.php?action=login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -125,7 +125,7 @@ const API = {
             data.append('email', email);
             data.append('password', password);
 
-            const res = await fetch('backend/api/auth.php?action=signup', {
+            const res = await fetch('api/auth.php?action=signup', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -153,7 +153,7 @@ const API = {
             const data = new URLSearchParams();
             data.append('username', username);
 
-            const res = await fetch('backend/api/auth.php?action=forgot_password', {
+            const res = await fetch('api/auth.php?action=forgot_password', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -179,7 +179,7 @@ const API = {
             data.append('token', token);
             data.append('password', newPassword);
 
-            const res = await fetch('backend/api/auth.php?action=reset_password', {
+            const res = await fetch('api/auth.php?action=reset_password', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -199,7 +199,7 @@ const API = {
      */
     logout: async function () {
         try {
-            const res = await fetch('backend/api/auth.php?action=logout', {
+            const res = await fetch('api/auth.php?action=logout', {
                 method: 'POST',
                 headers: this.getHeaders()
             });
@@ -216,7 +216,7 @@ const API = {
      */
     getLeaderboard: async function (gameId = null) {
         try {
-            let url = 'backend/api/leaderboard.php';
+            let url = 'api/leaderboard.php';
             if (gameId !== null) {
                 url += `?game_id=${gameId}`;
             }
@@ -237,7 +237,7 @@ const API = {
      */
     checkSession: async function () {
         try {
-            const res = await fetch('backend/api/auth.php?action=session', {
+            const res = await fetch('api/auth.php?action=session', {
                 method: 'POST', // Auth endpoint enforces POST mapped strictly
                 headers: this.getHeaders()
             });
@@ -252,7 +252,7 @@ const API = {
      */
     resendVerification: async function () {
         try {
-            const res = await fetch('backend/api/auth.php?action=resend_verification', {
+            const res = await fetch('api/auth.php?action=resend_verification', {
                 method: 'POST',
                 headers: this.getHeaders()
             });

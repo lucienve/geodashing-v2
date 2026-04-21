@@ -201,7 +201,7 @@ function refreshDashpoints(bounds) {
     const query = new URLSearchParams(bounds).toString();
 
     // Dynamically pinging the backend routing through the Apache /api/ structure securely
-    fetch(`backend/api/search.php?${query}`)
+    fetch(`api/search.php?${query}`)
         .then(response => response.json())
         .then(json => {
             if (json.status === 'success') {

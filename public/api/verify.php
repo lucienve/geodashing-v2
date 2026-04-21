@@ -10,15 +10,15 @@ declare(strict_types=1);
 
 use App\Services\AuthService;
 
-require_once __DIR__ . '/../session.php';
+require_once __DIR__ . '/../../backend/session.php';
 require_once __DIR__ . '/../../vendor/autoload.php';
-require_once __DIR__ . '/../Database.php';
+require_once __DIR__ . '/../../backend/Database.php';
 
 $token = $_GET['token'] ?? '';
 
 if (empty($token)) {
     // Graceful routing logic natively dumping bad actors
-    header("Location: ../../index.html#home");
+    header("Location: ../index.html#home");
     exit;
 }
 
@@ -35,15 +35,15 @@ try {
         $_SESSION['is_verified'] = 1;
 
         // Redirect with success anchor
-        header("Location: ../../index.html#login?verified=true");
+        header("Location: ../index.html#login?verified=true");
         exit;
     } else {
         // Token invalid or already consumed
-        header("Location: ../../index.html#login?error=invalid_token");
+        header("Location: ../index.html#login?error=invalid_token");
         exit;
     }
 } catch (Exception $e) {
     error_log("Verification Endpoint Failure: " . $e->getMessage());
-    header("Location: ../../index.html#home");
+    header("Location: ../index.html#home");
     exit;
 }

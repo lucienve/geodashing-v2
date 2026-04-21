@@ -63,7 +63,7 @@ test.describe('Photo Upload Integration', () => {
         await page.fill('#log-textarea', 'Logging a photo natively to the emulator!');
 
         // Upload our photo
-        const imagePath = path.resolve(__dirname, '../images/android-chrome-192x192.png');
+        const imagePath = path.resolve(__dirname, '../public/images/android-chrome-192x192.png');
         await page.setInputFiles('#input-photos', imagePath);
 
         // Submit the report

@@ -15,7 +15,7 @@ use App\Services\GameService;
 
 if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     require_once __DIR__ . '/../../vendor/autoload.php';
-    require_once __DIR__ . '/../Database.php';
+    require_once __DIR__ . '/../../backend/Database.php';
 
     try {
         $db = \App\Database::getConnection();

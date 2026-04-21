@@ -45,7 +45,7 @@ document.addEventListener('routeLoaded', (e) => {
         // The Button Controller logic is executed exclusively post-fetch to allow spatial ownership diffing
 
         // Poll the backend.
-        fetch(`backend/api/dashpoint.php?id=${dpId}`)
+        fetch(`api/dashpoint.php?id=${dpId}`)
             .then(res => res.json())
             .then(json => {
                 if (json.status === 'success') {
@@ -349,7 +349,7 @@ document.addEventListener('routeLoaded', (e) => {
 
                 try {
                     // 2. Safely Fetch target constraints transparently before throwing Heavy User Photos across the bandwidth
-                    const targetRes = await fetch(`backend/api/dashpoint.php?id=${targetId}`);
+                    const targetRes = await fetch(`api/dashpoint.php?id=${targetId}`);
                     const targetJson = await targetRes.json();
 
                     if (targetJson.status !== 'success') {
@@ -816,7 +816,7 @@ document.addEventListener('routeLoaded', (e) => {
                 return;
             }
 
-            fetch(`backend/api/dashpoint.php?id=${dpId}`)
+            fetch(`api/dashpoint.php?id=${dpId}`)
                 .then(res => res.json())
                 .then(json => {
                     if (json.status !== 'success') return;
@@ -1016,7 +1016,7 @@ document.addEventListener('routeLoaded', (e) => {
             });
         }
 
-        // Exporters ping the Backend purely using `backend/api/export.php` triggering raw XML downloads
+        // Exporters ping the Backend purely using `api/export.php` triggering raw XML downloads
         const downloadPayload = (format) => {
             const b = getBounds();
             if (isNaN(b.n) || isNaN(b.s) || isNaN(b.e) || isNaN(b.w)) {
@@ -1024,7 +1024,7 @@ document.addEventListener('routeLoaded', (e) => {
                 return;
             }
             // Explicitly ping the Phase 3.5 architecture forcing the browser to physically download the block
-            window.location.href = `backend/api/export.php?n=${b.n}&s=${b.s}&e=${b.e}&w=${b.w}&format=${format}`;
+            window.location.href = `api/export.php?n=${b.n}&s=${b.s}&e=${b.e}&w=${b.w}&format=${format}`;
         };
 
         if (btnGPX) btnGPX.addEventListener('click', () => downloadPayload('gpx'));

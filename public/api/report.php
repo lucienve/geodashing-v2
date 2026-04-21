@@ -17,9 +17,9 @@ use App\Services\ReportService;
 
 if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     require_once __DIR__ . '/../../vendor/autoload.php';
-    require_once __DIR__ . '/../session.php';
+    require_once __DIR__ . '/../../backend/session.php';
     header('Content-Type: application/json');
-    require_once __DIR__ . '/../Database.php';
+    require_once __DIR__ . '/../../backend/Database.php';
 
     // 1. Strict Authentication Boundary
     if (!isset($_SESSION['user_id'])) {
@@ -51,7 +51,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
 
     // 2.5 Optional Media Processing Pipeline
     if (!empty($_FILES['photos']) && (is_array($_FILES['photos']['error']) ? $_FILES['photos']['error'][0] : $_FILES['photos']['error']) !== UPLOAD_ERR_NO_FILE) {
-        $keyPath = __DIR__ . '/../gcp-credentials.json';
+        $keyPath = __DIR__ . '/../../backend/gcp-credentials.json';
         $isTesting = getenv('APP_ENV') === 'testing';
 
         if (!$isTesting && !file_exists($keyPath)) {

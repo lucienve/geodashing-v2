@@ -15,7 +15,7 @@ use App\Services\SearchService;
 // If HTTP executes directly
 if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     require_once __DIR__ . '/../../vendor/autoload.php';
-    require_once __DIR__ . '/../Database.php';
+    require_once __DIR__ . '/../../backend/Database.php';
 
     // Parse the spatial layout natively
     $n = filter_var($_GET['n'] ?? '', FILTER_VALIDATE_FLOAT);

@@ -5,7 +5,7 @@ test.describe('Authentication Flow & Session Integrity', () => {
         // Intercept the checkSession POST request and make it return 'null'
         // This will cause `res.status` in updateAuthState to throw a TypeError,
         // which simulates a malformed/invalid response hitting the catch block.
-        await page.route('**/backend/api/auth.php?action=session', async route => {
+        await page.route('**/api/auth.php?action=session', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
