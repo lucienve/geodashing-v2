@@ -85,7 +85,7 @@ test.describe('Core Functional Game Loop', () => {
         await page.fill('#signup-password', dynamicPass);
         await page.fill('#signup-password-verify', dynamicPass);
         
-        const [response] = await Promise.all([
+        await Promise.all([
             page.waitForResponse(res => res.url().includes('auth.php?action=signup')),
             page.click('#btn-submit-signup')
         ]);
