@@ -988,7 +988,38 @@ document.addEventListener('routeLoaded', (e) => {
         const btnTeleport = document.getElementById('btn-teleport');
         const btnGPX = document.getElementById('btn-export-gpx');
         const btnLOC = document.getElementById('btn-export-loc');
+        const btnGrabBounds = document.getElementById('btn-grab-bounds');
         const searchFeedback = document.getElementById('search-feedback');
+
+        const populateBoundsFromMap = () => {
+            if (typeof map !== 'undefined' && map && map.getBounds()) {
+                const bounds = map.getBounds();
+                const ne = bounds.getNorthEast();
+                const sw = bounds.getSouthWest();
+                
+                const nInput = document.getElementById('search-n');
+                const sInput = document.getElementById('search-s');
+                const eInput = document.getElementById('search-e');
+                const wInput = document.getElementById('search-w');
+                
+                if (nInput) nInput.value = ne.lat().toFixed(5);
+                if (sInput) sInput.value = sw.lat().toFixed(5);
+                if (eInput) eInput.value = ne.lng().toFixed(5);
+                if (wInput) wInput.value = sw.lng().toFixed(5);
+            }
+        };
+
+        // Automatically pre-fill the fields with the current visible map area
+        const nInput = document.getElementById('search-n');
+        if (nInput && !nInput.value) {
+            populateBoundsFromMap();
+        }
+
+        if (btnGrabBounds) {
+            btnGrabBounds.addEventListener('click', () => {
+                populateBoundsFromMap();
+            });
+        }
 
         // Dynamically extract bounds from the DOM boxes
         const getBounds = () => ({

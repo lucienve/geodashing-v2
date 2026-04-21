@@ -728,3 +728,21 @@ body, html {
   font-size: 0.7rem;
   text-align: center;
 }
+
+.btn-grab-bounds {
+  margin-bottom: 1rem;
+  width: 100%;
+  border: 1px solid var(--accent-amber);
+  color: var(--accent-amber);
+}
+
+/* Remove default browser spinners from export coordinate inputs */
+.export-input::-webkit-outer-spin-button,
+.export-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.export-input[type=number] {
+  -moz-appearance: textfield;
+}
