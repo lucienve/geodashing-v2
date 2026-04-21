@@ -985,7 +985,6 @@ document.addEventListener('routeLoaded', (e) => {
     // Controller: SCANNER EXPORT ROUTINES (#search)
     // ==========================================================
     if (route === '#search') {
-        const btnTeleport = document.getElementById('btn-teleport');
         const btnGPX = document.getElementById('btn-export-gpx');
         const btnLOC = document.getElementById('btn-export-loc');
         const btnGrabBounds = document.getElementById('btn-grab-bounds');
@@ -1028,25 +1027,6 @@ document.addEventListener('routeLoaded', (e) => {
             e: parseFloat(document.getElementById('search-e').value),
             w: parseFloat(document.getElementById('search-w').value)
         });
-
-        // Natively shift the underlying Google Maps engine asynchronously 
-        if (btnTeleport) {
-            btnTeleport.addEventListener('click', () => {
-                const b = getBounds();
-                if (isNaN(b.n) || isNaN(b.s) || isNaN(b.e) || isNaN(b.w)) {
-                    searchFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] All four coordinates must be provided.</div>`;
-                    return;
-                }
-
-                const sw = new google.maps.LatLng(b.s, b.w);
-                const ne = new google.maps.LatLng(b.n, b.e);
-                const googleBounds = new google.maps.LatLngBounds(sw, ne);
-                map.fitBounds(googleBounds); // Wraps the map.
-
-                // Return to the home dashboard to display results.
-                window.location.hash = '#home';
-            });
-        }
 
         // Exporters ping the Backend using fetch to natively trigger downloads asynchronously
         const downloadPayload = async (format) => {

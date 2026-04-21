@@ -118,6 +118,7 @@ test.describe('Export Functionality', () => {
         await page.fill('#search-n', '45.0');
         await page.fill('#search-s', '35.0');
         await page.fill('#search-e', '-70.0');
+        await page.fill('#search-w', '');
 
         await page.click('#btn-export-gpx', { force: true });
 
