@@ -990,17 +990,39 @@ document.addEventListener('routeLoaded', (e) => {
         const btnGrabBounds = document.getElementById('btn-grab-bounds');
         const searchFeedback = document.getElementById('search-feedback');
 
+        const enforceExportAuth = async () => {
+            const disableExportUI = () => {
+                if (btnGPX) btnGPX.disabled = true;
+                if (btnLOC) btnLOC.disabled = true;
+                if (searchFeedback) searchFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Please log in to download Dashpoint coordinates.</div>`;
+            };
+
+            if (!window.currentUser || window.currentUser.status !== 'success') {
+                try {
+                    const res = await API.checkSession();
+                    if (res.status !== 'success') {
+                        disableExportUI();
+                    } else {
+                        window.currentUser = res;
+                    }
+                } catch (_e) {
+                    disableExportUI();
+                }
+            }
+        };
+        enforceExportAuth();
+
         const populateBoundsFromMap = () => {
             if (typeof map !== 'undefined' && map && map.getBounds()) {
                 const bounds = map.getBounds();
                 const ne = bounds.getNorthEast();
                 const sw = bounds.getSouthWest();
-                
+
                 const nInput = document.getElementById('search-n');
                 const sInput = document.getElementById('search-s');
                 const eInput = document.getElementById('search-e');
                 const wInput = document.getElementById('search-w');
-                
+
                 if (nInput) nInput.value = ne.lat().toFixed(5);
                 if (sInput) sInput.value = sw.lat().toFixed(5);
                 if (eInput) eInput.value = ne.lng().toFixed(5);
@@ -1031,7 +1053,7 @@ document.addEventListener('routeLoaded', (e) => {
         // Exporters ping the Backend using fetch to natively trigger downloads asynchronously
         const downloadPayload = async (format) => {
             if (searchFeedback) searchFeedback.innerHTML = '';
-            
+
             const b = getBounds();
             if (isNaN(b.n) || isNaN(b.s) || isNaN(b.e) || isNaN(b.w)) {
                 if (searchFeedback) {
@@ -1039,7 +1061,7 @@ document.addEventListener('routeLoaded', (e) => {
                 }
                 return;
             }
-            
+
             const btnTarget = format === 'gpx' ? btnGPX : btnLOC;
             const originalText = btnTarget.innerText;
             btnTarget.disabled = true;
@@ -1072,14 +1094,14 @@ document.addEventListener('routeLoaded', (e) => {
                 a.download = `geodashing_v2_export.${format}`;
                 document.body.appendChild(a);
                 a.click();
-                
+
                 // Cleanup
                 window.URL.revokeObjectURL(downloadUrl);
                 a.remove();
-                
+
                 btnTarget.disabled = false;
                 btnTarget.innerText = originalText;
-                
+
             } catch (error) {
                 if (searchFeedback) {
                     searchFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Network Error: Unable to fetch export.</div>`;
