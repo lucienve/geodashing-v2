@@ -82,7 +82,7 @@ test.describe('Export Functionality', () => {
         // Assert valid LOC syntax and the presence of the mock point
         expect(fileContent).toContain('<?xml version="1.0" encoding="UTF-8"?>');
         expect(fileContent).toContain('<loc version="1.0"');
-        expect(fileContent).toContain('<name id="GD001-AAAA"/>');
+        expect(fileContent).toContain('<name id="GD001-AAAA">GD001-AAAA</name>');
         expect(fileContent).toContain('</loc>');
     });
 
