@@ -42,8 +42,25 @@ class ExportService
                 $wpt->setAttribute('lat', (string)$pt['lat']);
                 $wpt->setAttribute('lon', (string)$pt['lon']);
 
-                $name = $dom->createElement('name', htmlspecialchars($pt['id']));
+                $idSafe = htmlspecialchars($pt['id']);
+
+                $name = $dom->createElement('name', $idSafe);
                 $wpt->appendChild($name);
+
+                $desc = $dom->createElement('desc', 'Dashpoint ' . $idSafe);
+                $wpt->appendChild($desc);
+
+                $sym = $dom->createElement('sym', 'Waypoint');
+                $wpt->appendChild($sym);
+
+                $type = $dom->createElement('type', 'Dashpoint');
+                $wpt->appendChild($type);
+
+                $link = $dom->createElement('link');
+                $link->setAttribute('href', 'https://www.geodashing.com/#dashpoint?id=' . $idSafe);
+                $linkText = $dom->createElement('text', 'View on Geodashing');
+                $link->appendChild($linkText);
+                $wpt->appendChild($link);
 
                 $gpx->appendChild($wpt);
             }
@@ -56,15 +73,23 @@ class ExportService
 
             foreach ($points as $pt) {
                 $waypoint = $dom->createElement('waypoint');
+                $idSafe = htmlspecialchars($pt['id']);
 
-                $name = $dom->createElement('name');
-                $name->setAttribute('id', htmlspecialchars($pt['id']));
+                $name = $dom->createElement('name', $idSafe);
+                $name->setAttribute('id', $idSafe);
                 $waypoint->appendChild($name);
 
                 $coord = $dom->createElement('coord');
                 $coord->setAttribute('lat', (string)$pt['lat']);
                 $coord->setAttribute('lon', (string)$pt['lon']);
                 $waypoint->appendChild($coord);
+
+                $type = $dom->createElement('type', 'Dashpoint');
+                $waypoint->appendChild($type);
+
+                $link = $dom->createElement('link', 'https://www.geodashing.com/#dashpoint?id=' . $idSafe);
+                $link->setAttribute('text', 'View on Geodashing');
+                $waypoint->appendChild($link);
 
                 $loc->appendChild($waypoint);
             }

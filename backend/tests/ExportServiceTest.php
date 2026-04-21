@@ -49,10 +49,20 @@ class ExportServiceTest extends TestCase
         // Assert first point
         $this->assertStringContainsString('<wpt lat="45" lon="-70">', $xml);
         $this->assertStringContainsString('<name>GD001-AAAA</name>', $xml);
+        $this->assertStringContainsString('<desc>Dashpoint GD001-AAAA</desc>', $xml);
+        $this->assertStringContainsString('<sym>Waypoint</sym>', $xml);
+        $this->assertStringContainsString('<type>Dashpoint</type>', $xml);
+        $this->assertStringContainsString('<link href="https://www.geodashing.com/#dashpoint?id=GD001-AAAA">', $xml);
+        $this->assertStringContainsString('<text>View on Geodashing</text>', $xml);
         
         // Assert second point
         $this->assertStringContainsString('<wpt lat="46" lon="-71">', $xml);
         $this->assertStringContainsString('<name>GD001-BBBB</name>', $xml);
+        $this->assertStringContainsString('<desc>Dashpoint GD001-BBBB</desc>', $xml);
+        $this->assertStringContainsString('<sym>Waypoint</sym>', $xml);
+        $this->assertStringContainsString('<type>Dashpoint</type>', $xml);
+        $this->assertStringContainsString('<link href="https://www.geodashing.com/#dashpoint?id=GD001-BBBB">', $xml);
+        $this->assertStringContainsString('<text>View on Geodashing</text>', $xml);
 
         $this->assertStringContainsString('</gpx>', $xml);
     }
@@ -95,8 +105,10 @@ class ExportServiceTest extends TestCase
         
         // Assert point
         $this->assertStringContainsString('<waypoint>', $xml);
-        $this->assertStringContainsString('<name id="GD001-AAAA"/>', $xml);
+        $this->assertStringContainsString('<name id="GD001-AAAA">GD001-AAAA</name>', $xml);
         $this->assertStringContainsString('<coord lat="45" lon="-70"/>', $xml);
+        $this->assertStringContainsString('<type>Dashpoint</type>', $xml);
+        $this->assertStringContainsString('<link text="View on Geodashing">https://www.geodashing.com/#dashpoint?id=GD001-AAAA</link>', $xml);
 
         $this->assertStringContainsString('</loc>', $xml);
     }
