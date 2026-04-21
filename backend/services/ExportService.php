@@ -50,17 +50,17 @@ class ExportService
                 $desc = $dom->createElement('desc', 'Dashpoint ' . $idSafe);
                 $wpt->appendChild($desc);
 
-                $sym = $dom->createElement('sym', 'Waypoint');
-                $wpt->appendChild($sym);
-
-                $type = $dom->createElement('type', 'Dashpoint');
-                $wpt->appendChild($type);
-
                 $link = $dom->createElement('link');
                 $link->setAttribute('href', 'https://www.geodashing.com/#dashpoint?id=' . $idSafe);
                 $linkText = $dom->createElement('text', 'View on Geodashing');
                 $link->appendChild($linkText);
                 $wpt->appendChild($link);
+
+                $sym = $dom->createElement('sym', 'Waypoint');
+                $wpt->appendChild($sym);
+
+                $type = $dom->createElement('type', 'Dashpoint');
+                $wpt->appendChild($type);
 
                 $gpx->appendChild($wpt);
             }
