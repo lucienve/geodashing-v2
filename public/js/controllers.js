@@ -988,6 +988,7 @@ document.addEventListener('routeLoaded', (e) => {
         const btnTeleport = document.getElementById('btn-teleport');
         const btnGPX = document.getElementById('btn-export-gpx');
         const btnLOC = document.getElementById('btn-export-loc');
+        const searchFeedback = document.getElementById('search-feedback');
 
         // Dynamically extract bounds from the DOM boxes
         const getBounds = () => ({
@@ -1002,7 +1003,7 @@ document.addEventListener('routeLoaded', (e) => {
             btnTeleport.addEventListener('click', () => {
                 const b = getBounds();
                 if (isNaN(b.n) || isNaN(b.s) || isNaN(b.e) || isNaN(b.w)) {
-                    alert("INVALID MATRIX: Coordinates strictly require decimals.");
+                    searchFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] All four coordinates must be provided.</div>`;
                     return;
                 }
 
@@ -1016,15 +1017,65 @@ document.addEventListener('routeLoaded', (e) => {
             });
         }
 
-        // Exporters ping the Backend purely using `api/export.php` triggering raw XML downloads
-        const downloadPayload = (format) => {
+        // Exporters ping the Backend using fetch to natively trigger downloads asynchronously
+        const downloadPayload = async (format) => {
+            if (searchFeedback) searchFeedback.innerHTML = '';
+            
             const b = getBounds();
             if (isNaN(b.n) || isNaN(b.s) || isNaN(b.e) || isNaN(b.w)) {
-                alert("INVALID MATRIX: Coordinates tightly required for regional exports.");
+                if (searchFeedback) {
+                    searchFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Error: Missing coordinates. Please specify the complete bounding region.</div>`;
+                }
                 return;
             }
-            // Explicitly ping the Phase 3.5 architecture forcing the browser to physically download the block
-            window.location.href = `api/export.php?n=${b.n}&s=${b.s}&e=${b.e}&w=${b.w}&format=${format}`;
+            
+            const btnTarget = format === 'gpx' ? btnGPX : btnLOC;
+            const originalText = btnTarget.innerText;
+            btnTarget.disabled = true;
+            btnTarget.innerText = "DOWNLOADING...";
+
+            try {
+                const url = `api/export.php?n=${b.n}&s=${b.s}&e=${b.e}&w=${b.w}&format=${format}`;
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    let errMsg = "Download failed due to server error.";
+                    if (response.status === 401) {
+                        errMsg = "Unauthorized: You must be logged in to export Dashpoint data.";
+                    } else if (response.status === 400) {
+                        errMsg = "Invalid bounding box boundaries provided.";
+                    }
+                    if (searchFeedback) {
+                        searchFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ${errMsg}</div>`;
+                    }
+                    btnTarget.disabled = false;
+                    btnTarget.innerText = originalText;
+                    return;
+                }
+
+                const blob = await response.blob();
+                const downloadUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = downloadUrl;
+                a.download = `geodashing_v2_export.${format}`;
+                document.body.appendChild(a);
+                a.click();
+                
+                // Cleanup
+                window.URL.revokeObjectURL(downloadUrl);
+                a.remove();
+                
+                btnTarget.disabled = false;
+                btnTarget.innerText = originalText;
+                
+            } catch (error) {
+                if (searchFeedback) {
+                    searchFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Network Error: Unable to fetch export.</div>`;
+                }
+                btnTarget.disabled = false;
+                btnTarget.innerText = originalText;
+            }
         };
 
         if (btnGPX) btnGPX.addEventListener('click', () => downloadPayload('gpx'));

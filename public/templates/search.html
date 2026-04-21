@@ -1,55 +1,49 @@
 <div class="template-view" id="view-search">
     <a href="#home" class="close-btn" aria-label="Close View">&times;</a>
     <h2>DASHPOINT EXPORT</h2>
-    <p style="margin-bottom:1.5rem; font-size:0.85rem; color:var(--text-muted); line-height:1.4;">
+    
+    <div id="search-feedback"></div>
+
+    <p class="export-description">
         Enter the bounding box parameters to force a specific map view, or download dashpoint data from the region
         directly to your handheld GPS device.
     </p>
 
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
+    <div class="export-grid">
         <div>
-            <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem; display:block;">NORTH
-                LIMIT</label>
-            <input type="number" step="any" id="search-n" class="data-input" placeholder="42.500"
-                style="margin-bottom:0;">
+            <label class="export-label">NORTH LIMIT</label>
+            <input type="number" step="any" id="search-n" class="data-input export-input" placeholder="42.500">
         </div>
         <div>
-            <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem; display:block;">SOUTH
-                LIMIT</label>
-            <input type="number" step="any" id="search-s" class="data-input" placeholder="41.500"
-                style="margin-bottom:0;">
+            <label class="export-label">SOUTH LIMIT</label>
+            <input type="number" step="any" id="search-s" class="data-input export-input" placeholder="41.500">
         </div>
         <div>
-            <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem; display:block;">EAST
-                LIMIT</label>
-            <input type="number" step="any" id="search-e" class="data-input" placeholder="-70.000"
-                style="margin-bottom:0;">
+            <label class="export-label">EAST LIMIT</label>
+            <input type="number" step="any" id="search-e" class="data-input export-input" placeholder="-70.000">
         </div>
         <div>
-            <label style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem; display:block;">WEST
-                LIMIT</label>
-            <input type="number" step="any" id="search-w" class="data-input" placeholder="-72.000"
-                style="margin-bottom:0;">
+            <label class="export-label">WEST LIMIT</label>
+            <input type="number" step="any" id="search-w" class="data-input export-input" placeholder="-72.000">
         </div>
     </div>
 
-    <button type="button" class="btn btn-secondary" id="btn-teleport" style="margin-bottom:1.5rem;">
+    <button type="button" class="btn btn-secondary export-btn-snap" id="btn-teleport">
         [ SNAP MAP TO BOUNDS ]
     </button>
 
-    <div class="dash-block" style="border-top:1px dashed var(--accent-amber-glow); padding-top:1.5rem;">
-        <h3 style="color:var(--accent-amber); font-size:1rem; margin-bottom:1rem;">EXPORT FILE TYPES</h3>
+    <div class="dash-block export-block">
+        <h3 class="export-heading">EXPORT FILE TYPES</h3>
 
-        <div style="display:flex; gap:1rem;">
-            <button type="button" class="btn btn-primary" id="btn-export-gpx" style="flex:1;">
+        <div class="export-btn-group">
+            <button type="button" class="btn btn-primary" id="btn-export-gpx">
                 DOWNLINK .GPX
             </button>
-            <button type="button" class="btn btn-primary" id="btn-export-loc"
-                style="flex:1; background:var(--accent-green); color:#000; box-shadow:0 0 10px rgba(16, 185, 129, 0.4);">
+            <button type="button" class="btn btn-primary btn-loc" id="btn-export-loc">
                 DOWNLINK .LOC
             </button>
         </div>
-        <small style="display:block; margin-top:0.75rem; color:#666; font-size:0.7rem; text-align:center;">
+        <small class="export-disclaimer">
             *Downloads map data enclosed by the boundaries above.
         </small>
     </div>

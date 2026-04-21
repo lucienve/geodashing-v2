@@ -662,3 +662,69 @@ body, html {
   animation: spin 0.8s linear infinite;
   vertical-align: text-bottom;
 }
+
+/* -------------------------------------------------------------------------
+   Export Overlay Styles
+------------------------------------------------------------------------- */
+.export-description {
+  margin-bottom: 1.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.export-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.export-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+.export-input {
+  margin-bottom: 0 !important;
+}
+
+.export-btn-snap {
+  margin-bottom: 1.5rem;
+}
+
+.export-block {
+  border-top: 1px dashed var(--accent-amber-glow);
+  padding-top: 1.5rem;
+}
+
+.export-heading {
+  color: var(--accent-amber);
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.export-btn-group {
+  display: flex;
+  gap: 1rem;
+}
+
+.export-btn-group .btn {
+  flex: 1;
+}
+
+.btn-loc {
+  background: var(--accent-green) !important;
+  color: #000 !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4) !important;
+}
+
+.export-disclaimer {
+  display: block;
+  margin-top: 0.75rem;
+  color: #666;
+  font-size: 0.7rem;
+  text-align: center;
+}

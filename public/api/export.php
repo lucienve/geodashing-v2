@@ -15,7 +15,14 @@ use App\Services\SearchService;
 // If HTTP executes directly
 if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     require_once __DIR__ . '/../../vendor/autoload.php';
+    require_once __DIR__ . '/../../backend/session.php';
     require_once __DIR__ . '/../../backend/Database.php';
+
+    // Securely demand a populated active session dynamically
+    if (!isset($_SESSION['user_id'])) {
+        http_response_code(401);
+        exit('Error: Unauthorized. You must be logged in to export dashpoint data.');
+    }
 
     // Parse the spatial layout natively
     $n = filter_var($_GET['n'] ?? '', FILTER_VALIDATE_FLOAT);
