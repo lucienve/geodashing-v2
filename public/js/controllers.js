@@ -201,9 +201,6 @@ document.addEventListener('routeLoaded', (e) => {
         const inputPhotos = document.getElementById('input-photos');
         const previewGrid = document.getElementById('photo-preview-grid');
 
-        // eslint-disable-next-line no-unused-vars
-        let selectedFiles = []; // Track to enforce limit and show previews
-
         if (btnAddPhotos && inputPhotos) {
             btnAddPhotos.addEventListener('click', () => {
                 inputPhotos.click();

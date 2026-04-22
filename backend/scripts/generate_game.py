@@ -299,7 +299,7 @@ def main() -> None:
         # 2. Upload to MySQL
         seed_database(points, config_path, args.title, bad_words_path)
 
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except (FileNotFoundError, RuntimeError) as e:
         print(f"\nExecution Error: {e}")
 
 

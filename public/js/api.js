@@ -4,8 +4,7 @@
  * Exposes asynchronous functions mapping the UI to the backend API.
  */
 
-// eslint-disable-next-line no-unused-vars
-const API = {
+window.API = {
     getCsrfToken: function () {
         const match = document.cookie.match(new RegExp('(^| )csrf_token=([^;]+)'));
         return match ? match[2] : '';
