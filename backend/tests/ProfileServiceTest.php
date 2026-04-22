@@ -54,6 +54,7 @@ class ProfileServiceTest extends TestCase
             [
                 'visit_id' => 10,
                 'score_awarded' => 3,
+                'is_attempt' => 0,
                 'reported_time' => '2023-02-01 10:00:00',
                 'distance_meters' => 45,
                 'dashpoint_id' => 'GD001-XXXX',
@@ -64,6 +65,7 @@ class ProfileServiceTest extends TestCase
             [
                 'visit_id' => 11,
                 'score_awarded' => 2,
+                'is_attempt' => 0,
                 'reported_time' => '2023-02-02 10:00:00',
                 'distance_meters' => 15,
                 'dashpoint_id' => 'GD001-YYYY',
