@@ -744,7 +744,7 @@ document.addEventListener('routeLoaded', (e) => {
                         <div class="dash-block" style="margin-bottom:1rem; border-left:3px solid var(--accent-amber);">
                             <div style="display:flex; justify-content:space-between; margin-bottom:1rem;">
                                 <strong style="color:#ddd;">Game ${game.game_id} 
-                                    ${game.game_title ? `- ${window.escapeHTML(game.game_title)}` : ''} 
+                                    ${game.title ? `- ${window.escapeHTML(game.title)}` : ''} 
                                     ${game.is_active ? `<span style="color:var(--accent-amber); font-size:0.8rem; margin-left:0.5rem;">[ACTIVE]</span>` : ''}
                                 </strong>
                                 <span style="color:var(--accent-green);">${game.game_total_score} PT</span>
@@ -922,9 +922,9 @@ document.addEventListener('routeLoaded', (e) => {
     if (route === '#leaderboard') {
         const tbody = document.getElementById('leaderboard-tbody');
         if (tbody) {
-            let ldParams = '';
+            let ldParams = null;
             if (window.currentGameContext && window.currentGameContext.id) {
-                ldParams = `?game_id=${window.currentGameContext.id}`;
+                ldParams = window.currentGameContext.id;
                 const cycleTitle = document.getElementById('leaderboard-cycle-title');
                 if (cycleTitle && window.currentGameContext.title) {
                     cycleTitle.innerText = `${window.currentGameContext.monthYear} - Game ${window.currentGameContext.id}: ${window.escapeHTML(window.currentGameContext.title)}`;

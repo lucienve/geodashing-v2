@@ -57,20 +57,30 @@ echo "Injecting mock CI Test Game, User, and Dashpoint..."
 PASSWORD_HASH=$(php -r "echo password_hash('testpass', PASSWORD_DEFAULT);")
 
 mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "
-    -- Game 1
+    -- Game 1 (Historical)
     INSERT INTO games (id, title, start_time, end_time, is_active) 
-    VALUES (1, 'CI Test Game', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 30 DAY), TRUE);
+    VALUES (1, 'Historical Game', DATE_SUB(NOW(), INTERVAL 35 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY), FALSE);
+
+    -- Game 2 (Active)
+    INSERT INTO games (id, title, start_time, end_time, is_active) 
+    VALUES (2, 'CI Test Game', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 30 DAY), TRUE);
     
     -- Test User
     INSERT INTO users (id, username, email, password_hash, is_verified)
     VALUES (1, 'TestUser', 'testuser@example.com', '${PASSWORD_HASH}', TRUE);
     
-    -- Test Dashpoint inside Game 1
-    -- ST_GeomFromText uses Longitude Latitude or Latitude Longitude based on MySQL 8.0 geographic SRID 4326.
-    -- In MySQL 8, SRID 4326 interprets coordinates as (Latitude, Longitude).
-    -- So Point(40.7128, -74.0060) is NYC.
+    -- Test Dashpoints
+    -- Game 1 dashpoint (London)
     INSERT INTO dashpoints (id, game_id, location, country_code, state_province)
-    VALUES ('GD001-AAAA', 1, ST_GeomFromText('POINT(40.7128 -74.0060)', 4326), 'US', 'NY');
+    VALUES ('GD000-AAAA', 1, ST_GeomFromText('POINT(51.5074 -0.1278)', 4326), 'UK', 'ENG');
+
+    -- Game 2 dashpoint (NYC)
+    INSERT INTO dashpoints (id, game_id, location, country_code, state_province)
+    VALUES ('GD001-AAAA', 2, ST_GeomFromText('POINT(40.7128 -74.0060)', 4326), 'US', 'NY');
+
+    -- Mock historical visit for TestUser on Game 1 dashpoint
+    INSERT INTO visits (id, dashpoint_id, user_id, team_id, reported_location, distance_meters, reported_time, score_awarded, status)
+    VALUES (1, 'GD000-AAAA', 1, NULL, ST_GeomFromText('POINT(51.5074 -0.1278)', 4326), 0, DATE_SUB(NOW(), INTERVAL 10 DAY), 3, 'approved');
 "
 
 echo "Test database initialized successfully!"
