@@ -1102,7 +1102,7 @@ document.addEventListener('routeLoaded', (e) => {
                 btnTarget.disabled = false;
                 btnTarget.innerText = originalText;
 
-            } catch (error) {
+            } catch (_error) {
                 if (searchFeedback) {
                     searchFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Network Error: Unable to fetch export.</div>`;
                 }
