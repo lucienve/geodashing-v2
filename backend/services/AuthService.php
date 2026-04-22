@@ -16,6 +16,8 @@ use Exception;
  */
 class AuthService
 {
+    use MailerTrait;
+
     /**
      * @var PDO The configured database connection.
      */
@@ -168,9 +170,7 @@ class AuthService
         $subject = "Verify your account on Geodashing V2";
         $message = "Welcome to Geodashing V2!\n\nPlease finalize your account registration by clicking the link below:\n\n" . $verifyLink . "\n\nWelcome to the game!";
 
-        $headers = "From: no-reply@geodashing.org\r\n";
-        $headers .= "Reply-To: no-reply@geodashing.org\r\n";
-        $headers .= "X-Mailer: PHP/" . phpversion();
+        $headers = $this->buildMailHeaders("no-reply@geodashing.org");
 
         // The 5th parameter overrides the 'MAIL FROM' envelope sender, bypassing Postfix defaults.
         $this->executeMail($email, $subject, $message, $headers, "-fno-reply@geodashing.org");
@@ -229,26 +229,11 @@ class AuthService
         $message .= $resetLink . "\n\n";
         $message .= "This link expires in exactly 1 hour for your protection.";
 
-        $headers = "From: no-reply@geodashing.org\r\n";
-        $headers .= "Reply-To: no-reply@geodashing.org\r\n";
-        $headers .= "X-Mailer: PHP/" . phpversion();
+        $headers = $this->buildMailHeaders("no-reply@geodashing.org");
 
         $this->executeMail($email, $subject, $message, $headers, "-fno-reply@geodashing.org");
     }
 
-    /**
-     * Executes email delivery. Protected specifically to allow PHPUnit mocking.
-     */
-    protected function executeMail(string $to, string $subject, string $message, string $headers, string $additional_params): bool
-    {
-        // Bypass physical SMTP interaction during E2E testing
-        if ((getenv('APP_ENV') ?: ($_ENV['APP_ENV'] ?? '')) === 'testing') {
-            error_log("APP_ENV=testing: Suppressed physical email transmission to $to");
-            return true;
-        }
-
-        return @mail($to, $subject, $message, $headers, $additional_params);
-    }
 
     /**
      * Executes password reset and tracks validation metrics.
