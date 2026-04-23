@@ -38,11 +38,16 @@ done
 # Rather than trying to DROP/CREATE the entire database without root privileges, we just drop the tables if they exist.
 # However, the user gave the test user ALL PRIVILEGES ON geodashing_test.* so they can't drop the database geodashing_test but they can DROP all tables.
 
-mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "
-    SET FOREIGN_KEY_CHECKS = 0;
-    DROP TABLE IF EXISTS visits, dashpoints, games, team_members, teams, users;
-    SET FOREIGN_KEY_CHECKS = 1;
-"
+TABLES=$(mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" -N -B -e "SHOW TABLES IN \`$DB_NAME\`")
+
+if [ -n "$TABLES" ]; then
+    DROP_QUERY="SET FOREIGN_KEY_CHECKS = 0;"
+    for TABLE in $TABLES; do
+        DROP_QUERY="$DROP_QUERY DROP TABLE IF EXISTS \`$TABLE\`;"
+    done
+    DROP_QUERY="$DROP_QUERY SET FOREIGN_KEY_CHECKS = 1;"
+    mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "$DROP_QUERY"
+fi
 
 # 2. Pipe the schema structure
 # We must dynamically strip the `USE geodashing;` directive out of schema.sql to prevent 
