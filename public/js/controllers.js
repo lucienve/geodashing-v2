@@ -761,9 +761,9 @@ document.addEventListener('routeLoaded', (e) => {
                         const textOpacity = isAttempt ? '0.7' : '1';
 
                         html += `
-                            <a href="https://www.geodashing.org/#dashpoint?id=${v.dashpoint_id}" class="nav-link" style="display:block; padding:0.5rem; border:${borderStyle}; background:rgba(0,0,0,0.3); border-radius:3px; opacity:${textOpacity};">
+                            <a href="https://www.geodashing.org/#dashpoint?id=${encodeURIComponent(v.dashpoint_id)}" class="nav-link" style="display:block; padding:0.5rem; border:${borderStyle}; background:rgba(0,0,0,0.3); border-radius:3px; opacity:${textOpacity};">
                                 <div style="display:flex; justify-content:space-between;">
-                                    <span style="color:${isAttempt ? '#888' : 'inherit'}">${index + 1}. ${v.dashpoint_id}</span>
+                                    <span style="color:${isAttempt ? '#888' : 'inherit'}">${index + 1}. ${window.escapeHTML(v.dashpoint_id)}</span>
                                     <span style="color:${scoreColor};">${scoreLabel}</span>
                                 </div>
                                 <div style="font-size:0.75rem; color:#888; margin-top:0.3rem;">[ LOGGED: ${logTime} ]</div>
