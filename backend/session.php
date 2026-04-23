@@ -7,6 +7,7 @@
 declare(strict_types=1);
 
 // 1. Enforce strict session cookie parameters
+ini_set('session.gc_maxlifetime', (string)(86400 * 30)); // 30 days garbage collection
 session_set_cookie_params([
     'lifetime' => 86400 * 30, // 30 days
     'path' => '/',
