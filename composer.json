@@ -4,7 +4,8 @@
         "squizlabs/php_codesniffer": "^4.0"
     },
     "require": {
-        "google/cloud-storage": "^1.50"
+        "google/cloud-storage": "^1.50",
+        "ext-gd": "*"
     },
     "autoload": {
         "psr-4": {

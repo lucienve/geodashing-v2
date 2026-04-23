@@ -133,16 +133,39 @@ class MediaService
                 ]
             );
 
-            // Extract standard EXIF GPS coordinates before removing the local tmp_name.
-            $exifData = $this->parseExifGPS($file['tmp_name']);
-
             $publicDomain = (getenv('APP_ENV') === 'testing' && getenv('GCS_EMULATOR_HOST'))
                 ? getenv('GCS_EMULATOR_HOST')
                 : "https://storage.googleapis.com";
 
+            $thumbUrl = null;
+            $thumbPath = $this->generateThumbnail($file['tmp_name'], $mime);
+            if ($thumbPath) {
+                $thumbObjectName = sprintf(
+                    "visits/%s/%d_%s_%d_thumb.%s",
+                    $safeDashpointId,
+                    $userId,
+                    date('YmdHis'),
+                    $index,
+                    $extension
+                );
+                $bucket->upload(
+                    fopen($thumbPath, 'r'),
+                    [
+                        'name' => $thumbObjectName,
+                        'resumable' => false
+                    ]
+                );
+                @unlink($thumbPath); // Clean up the temp file natively
+                $thumbUrl = "{$publicDomain}/{$this->bucketName}/{$thumbObjectName}";
+            }
+
+            // Extract standard EXIF GPS coordinates before removing the local tmp_name.
+            $exifData = $this->parseExifGPS($file['tmp_name']);
+
             // Construct standard GS public URL path resolving identically via HTTP
             $urls[] = [
                 'url' => "{$publicDomain}/{$this->bucketName}/{$objectName}",
+                'thumb_url' => $thumbUrl,
                 'lat' => $exifData ? $exifData['lat'] : null,
                 'lon' => $exifData ? $exifData['lon'] : null
             ];
@@ -178,6 +201,90 @@ class MediaService
                 }
             }
         }
+    }
+
+    /**
+     * Generates a temporary thumbnail file proportional to an 800px max dimension natively.
+     *
+     * @param string $sourcePath The absolute path to the uploaded image.
+     * @param string $mime The mime type to map the GD render function.
+     * @return string|null The temporary absolute file path to the thumbnail, or null on failure.
+     */
+    private function generateThumbnail(string $sourcePath, string $mime): ?string
+    {
+        if (!extension_loaded('gd')) {
+            return null; // Fallback safely if GD is missing during tests
+        }
+
+        switch ($mime) {
+            case 'image/jpeg':
+                $image = @imagecreatefromjpeg($sourcePath);
+                break;
+            case 'image/png':
+                $image = @imagecreatefrompng($sourcePath);
+                break;
+            case 'image/webp':
+                $image = @imagecreatefromwebp($sourcePath);
+                break;
+            default:
+                return null;
+        }
+
+        if (!$image) {
+            return null;
+        }
+
+        $width = imagesx($image);
+        $height = imagesy($image);
+
+        $maxWidth = 800;
+        $maxHeight = 800;
+
+        if ($width <= $maxWidth && $height <= $maxHeight) {
+            $newWidth = $width;
+            $newHeight = $height;
+        } else {
+            $ratio = min($maxWidth / $width, $maxHeight / $height);
+            $newWidth = (int)round($width * $ratio);
+            $newHeight = (int)round($height * $ratio);
+        }
+
+        $thumbnail = imagecreatetruecolor($newWidth, $newHeight);
+
+        // Preserve transparency for PNG and WebP natively
+        if ($mime === 'image/png' || $mime === 'image/webp') {
+            imagealphablending($thumbnail, false);
+            imagesavealpha($thumbnail, true);
+            $transparent = imagecolorallocatealpha($thumbnail, 255, 255, 255, 127);
+            imagefilledrectangle($thumbnail, 0, 0, $newWidth, $newHeight, $transparent);
+        }
+
+        imagecopyresampled($thumbnail, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'gd_thumb_');
+        $success = false;
+
+        switch ($mime) {
+            case 'image/jpeg':
+                $success = imagejpeg($thumbnail, $tempFile, 85);
+                break;
+            case 'image/png':
+                $success = imagepng($thumbnail, $tempFile, 8);
+                break;
+            case 'image/webp':
+                $success = imagewebp($thumbnail, $tempFile, 85);
+                break;
+        }
+
+        imagedestroy($image);
+        imagedestroy($thumbnail);
+
+        if (!$success) {
+            @unlink($tempFile);
+            return null;
+        }
+
+        return $tempFile;
     }
 
     /**
