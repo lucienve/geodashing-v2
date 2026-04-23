@@ -131,7 +131,7 @@ document.addEventListener('routeLoaded', (e) => {
                             }
 
                             // We always show the VIEW DETAILS toggler to display the reported coordinates and distance
-                            html += `<button type="button" class="btn btn-secondary" style="width:100%; font-size:0.7rem;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none';">VIEW DETAILS</button>`;
+                            html += `<button type="button" class="btn btn-secondary btn-toggle-details" style="width:100%; font-size:0.7rem;">VIEW DETAILS</button>`;
                             html += `<div style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px dashed #444;">`;
 
                             if (visit.reported_lat !== undefined && visit.reported_lon !== undefined && visit.distance_meters !== undefined) {
@@ -176,6 +176,18 @@ document.addEventListener('routeLoaded', (e) => {
                                         });
                                     }
                                     window.open(this.getAttribute('data-url'), '_blank');
+                                });
+                            });
+
+                            const toggleBtns = visitDiv.querySelectorAll('button.btn-toggle-details');
+                            toggleBtns.forEach(btn => {
+                                btn.addEventListener('click', function () {
+                                    const nextEl = this.nextElementSibling;
+                                    if (nextEl) {
+                                        const isHidden = nextEl.style.display === 'none';
+                                        nextEl.style.display = isHidden ? 'block' : 'none';
+                                        this.innerText = isHidden ? 'HIDE DETAILS' : 'VIEW DETAILS';
+                                    }
                                 });
                             });
 
