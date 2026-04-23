@@ -80,7 +80,7 @@ class ReportServiceTest extends TestCase
 
         $distMock = $this->createMock(PDOStatement::class);
         // Simulates MySQL ST_Distance_Sphere returning exactly 101 meters
-        $distMock->method('fetch')->willReturn(['distance_meters' => 101.5, 'is_active' => 1]);
+        $distMock->method('fetch')->willReturn(['distance_meters' => 101.5, 'is_active' => 1, 'dp_lat' => 40.0, 'dp_lon' => -75.0]);
 
         $this->pdoMock->expects($this->exactly(2))
             ->method('prepare')
@@ -104,7 +104,7 @@ class ReportServiceTest extends TestCase
 
         // 1. Mock the Distance Calculation (Returns 45 meters)
         $distMock = $this->createMock(PDOStatement::class);
-        $distMock->method('fetch')->willReturn(['distance_meters' => 45.0, 'is_active' => 1]);
+        $distMock->method('fetch')->willReturn(['distance_meters' => 45.0, 'is_active' => 1, 'dp_lat' => 40.0, 'dp_lon' => -75.0]);
 
         // 2. Mock the Duplicate Check (Returns false, meaning no existing visit)
         $duplicateMock = $this->createMock(PDOStatement::class);
@@ -130,10 +130,14 @@ class ReportServiceTest extends TestCase
         $totalScoreMock = $this->createMock(PDOStatement::class);
         $totalScoreMock->method('fetch')->willReturn(['total' => 15]);
 
+        // 8. Mock GeoContext lookup
+        $geoMock = $this->createMock(PDOStatement::class);
+        $geoMock->method('fetch')->willReturn(false);
+
         // Chain the PDO prepares to return the distinct statements sequentially in order
-        $this->pdoMock->expects($this->exactly(8))
+        $this->pdoMock->expects($this->exactly(9))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock, $usernameMock, $totalScoreMock);
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock, $usernameMock, $totalScoreMock, $geoMock);
 
         $result = $this->reportService->processVisit(1, 'GD001-AAAA', 40.0, -75.0);
 
@@ -153,7 +157,7 @@ class ReportServiceTest extends TestCase
 
         $distMock = $this->createMock(PDOStatement::class);
         // Simulates returning 45 meters but belongs to inactive game
-        $distMock->method('fetch')->willReturn(['distance_meters' => 45.0, 'is_active' => 0]);
+        $distMock->method('fetch')->willReturn(['distance_meters' => 45.0, 'is_active' => 0, 'dp_lat' => 40.0, 'dp_lon' => -75.0]);
 
         $this->pdoMock->expects($this->exactly(2))
             ->method('prepare')
@@ -175,7 +179,7 @@ class ReportServiceTest extends TestCase
         $userMock->method('fetch')->willReturn(['is_verified' => 1]);
 
         $distMock = $this->createMock(PDOStatement::class);
-        $distMock->method('fetch')->willReturn(['distance_meters' => 150.0, 'is_active' => 1]);
+        $distMock->method('fetch')->willReturn(['distance_meters' => 150.0, 'is_active' => 1, 'dp_lat' => 40.0, 'dp_lon' => -75.0]);
 
         $duplicateMock = $this->createMock(PDOStatement::class);
         // Duplicate check query shouldn't fail attempt anyway because of !$isAttempt in logic
@@ -196,9 +200,13 @@ class ReportServiceTest extends TestCase
         $totalScoreMock = $this->createMock(PDOStatement::class);
         $totalScoreMock->method('fetch')->willReturn(['total' => 15]);
 
-        $this->pdoMock->expects($this->exactly(8))
+        // Mock GeoContext lookup
+        $geoMock = $this->createMock(PDOStatement::class);
+        $geoMock->method('fetch')->willReturn(false);
+
+        $this->pdoMock->expects($this->exactly(9))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock, $usernameMock, $totalScoreMock);
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock, $usernameMock, $totalScoreMock, $geoMock);
 
         $result = $this->reportService->processVisit(1, 'GD001-AAAA', 40.0, -75.0, true);
 
