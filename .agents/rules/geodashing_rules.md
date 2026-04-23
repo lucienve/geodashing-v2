@@ -18,10 +18,12 @@ Ensure all code and syntax is explicitly compatible with the following versions:
 
 ## 3. Backend Directives: Python Architecture
 - **Database Rules:** Connect using `mysql-connector-python`. **Do not use an ORM**. You must use strictly parameterized queries / prepared statements for all database interactions. String interpolation or concatenation for SQL queries is strictly forbidden to prevent SQL injections.
+- **Testing & Linting Commands:** Run `pytest backend/` for testing and `pylint backend/` for linting.
 
 ## 4. Backend Directives: PHP
 - **Documentation:** Utilize clear PHPDoc-style block comments (`/** ... */`) for functions, classes, and properties.
-- **Testing:** Employ `PHPUnit` for all backend unit testing. **You MUST put PHP test files strictly within the `backend/tests/` directory**, and mirror the logical file structure of the classes they test. Do NOT create a `tests/` directory at the project root.
+- **Testing:** Employ `PHPUnit` for all backend unit testing. **You MUST put PHP test files strictly within the `backend/tests/` directory**, and mirror the logical file structure of the classes they test. Do NOT create a `tests/` directory at the project root. Run tests via `composer run test`.
+- **Linting:** Run `composer run lint` to invoke `phpcs` against modified PHP files, and `composer run lint:fix` to auto-format.
 - **Dependencies:** Use 'composer' for installing dependences.  Make sure to separate development and production requirements.
 - **Database Rules:** Connect using the native MySQL driver (e.g. PDO). **Do not use an ORM**. You must use prepared statements for all database interactions. Raw string interpolation for SQL queries is strictly forbidden.
 
@@ -35,3 +37,7 @@ Ensure all code and syntax is explicitly compatible with the following versions:
 ## 6. E2E Testing Synchronization
 - **Schema & Test Data Parity:** Whenever you modify `schema.sql`, you must systematically evaluate the constraints of the new schema elements against the E2E test database structure. You MUST update `e2e/setup-test-db.sh` to ensure any mock data seeded for Playwright respects the newly defined columns, foreign keys, or logic requirements without diverging.
 - **Test execution limits:** Explicitly avoid running `reporter='html'` such that it opens up a web browser visually natively. The CI configuration or `playwright.config.js` should explicitly possess `reporter: [['html', { open: 'never' }]]` manually.
+
+## 7. Environments (Local vs. Production)
+- **Local Environment:** This is the local workspace where you are running commands, testing, formatting, and verifying code. This environment leverages mocked data (like GCS fakes) and safe database seeds (`setup-test-db.sh`) configured strictly for local development and testing.
+- **Production Environment:** The live server is isolated and unreachable by you. You must act as if you are preparing code for this external server. Database schema changes or direct data modifications on production are strictly prohibited; you must explicitly provide raw SQL scripts and clear instructions for the human operator to manually execute any schema updates.
