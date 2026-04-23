@@ -49,18 +49,19 @@ class GeoContextService
     {
         $region = $this->getProvinceAndCountry($lat, $lon);
         $cityContext = '';
-        
+
         $nearestCity = $this->getLargestNearbyCity($lat, $lon);
-        
+
         if ($nearestCity) {
             $bearingStr = $this->calculateBearing((float)$nearestCity['lat'], (float)$nearestCity['lon'], $lat, $lon);
             $distanceMiles = (int) round($nearestCity['distance_meters'] * 0.000621371);
-            
-            $cityContext = sprintf(", and is %d miles %s of %s, %s, %s", 
-                $distanceMiles, 
-                strtolower($bearingStr), 
-                $nearestCity['name'], 
-                $nearestCity['admin_name'], 
+
+            $cityContext = sprintf(
+                ", and is %d miles %s of %s, %s, %s",
+                $distanceMiles,
+                strtolower($bearingStr),
+                $nearestCity['name'],
+                $nearestCity['admin_name'],
                 $nearestCity['country_name']
             );
         }
@@ -88,7 +89,7 @@ class GeoContextService
         }
 
         $url = sprintf("https://maps.googleapis.com/maps/api/geocode/json?latlng=%f,%f&key=%s", $lat, $lon, urlencode($this->apiKey));
-        
+
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -137,7 +138,7 @@ class GeoContextService
     {
         // 100 miles = ~160934 meters
         $radiusMeters = $radiusMiles * 1609.344;
-        
+
         // Note: In MySQL 8 with SRID 4326, ST_X is Latitude, ST_Y is Longitude
         $sql = "
             SELECT 
@@ -202,10 +203,10 @@ class GeoContextService
         }
 
         $directions = [
-            "North", "Northeast", "East", "Southeast", 
+            "North", "Northeast", "East", "Southeast",
             "South", "Southwest", "West", "Northwest", "North"
         ];
-        
+
         $index = (int) round($brng / 45);
         return $directions[$index];
     }

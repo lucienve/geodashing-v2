@@ -3,7 +3,7 @@
 /**
  * Sitemap Service
  *
- * Generates dynamic XML sitemaps exposing explicitly logged Dashpoints 
+ * Generates dynamic XML sitemaps exposing explicitly logged Dashpoints
  * to Search Engine bots using the SEO-friendly Query Parameter fallback schema.
  */
 
@@ -28,7 +28,7 @@ class SitemapService
     /**
      * Generates a fully formatted XML Sitemap string.
      * Includes static core pages and dynamic Dashpoint pages that have been logged.
-     * 
+     *
      * @return string Raw XML Sitemap
      */
     public function generateSitemapXml(): string
@@ -62,7 +62,7 @@ class SitemapService
     {
         // Core roots
         $this->addUrl($xml, $this->baseUrl . "/", 'daily', '1.0');
-        
+
         // Deep link equivalents for indexing the SPA states if Googlebot follows them
         // Note: To Googlebot these are query params, but we route them via hash natively.
         // We only explicitly output the query param fallback links to guarantee indexing.
@@ -93,7 +93,7 @@ class SitemapService
             ORDER BY d.id DESC
         ");
         $stmt->execute();
-        
+
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 }

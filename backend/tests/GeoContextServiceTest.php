@@ -19,7 +19,7 @@ class GeoContextServiceTest extends TestCase
     protected function setUp(): void
     {
         $pdoMock = $this->createMock(PDO::class);
-        
+
         // We use a partial mock to bypass the actual HTTP/CURL calls and DB spatial queries
         // so we can test the string formatting and bearing math in isolation.
         $this->service = $this->getMockBuilder(GeoContextService::class)
@@ -117,20 +117,20 @@ class GeoContextServiceTest extends TestCase
     {
         $pdoMock = $this->createMock(PDO::class);
         $service = new GeoContextService($pdoMock, 'fake_api_key');
-        
+
         $reflection = new \ReflectionClass($service);
         $method = $reflection->getMethod('calculateBearing');
         $method->setAccessible(true);
 
         // From Null Island (0,0) to North (1,0)
         $this->assertEquals("North", $method->invoke($service, 0, 0, 1, 0));
-        
+
         // From Null Island (0,0) to South (-1,0)
         $this->assertEquals("South", $method->invoke($service, 0, 0, -1, 0));
-        
+
         // From Null Island (0,0) to East (0,1)
         $this->assertEquals("East", $method->invoke($service, 0, 0, 0, 1));
-        
+
         // From Null Island (0,0) to West (0,-1)
         $this->assertEquals("West", $method->invoke($service, 0, 0, 0, -1));
 

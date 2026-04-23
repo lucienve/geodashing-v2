@@ -87,7 +87,7 @@ trait MailerTrait
         $message .= "<p><strong>User:</strong> <a href='" . htmlspecialchars($profileUrl, ENT_QUOTES, 'UTF-8') . "'>" . htmlspecialchars($username) . "</a></p>";
         $dashpointUrl = "https://www.geodashing.org/?dashpoint=" . urlencode($dashpointId);
         $message .= "<p><strong>Dashpoint:</strong> <a href='" . htmlspecialchars($dashpointUrl, ENT_QUOTES, 'UTF-8') . "'>" . htmlspecialchars($dashpointId) . "</a></p>";
-        
+
         if (!empty($geoContext)) {
             $message .= "<p><strong>Location:</strong> " . htmlspecialchars($geoContext, ENT_QUOTES, 'UTF-8') . "</p>";
         }

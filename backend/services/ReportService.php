@@ -153,7 +153,7 @@ class ReportService
         $configPath = __DIR__ . '/../config.ini';
         $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
         $apiKey = $config['GOOGLE_MAPS_API_KEY'] ?? '';
-        
+
         $geoContextService = new GeoContextService($this->db, $apiKey);
         $geoContext = $geoContextService->getDashpointContext($dpLat, $dpLon, $dashpointId);
 
@@ -169,7 +169,4 @@ class ReportService
             "points" => $scoreAwarded
         ];
     }
-
-
-
 }

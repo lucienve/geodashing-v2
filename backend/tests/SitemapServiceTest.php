@@ -62,13 +62,13 @@ class SitemapServiceTest extends TestCase
         // Validate raw structure
         $this->assertStringContainsString('<?xml version="1.0" encoding="UTF-8"?>', $xml);
         $this->assertStringContainsString('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">', $xml);
-        
+
         // Validate core root
         $this->assertStringContainsString('<loc>http://test.local/</loc>', $xml);
-        
+
         // Validate dynamic injection
         $this->assertStringContainsString('<loc>http://test.local/?dashpoint=GD001-AAAA</loc>', $xml);
-        
+
         // Ensure valid XML parse
         $dom = new \DOMDocument();
         $this->assertTrue($dom->loadXML($xml));
