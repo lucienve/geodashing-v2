@@ -64,7 +64,7 @@ def load_country_info(filepath: str) -> dict:
 
 def seed_database():
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    data_dir = os.path.join(current_dir, '../data')
+    data_dir = os.path.join(current_dir, '../../data')
     config_path = os.path.join(current_dir, '../config.ini')
     
     cities_file = os.path.join(data_dir, 'cities15000.txt')
