@@ -91,3 +91,16 @@ CREATE INDEX idx_visits_dashpoint ON visits (dashpoint_id);
 -- Lookups by user/team frequently used for Scoreboards
 CREATE INDEX idx_visits_user ON visits (user_id);
 CREATE INDEX idx_visits_team ON visits (team_id);
+
+-- 7. Major Cities (For Geographic Contextualization)
+CREATE TABLE major_cities (
+    id INT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    admin_name VARCHAR(255),
+    country_name VARCHAR(255),
+    location POINT SRID 4326 NOT NULL,
+    population INT NOT NULL
+);
+
+-- Spatial index to quickly find cities near dashpoints
+CREATE SPATIAL INDEX idx_major_cities_location ON major_cities (location);

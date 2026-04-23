@@ -60,6 +60,11 @@ The application allows users to participate in global geographic games where the
 - Implemented secure environment interception within `backend/Database.php` routing securely to test credentials dynamically via `APP_ENV=testing` without altering any configuration states. 
 - Integrated `fsouza/fake-gcs-server` functionally bypassing all real-world Google Cloud Storage APIs ensuring hermetic E2E tests for photo uploads.
 
+### 8. Geographical Contextualization
+- Implemented `GeoContextService.php` to dynamically calculate and append geographic context to Dashpoint report emails (e.g., "50 miles northwest of Portland, Maine, United States").
+- Integrated the Google Maps Reverse Geocoding API to resolve the immediate State/Province and Country of Dashpoints.
+- Created `seed_major_cities.py` to ingest the GeoNames `cities15000.txt` dataset into a new local `major_cities` spatial table, facilitating highly efficient `ST_Distance_Sphere` lookups for the nearest major population centers.
+
 ## Current Plan / Roadmap (Aggregated)
 1. **User Profiles**: Build a 'Trophy Cabinet' for milestones.
 2. **Team Play Ecosystem**: 

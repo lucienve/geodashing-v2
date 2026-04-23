@@ -61,7 +61,11 @@ class ReportService
         $wkt = "POINT($lat $lon)";
 
         $distStmt = $this->db->prepare("
-            SELECT ST_Distance_Sphere(d.location, ST_GeomFromText(:wkt, 4326)) AS distance_meters, g.is_active
+            SELECT 
+                ST_Distance_Sphere(d.location, ST_GeomFromText(:wkt, 4326)) AS distance_meters, 
+                g.is_active,
+                ST_X(d.location) as dp_lat,
+                ST_Y(d.location) as dp_lon
             FROM dashpoints d
             JOIN games g ON d.game_id = g.id
             WHERE d.id = :id 
@@ -79,6 +83,8 @@ class ReportService
         }
 
         $distance = (int) round($result['distance_meters']);
+        $dpLat = (float) $result['dp_lat'];
+        $dpLon = (float) $result['dp_lon'];
 
         // 4. Enforce the classic 100-meter proximity rule (bypass if it's an attempt)
         if (!$isAttempt && $distance > 100) {
@@ -144,7 +150,14 @@ class ReportService
         $totalScoreRow = $totalScoreStmt->fetch(PDO::FETCH_ASSOC);
         $totalPoints = $totalScoreRow ? (int) $totalScoreRow['total'] : $scoreAwarded;
 
-        $this->sendVisitReportEmail($username, $dashpointId, $distance, $scoreAwarded, $totalPoints, $isAttempt, $notes, $photosJson);
+        $configPath = __DIR__ . '/../config.ini';
+        $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
+        $apiKey = $config['GOOGLE_MAPS_API_KEY'] ?? '';
+        
+        $geoContextService = new GeoContextService($this->db, $apiKey);
+        $geoContext = $geoContextService->getDashpointContext($dpLat, $dpLon, $dashpointId);
+
+        $this->sendVisitReportEmail($username, $dashpointId, $distance, $scoreAwarded, $totalPoints, $isAttempt, $notes, $photosJson, $geoContext);
 
         $action = $isAttempt ? "Attempt logged" : "Dashpoint successfully claimed";
         $pointsMessage = $isAttempt ? "This attempt earned 0 points." : "You earned {$scoreAwarded} points.";
@@ -160,7 +173,7 @@ class ReportService
     /**
      * Constructs and dispatches an HTML email to the mailing list detailing the new Dashpoint visit.
      */
-    private function sendVisitReportEmail(string $username, string $dashpointId, int $distance, int $points, int $totalPoints, bool $isAttempt, ?string $notes, ?string $photosJson): void
+    private function sendVisitReportEmail(string $username, string $dashpointId, int $distance, int $points, int $totalPoints, bool $isAttempt, ?string $notes, ?string $photosJson, ?string $geoContext = null): void
     {
         $configPath = __DIR__ . '/../config.ini';
         $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
@@ -183,6 +196,11 @@ class ReportService
         $message .= "<p><strong>User:</strong> <a href='" . htmlspecialchars($profileUrl, ENT_QUOTES, 'UTF-8') . "'>" . htmlspecialchars($username) . "</a></p>";
         $dashpointUrl = "https://www.geodashing.org/?dashpoint=" . urlencode($dashpointId);
         $message .= "<p><strong>Dashpoint:</strong> <a href='" . htmlspecialchars($dashpointUrl, ENT_QUOTES, 'UTF-8') . "'>" . htmlspecialchars($dashpointId) . "</a></p>";
+        
+        if (!empty($geoContext)) {
+            $message .= "<p><strong>Location:</strong> " . htmlspecialchars($geoContext, ENT_QUOTES, 'UTF-8') . "</p>";
+        }
+
         $message .= "<p><strong>Distance:</strong> {$distance} meters</p>";
         $message .= "<p><strong>Points Gained:</strong> {$points}</p>";
         $message .= "<p><strong>New Total Points:</strong> {$totalPoints}</p>";
