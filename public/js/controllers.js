@@ -130,36 +130,37 @@ document.addEventListener('routeLoaded', (e) => {
                                 html += `<div style="color:var(--accent-amber); font-size:0.75rem; margin-bottom:1rem;">> EDITED_AT: ${edStr}</div>`;
                             }
 
-                            // If they provided notes or uploaded physical Photos to GCP, expose the [ VIEW DETAILS ] toggler natively
-                            if ((visit.notes && visit.notes.trim() !== '') || (visit.photos && visit.photos.length > 0)) {
-                                html += `<button type="button" class="btn btn-secondary" style="width:100%; font-size:0.7rem;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none';">VIEW DETAILS</button>`;
-                                html += `<div style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px dashed #444;">`;
+                            // We always show the VIEW DETAILS toggler to display the reported coordinates and distance
+                            html += `<button type="button" class="btn btn-secondary" style="width:100%; font-size:0.7rem;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none';">VIEW DETAILS</button>`;
+                            html += `<div style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px dashed #444;">`;
 
-                                if (visit.notes) {
-                                    html += `<p style="color:#ddd; margin-bottom:1rem; font-style:italic;">"${window.escapeHTML(visit.notes)}"</p>`;
-                                }
-
-                                if (visit.photos && visit.photos.length > 0) {
-                                    html += `<div style="display:grid; grid-template-columns: 1fr; gap:1rem;">`;
-                                    visit.photos.forEach(photo => {
-                                        let encodedUrl = encodeURI(photo.url);
-                                        let imgHtml = `<img src="${encodedUrl}" class="log-photo" data-dpid="${window.escapeHTML(dp.id)}" data-url="${encodedUrl}" style="width:100%; height:auto; border:1px solid var(--accent-amber); cursor:pointer;" loading="lazy">`;
-
-                                        if (photo.lat !== null && photo.lon !== null && dp.lat !== undefined) {
-                                            // Native JS Haversine Distance Mapper cleanly invoking the global SPA utility
-                                            const distance = window.calculateDistance(photo.lat, photo.lon, dp.lat, dp.lon);
-
-                                            imgHtml += `<div style="text-align:center; font-size:0.75rem; color:var(--accent-green); margin-top:0.3rem;">[ EXIF GPS: ${photo.lat.toFixed(5)}, ${photo.lon.toFixed(5)} | DISTANCE FROM DASHPOINT: ${distance.toFixed(1)}m ]</div>`;
-                                        }
-
-                                        html += `<div>${imgHtml}</div>`;
-                                    });
-                                    html += `</div>`;
-                                }
-                                html += `</div>`;
-                            } else {
-                                html += `<p style="color:#555; font-style:italic;">No details provided.</p>`;
+                            if (visit.reported_lat !== undefined && visit.reported_lon !== undefined && visit.distance_meters !== undefined) {
+                                html += `<div style="color:var(--text-main); font-size:0.8rem; margin-bottom:1rem;">> REPORTED LOCATION: ${parseFloat(visit.reported_lat).toFixed(5)}, ${parseFloat(visit.reported_lon).toFixed(5)}</div>`;
+                                html += `<div style="color:var(--text-main); font-size:0.8rem; margin-bottom:1rem;">> DISTANCE FROM DASHPOINT: ${visit.distance_meters}m</div>`;
                             }
+
+                            if (visit.notes && visit.notes.trim() !== '') {
+                                html += `<p style="color:#ddd; margin-bottom:1rem; font-style:italic;">"${window.escapeHTML(visit.notes)}"</p>`;
+                            }
+
+                            if (visit.photos && visit.photos.length > 0) {
+                                html += `<div style="display:grid; grid-template-columns: 1fr; gap:1rem;">`;
+                                visit.photos.forEach(photo => {
+                                    let encodedUrl = encodeURI(photo.url);
+                                    let imgHtml = `<img src="${encodedUrl}" class="log-photo" data-dpid="${window.escapeHTML(dp.id)}" data-url="${encodedUrl}" style="width:100%; height:auto; border:1px solid var(--accent-amber); cursor:pointer;" loading="lazy">`;
+
+                                    if (photo.lat !== null && photo.lon !== null && dp.lat !== undefined) {
+                                        // Native JS Haversine Distance Mapper cleanly invoking the global SPA utility
+                                        const distance = window.calculateDistance(photo.lat, photo.lon, dp.lat, dp.lon);
+
+                                        imgHtml += `<div style="text-align:center; font-size:0.75rem; color:var(--accent-green); margin-top:0.3rem;">[ EXIF GPS: ${photo.lat.toFixed(5)}, ${photo.lon.toFixed(5)} | DISTANCE FROM DASHPOINT: ${distance.toFixed(1)}m ]</div>`;
+                                    }
+
+                                    html += `<div>${imgHtml}</div>`;
+                                });
+                                html += `</div>`;
+                            }
+                            html += `</div>`;
 
                             visitDiv.innerHTML = html;
 
