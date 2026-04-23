@@ -89,7 +89,7 @@ class EditServiceTest extends TestCase
              ->method('deletePhotos')
              ->with(['https://storage.googleapis.com/b/historic_1.jpg']);
 
-        $result = $this->editService->processEdit(1, 'GD001-AAAB', 'Changed notes.', $keptRaw, null);
+        $result = $this->editService->processEdit(1, 'GD001-AAAB', 'Changed notes.', $keptRaw, null, false);
 
         $this->assertEquals("success", $result['status']);
         // Assert the returned array only has `historic_2`.
@@ -138,7 +138,7 @@ class EditServiceTest extends TestCase
              ]);
 
         // Submit the mutation.
-        $result = $this->editService->processEdit(1, 'GD001-AAAB', 'Updating photos.', json_encode($keptStrings), $newFilesMock);
+        $result = $this->editService->processEdit(1, 'GD001-AAAB', 'Updating photos.', json_encode($keptStrings), $newFilesMock, false);
 
         // It should abort, returning a 400.
         $this->assertEquals("error", $result['status']);
@@ -164,7 +164,7 @@ class EditServiceTest extends TestCase
         ]);
         $this->pdoMock->method('prepare')->willReturn($stmtMock);
 
-        $result = $this->editService->processEdit($userId, $dashpointId, $notes, $keptPhotosRaw);
+        $result = $this->editService->processEdit($userId, $dashpointId, $notes, $keptPhotosRaw, null, false);
 
         $this->assertEquals("error", $result['status']);
         $this->assertEquals(403, $result['code']);

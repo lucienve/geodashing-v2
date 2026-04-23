@@ -15,6 +15,8 @@ use Exception;
  */
 class EditService
 {
+    use MailerTrait;
+
     private PDO $db;
     private ?MediaService $mediaService;
 
@@ -40,7 +42,7 @@ class EditService
      * @param array|null $newFiles The new `$_FILES` structurally mapped image uploads.
      * @return array Status array ready for JSON response encoding.
      */
-    public function processEdit(int $userId, string $dashpointId, string $notes, string $keptPhotosRaw, ?array $newFiles = null): array
+    public function processEdit(int $userId, string $dashpointId, string $notes, string $keptPhotosRaw, ?array $newFiles = null, bool $sendEmail = true): array
     {
         $keptPhotos = json_decode($keptPhotosRaw, true);
         if (!is_array($keptPhotos)) {
@@ -49,10 +51,11 @@ class EditService
 
         // 1. Security Check: Verify visit existence and edit permissions
         $stmt = $this->db->prepare("
-            SELECT v.id, v.photos, g.is_active 
+            SELECT v.id, v.photos, v.is_attempt, v.score_awarded, v.distance_meters, ST_X(v.reported_location) as dp_lat, ST_Y(v.reported_location) as dp_lon, g.is_active, u.username
             FROM visits v
             JOIN dashpoints d ON v.dashpoint_id = d.id
             JOIN games g ON d.game_id = g.id
+            JOIN users u ON v.user_id = u.id
             WHERE v.user_id = :uid AND v.dashpoint_id = :dpid 
             LIMIT 1
         ");
@@ -134,6 +137,22 @@ class EditService
             ':photos' => $finalPhotosJson,
             ':id' => $visitId
         ]);
+
+        if ($sendEmail) {
+            $totalScoreStmt = $this->db->prepare("SELECT SUM(score_awarded) AS total FROM visits WHERE user_id = :uid");
+            $totalScoreStmt->execute([':uid' => $userId]);
+            $totalScoreRow = $totalScoreStmt->fetch(PDO::FETCH_ASSOC);
+            $totalPoints = $totalScoreRow ? (int) $totalScoreRow['total'] : (int) $visit['score_awarded'];
+
+            $configPath = __DIR__ . '/../config.ini';
+            $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
+            $apiKey = $config['GOOGLE_MAPS_API_KEY'] ?? '';
+            
+            $geoContextService = new GeoContextService($this->db, $apiKey);
+            $geoContext = $geoContextService->getDashpointContext((float)$visit['dp_lat'], (float)$visit['dp_lon'], $dashpointId);
+
+            $this->sendVisitReportEmail($visit['username'], $dashpointId, (int)$visit['distance_meters'], (int)$visit['score_awarded'], $totalPoints, (bool)$visit['is_attempt'], $notes, $finalPhotosJson, $geoContext, true);
+        }
 
         return [
             "status" => "success",

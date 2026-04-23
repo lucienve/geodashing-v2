@@ -46,6 +46,8 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         $keptPhotos = [];
     }
 
+    $sendEmail = isset($_POST['send_email']) && $_POST['send_email'] === '1';
+
     // Validate Log Narrative Boundaries
     if (empty($notes) || strlen($notes) > 10000) {
         http_response_code(400);
@@ -69,7 +71,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         }
 
         $editService = new EditService($db, $mediaService);
-        $result = $editService->processEdit($_SESSION['user_id'], $dashpoint_id, $notes, $keptPhotosRaw, $_FILES['photos'] ?? null);
+        $result = $editService->processEdit($_SESSION['user_id'], $dashpoint_id, $notes, $keptPhotosRaw, $_FILES['photos'] ?? null, $sendEmail);
 
         if ($result['status'] === 'success') {
             echo json_encode($result);
