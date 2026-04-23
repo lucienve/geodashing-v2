@@ -8,7 +8,8 @@
         <div class="form-group dashpoint-header">
             <label class="dashpoint-label">DASHPOINT</label>
             <!-- Hidden input for the POST request, displayed as a header -->
-            <input type="text" id="dashpoint_id" name="dashpoint_id" placeholder="GD001-XXXX" class="dashpoint-id-badge" readonly>
+            <input type="text" id="dashpoint_id" name="dashpoint_id" placeholder="GD001-XXXX" class="dashpoint-id-badge"
+                readonly>
         </div>
 
         <div class="form-group-flex">
@@ -17,23 +18,25 @@
                 SYNC LIVE GPS
             </button>
         </div>
-        
+
         <div class="form-group" style="margin-bottom: 1rem;">
             <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; font-size: 0.9rem;">
                 <input type="checkbox" id="input-is-attempt" name="is_attempt" value="true">
-                I did not reach the dashpoint (Log as Attempt for 0 pts)
+                Log as attempt only (for 0 pts)
             </label>
         </div>
 
         <div class="grid-2-col">
             <div class="form-group mb-0">
                 <!-- Latitude input -->
-                <input type="text" inputmode="decimal" id="input-lat" name="lat" class="data-input" placeholder="Lat: 42.1234" required>
+                <input type="text" inputmode="decimal" id="input-lat" name="lat" class="data-input"
+                    placeholder="Lat: 42.1234" required>
             </div>
 
             <div class="form-group mb-0">
                 <!-- Longitude input -->
-                <input type="text" inputmode="decimal" id="input-lon" name="lon" class="data-input" placeholder="Lon: -71.1234" required>
+                <input type="text" inputmode="decimal" id="input-lon" name="lon" class="data-input"
+                    placeholder="Lon: -71.1234" required>
             </div>
         </div>
 
@@ -52,7 +55,8 @@
 
         <div class="form-group">
             <label class="log-label">Log [REQUIRED]</label>
-            <textarea id="log-textarea" name="notes" class="data-input log-textarea" rows="8" maxlength="10000" placeholder="Tell us about your visit! What did you see?" required></textarea>
+            <textarea id="log-textarea" name="notes" class="data-input log-textarea" rows="8" maxlength="10000"
+                placeholder="Tell us about your visit! What did you see?" required></textarea>
             <div id="char-counter" class="char-counter">10,000 chars remaining</div>
         </div>
 
