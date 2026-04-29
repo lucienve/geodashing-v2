@@ -59,8 +59,9 @@ try {
             (int)$visit['distance_meters'],
             (int)$visit['score_awarded'],
             $totalPoints,
-            $visit['notes'],
-            $visit['photos']
+            (bool)$visit['is_attempt'], // 6th param: isAttempt
+            $visit['notes'],            // 7th param: notes
+            $visit['photos']            // 8th param: photosJson
         );
     }
 
