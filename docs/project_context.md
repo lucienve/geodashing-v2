@@ -64,3 +64,8 @@ The application allows users to participate in global geographic games where the
 - Implemented `GeoContextService.php` to dynamically calculate and append geographic context to Dashpoint report emails (e.g., "50 miles northwest of Portland, Maine, United States").
 - Integrated the Google Maps Reverse Geocoding API to resolve the immediate State/Province and Country of Dashpoints.
 - Created `seed_major_cities.py` to ingest the GeoNames `cities15000.txt` dataset into a new local `major_cities` spatial table, facilitating highly efficient `ST_Distance_Sphere` lookups for the nearest major population centers.
+
+### 9. Gmail API Migration
+- Replaced the native PHP `mail()` engine with the official Gmail REST API (`google/apiclient`) to guarantee high deliverability, particularly to Gmail users, bypassing spam filters.
+- Implemented `symfony/mime` for structured compilation of complex multipart email payloads, strictly enforcing automatic plain-text fallbacks alongside HTML payloads.
+- Migrated all outbound system emails (Verifications, Password Resets, Dashpoint Reports) to originate uniformly from `tracker@geodashing.org` via Google Workspace Domain-Wide Delegation.

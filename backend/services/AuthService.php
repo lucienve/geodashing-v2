@@ -168,12 +168,10 @@ class AuthService
     {
         $verifyLink = "https://geodashing.org/api/verify.php?token=" . $token;
         $subject = "Verify your account on Geodashing V2";
-        $message = "Welcome to Geodashing V2!\n\nPlease finalize your account registration by clicking the link below:\n\n" . $verifyLink . "\n\nWelcome to the game!";
+        $textMessage = "Welcome to Geodashing V2!\n\nPlease finalize your account registration by clicking the link below:\n\n" . $verifyLink . "\n\nWelcome to the game!";
+        $htmlMessage = nl2br(htmlspecialchars($textMessage));
 
-        $headers = $this->buildMailHeaders("no-reply@geodashing.org");
-
-        // The 5th parameter overrides the 'MAIL FROM' envelope sender, bypassing Postfix defaults.
-        $this->executeMail($email, $subject, $message, $headers, "-fno-reply@geodashing.org");
+        $this->executeMail($email, $subject, $htmlMessage, $textMessage);
     }
 
     /**
@@ -223,15 +221,15 @@ class AuthService
         $resetLink = "https://geodashing.org/#login?reset_token=" . $token;
 
         $subject = "Password Reset Request for Geodashing V2";
-        $message = "Hello " . $username . ",\n\nWe received a request to reset your password on Geodashing V2.\n\n";
-        $message .= "If you did not make this request, please safely ignore this email.\n\n";
-        $message .= "Otherwise, please click the link below to establish a new password:\n\n";
-        $message .= $resetLink . "\n\n";
-        $message .= "This link expires in exactly 1 hour for your protection.";
+        $textMessage = "Hello " . $username . ",\n\nWe received a request to reset your password on Geodashing V2.\n\n";
+        $textMessage .= "If you did not make this request, please safely ignore this email.\n\n";
+        $textMessage .= "Otherwise, please click the link below to establish a new password:\n\n";
+        $textMessage .= $resetLink . "\n\n";
+        $textMessage .= "This link expires in exactly 1 hour for your protection.";
 
-        $headers = $this->buildMailHeaders("no-reply@geodashing.org");
+        $htmlMessage = nl2br(htmlspecialchars($textMessage));
 
-        $this->executeMail($email, $subject, $message, $headers, "-fno-reply@geodashing.org");
+        $this->executeMail($email, $subject, $htmlMessage, $textMessage);
     }
 
 

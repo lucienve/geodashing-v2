@@ -4,57 +4,84 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use Google_Client;
+use Google_Service_Gmail;
+use Google_Service_Gmail_Message;
+use Symfony\Component\Mime\Email;
+use Exception;
+
 /**
  * Trait MailerTrait
  *
- * Provides a unified mail header generation and safe execution wrapper
- * for classes needing to dispatch emails.
+ * Provides a unified mail execution wrapper using the official Gmail REST API.
  */
 trait MailerTrait
 {
     /**
-     * Builds standardized mail headers.
-     *
-     * @param string $fromEmail The email address representing the sender.
-     * @param string $fromName  Optional name for the sender.
-     * @param bool   $isHtml    If true, injects MIME headers for HTML email rendering.
-     * @return string Complete headers string separated by \r\n
-     */
-    protected function buildMailHeaders(string $fromEmail, string $fromName = '', bool $isHtml = false): string
-    {
-        $fromStr = $fromName ? "{$fromName} <{$fromEmail}>" : $fromEmail;
-        $headers = "From: {$fromStr}\r\n";
-        $headers .= "Reply-To: {$fromStr}\r\n";
-
-        if ($isHtml) {
-            $headers .= "MIME-Version: 1.0\r\n";
-            $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-        }
-
-        $headers .= "X-Mailer: PHP/" . phpversion();
-
-        return $headers;
-    }
-
-    /**
-     * Executes email delivery. Protected specifically to allow PHPUnit mocking.
+     * Executes email delivery via the Gmail API. Protected specifically to allow PHPUnit mocking.
      *
      * @param string $to
      * @param string $subject
-     * @param string $message
-     * @param string $headers
-     * @param string $additional_params
+     * @param string $htmlMessage
+     * @param string|null $textMessage
      * @return bool
      */
-    protected function executeMail(string $to, string $subject, string $message, string $headers, string $additional_params): bool
+    protected function executeMail(string $to, string $subject, string $htmlMessage, ?string $textMessage = null): bool
     {
-        // Bypass physical SMTP interaction during E2E testing
+        // Bypass physical API interaction during E2E testing
         if ((getenv('APP_ENV') ?: ($_ENV['APP_ENV'] ?? '')) === 'testing') {
             error_log("APP_ENV=testing: Suppressed physical email transmission to $to");
             return true;
         }
 
-        return @mail($to, $subject, $message, $headers, $additional_params);
+        try {
+            $configPath = __DIR__ . '/../config.ini';
+            $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
+            $credentialsPath = $config['GOOGLE_APPLICATION_CREDENTIALS'] ?? getenv('GOOGLE_APPLICATION_CREDENTIALS');
+
+            if (!$credentialsPath || !file_exists($credentialsPath)) {
+                error_log("Mailer Error: GOOGLE_APPLICATION_CREDENTIALS not configured or file missing.");
+                return false;
+            }
+
+            $sender = 'tracker@geodashing.org';
+
+            $client = new Google_Client();
+            $client->setAuthConfig($credentialsPath);
+            $client->addScope(Google_Service_Gmail::GMAIL_SEND);
+            $client->setSubject($sender); // Domain-wide delegation impersonation
+
+            $service = new Google_Service_Gmail($client);
+
+            $email = (new Email())
+                ->from($sender)
+                ->to($to)
+                ->subject($subject)
+                ->html($htmlMessage);
+
+            if ($textMessage) {
+                $email->text($textMessage);
+            } else {
+                // Generate a simple plain-text fallback by stripping tags
+                $email->text(strip_tags(str_replace(['<br>', '<br/>', '<br />', '</p>'], "\n", $htmlMessage)));
+            }
+
+            // Build the raw MIME message string
+            $rawMessageString = $email->toString();
+
+            // Base64url encode the raw message
+            $rawMessage = rtrim(strtr(base64_encode($rawMessageString), '+/', '-_'), '=');
+
+            $msg = new Google_Service_Gmail_Message();
+            $msg->setRaw($rawMessage);
+
+            $service->users_messages->send('me', $msg);
+
+            return true;
+        } catch (Exception $e) {
+            error_log("Gmail API Error: " . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -117,8 +144,6 @@ trait MailerTrait
 
         $message .= "</body></html>";
 
-        $headers = $this->buildMailHeaders("tracker@geodashing.org", "Geodashing Emails", true);
-
-        $this->executeMail($toList, $subject, $message, $headers, "-ftracker@geodashing.org");
+        $this->executeMail($toList, $subject, $message);
     }
 }

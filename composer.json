@@ -5,7 +5,9 @@
     },
     "require": {
         "google/cloud-storage": "^1.50",
-        "ext-gd": "*"
+        "ext-gd": "*",
+        "google/apiclient": "^2.15",
+        "symfony/mime": "^7.0"
     },
     "autoload": {
         "psr-4": {
