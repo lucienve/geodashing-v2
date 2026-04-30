@@ -51,10 +51,12 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
 
     // 2.5 Optional Media Processing Pipeline
     if (!empty($_FILES['photos']) && (is_array($_FILES['photos']['error']) ? $_FILES['photos']['error'][0] : $_FILES['photos']['error']) !== UPLOAD_ERR_NO_FILE) {
-        $keyPath = __DIR__ . '/../../backend/gcp-credentials.json';
+        $configPath = __DIR__ . '/../../backend/config.ini';
+        $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
+        $keyPath = $config['GOOGLE_APPLICATION_CREDENTIALS'] ?? getenv('GOOGLE_APPLICATION_CREDENTIALS');
         $isTesting = getenv('APP_ENV') === 'testing';
 
-        if (!$isTesting && !file_exists($keyPath)) {
+        if (!$isTesting && (!$keyPath || !file_exists($keyPath))) {
             http_response_code(500);
             echo json_encode(["status" => "error", "message" => "Server configuration error blocking media uploads."]);
             exit;

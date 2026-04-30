@@ -63,10 +63,12 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
 
     try {
         $db = \App\Database::getConnection();
-        $keyPath = __DIR__ . '/../../backend/gcp-credentials.json';
+        $configPath = __DIR__ . '/../../backend/config.ini';
+        $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
+        $keyPath = $config['GOOGLE_APPLICATION_CREDENTIALS'] ?? getenv('GOOGLE_APPLICATION_CREDENTIALS');
 
         $mediaService = null;
-        if (file_exists($keyPath)) {
+        if ($keyPath && file_exists($keyPath)) {
             $mediaService = new MediaService('geodashing-v2', 'geodashing-v2-blobs', $keyPath);
         }
 
