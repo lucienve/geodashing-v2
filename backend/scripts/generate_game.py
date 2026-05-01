@@ -78,12 +78,18 @@ def get_db_connection(
         raise RuntimeError(f"Database Connection Error: {e}") from e
 
 
-def _initialize_new_game(cursor, game_title: str) -> int:
+def _initialize_new_game(cursor, game_title: str, year: int = None, month: int = None) -> int:
     """Retires old games and creates a new game record."""
     now = datetime.now()
-    start_time = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    _, last_day = calendar.monthrange(now.year, now.month)
-    end_time = now.replace(day=last_day,
+    if year is None:
+        year = now.year
+    if month is None:
+        month = now.month
+
+    start_time = now.replace(year=year, month=month, day=1,
+                             hour=0, minute=0, second=0, microsecond=0)
+    _, last_day = calendar.monthrange(year, month)
+    end_time = now.replace(year=year, month=month, day=last_day,
                            hour=23,
                            minute=59,
                            second=59,
@@ -127,7 +133,7 @@ def _bulk_insert_dashpoints(cursor, points: List[Point], game_id: int,
 
 
 def seed_database(points: List[Point], config_path: str, game_title: str,
-                  bad_words_path: str) -> None:
+                  bad_words_path: str, year: int = None, month: int = None) -> None:
     """Seeds the newly generated Dashpoints into tracking tables along with a new active Game state.
 
     Args:
@@ -135,6 +141,8 @@ def seed_database(points: List[Point], config_path: str, game_title: str,
         config_path (str): The path to the PHP backend config.ini.
         game_title (str): Brief descriptive title of the game.
         bad_words_path (str): Path to the profanity filter blocklist.
+        year (int): Optional year override.
+        month (int): Optional month override.
         
     Raises:
         Exception: General sql error handling wrapper for safe failure.
@@ -144,7 +152,7 @@ def seed_database(points: List[Point], config_path: str, game_title: str,
         conn = get_db_connection(config_path)
         cursor = conn.cursor()
 
-        game_id = _initialize_new_game(cursor, game_title)
+        game_id = _initialize_new_game(cursor, game_title, year, month)
 
         print(
             f"Bulk inserting {len(points)} Dashpoints for Game ID format GD{game_id:03d}..."
@@ -280,6 +288,16 @@ def main() -> None:
         type=str,
         required=True,
         help="Brief descriptive title of the game (max 40 chars)")
+    parser.add_argument(
+        '-m',
+        '--month',
+        type=int,
+        help="Optional month (1-12) to generate the game for (defaults to current month)")
+    parser.add_argument(
+        '-y',
+        '--year',
+        type=int,
+        help="Optional year to generate the game for (defaults to current year)")
     args = parser.parse_args()
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -297,7 +315,7 @@ def main() -> None:
                                            lakes_zip_path=lakes_zip)
 
         # 2. Upload to MySQL
-        seed_database(points, config_path, args.title, bad_words_path)
+        seed_database(points, config_path, args.title, bad_words_path, args.year, args.month)
 
     except (FileNotFoundError, RuntimeError) as e:
         print(f"\nExecution Error: {e}")
