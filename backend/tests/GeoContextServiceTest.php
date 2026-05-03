@@ -137,4 +137,14 @@ class GeoContextServiceTest extends TestCase
         // From Null Island to NE (1,1)
         $this->assertEquals("Northeast", $method->invoke($service, 0, 0, 1, 1));
     }
+
+    public function testGetTimezoneOffsetEmptyApiKey()
+    {
+        $pdoMock = $this->createMock(PDO::class);
+        $service = new GeoContextService($pdoMock, ''); // Empty API key
+
+        // Should return 0 immediately without making curl requests
+        $offset = $service->getTimezoneOffset(40.0, -70.0);
+        $this->assertEquals(0, $offset);
+    }
 }

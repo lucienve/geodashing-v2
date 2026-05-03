@@ -76,6 +76,56 @@ class GeoContextService
     }
 
     /**
+     * Fetches the total timezone offset in seconds for the given coordinates.
+     * Uses the Google Maps Time Zone API.
+     *
+     * @param float $lat The latitude.
+     * @param float $lon The longitude.
+     * @param int|null $timestamp Optional timestamp for the timezone calculation. Defaults to current time.
+     * @return int The total timezone offset in seconds (rawOffset + dstOffset). Returns 0 on failure.
+     */
+    public function getTimezoneOffset(float $lat, float $lon, ?int $timestamp = null): int
+    {
+        if (empty($this->apiKey)) {
+            return 0;
+        }
+
+        $timestamp = $timestamp ?? time();
+        $url = sprintf(
+            "https://maps.googleapis.com/maps/api/timezone/json?location=%f,%f&timestamp=%d&key=%s",
+            $lat,
+            $lon,
+            $timestamp,
+            urlencode($this->apiKey)
+        );
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || !$response) {
+            error_log("GeoContextService getTimezoneOffset failed with HTTP {$httpCode}");
+            return 0;
+        }
+
+        $data = json_decode($response, true);
+        if (!isset($data['status']) || $data['status'] !== 'OK') {
+            $errorMessage = $data['errorMessage'] ?? 'Unknown Error';
+            error_log("GeoContextService getTimezoneOffset API Error: {$errorMessage} (Status: {$data['status']})");
+            return 0;
+        }
+
+        $rawOffset = isset($data['rawOffset']) ? (int) $data['rawOffset'] : 0;
+        $dstOffset = isset($data['dstOffset']) ? (int) $data['dstOffset'] : 0;
+
+        return $rawOffset + $dstOffset;
+    }
+
+    /**
      * Retrieves the state/province and country using Google Maps Reverse Geocoding API.
      *
      * @param float $lat

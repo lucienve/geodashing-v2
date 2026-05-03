@@ -24,13 +24,27 @@ class ReportService
     private PDO $db;
 
     /**
+     * @var GeoContextService
+     */
+    private GeoContextService $geoService;
+
+    /**
      * Constructor.
      *
      * @param PDO $db The PDO connection instance.
+     * @param GeoContextService|null $geoService Optional injected GeoContextService for testing.
      */
-    public function __construct(PDO $db)
+    public function __construct(PDO $db, ?GeoContextService $geoService = null)
     {
         $this->db = $db;
+        if ($geoService === null) {
+            $configPath = __DIR__ . '/../config.ini';
+            $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
+            $apiKey = $config['GOOGLE_MAPS_API_KEY'] ?? '';
+            $this->geoService = new GeoContextService($this->db, $apiKey);
+        } else {
+            $this->geoService = $geoService;
+        }
     }
 
     /**
@@ -108,9 +122,20 @@ class ReportService
         $teamId = $teamRow ? $teamRow['team_id'] : null;
 
         // 7. Real-Time Scoring Assessment
-        // Do not count attempts when determining the sequence of claims
-        $scoreCheckStmt = $this->db->prepare("SELECT COUNT(id) AS previous_claims FROM visits WHERE dashpoint_id = :dpid AND is_attempt = FALSE");
-        $scoreCheckStmt->execute([':dpid' => $dashpointId]);
+        // Calculate the timezone offset based on the dashpoint's coordinates.
+        $tzOffsetSeconds = $this->geoService->getTimezoneOffset($dpLat, $dpLon);
+
+        // Do not count attempts when determining the sequence of claims.
+        // We shift the database UTC timestamps by the local offset to determine the true "day" boundary.
+        // We only count claims that occurred strictly before the current local day.
+        $scoreCheckStmt = $this->db->prepare("
+            SELECT COUNT(id) AS previous_claims 
+            FROM visits 
+            WHERE dashpoint_id = :dpid 
+              AND is_attempt = FALSE 
+              AND DATE(DATE_ADD(reported_time, INTERVAL :offset SECOND)) < DATE(DATE_ADD(CURRENT_TIMESTAMP, INTERVAL :offset SECOND))
+        ");
+        $scoreCheckStmt->execute([':dpid' => $dashpointId, ':offset' => $tzOffsetSeconds]);
         $previousClaims = (int) $scoreCheckStmt->fetch(PDO::FETCH_ASSOC)['previous_claims'];
 
         $scoreAwarded = 1; // Default minimum score for latecomers
@@ -150,12 +175,7 @@ class ReportService
         $totalScoreRow = $totalScoreStmt->fetch(PDO::FETCH_ASSOC);
         $totalPoints = $totalScoreRow ? (int) $totalScoreRow['total'] : $scoreAwarded;
 
-        $configPath = __DIR__ . '/../config.ini';
-        $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
-        $apiKey = $config['GOOGLE_MAPS_API_KEY'] ?? '';
-
-        $geoContextService = new GeoContextService($this->db, $apiKey);
-        $geoContext = $geoContextService->getDashpointContext($dpLat, $dpLon, $dashpointId);
+        $geoContext = $this->geoService->getDashpointContext($dpLat, $dpLon, $dashpointId);
 
         $this->sendVisitReportEmail($username, $dashpointId, $distance, $scoreAwarded, $totalPoints, $isAttempt, $notes, $photosJson, $geoContext);
 

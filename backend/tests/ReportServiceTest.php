@@ -22,13 +22,20 @@ use PDOStatement;
 class ReportServiceTest extends TestCase
 {
     private $pdoMock;
+    private $geoMock;
     private $reportService;
 
     protected function setUp(): void
     {
         // Create a mock of the PDO object
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->reportService = new ReportService($this->pdoMock);
+
+        // Mock GeoContextService to prevent real Google Maps API calls during tests
+        $this->geoMock = $this->createMock(\App\Services\GeoContextService::class);
+        $this->geoMock->method('getTimezoneOffset')->willReturn(0);
+        $this->geoMock->method('getDashpointContext')->willReturn('Mocked GeoContext');
+
+        $this->reportService = new ReportService($this->pdoMock, $this->geoMock);
     }
 
     /**
@@ -130,14 +137,10 @@ class ReportServiceTest extends TestCase
         $totalScoreMock = $this->createMock(PDOStatement::class);
         $totalScoreMock->method('fetch')->willReturn(['total' => 15]);
 
-        // 8. Mock GeoContext lookup
-        $geoMock = $this->createMock(PDOStatement::class);
-        $geoMock->method('fetch')->willReturn(false);
-
         // Chain the PDO prepares to return the distinct statements sequentially in order
-        $this->pdoMock->expects($this->exactly(9))
+        $this->pdoMock->expects($this->exactly(8))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock, $usernameMock, $totalScoreMock, $geoMock);
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock, $usernameMock, $totalScoreMock);
 
         $result = $this->reportService->processVisit(1, 'GD001-AAAA', 40.0, -75.0);
 
@@ -200,13 +203,9 @@ class ReportServiceTest extends TestCase
         $totalScoreMock = $this->createMock(PDOStatement::class);
         $totalScoreMock->method('fetch')->willReturn(['total' => 15]);
 
-        // Mock GeoContext lookup
-        $geoMock = $this->createMock(PDOStatement::class);
-        $geoMock->method('fetch')->willReturn(false);
-
-        $this->pdoMock->expects($this->exactly(9))
+        $this->pdoMock->expects($this->exactly(8))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock, $usernameMock, $totalScoreMock, $geoMock);
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock, $usernameMock, $totalScoreMock);
 
         $result = $this->reportService->processVisit(1, 'GD001-AAAA', 40.0, -75.0, true);
 
@@ -214,5 +213,88 @@ class ReportServiceTest extends TestCase
         $this->assertEquals(150, $result['distance']);
         $this->assertEquals(0, $result['points']);
         $this->assertStringContainsString('Attempt logged.', $result['message']);
+    }
+
+    /**
+     * Verifies that the service assigns 3 points to multiple users if the SQL determines they are on the same day.
+     * (Mocking previous_claims = 0 simulates the DATE(...) < DATE(CURRENT_TIMESTAMP) SQL logic for same-day claims)
+     */
+    #[Test]
+    public function processVisitAwardsSamePointsForSameDayClaims()
+    {
+        $userMock = $this->createMock(PDOStatement::class);
+        $userMock->method('fetch')->willReturn(['is_verified' => 1]);
+
+        $distMock = $this->createMock(PDOStatement::class);
+        $distMock->method('fetch')->willReturn(['distance_meters' => 45.0, 'is_active' => 1, 'dp_lat' => 40.0, 'dp_lon' => -75.0]);
+
+        $duplicateMock = $this->createMock(PDOStatement::class);
+        $duplicateMock->method('fetch')->willReturn(false);
+
+        $teamMock = $this->createMock(PDOStatement::class);
+        $teamMock->method('fetch')->willReturn(false);
+
+        // Simulate that no claims existed on previous days (even if claims exist today)
+        $scoreMock = $this->createMock(PDOStatement::class);
+        $scoreMock->method('fetch')->willReturn(['previous_claims' => 0]);
+
+        $insertMock = $this->createMock(PDOStatement::class);
+        $insertMock->expects($this->once())->method('execute')->willReturn(true);
+
+        $usernameMock = $this->createMock(PDOStatement::class);
+        $usernameMock->method('fetch')->willReturn(['username' => 'TestUserDay1']);
+
+        $totalScoreMock = $this->createMock(PDOStatement::class);
+        $totalScoreMock->method('fetch')->willReturn(['total' => 15]);
+
+        $this->pdoMock->expects($this->exactly(8))
+            ->method('prepare')
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock, $usernameMock, $totalScoreMock);
+
+        $result = $this->reportService->processVisit(2, 'GD001-SAME', 40.0, -75.0);
+
+        $this->assertEquals('success', $result['status']);
+        $this->assertEquals(3, $result['points'], "Secondary claims on the same day should still award 3 points.");
+    }
+
+    /**
+     * Verifies that the service assigns 2 points if exactly one prior claim exists on an earlier day.
+     */
+    #[Test]
+    public function processVisitAwardsTwoPointsForSecondDayClaim()
+    {
+        $userMock = $this->createMock(PDOStatement::class);
+        $userMock->method('fetch')->willReturn(['is_verified' => 1]);
+
+        $distMock = $this->createMock(PDOStatement::class);
+        $distMock->method('fetch')->willReturn(['distance_meters' => 45.0, 'is_active' => 1, 'dp_lat' => 40.0, 'dp_lon' => -75.0]);
+
+        $duplicateMock = $this->createMock(PDOStatement::class);
+        $duplicateMock->method('fetch')->willReturn(false);
+
+        $teamMock = $this->createMock(PDOStatement::class);
+        $teamMock->method('fetch')->willReturn(false);
+
+        // Simulate exactly one claim on a previous day
+        $scoreMock = $this->createMock(PDOStatement::class);
+        $scoreMock->method('fetch')->willReturn(['previous_claims' => 1]);
+
+        $insertMock = $this->createMock(PDOStatement::class);
+        $insertMock->expects($this->once())->method('execute')->willReturn(true);
+
+        $usernameMock = $this->createMock(PDOStatement::class);
+        $usernameMock->method('fetch')->willReturn(['username' => 'TestUserDay2']);
+
+        $totalScoreMock = $this->createMock(PDOStatement::class);
+        $totalScoreMock->method('fetch')->willReturn(['total' => 15]);
+
+        $this->pdoMock->expects($this->exactly(8))
+            ->method('prepare')
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock, $usernameMock, $totalScoreMock);
+
+        $result = $this->reportService->processVisit(3, 'GD001-NEXT', 40.0, -75.0);
+
+        $this->assertEquals('success', $result['status']);
+        $this->assertEquals(2, $result['points'], "Claims on a subsequent day with 1 prior-day claim should award 2 points.");
     }
 }
