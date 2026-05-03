@@ -133,9 +133,11 @@ class ReportService
             FROM visits 
             WHERE dashpoint_id = :dpid 
               AND is_attempt = FALSE 
-              AND DATE(DATE_ADD(reported_time, INTERVAL :offset SECOND)) < DATE(DATE_ADD(CURRENT_TIMESTAMP, INTERVAL :offset SECOND))
+              AND DATE(DATE_ADD(reported_time, INTERVAL {$tzOffsetSeconds} SECOND)) < DATE(DATE_ADD(CURRENT_TIMESTAMP, INTERVAL {$tzOffsetSeconds} SECOND))
         ");
-        $scoreCheckStmt->execute([':dpid' => $dashpointId, ':offset' => $tzOffsetSeconds]);
+        $scoreCheckStmt->execute([
+            ':dpid' => $dashpointId
+        ]);
         $previousClaims = (int) $scoreCheckStmt->fetch(PDO::FETCH_ASSOC)['previous_claims'];
 
         $scoreAwarded = 1; // Default minimum score for latecomers
