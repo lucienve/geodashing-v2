@@ -21,7 +21,14 @@ header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 // Note: We omit CSP because Google Maps dynamically injects complex inline styles and cross-domain iframes that break easily under strict rules.
 
-// 3. Boot session
+// 3. Configure custom session storage (Bypass Ubuntu cron job)
+if ((getenv('APP_ENV') ?: ($_ENV['APP_ENV'] ?? '')) !== 'testing') {
+    session_save_path('/var/lib/geodashing_sessions');
+    ini_set('session.gc_probability', '1');
+    ini_set('session.gc_divisor', '100');
+}
+
+// 4. Boot session
 session_start();
 
 // Refresh the session cookie lifetime to implement a 30-day rolling window
