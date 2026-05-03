@@ -51,7 +51,7 @@ class ExportService
                 $wpt->appendChild($desc);
 
                 $link = $dom->createElement('link');
-                $link->setAttribute('href', 'https://www.geodashing.com/#dashpoint?id=' . $idSafe);
+                $link->setAttribute('href', 'https://www.geodashing.org/#dashpoint?id=' . $idSafe);
                 $linkText = $dom->createElement('text', 'View on Geodashing');
                 $link->appendChild($linkText);
                 $wpt->appendChild($link);
@@ -87,7 +87,7 @@ class ExportService
                 $type = $dom->createElement('type', 'Dashpoint');
                 $waypoint->appendChild($type);
 
-                $link = $dom->createElement('link', 'https://www.geodashing.com/#dashpoint?id=' . $idSafe);
+                $link = $dom->createElement('link', 'https://www.geodashing.org/#dashpoint?id=' . $idSafe);
                 $link->setAttribute('text', 'View on Geodashing');
                 $waypoint->appendChild($link);
 
