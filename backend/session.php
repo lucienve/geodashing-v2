@@ -24,6 +24,19 @@ header('X-Frame-Options: DENY');
 // 3. Boot session
 session_start();
 
+// Refresh the session cookie lifetime to implement a 30-day rolling window
+setcookie(session_name(), session_id(), [
+    'expires' => time() + 86400 * 30,
+    'path' => '/',
+    'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+    'httponly' => true,
+    'samesite' => 'Strict'
+]);
+
+// Force a session write to update the server-side session file's modification time
+// This prevents read-only sessions from being garbage collected after 30 days
+$_SESSION['last_activity'] = time();
+
 // 4. CSRF Token Generation
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
