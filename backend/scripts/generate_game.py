@@ -16,7 +16,7 @@ from shapely.geometry import Point
 def load_blocklist(bad_words_path: str) -> set:
     """Loads a set of blocked 4-letter strings from a file."""
     if not os.path.exists(bad_words_path):
-        return set()
+        raise FileNotFoundError(f"Profanity blocklist not found at {bad_words_path}")
     with open(bad_words_path, 'r', encoding='utf-8') as f:
         return set(line.strip().upper() for line in f if len(line.strip()) == 4)
 
