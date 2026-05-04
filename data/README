@@ -1,0 +1,3 @@
+wget https://naciscdn.org/naturalearth/10m/physical/ne_10m_land.zip
+wget https://naciscdn.org/naturalearth/10m/physical/ne_10m_lakes.zip
+curl -s "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en" | grep -xE '.{4}' | tr '[:lower:]' '[:upper:]' | sort > bad_words.txt
