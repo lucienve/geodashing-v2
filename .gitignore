@@ -28,7 +28,8 @@ ENV/
 vendor/
 
 # Data sets
-data/
+data/*
+!data/README.md
 
 # IDEs and Editors
 .vscode/
