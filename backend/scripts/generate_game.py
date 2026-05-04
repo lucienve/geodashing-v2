@@ -216,7 +216,7 @@ def generate_valid_dashpoints(
         target_count: int = 2000,
         land_zip_path: str = '../../data/ne_10m_land.zip',
         lakes_zip_path: str = '../../data/ne_10m_lakes.zip') -> List[Point]:
-    """Generates valid dashpoints ensuring they are on land or <= 50m offshore.
+    """Generates valid dashpoints ensuring they are on land or <= 100m offshore.
     
     Algorithm:
         1. Generates random global spherical coordinates.
@@ -224,10 +224,10 @@ def generate_valid_dashpoints(
            to a Cylindrical Equal-Area CRS (EPSG:6933) to enable precise 2D metric measurements.
         3. Mathematically punches the lake boundaries out of the landmass generating a
            hole-punched base geometry.
-        4. Buffers our simple points by a 50m radius. This is a CPU optimization trick:
+        4. Buffers our simple points by a 100m radius. This is a CPU optimization trick:
            buffering thousands of simple dots is vastly faster than buffering the entire
            global coastline.
-        5. Filters for points whose 50m radius geometrically intersects the hole-punched
+        5. Filters for points whose 100m radius geometrically intersects the hole-punched
            land polygon.
 
     Args:
@@ -251,7 +251,7 @@ def generate_valid_dashpoints(
         points_gdf = gpd.GeoDataFrame(geometry=raw_points, crs="EPSG:4326")
 
         points_proj = points_gdf.to_crs(epsg=6933)
-        buffered_points = points_proj.buffer(500)
+        buffered_points = points_proj.buffer(100)
 
         intersects_land = buffered_points.intersects(land_geometry)
         passed_points_gdf = points_gdf[intersects_land]
