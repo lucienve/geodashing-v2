@@ -1,5 +1,4 @@
 import configparser
-import csv
 import os
 import mysql.connector
 

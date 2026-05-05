@@ -266,5 +266,4 @@ window.API = {
 // Expose standard custom Event hooks so the Router can wake up templates
 document.addEventListener('routeLoaded', (_e) => {
     // When #report or #login loads dynamically, this event fires.
-    // E.g. console.log("New UI View Array Mapped:", e.detail.route);
 });

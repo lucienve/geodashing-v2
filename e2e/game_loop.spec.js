@@ -148,7 +148,6 @@ test.describe('Core Functional Game Loop', () => {
             page.click('#btn-submit-signup')
         ]);
         const responseBody = await response.json();
-        console.log("Signup API Response for dynamicUser:", dynamicUser, responseBody);
 
         await expect(responseBody.status).toBe('success');
 
