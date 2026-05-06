@@ -69,3 +69,8 @@ The application allows users to participate in global geographic games where the
 - Replaced the native PHP `mail()` engine with the official Gmail REST API (`google/apiclient`) to guarantee high deliverability, particularly to Gmail users, bypassing spam filters.
 - Implemented `symfony/mime` for structured compilation of complex multipart email payloads, strictly enforcing automatic plain-text fallbacks alongside HTML payloads.
 - Migrated all outbound system emails (Verifications, Password Resets, Dashpoint Reports) to originate uniformly from `tracker@geodashing.org` via Google Workspace Domain-Wide Delegation.
+
+### 10. Dashpoint Preview & Game Lifecycle Management
+- Implemented the capability to generate non-active "Preview" games using the `--preview` flag in `generate_game.py`, allowing the community to view upcoming dashpoints without prematurely exposing them to log submissions.
+- Built a localized Python administrative utility (`game_utils.py`) to systematically view chronological game sequences and seamlessly execute monthly rollovers via transactional SQL commands.
+- Configured the frontend UI to parse dynamic game states securely, identifying `[PREVIEW]` and `[COMPLETED]` chronological states using native JavaScript Date comparisons, ensuring robust client-side display logic independent of backend integer IDs.

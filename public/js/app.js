@@ -272,8 +272,11 @@ function initGameContext() {
             // Populate the Dropdown natively
             if (gameSelector) {
                 gameSelector.innerHTML = '';
+                const activeGameStart = new Date(activeGame.start_time).getTime();
+                
                 json.data.forEach(game => {
                     const d = new Date(game.start_time);
+                    const gameStart = d.getTime();
                     const monthYear = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
                     const option = document.createElement('option');
                     option.value = game.id;
@@ -281,8 +284,17 @@ function initGameContext() {
                     option.dataset.title = game.title;
                     option.dataset.monthYear = monthYear;
 
+                    let statusTag = '';
+                    if (game.id !== activeGame.id) {
+                        if (gameStart > activeGameStart) {
+                            statusTag = ' [PREVIEW]';
+                        } else if (gameStart < activeGameStart) {
+                            statusTag = ' [COMPLETED]';
+                        }
+                    }
+
                     // Removed titleStr to keep the option text short and prevent layout overflow on mobile
-                    option.innerText = `Game ${game.id} (${monthYear})`;
+                    option.innerText = `Game ${game.id} (${monthYear})${statusTag}`;
 
                     if (game.id === activeGame.id) {
                         option.selected = true;

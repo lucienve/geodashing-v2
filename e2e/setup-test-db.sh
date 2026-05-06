@@ -70,6 +70,11 @@ mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "
     INSERT INTO games (id, title, start_time, end_time, is_active) 
     VALUES (2, 'CI Test Game', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 30 DAY), TRUE);
     
+    -- Game 3 (Preview)
+    INSERT INTO games (id, title, start_time, end_time, is_active) 
+    VALUES (3, 'Preview Test Game', DATE_ADD(NOW(), INTERVAL 31 DAY), DATE_ADD(NOW(), INTERVAL 60 DAY), FALSE);
+
+    
     -- Test User
     INSERT INTO users (id, username, email, password_hash, is_verified)
     VALUES (1, 'TestUser', 'testuser@example.com', '${PASSWORD_HASH}', TRUE);
@@ -82,6 +87,11 @@ mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "
     -- Game 2 dashpoint (NYC)
     INSERT INTO dashpoints (id, game_id, location, country_code, state_province)
     VALUES ('GD001-AAAA', 2, ST_GeomFromText('POINT(40.7128 -74.0060)', 4326), 'US', 'NY');
+
+    -- Game 3 dashpoint (Paris)
+    INSERT INTO dashpoints (id, game_id, location, country_code, state_province)
+    VALUES ('GD002-AAAA', 3, ST_GeomFromText('POINT(48.8566 2.3522)', 4326), 'FR', 'IDF');
+
 
     -- Mock historical visit for TestUser on Game 1 dashpoint
     INSERT INTO visits (id, dashpoint_id, user_id, team_id, reported_location, distance_meters, reported_time, score_awarded, status)

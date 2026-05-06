@@ -78,7 +78,9 @@ def get_db_connection(
         raise RuntimeError(f"Database Connection Error: {e}") from e
 
 
-def _initialize_new_game(cursor, game_title: str, year: int = None, month: int = None) -> int:
+def _initialize_new_game(
+        cursor, game_title: str, year: int = None, month: int = None, is_preview: bool = False
+) -> int:
     """Retires old games and creates a new game record."""
     now = datetime.now()
     if year is None:
@@ -95,14 +97,21 @@ def _initialize_new_game(cursor, game_title: str, year: int = None, month: int =
                            second=59,
                            microsecond=0)
 
-    print("Marking previous games as inactive...")
-    cursor.execute("UPDATE games SET is_active = FALSE")
+    if not is_preview:
+        print("Marking previous games as inactive...")
+        cursor.execute("UPDATE games SET is_active = FALSE")
+        print(f"Initializing new active game with title '{game_title}'...")
+        insert_game_sql = """
+            INSERT INTO games (title, start_time, end_time, is_active)
+            VALUES (%s, %s, %s, True)
+        """
+    else:
+        print(f"Initializing new preview game with title '{game_title}'...")
+        insert_game_sql = """
+            INSERT INTO games (title, start_time, end_time, is_active)
+            VALUES (%s, %s, %s, False)
+        """
 
-    print(f"Initializing new game with title '{game_title}'...")
-    insert_game_sql = """
-        INSERT INTO games (title, start_time, end_time, is_active)
-        VALUES (%s, %s, %s, True)
-    """
     cursor.execute(insert_game_sql, (game_title, start_time, end_time))
     return cursor.lastrowid
 
@@ -133,7 +142,7 @@ def _bulk_insert_dashpoints(cursor, points: List[Point], game_id: int,
 
 
 def seed_database(points: List[Point], config_path: str, game_title: str,
-                  bad_words_path: str, year: int = None, month: int = None) -> None:
+                  bad_words_path: str, **kwargs) -> None:
     """Seeds the newly generated Dashpoints into tracking tables along with a new active Game state.
 
     Args:
@@ -141,8 +150,8 @@ def seed_database(points: List[Point], config_path: str, game_title: str,
         config_path (str): The path to the PHP backend config.ini.
         game_title (str): Brief descriptive title of the game.
         bad_words_path (str): Path to the profanity filter blocklist.
-        year (int): Optional year override.
-        month (int): Optional month override.
+        **kwargs: Optional overrides including 'year' (int), 'month' (int),
+                  and 'is_preview' (bool) for generating inactive games.
         
     Raises:
         Exception: General sql error handling wrapper for safe failure.
@@ -152,7 +161,9 @@ def seed_database(points: List[Point], config_path: str, game_title: str,
         conn = get_db_connection(config_path)
         cursor = conn.cursor()
 
-        game_id = _initialize_new_game(cursor, game_title, year, month)
+        game_id = _initialize_new_game(
+            cursor, game_title, kwargs.get('year'), kwargs.get('month'), kwargs.get('is_preview')
+        )
 
         print(
             f"Bulk inserting {len(points)} Dashpoints for Game ID format GD{game_id:03d}..."
@@ -298,6 +309,10 @@ def main() -> None:
         '--year',
         type=int,
         help="Optional year to generate the game for (defaults to current year)")
+    parser.add_argument(
+        '--preview',
+        action='store_true',
+        help="Generate the game in an inactive preview state instead of immediately activating it")
     args = parser.parse_args()
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -315,7 +330,10 @@ def main() -> None:
                                            lakes_zip_path=lakes_zip)
 
         # 2. Upload to MySQL
-        seed_database(points, config_path, args.title, bad_words_path, args.year, args.month)
+        seed_database(
+            points, config_path, args.title, bad_words_path,
+            year=args.year, month=args.month, is_preview=args.preview
+        )
 
     except (FileNotFoundError, RuntimeError) as e:
         print(f"\nExecution Error: {e}")
