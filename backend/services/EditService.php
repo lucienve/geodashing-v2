@@ -51,7 +51,7 @@ class EditService
 
         // 1. Security Check: Verify visit existence and edit permissions
         $stmt = $this->db->prepare("
-            SELECT v.id, v.photos, v.is_attempt, v.score_awarded, v.distance_meters, ST_X(v.reported_location) as dp_lat, ST_Y(v.reported_location) as dp_lon, g.is_active, u.username
+            SELECT v.id, v.photos, v.is_attempt, v.score_awarded, v.distance_meters, v.reported_time, ST_X(v.reported_location) as dp_lat, ST_Y(v.reported_location) as dp_lon, g.is_active, u.username
             FROM visits v
             JOIN dashpoints d ON v.dashpoint_id = d.id
             JOIN games g ON d.game_id = g.id
@@ -151,7 +151,12 @@ class EditService
             $geoContextService = new GeoContextService($this->db, $apiKey);
             $geoContext = $geoContextService->getDashpointContext((float)$visit['dp_lat'], (float)$visit['dp_lon'], $dashpointId);
 
-            $this->sendVisitReportEmail($visit['username'], $dashpointId, (int)$visit['distance_meters'], (int)$visit['score_awarded'], $totalPoints, (bool)$visit['is_attempt'], $notes, $finalPhotosJson, $geoContext, true);
+            $huntsStmt = $this->db->prepare("SELECT COUNT(id) AS previous_hunts FROM visits WHERE user_id = :uid AND reported_time < :visit_time");
+            $huntsStmt->execute([':uid' => $userId, ':visit_time' => $visit['reported_time']]);
+            $previousHuntsRow = $huntsStmt->fetch(PDO::FETCH_ASSOC);
+            $previousHunts = $previousHuntsRow ? (int) $previousHuntsRow['previous_hunts'] : 0;
+
+            $this->sendVisitReportEmail($visit['username'], $dashpointId, (int)$visit['distance_meters'], (int)$visit['score_awarded'], $totalPoints, (bool)$visit['is_attempt'], $notes, $finalPhotosJson, $previousHunts, $geoContext, true);
         }
 
         return [

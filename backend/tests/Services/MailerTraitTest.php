@@ -55,9 +55,9 @@ class MailerTraitTest extends TestCase
                 return true;
             }
 
-            public function publicSendVisitReportEmail(string $username, string $dashpointId, int $distance, int $points, int $totalPoints, bool $isAttempt, ?string $notes, ?string $photosJson, ?string $geoContext = null, bool $isEdit = false): void
+            public function publicSendVisitReportEmail(string $username, string $dashpointId, int $distance, int $points, int $totalPoints, bool $isAttempt, ?string $notes, ?string $photosJson, int $previousHunts = 0, ?string $geoContext = null, bool $isEdit = false): void
             {
-                $this->sendVisitReportEmail($username, $dashpointId, $distance, $points, $totalPoints, $isAttempt, $notes, $photosJson, $geoContext, $isEdit);
+                $this->sendVisitReportEmail($username, $dashpointId, $distance, $points, $totalPoints, $isAttempt, $notes, $photosJson, $previousHunts, $geoContext, $isEdit);
             }
         };
 
@@ -79,6 +79,7 @@ class MailerTraitTest extends TestCase
             false,
             "Found it!",
             json_encode([["url" => "http://example.com/photo.jpg"]]),
+            123,
             "Forest"
         );
 
@@ -92,5 +93,6 @@ class MailerTraitTest extends TestCase
         $this->assertStringContainsString("5000 meters", $mailer->lastHtmlMessage);
         $this->assertStringContainsString("Found it!", $mailer->lastHtmlMessage);
         $this->assertStringContainsString("http://example.com/photo.jpg", $mailer->lastHtmlMessage);
+        $this->assertStringContainsString("Number of previous hunts by Lucien:</strong> 123", $mailer->lastHtmlMessage);
     }
 }

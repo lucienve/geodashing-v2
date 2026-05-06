@@ -49,6 +49,11 @@ try {
         $totalScoreRow = $totalScoreStmt->fetch();
         $totalPoints = $totalScoreRow ? (int) $totalScoreRow['total'] : (int)$visit['score_awarded'];
 
+        $huntsStmt = $db->prepare("SELECT COUNT(id) AS previous_hunts FROM visits WHERE user_id = :uid AND reported_time < :visit_time");
+        $huntsStmt->execute([':uid' => $userId, ':visit_time' => $visit['reported_time']]);
+        $previousHuntsRow = $huntsStmt->fetch();
+        $previousHunts = $previousHuntsRow ? (int) $previousHuntsRow['previous_hunts'] : 0;
+
         echo "-> Sending email for dashpoint {$visit['dashpoint_id']} logged by {$visit['username']}...\n";
 
         // Invoke the private method securely
@@ -61,7 +66,8 @@ try {
             $totalPoints,
             (bool)$visit['is_attempt'], // 6th param: isAttempt
             $visit['notes'],            // 7th param: notes
-            $visit['photos']            // 8th param: photosJson
+            $visit['photos'],           // 8th param: photosJson
+            $previousHunts              // 9th param: previousHunts
         );
     }
 

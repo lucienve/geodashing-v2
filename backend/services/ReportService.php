@@ -149,7 +149,13 @@ class ReportService
             $scoreAwarded = 2; // Second to claim
         }
 
-        // 8. Log the Visit and Secure the Calculated Score Automatically alongside bounded JSON image paths
+        // 8. Calculate total previous hunts for this user before the new insert
+        $huntsStmt = $this->db->prepare("SELECT COUNT(id) AS previous_hunts FROM visits WHERE user_id = :uid");
+        $huntsStmt->execute([':uid' => $userId]);
+        $previousHuntsRow = $huntsStmt->fetch(PDO::FETCH_ASSOC);
+        $previousHunts = $previousHuntsRow ? (int) $previousHuntsRow['previous_hunts'] : 0;
+
+        // 9. Log the Visit and Secure the Calculated Score Automatically alongside bounded JSON image paths
         $insertStmt = $this->db->prepare("
             INSERT INTO visits (dashpoint_id, user_id, team_id, reported_location, distance_meters, score_awarded, is_attempt, notes, photos)
             VALUES (:dpid, :uid, :tid, ST_GeomFromText(:wkt, 4326), :dist, :score, :is_attempt, :notes, :photos)
@@ -179,7 +185,7 @@ class ReportService
 
         $geoContext = $this->geoService->getDashpointContext($dpLat, $dpLon, $dashpointId);
 
-        $this->sendVisitReportEmail($username, $dashpointId, $distance, $scoreAwarded, $totalPoints, $isAttempt, $notes, $photosJson, $geoContext);
+        $this->sendVisitReportEmail($username, $dashpointId, $distance, $scoreAwarded, $totalPoints, $isAttempt, $notes, $photosJson, $previousHunts, $geoContext);
 
         $action = $isAttempt ? "Attempt logged" : "Dashpoint successfully claimed";
         $pointsMessage = $isAttempt ? "This attempt earned 0 points." : "You earned {$scoreAwarded} points.";

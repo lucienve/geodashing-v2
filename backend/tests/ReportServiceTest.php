@@ -125,22 +125,26 @@ class ReportServiceTest extends TestCase
         $scoreMock = $this->createMock(PDOStatement::class);
         $scoreMock->method('fetch')->willReturn(['previous_claims' => 0]);
 
-        // 5. Mock the final Insert
+        // 5. Mock the previous hunts check
+        $huntsMock = $this->createMock(PDOStatement::class);
+        $huntsMock->method('fetch')->willReturn(['previous_hunts' => 123]);
+
+        // 6. Mock the final Insert
         $insertMock = $this->createMock(PDOStatement::class);
         $insertMock->expects($this->once())->method('execute')->willReturn(true);
 
-        // 6. Mock Username lookup
+        // 7. Mock Username lookup
         $usernameMock = $this->createMock(PDOStatement::class);
         $usernameMock->method('fetch')->willReturn(['username' => 'TestUser']);
 
-        // 7. Mock Total Score lookup
+        // 8. Mock Total Score lookup
         $totalScoreMock = $this->createMock(PDOStatement::class);
         $totalScoreMock->method('fetch')->willReturn(['total' => 15]);
 
         // Chain the PDO prepares to return the distinct statements sequentially in order
-        $this->pdoMock->expects($this->exactly(8))
+        $this->pdoMock->expects($this->exactly(9))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock, $usernameMock, $totalScoreMock);
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $huntsMock, $insertMock, $usernameMock, $totalScoreMock);
 
         $result = $this->reportService->processVisit(1, 'GD001-AAAA', 40.0, -75.0);
 
@@ -194,6 +198,9 @@ class ReportServiceTest extends TestCase
         $scoreMock = $this->createMock(PDOStatement::class);
         $scoreMock->method('fetch')->willReturn(['previous_claims' => 0]);
 
+        $huntsMock = $this->createMock(PDOStatement::class);
+        $huntsMock->method('fetch')->willReturn(['previous_hunts' => 123]);
+
         $insertMock = $this->createMock(PDOStatement::class);
         $insertMock->expects($this->once())->method('execute')->willReturn(true);
 
@@ -203,9 +210,9 @@ class ReportServiceTest extends TestCase
         $totalScoreMock = $this->createMock(PDOStatement::class);
         $totalScoreMock->method('fetch')->willReturn(['total' => 15]);
 
-        $this->pdoMock->expects($this->exactly(8))
+        $this->pdoMock->expects($this->exactly(9))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock, $usernameMock, $totalScoreMock);
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $huntsMock, $insertMock, $usernameMock, $totalScoreMock);
 
         $result = $this->reportService->processVisit(1, 'GD001-AAAA', 40.0, -75.0, true);
 
@@ -238,6 +245,9 @@ class ReportServiceTest extends TestCase
         $scoreMock = $this->createMock(PDOStatement::class);
         $scoreMock->method('fetch')->willReturn(['previous_claims' => 0]);
 
+        $huntsMock = $this->createMock(PDOStatement::class);
+        $huntsMock->method('fetch')->willReturn(['previous_hunts' => 123]);
+
         $insertMock = $this->createMock(PDOStatement::class);
         $insertMock->expects($this->once())->method('execute')->willReturn(true);
 
@@ -247,9 +257,9 @@ class ReportServiceTest extends TestCase
         $totalScoreMock = $this->createMock(PDOStatement::class);
         $totalScoreMock->method('fetch')->willReturn(['total' => 15]);
 
-        $this->pdoMock->expects($this->exactly(8))
+        $this->pdoMock->expects($this->exactly(9))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock, $usernameMock, $totalScoreMock);
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $huntsMock, $insertMock, $usernameMock, $totalScoreMock);
 
         $result = $this->reportService->processVisit(2, 'GD001-SAME', 40.0, -75.0);
 
@@ -279,6 +289,9 @@ class ReportServiceTest extends TestCase
         $scoreMock = $this->createMock(PDOStatement::class);
         $scoreMock->method('fetch')->willReturn(['previous_claims' => 1]);
 
+        $huntsMock = $this->createMock(PDOStatement::class);
+        $huntsMock->method('fetch')->willReturn(['previous_hunts' => 123]);
+
         $insertMock = $this->createMock(PDOStatement::class);
         $insertMock->expects($this->once())->method('execute')->willReturn(true);
 
@@ -288,9 +301,9 @@ class ReportServiceTest extends TestCase
         $totalScoreMock = $this->createMock(PDOStatement::class);
         $totalScoreMock->method('fetch')->willReturn(['total' => 15]);
 
-        $this->pdoMock->expects($this->exactly(8))
+        $this->pdoMock->expects($this->exactly(9))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $insertMock, $usernameMock, $totalScoreMock);
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $huntsMock, $insertMock, $usernameMock, $totalScoreMock);
 
         $result = $this->reportService->processVisit(3, 'GD001-NEXT', 40.0, -75.0);
 

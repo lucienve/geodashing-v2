@@ -87,7 +87,7 @@ trait MailerTrait
     /**
      * Constructs and dispatches an HTML email to the mailing list detailing the new Dashpoint visit or edit.
      */
-    protected function sendVisitReportEmail(string $username, string $dashpointId, int $distance, int $points, int $totalPoints, bool $isAttempt, ?string $notes, ?string $photosJson, ?string $geoContext = null, bool $isEdit = false): void
+    protected function sendVisitReportEmail(string $username, string $dashpointId, int $distance, int $points, int $totalPoints, bool $isAttempt, ?string $notes, ?string $photosJson, int $previousHunts = 0, ?string $geoContext = null, bool $isEdit = false): void
     {
         $configPath = __DIR__ . '/../config.ini';
         $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
@@ -114,6 +114,7 @@ trait MailerTrait
         $message .= "<p><strong>User:</strong> <a href='" . htmlspecialchars($profileUrl, ENT_QUOTES, 'UTF-8') . "'>" . htmlspecialchars($username) . "</a></p>";
         $dashpointUrl = "https://www.geodashing.org/?dashpoint=" . urlencode($dashpointId);
         $message .= "<p><strong>Dashpoint:</strong> <a href='" . htmlspecialchars($dashpointUrl, ENT_QUOTES, 'UTF-8') . "'>" . htmlspecialchars($dashpointId) . "</a></p>";
+        $message .= "<p><strong>Number of previous hunts by " . htmlspecialchars($username) . ":</strong> {$previousHunts}</p>";
 
         if (!empty($geoContext)) {
             $message .= "<p><strong>Location:</strong> " . htmlspecialchars($geoContext, ENT_QUOTES, 'UTF-8') . "</p>";
