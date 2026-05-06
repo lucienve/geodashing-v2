@@ -447,6 +447,11 @@ body, html {
     white-space: normal;
   }
 
+  #game-selector {
+    max-width: 130px;
+    text-overflow: ellipsis;
+  }
+
   #app-content {
     max-width: 100%;
     padding: 0;

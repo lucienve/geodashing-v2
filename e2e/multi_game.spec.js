@@ -10,15 +10,17 @@ test.describe('Multi-Game State and Logic', () => {
 
     test('Game Selector renders both games and defaults to active game', async ({ page }) => {
         const options = page.locator('#game-selector option');
-        await expect(options).toHaveCount(2, { timeout: 10000 });
+        await expect(options).toHaveCount(3, { timeout: 10000 });
 
         // Check text content - options should be ordered correctly
         const optionText1 = await options.nth(0).innerText();
         const optionText2 = await options.nth(1).innerText();
+        const optionText3 = await options.nth(2).innerText();
         
-        // The API sorts descending, so Game 2 is first and Game 1 is second.
-        expect(optionText1).toContain('Game 2');
-        expect(optionText2).toContain('Game 1');
+        // The API sorts descending, so Game 3 is first, Game 2 is second, and Game 1 is third.
+        expect(optionText1).toContain('Game 3');
+        expect(optionText2).toContain('Game 2');
+        expect(optionText3).toContain('Game 1');
 
         // Verify active game (id 2) is selected by default
         const selectedValue = await page.$eval('#game-selector', el => el.value);
@@ -26,7 +28,7 @@ test.describe('Multi-Game State and Logic', () => {
     });
 
     test('Map Search updates when switching game context', async ({ page }) => {
-        await expect(page.locator('#game-selector option')).toHaveCount(2, { timeout: 10000 });
+        await expect(page.locator('#game-selector option')).toHaveCount(3, { timeout: 10000 });
 
         // Home view map load triggers a search
         await page.goto('/#home');
@@ -42,7 +44,7 @@ test.describe('Multi-Game State and Logic', () => {
     });
 
     test('Leaderboard switches context when game selector changes', async ({ page }) => {
-        await expect(page.locator('#game-selector option')).toHaveCount(2, { timeout: 10000 });
+        await expect(page.locator('#game-selector option')).toHaveCount(3, { timeout: 10000 });
         
         // Go to leaderboard
         await page.goto('/#leaderboard');
