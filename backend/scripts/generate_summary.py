@@ -32,7 +32,7 @@ def get_db_connection(config_path: str) -> mysql.connector.connection.MySQLConne
         port=port
     )
 
-def configure_environment(config_path: str) -> tuple:
+def configure_environment(config_path: str) -> dict:
     """Configures environment variables and Vertex AI parameters."""
     if not os.path.exists(config_path):
         raise FileNotFoundError(f"Config not found at {config_path}")
@@ -55,7 +55,7 @@ def configure_environment(config_path: str) -> tuple:
         if project_id is not None:
             project_id = project_id.strip('"\'')
 
-    return model_name, region, project_id
+    return {"model_name": model_name, "region": region, "project_id": project_id}
 
 def get_nearest_city(cursor, lat: float, lon: float) -> str:
     """Finds the nearest major city to the given coordinates."""
@@ -193,23 +193,61 @@ def construct_new_data(scores: list, formatted_logs: list) -> str:
 
     return data_set
 
-def _generate_vertex_summary(project_id: str, region: str, model_name: str,
-                             sys_inst: list, history: list, prompt: str) -> None:
-    # pylint: disable=too-many-arguments,too-many-positional-arguments
+def _generate_vertex_summary(ai_config: dict, sys_inst: list,
+                             history: list, prompt: str) -> str:
     """Initializes Vertex AI and generates the summary from the prompt."""
-    vertexai.init(project=project_id, location=region)
-    model = GenerativeModel(model_name, system_instruction=sys_inst)
+    vertexai.init(project=ai_config['project_id'], location=ai_config['region'])
+    model = GenerativeModel(ai_config['model_name'], system_instruction=sys_inst)
     chat = model.start_chat(history=history)
     response = chat.send_message(prompt)
-    print(response.text)
+    return response.text
+
+def write_summary_files(output_dir: str, game_id: int, prompt: str, summary_html: str) -> None:
+    """Writes the generated summary and input prompt to files."""
+    in_path = os.path.join(output_dir, f"game_{game_id}_input.txt")
+    out_path = os.path.join(output_dir, f"game_{game_id}_output.html")
+
+    with open(in_path, 'w', encoding='utf-8') as f:
+        f.write(prompt)
+
+    with open(out_path, 'w', encoding='utf-8') as f:
+        f.write(summary_html)
+
+    print("Summary generated successfully.")
+    print(f"Input file: {in_path}")
+    print(f"Output file: {out_path}")
+
+def run_summary_generation(args: argparse.Namespace, config_path: str,
+                           instructions_path: str, examples_dir: str) -> None:
+    """Orchestrates the data extraction and AI generation process."""
+    ai_config = configure_environment(config_path)
+
+    conn = get_db_connection(config_path)
+    cursor = conn.cursor()
+    scores, formatted_logs = extract_logs_and_scores(cursor, args.game_id)
+    cursor.close()
+    conn.close()
+
+    sys_inst = load_system_instructions(instructions_path)
+    history = load_chat_history(examples_dir)
+    prompt = construct_new_data(scores, formatted_logs)
+
+    summary_html = _generate_vertex_summary(ai_config, sys_inst, history, prompt)
+
+    write_summary_files(args.output_dir, args.game_id, prompt, summary_html)
 
 def main() -> None:
     """Main execution point for the summary script."""
-    # pylint: disable=too-many-locals
     parser = argparse.ArgumentParser(description="Geodashing Game Summary Generator")
     parser.add_argument('--game_id', type=int, required=True,
                         help="ID of the game to summarize.")
+    parser.add_argument('--output_dir', type=str, required=True,
+                        help="Directory to save the input and output files.")
     args = parser.parse_args()
+
+    if not os.path.isdir(args.output_dir):
+        print(f"Error: Output directory not found: {args.output_dir}", file=sys.stderr)
+        sys.exit(1)
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(current_dir, '../config.ini')
@@ -217,25 +255,7 @@ def main() -> None:
     examples_dir = os.path.join(current_dir, '../../data/summary_examples/')
 
     try:
-        model_name, region, project_id = configure_environment(config_path)
-
-        conn = get_db_connection(config_path)
-        cursor = conn.cursor()
-
-        game_id = args.game_id
-        scores, formatted_logs = extract_logs_and_scores(cursor, game_id)
-
-        cursor.close()
-        conn.close()
-
-        system_instructions = load_system_instructions(instructions_path)
-        history = load_chat_history(examples_dir)
-        prompt = construct_new_data(scores, formatted_logs)
-
-        _generate_vertex_summary(
-            project_id, region, model_name, system_instructions, history, prompt
-        )
-
+        run_summary_generation(args, config_path, instructions_path, examples_dir)
     except (FileNotFoundError, ValueError, mysql.connector.Error) as specific_err:
         print(f"Configuration or Database Error: {specific_err}", file=sys.stderr)
         sys.exit(1)
