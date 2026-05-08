@@ -8,7 +8,7 @@ import sys
 
 import mysql.connector
 import vertexai
-from vertexai.generative_models import GenerativeModel
+from vertexai.generative_models import GenerativeModel, Content, Part
 
 def get_db_connection(config_path: str) -> mysql.connector.connection.MySQLConnection:
     """Establishes a connection to the MySQL database securely via config.ini."""
@@ -142,11 +142,39 @@ def extract_logs_and_scores(cursor, game_id: int) -> tuple:
     formatted_logs = _extract_logs(cursor, game_id)
     return scores, formatted_logs
 
-def construct_prompt(prompt_path: str, scores: list, formatted_logs: list) -> str:
-    """Constructs the final prompt string."""
-    with open(prompt_path, 'r', encoding='utf-8') as f:
-        base_prompt = f.read()
+def load_system_instructions(instructions_path: str) -> list:
+    """Loads system instructions from a text file."""
+    with open(instructions_path, 'r', encoding='utf-8') as f:
+        return [f.read().strip()]
 
+def load_chat_history(examples_dir: str) -> list:
+    """Loads few-shot examples into Vertex AI Chat History."""
+    history = []
+    if not os.path.isdir(examples_dir):
+        return history
+
+    example_prefixes = []
+    for filename in os.listdir(examples_dir):
+        if filename.endswith('_input.txt'):
+            example_prefixes.append(filename.replace('_input.txt', ''))
+
+    # Sort to ensure consistent chat history order
+    example_prefixes.sort()
+
+    for prefix in example_prefixes:
+        in_path = os.path.join(examples_dir, f'{prefix}_input.txt')
+        out_path = os.path.join(examples_dir, f'{prefix}_output.html')
+        if os.path.exists(in_path) and os.path.exists(out_path):
+            with open(in_path, 'r', encoding='utf-8') as f:
+                in_text = f.read().strip()
+            with open(out_path, 'r', encoding='utf-8') as f:
+                out_text = f.read().strip()
+            history.append(Content(role="user", parts=[Part.from_text(in_text)]))
+            history.append(Content(role="model", parts=[Part.from_text(out_text)]))
+    return history
+
+def construct_new_data(scores: list, formatted_logs: list) -> str:
+    """Constructs the final input string with scores and logs."""
     if not scores:
         score_text = "No players scored in this game."
     else:
@@ -154,17 +182,6 @@ def construct_prompt(prompt_path: str, scores: list, formatted_logs: list) -> st
         score_text = f"Winner: {winner[0]} with {winner[1]} points.\n\nOther Players:\n"
         for user, points in scores[1:]:
             score_text += f"- {user}: {points} points\n"
-
-    sys_instructions = (
-        "\n\n[SYSTEM INSTRUCTIONS FOR HTML FORMATTING]\n"
-        "Please format the response exclusively as valid HTML.\n"
-        "When rendering the Player Logs, any provided photo URLs MUST be "
-        "formatted as embedded HTML images using <img> tags. "
-        "They should be scaled to an appropriate thumbnail size "
-        "(e.g., width='300'), and wrapped in an <a> anchor tag "
-        "that links to the full-size photo URL so that clicking the "
-        "thumbnail brings up the full-size photo.\n\n"
-    )
 
     combined_logs = "\n\n".join(formatted_logs)
 
@@ -174,17 +191,21 @@ def construct_prompt(prompt_path: str, scores: list, formatted_logs: list) -> st
         f"--- PLAYER LOGS ---\n{combined_logs}\n"
     )
 
-    return base_prompt + sys_instructions + data_set
+    return data_set
 
-def _generate_vertex_summary(project_id: str, region: str, model_name: str, prompt: str) -> None:
+def _generate_vertex_summary(project_id: str, region: str, model_name: str,
+                             sys_inst: list, history: list, prompt: str) -> None:
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     """Initializes Vertex AI and generates the summary from the prompt."""
     vertexai.init(project=project_id, location=region)
-    model = GenerativeModel(model_name)
-    response = model.generate_content(prompt)
+    model = GenerativeModel(model_name, system_instruction=sys_inst)
+    chat = model.start_chat(history=history)
+    response = chat.send_message(prompt)
     print(response.text)
 
 def main() -> None:
     """Main execution point for the summary script."""
+    # pylint: disable=too-many-locals
     parser = argparse.ArgumentParser(description="Geodashing Game Summary Generator")
     parser.add_argument('--game_id', type=int, required=True,
                         help="ID of the game to summarize.")
@@ -192,7 +213,8 @@ def main() -> None:
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(current_dir, '../config.ini')
-    prompt_path = os.path.join(current_dir, '../../data/summary_prompt.txt')
+    instructions_path = os.path.join(current_dir, '../../data/summary_system_instructions.txt')
+    examples_dir = os.path.join(current_dir, '../../data/summary_examples/')
 
     try:
         model_name, region, project_id = configure_environment(config_path)
@@ -206,9 +228,13 @@ def main() -> None:
         cursor.close()
         conn.close()
 
-        prompt = construct_prompt(prompt_path, scores, formatted_logs)
+        system_instructions = load_system_instructions(instructions_path)
+        history = load_chat_history(examples_dir)
+        prompt = construct_new_data(scores, formatted_logs)
 
-        _generate_vertex_summary(project_id, region, model_name, prompt)
+        _generate_vertex_summary(
+            project_id, region, model_name, system_instructions, history, prompt
+        )
 
     except (FileNotFoundError, ValueError, mysql.connector.Error) as specific_err:
         print(f"Configuration or Database Error: {specific_err}", file=sys.stderr)
