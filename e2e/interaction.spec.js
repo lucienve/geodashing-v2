@@ -142,4 +142,38 @@ test.describe('Component & Interactive Layout Constraints', () => {
         expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
     });
 
+    test('Latitude and Longitude inputs allow negative signs on iOS', async ({ page }) => {
+        // Navigate and open the report view
+        await page.goto('/');
+        await page.waitForLoadState('networkidle');
+
+        // We can just go directly to the hash route for the report form
+        await page.goto('/#report?id=GD001-XXXX');
+        
+        // Wait for the form to appear
+        const reportView = page.locator('#view-report');
+        await expect(reportView).toBeVisible({ timeout: 10000 });
+
+        const latInput = page.locator('#input-lat');
+        const lonInput = page.locator('#input-lon');
+
+        await expect(latInput).toBeVisible();
+        await expect(lonInput).toBeVisible();
+
+        const latInputMode = await latInput.getAttribute('inputmode');
+        const lonInputMode = await lonInput.getAttribute('inputmode');
+
+        // Evaluate user agent natively inside Playwright to map our JS check
+        const ua = await page.evaluate(() => navigator.userAgent);
+        const isIOS = /iPad|iPhone|iPod/.test(ua);
+
+        if (isIOS) {
+            expect(latInputMode).not.toBe('decimal');
+            expect(lonInputMode).not.toBe('decimal');
+        } else {
+            expect(latInputMode).toBe('decimal');
+            expect(lonInputMode).toBe('decimal');
+        }
+    });
+
 });

@@ -212,6 +212,14 @@ document.addEventListener('routeLoaded', (e) => {
         const latInput = document.getElementById('input-lat');
         const lonInput = document.getElementById('input-lon');
 
+        // Dynamically enable numeric/decimal input modes on non-iOS devices
+        // iOS does not allow the minus sign on the decimal keypad, so it falls back to text.
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        if (!isIOS) {
+            if (latInput) latInput.setAttribute('inputmode', 'decimal');
+            if (lonInput) lonInput.setAttribute('inputmode', 'decimal');
+        }
+
         const btnAddPhotos = document.getElementById('btn-add-photos');
         const inputPhotos = document.getElementById('input-photos');
         const previewGrid = document.getElementById('photo-preview-grid');
