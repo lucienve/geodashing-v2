@@ -11,24 +11,45 @@ from backend.scripts import generate_summary
 
 def test_parse_photos_json():
     """Test parsing of photos JSON string."""
-    assert generate_summary._parse_photos_json('["http://example.com/1.jpg", "http://example.com/2.jpg"]') == ["http://example.com/1.jpg", "http://example.com/2.jpg"]
-    assert generate_summary._parse_photos_json('[{"url": "http://example.com/1.jpg"}, {"other": "value"}]') == ["http://example.com/1.jpg"]
+    assert generate_summary._parse_photos_json('["http://example.com/1.jpg"]') == [{"url": "http://example.com/1.jpg"}]
+    assert generate_summary._parse_photos_json('[{"url": "http://example.com/1.jpg"}]') == [{"url": "http://example.com/1.jpg", "thumb_url": None}]
     assert generate_summary._parse_photos_json('') == []
     assert generate_summary._parse_photos_json('invalid json') == []
 
-def test_construct_new_data():
+@mock.patch("backend.scripts.generate_summary.urllib.request.urlopen")
+def test_construct_new_data(mock_urlopen):
     """Test constructing the final prompt string."""
     scores = [("player1", 100), ("player2", 50)]
-    logs = ["Log 1 data", "Log 2 data"]
+    logs = [{
+        'dp_id': 123,
+        'username': 'testuser',
+        'city': 'TestCity',
+        'photos': [{'url': 'http://example.com/1.jpg'}],
+        'notes': 'Log notes'
+    }]
+    
+    mock_response = mock.MagicMock()
+    mock_response.read.return_value = b"fake image"
+    mock_response.headers.get_content_type.return_value = "image/jpeg"
+    
+    mock_urlopen_context = mock.MagicMock()
+    mock_urlopen_context.__enter__.return_value = mock_response
+    mock_urlopen.return_value = mock_urlopen_context
+
     result = generate_summary.construct_new_data(scores, logs)
     
-    assert "Winner: player1 with 100 points" in result
-    assert "- player2: 50 points" in result
-    assert "Log 1 data\n\nLog 2 data" in result
+    text_result = "".join([p for p in result if isinstance(p, str)])
+    
+    assert "Winner: player1 with 100 points" in text_result
+    assert "- player2: 50 points" in text_result
+    assert "Log: 123.txt" in text_result
+    assert "Log notes" in text_result
+    assert "Full: http://example.com/1.jpg" in text_result
     
     # Test empty scores
     result_empty = generate_summary.construct_new_data([], logs)
-    assert "No players scored in this game." in result_empty
+    text_empty = "".join([p for p in result_empty if isinstance(p, str)])
+    assert "No players scored in this game." in text_empty
 
 @mock.patch("backend.scripts.generate_summary.os.path.isdir")
 @mock.patch("backend.scripts.generate_summary.os.listdir")
@@ -52,16 +73,20 @@ def test_load_chat_history(mock_open, mock_exists, mock_listdir, mock_isdir):
 @mock.patch("builtins.open", new_callable=mock.mock_open)
 def test_write_summary_files(mock_file):
     """Test writing the prompt and html to files."""
-    generate_summary.write_summary_files("/out", 123, "my prompt", "my html")
+    # We pass a mixed list simulating text and image parts
+    fake_part = mock.MagicMock()
+    fake_part.__class__ = generate_summary.Part
+    
+    generate_summary.write_summary_files("/out", 123, ["my prompt", fake_part], "my html")
     
     # Open should be called twice
     assert mock_file.call_count == 2
     mock_file.assert_any_call("/out/game_123_input.txt", 'w', encoding='utf-8')
     mock_file.assert_any_call("/out/game_123_output.html", 'w', encoding='utf-8')
     
-    # Write should be called with "my prompt" and "my html"
+    # Write should be called with constructed string and html
     handle = mock_file()
-    handle.write.assert_any_call("my prompt")
+    handle.write.assert_any_call("my prompt[IMAGE DATA DETACHED]\n")
     handle.write.assert_any_call("my html")
 
 @mock.patch("backend.scripts.generate_summary.vertexai")

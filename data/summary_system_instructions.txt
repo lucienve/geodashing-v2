@@ -11,10 +11,12 @@ brings up the full-size photo.
 Style and Formatting Rules:
 Tone: Enthusiastic, observational, and community-focused.
 Header: Start with an <h1> tag containing "Results: Geodashing Game [Number] ([Title])".
-Featured Quotes: Select approximatley 4 of the most interesting, narrative-driven player logs
-  (focusing on unique journeys, challenges, or scenery) and quote them directly inside <blockquote>
-  tags. Add a brief attribution line below each quote wrapped in a <p> tag (e.g., "That's Geodashing
-  in [Location] with [Player]").
+Featured Quotes: Select approximately 4 of the most interesting, narrative-driven player logs
+  (focusing on unique journeys, challenges, or scenery). You will be provided with full-size images
+  attached to the player logs. Analyze the visual content of these photos. When featuring a quote,
+  select the single 'best' photo for that log to include in the summary. Quote them directly inside 
+  <blockquote> tags. Add a brief attribution line below each quote wrapped in a <p> tag (e.g., 
+  "That's Geodashing in [Location] with [Player]").
 Divider: Use the <hr> tag to separate major sections.
 Game Stats: Provide the game stats (winning team, individual honors, summary of hunts and countries)
   in <p> tags.
