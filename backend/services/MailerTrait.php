@@ -145,10 +145,14 @@ trait MailerTrait
             if (is_array($photos) && count($photos) > 0) {
                 $message .= "<h3>Photos</h3>";
                 foreach ($photos as $photoObj) {
-                    if (is_array($photoObj) && isset($photoObj['url'])) {
-                        $message .= "<div style='margin-bottom: 10px;'><img src='" . htmlspecialchars($photoObj['url'], ENT_QUOTES, 'UTF-8') . "' alt='Dashpoint Photo' style='max-width: 100%; height: auto;' /></div>";
+                    if (is_array($photoObj)) {
+                        $photoUrl = !empty($photoObj['thumb_url']) ? $photoObj['thumb_url'] : ($photoObj['url'] ?? null);
+                        $fullUrl = !empty($photoObj['url']) ? $photoObj['url'] : $photoUrl;
+                        if ($photoUrl) {
+                            $message .= "<div style='margin-bottom: 10px;'><a href='" . htmlspecialchars($fullUrl, ENT_QUOTES, 'UTF-8') . "' target='_blank'><img src='" . htmlspecialchars($photoUrl, ENT_QUOTES, 'UTF-8') . "' alt='Dashpoint Photo' style='max-width: 100%; height: auto;' /></a></div>";
+                        }
                     } elseif (is_string($photoObj)) {
-                        $message .= "<div style='margin-bottom: 10px;'><img src='" . htmlspecialchars($photoObj, ENT_QUOTES, 'UTF-8') . "' alt='Dashpoint Photo' style='max-width: 100%; height: auto;' /></div>";
+                        $message .= "<div style='margin-bottom: 10px;'><a href='" . htmlspecialchars($photoObj, ENT_QUOTES, 'UTF-8') . "' target='_blank'><img src='" . htmlspecialchars($photoObj, ENT_QUOTES, 'UTF-8') . "' alt='Dashpoint Photo' style='max-width: 100%; height: auto;' /></a></div>";
                     }
                 }
             }

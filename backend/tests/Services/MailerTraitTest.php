@@ -79,7 +79,7 @@ class MailerTraitTest extends TestCase
             20,
             false,
             "Found it!",
-            json_encode([["url" => "http://example.com/photo.jpg"]]),
+            json_encode([["url" => "http://example.com/photo.jpg", "thumb_url" => "http://example.com/photo_thumb.jpg"]]),
             123,
             2,
             "Forest"
@@ -94,7 +94,7 @@ class MailerTraitTest extends TestCase
         $this->assertStringContainsString("DP123", $mailer->lastHtmlMessage);
         $this->assertStringContainsString("5000 meters", $mailer->lastHtmlMessage);
         $this->assertStringContainsString("Found it!", $mailer->lastHtmlMessage);
-        $this->assertStringContainsString("http://example.com/photo.jpg", $mailer->lastHtmlMessage);
+        $this->assertStringContainsString("<a href='http://example.com/photo.jpg' target='_blank'><img src='http://example.com/photo_thumb.jpg'", $mailer->lastHtmlMessage);
         $this->assertStringContainsString("Total lifetime hunts by Lucien:</strong> 123", $mailer->lastHtmlMessage);
         $this->assertStringContainsString("Previous hunts in this game by Lucien:</strong> 2", $mailer->lastHtmlMessage);
         $this->assertStringContainsString("Points in this game:</strong> 20", $mailer->lastHtmlMessage);

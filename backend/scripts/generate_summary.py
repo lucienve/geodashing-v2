@@ -95,8 +95,15 @@ def _parse_photos_json(photos_json: str) -> list:
         try:
             photos_data = json.loads(photos_json)
             for item in photos_data:
-                if 'url' in item:
-                    photo_urls.append(item['url'])
+                if isinstance(item, dict):
+                    thumb_url = item.get('thumb_url')
+                    full_url = item.get('url')
+                    if thumb_url and full_url:
+                        photo_urls.append(f"Thumb: {thumb_url} | Full: {full_url}")
+                    elif thumb_url:
+                        photo_urls.append(thumb_url)
+                    elif full_url:
+                        photo_urls.append(full_url)
                 elif isinstance(item, str):
                     photo_urls.append(item)
         except json.JSONDecodeError:

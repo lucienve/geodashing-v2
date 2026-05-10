@@ -9,6 +9,7 @@ You are working on the Geodashing V2 project. You must strictly adhere to these 
 
 ## 1. Project Specific Principles
 - **Version Control:** When asked to generate commit messages, mandate the Conventional Commits format (e.g., `feat: [message]`, `fix: [message]`).
+- **Media Optimization:** When rendering images in emails or generated summaries, always prioritize using pre-computed thumbnails (`thumb_url`) instead of having the browser dynamically resize the full-size versions (`url`). Ensure that clicking the thumbnail links to the full-size image.
 
 ## 2. Infrastructure Target Versions
 Ensure all code and syntax is explicitly compatible with the following versions:
