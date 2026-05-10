@@ -6,11 +6,11 @@ Please format the response exclusively as a complete, valid HTML5 document (star
 When rendering the Player Logs, any provided photo URLs MUST be formatted as embedded HTML images
 using <img> tags. They should be scaled to an appropriate thumbnail size (e.g., width='300'), and
 wrapped in an <a> anchor tag that links to the full-size photo URL so that clicking the thumbnail
-brings up the full-size photo. Analyze the visual content of the photos and include a detailed description of the image as the 'alt' text. Additionally, you MUST make this description text visible directly underneath the image as a caption (e.g., inside a <figcaption> or <p> tag below the image).
+brings up the full-size photo. Analyze the visual content of the photos and include a detailed description of the image as the 'alt' text. Additionally, you MUST add this description text as the 'title' attribute of the <img> tag so it displays as hovertext. Do NOT include a visible caption underneath the image.
 
 Style and Formatting Rules:
 Tone: Enthusiastic, observational, and community-focused.
-Header: Start with an <h1> tag containing "Results: Geodashing Game [Number] ([Title])".
+Header: Start with an <h1> tag containing "Results: Geodashing Game [Number] ([Game Title])". The exact Game Title will be provided in the input data.
 Featured Quotes: Select approximately 4 of the most interesting, narrative-driven player logs
   (focusing on unique journeys, challenges, or scenery). You will be provided with full-size images
   attached to the player logs. Analyze the visual content of these photos. When featuring a quote,

@@ -136,10 +136,14 @@ def _extract_logs(cursor, game_id: int) -> list:
     return formatted_logs
 
 def extract_logs_and_scores(cursor, game_id: int) -> tuple:
-    """Extracts scores strictly constrained to the game and retrieves all approved logs."""
+    """Extracts the game title, scores, and all approved logs."""
+    cursor.execute("SELECT title FROM games WHERE id = %s", (game_id,))
+    row = cursor.fetchone()
+    game_title = row[0] if row else f"Game {game_id}"
+
     scores = _extract_scores(cursor, game_id)
     formatted_logs = _extract_logs(cursor, game_id)
-    return scores, formatted_logs
+    return game_title, scores, formatted_logs
 
 def load_system_instructions(instructions_path: str) -> str:
     """Loads system instructions from a text file."""
@@ -219,8 +223,8 @@ def _append_photo_parts(parts: list, photos: list) -> None:
                     parts.append("(Image could not be downloaded)\n")
     parts.append("\n")
 
-def construct_new_data(scores: list, formatted_logs: list) -> list:
-    """Constructs the final input prompt parts with scores, logs, and images."""
+def construct_new_data(game_title: str, scores: list, formatted_logs: list) -> list:
+    """Constructs the final input prompt parts with game title, scores, logs, and images."""
     if not scores:
         score_text = "No players scored in this game."
     else:
@@ -232,6 +236,7 @@ def construct_new_data(scores: list, formatted_logs: list) -> list:
     parts = []
     initial_text = (
         "[NEW INPUT DATA SET]\n\n"
+        f"--- GAME TITLE ---\n{game_title}\n\n"
         f"--- SCORE RANKINGS ---\n{score_text}\n\n"
         "--- PLAYER LOGS ---\n"
     )
@@ -297,13 +302,13 @@ def run_summary_generation(args: argparse.Namespace, config_path: str,
 
     conn = get_db_connection(config_path)
     cursor = conn.cursor()
-    scores, formatted_logs = extract_logs_and_scores(cursor, args.game_id)
+    game_title, scores, formatted_logs = extract_logs_and_scores(cursor, args.game_id)
     cursor.close()
     conn.close()
 
     sys_inst = load_system_instructions(instructions_path)
     history = load_chat_history(examples_dir)
-    prompt = construct_new_data(scores, formatted_logs)
+    prompt = construct_new_data(game_title, scores, formatted_logs)
 
     summary_html = _generate_vertex_summary(ai_config, sys_inst, history, prompt)
 

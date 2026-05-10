@@ -36,10 +36,12 @@ def test_construct_new_data(mock_urlopen):
     mock_urlopen_context.__enter__.return_value = mock_response
     mock_urlopen.return_value = mock_urlopen_context
 
-    result = generate_summary.construct_new_data(scores, logs)
+    game_title = "Test Game Title"
+    result = generate_summary.construct_new_data(game_title, scores, logs)
     
     text_result = "".join([p for p in result if isinstance(p, str)])
     
+    assert "Test Game Title" in text_result
     assert "Winner: player1 with 100 points" in text_result
     assert "- player2: 50 points" in text_result
     assert "Log: 123.txt" in text_result
@@ -47,7 +49,7 @@ def test_construct_new_data(mock_urlopen):
     assert "Full: http://example.com/1.jpg" in text_result
     
     # Test empty scores
-    result_empty = generate_summary.construct_new_data([], logs)
+    result_empty = generate_summary.construct_new_data(game_title, [], logs)
     text_empty = "".join([p for p in result_empty if isinstance(p, str)])
     assert "No players scored in this game." in text_empty
 
