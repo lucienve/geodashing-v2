@@ -9,8 +9,8 @@ import urllib.request
 import urllib.error
 
 import mysql.connector
-import vertexai
-from vertexai.generative_models import GenerativeModel, Content, Part
+from google import genai
+from google.genai import types
 
 def get_db_connection(config_path: str) -> mysql.connector.connection.MySQLConnection:
     """Establishes a connection to the MySQL database securely via config.ini."""
@@ -141,10 +141,10 @@ def extract_logs_and_scores(cursor, game_id: int) -> tuple:
     formatted_logs = _extract_logs(cursor, game_id)
     return scores, formatted_logs
 
-def load_system_instructions(instructions_path: str) -> list:
+def load_system_instructions(instructions_path: str) -> str:
     """Loads system instructions from a text file."""
     with open(instructions_path, 'r', encoding='utf-8') as f:
-        return [f.read().strip()]
+        return f.read().strip()
 
 def load_chat_history(examples_dir: str) -> list:
     """Loads few-shot examples into Vertex AI Chat History."""
@@ -168,8 +168,8 @@ def load_chat_history(examples_dir: str) -> list:
                 in_text = f.read().strip()
             with open(out_path, 'r', encoding='utf-8') as f:
                 out_text = f.read().strip()
-            history.append(Content(role="user", parts=[Part.from_text(in_text)]))
-            history.append(Content(role="model", parts=[Part.from_text(out_text)]))
+            history.append(types.Content(role="user", parts=[types.Part.from_text(text=in_text)]))
+            history.append(types.Content(role="model", parts=[types.Part.from_text(text=out_text)]))
     return history
 
 def _append_photo_parts(parts: list, photos: list) -> None:
@@ -198,7 +198,7 @@ def _append_photo_parts(parts: list, photos: list) -> None:
                     mime_type = "image/png"
                 elif ext == "webp":
                     mime_type = "image/webp"
-                parts.append(Part.from_uri(uri=gs_uri, mime_type=mime_type))
+                parts.append(types.Part.from_uri(file_uri=gs_uri, mime_type=mime_type))
                 parts.append("\n")
             else:
                 try:
@@ -212,7 +212,7 @@ def _append_photo_parts(parts: list, photos: list) -> None:
                                        "image/heic", "image/heif"]
                         if mime_type not in valid_mimes:
                             mime_type = "image/jpeg"
-                        parts.append(Part.from_data(data=image_bytes, mime_type=mime_type))
+                        parts.append(types.Part.from_bytes(data=image_bytes, mime_type=mime_type))
                         parts.append("\n")
                 except urllib.error.URLError as err:
                     print(f"Failed to fetch image {download_url}: {err}", file=sys.stderr)
@@ -258,12 +258,14 @@ def construct_new_data(scores: list, formatted_logs: list) -> list:
 
     return parts
 
-def _generate_vertex_summary(ai_config: dict, sys_inst: list,
+def _generate_vertex_summary(ai_config: dict, sys_inst: str,
                              history: list, prompt: list) -> str:
     """Initializes Vertex AI and generates the summary from the prompt parts."""
-    vertexai.init(project=ai_config['project_id'], location=ai_config['region'])
-    model = GenerativeModel(ai_config['model_name'], system_instruction=sys_inst)
-    chat = model.start_chat(history=history)
+    client = genai.Client(vertexai=True, project=ai_config['project_id'], location=ai_config['region'])
+    config = types.GenerateContentConfig(
+        system_instruction=sys_inst,
+    )
+    chat = client.chats.create(model=ai_config['model_name'], config=config, history=history)
     response = chat.send_message(prompt)
     return response.text
 
@@ -277,7 +279,7 @@ def write_summary_files(output_dir: str, game_id: int, prompt: list, summary_htm
         for p in prompt:
             if isinstance(p, str):
                 text_prompt += p
-            elif isinstance(p, Part):
+            elif isinstance(p, types.Part):
                 text_prompt += "[IMAGE DATA DETACHED]\n"
         f.write(text_prompt)
 

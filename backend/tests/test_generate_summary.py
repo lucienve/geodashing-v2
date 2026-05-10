@@ -5,7 +5,7 @@ import os
 from unittest import mock
 
 import pytest
-from vertexai.generative_models import Content
+from google.genai import types
 
 from backend.scripts import generate_summary
 
@@ -64,7 +64,7 @@ def test_load_chat_history(mock_open, mock_exists, mock_listdir, mock_isdir):
     history = generate_summary.load_chat_history("/fake/dir")
     
     assert len(history) == 4
-    assert isinstance(history[0], Content)
+    assert isinstance(history[0], types.Content)
     assert history[0].role == "user"
     assert history[1].role == "model"
     assert history[2].role == "user"
@@ -75,7 +75,7 @@ def test_write_summary_files(mock_file):
     """Test writing the prompt and html to files."""
     # We pass a mixed list simulating text and image parts
     fake_part = mock.MagicMock()
-    fake_part.__class__ = generate_summary.Part
+    fake_part.__class__ = generate_summary.types.Part
     
     generate_summary.write_summary_files("/out", 123, ["my prompt", fake_part], "my html")
     
@@ -89,24 +89,27 @@ def test_write_summary_files(mock_file):
     handle.write.assert_any_call("my prompt[IMAGE DATA DETACHED]\n")
     handle.write.assert_any_call("my html")
 
-@mock.patch("backend.scripts.generate_summary.vertexai")
-@mock.patch("backend.scripts.generate_summary.GenerativeModel")
-def test_generate_vertex_summary(mock_generative_model, mock_vertexai):
+@mock.patch("backend.scripts.generate_summary.genai.Client")
+@mock.patch("backend.scripts.generate_summary.types.GenerateContentConfig")
+def test_generate_vertex_summary(mock_generate_content_config, mock_client_class):
     """Test vertex API call structure."""
-    mock_model_instance = mock.MagicMock()
+    mock_client_instance = mock.MagicMock()
     mock_chat_instance = mock.MagicMock()
     mock_response = mock.MagicMock()
     mock_response.text = "generated HTML"
     
-    mock_generative_model.return_value = mock_model_instance
-    mock_model_instance.start_chat.return_value = mock_chat_instance
+    mock_client_class.return_value = mock_client_instance
+    mock_client_instance.chats.create.return_value = mock_chat_instance
     mock_chat_instance.send_message.return_value = mock_response
     
+    mock_config_instance = mock.MagicMock()
+    mock_generate_content_config.return_value = mock_config_instance
+    
     config = {"project_id": "p1", "region": "r1", "model_name": "m1"}
-    result = generate_summary._generate_vertex_summary(config, ["sys inst"], [], "my prompt")
+    result = generate_summary._generate_vertex_summary(config, "sys inst", [], "my prompt")
     
     assert result == "generated HTML"
-    mock_vertexai.init.assert_called_once_with(project="p1", location="r1")
-    mock_generative_model.assert_called_once_with("m1", system_instruction=["sys inst"])
-    mock_model_instance.start_chat.assert_called_once_with(history=[])
+    mock_client_class.assert_called_once_with(vertexai=True, project="p1", location="r1")
+    mock_generate_content_config.assert_called_once_with(system_instruction="sys inst")
+    mock_client_instance.chats.create.assert_called_once_with(model="m1", config=mock_config_instance, history=[])
     mock_chat_instance.send_message.assert_called_once_with("my prompt")
