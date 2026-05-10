@@ -31,7 +31,8 @@ def get_db_connection(config_path: str) -> mysql.connector.connection.MySQLConne
         user=user,
         password=password,
         database=database,
-        port=port
+        port=port,
+        charset='utf8mb4'
     )
 
 def configure_environment(config_path: str) -> dict:
