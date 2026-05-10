@@ -31,8 +31,7 @@ def get_db_connection(config_path: str) -> mysql.connector.connection.MySQLConne
         user=user,
         password=password,
         database=database,
-        port=port,
-        charset='utf8mb4'
+        port=port
     )
 
 def configure_environment(config_path: str) -> dict:
@@ -59,6 +58,15 @@ def configure_environment(config_path: str) -> dict:
             project_id = project_id.strip('"\'')
 
     return {"model_name": model_name, "region": region, "project_id": project_id}
+
+def _fix_mojibake(text: str) -> str:
+    """Safely transcodes double-encoded UTF-8 strings (e.g., 'â€™' back to '’')."""
+    if not isinstance(text, str):
+        return text
+    try:
+        return text.encode('latin1').decode('utf-8')
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return text
 
 def get_nearest_city(cursor, lat: float, lon: float) -> str:
     """Finds the nearest major city to the given coordinates."""
@@ -89,7 +97,8 @@ def _extract_scores(cursor, game_id: int) -> list:
         ORDER BY total_points DESC, u.username ASC
     """
     cursor.execute(score_query, (game_id,))
-    return cursor.fetchall()
+    scores = cursor.fetchall()
+    return [(_fix_mojibake(user), points) for user, points in scores]
 
 def _parse_photos_json(photos_json: str) -> list:
     """Parses the photos JSON string into a list of photo dictionaries."""
@@ -124,7 +133,9 @@ def _extract_logs(cursor, game_id: int) -> list:
 
     formatted_logs = []
     for dp_id, username, dp_lat, dp_lon, notes, photos_json in raw_logs:
-        city = get_nearest_city(cursor, dp_lat, dp_lon)
+        city = _fix_mojibake(get_nearest_city(cursor, dp_lat, dp_lon))
+        username = _fix_mojibake(username)
+        notes = _fix_mojibake(notes)
         photos = _parse_photos_json(photos_json)
         formatted_logs.append({
             'dp_id': dp_id,

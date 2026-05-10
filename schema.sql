@@ -12,7 +12,7 @@ CREATE TABLE users (
     reset_token VARCHAR(64) NULL,
     reset_token_expires TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 2. Teams
 CREATE TABLE teams (
@@ -20,7 +20,7 @@ CREATE TABLE teams (
     name VARCHAR(100) UNIQUE NOT NULL,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. Team Membership (Many-to-Many logic)
 CREATE TABLE team_members (
@@ -30,7 +30,7 @@ CREATE TABLE team_members (
     PRIMARY KEY (team_id, user_id),
     FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 4. Games (Represents a 1-month period)
 CREATE TABLE games (
@@ -40,7 +40,7 @@ CREATE TABLE games (
     end_time DATETIME NOT NULL,
     is_active BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 5. Dashpoints (The ~31,000 generated coordinates)
 CREATE TABLE dashpoints (
@@ -51,7 +51,7 @@ CREATE TABLE dashpoints (
     state_province VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Spatial/Coordinate indexing for fast bounding box queries (Finding points in user's region)
 CREATE SPATIAL INDEX idx_dashpoints_location ON dashpoints (location);
@@ -84,7 +84,7 @@ CREATE TABLE visits (
     FOREIGN KEY (dashpoint_id) REFERENCES dashpoints(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE SET NULL
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Lookups by dashpoint are highly frequent for score recalculations
 CREATE INDEX idx_visits_dashpoint ON visits (dashpoint_id);
@@ -100,7 +100,7 @@ CREATE TABLE major_cities (
     country_name VARCHAR(255),
     location POINT SRID 4326 NOT NULL,
     population INT NOT NULL
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Spatial index to quickly find cities near dashpoints
 CREATE SPATIAL INDEX idx_major_cities_location ON major_cities (location);
