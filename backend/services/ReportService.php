@@ -78,6 +78,7 @@ class ReportService
             SELECT 
                 ST_Distance_Sphere(d.location, ST_GeomFromText(:wkt, 4326)) AS distance_meters, 
                 g.is_active,
+                g.id AS game_id,
                 ST_X(d.location) as dp_lat,
                 ST_Y(d.location) as dp_lon
             FROM dashpoints d
@@ -149,11 +150,23 @@ class ReportService
             $scoreAwarded = 2; // Second to claim
         }
 
+        $gameId = $result['game_id'];
+
         // 8. Calculate total previous hunts for this user before the new insert
         $huntsStmt = $this->db->prepare("SELECT COUNT(id) AS previous_hunts FROM visits WHERE user_id = :uid");
         $huntsStmt->execute([':uid' => $userId]);
         $previousHuntsRow = $huntsStmt->fetch(PDO::FETCH_ASSOC);
-        $previousHunts = $previousHuntsRow ? (int) $previousHuntsRow['previous_hunts'] : 0;
+        $previousHuntsAllGames = $previousHuntsRow ? (int) $previousHuntsRow['previous_hunts'] : 0;
+
+        $huntsGameStmt = $this->db->prepare("
+            SELECT COUNT(v.id) AS previous_hunts 
+            FROM visits v 
+            JOIN dashpoints d ON v.dashpoint_id = d.id 
+            WHERE v.user_id = :uid AND d.game_id = :game_id
+        ");
+        $huntsGameStmt->execute([':uid' => $userId, ':game_id' => $gameId]);
+        $previousHuntsGameRow = $huntsGameStmt->fetch(PDO::FETCH_ASSOC);
+        $previousHuntsGame = $previousHuntsGameRow ? (int) $previousHuntsGameRow['previous_hunts'] : 0;
 
         // 9. Log the Visit and Secure the Calculated Score Automatically alongside bounded JSON image paths
         $insertStmt = $this->db->prepare("
@@ -181,11 +194,21 @@ class ReportService
         $totalScoreStmt = $this->db->prepare("SELECT SUM(score_awarded) AS total FROM visits WHERE user_id = :uid");
         $totalScoreStmt->execute([':uid' => $userId]);
         $totalScoreRow = $totalScoreStmt->fetch(PDO::FETCH_ASSOC);
-        $totalPoints = $totalScoreRow ? (int) $totalScoreRow['total'] : $scoreAwarded;
+        $totalPointsAllGames = $totalScoreRow ? (int) $totalScoreRow['total'] : $scoreAwarded;
+
+        $totalScoreGameStmt = $this->db->prepare("
+            SELECT SUM(v.score_awarded) AS total 
+            FROM visits v 
+            JOIN dashpoints d ON v.dashpoint_id = d.id 
+            WHERE v.user_id = :uid AND d.game_id = :game_id
+        ");
+        $totalScoreGameStmt->execute([':uid' => $userId, ':game_id' => $gameId]);
+        $totalScoreGameRow = $totalScoreGameStmt->fetch(PDO::FETCH_ASSOC);
+        $totalPointsGame = $totalScoreGameRow ? (int) $totalScoreGameRow['total'] : $scoreAwarded;
 
         $geoContext = $this->geoService->getDashpointContext($dpLat, $dpLon, $dashpointId);
 
-        $this->sendVisitReportEmail($username, $dashpointId, $distance, $scoreAwarded, $totalPoints, $isAttempt, $notes, $photosJson, $previousHunts, $geoContext);
+        $this->sendVisitReportEmail($username, $dashpointId, $distance, $scoreAwarded, $totalPointsAllGames, $totalPointsGame, $isAttempt, $notes, $photosJson, $previousHuntsAllGames, $previousHuntsGame, $geoContext);
 
         $action = $isAttempt ? "Attempt logged" : "Dashpoint successfully claimed";
         $pointsMessage = $isAttempt ? "This attempt earned 0 points." : "You earned {$scoreAwarded} points.";

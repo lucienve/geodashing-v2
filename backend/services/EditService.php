@@ -51,7 +51,7 @@ class EditService
 
         // 1. Security Check: Verify visit existence and edit permissions
         $stmt = $this->db->prepare("
-            SELECT v.id, v.photos, v.is_attempt, v.score_awarded, v.distance_meters, v.reported_time, ST_X(v.reported_location) as dp_lat, ST_Y(v.reported_location) as dp_lon, g.is_active, u.username
+            SELECT v.id, v.photos, v.is_attempt, v.score_awarded, v.distance_meters, v.reported_time, ST_X(v.reported_location) as dp_lat, ST_Y(v.reported_location) as dp_lon, g.is_active, g.id as game_id, u.username
             FROM visits v
             JOIN dashpoints d ON v.dashpoint_id = d.id
             JOIN games g ON d.game_id = g.id
@@ -142,7 +142,17 @@ class EditService
             $totalScoreStmt = $this->db->prepare("SELECT SUM(score_awarded) AS total FROM visits WHERE user_id = :uid");
             $totalScoreStmt->execute([':uid' => $userId]);
             $totalScoreRow = $totalScoreStmt->fetch(PDO::FETCH_ASSOC);
-            $totalPoints = $totalScoreRow ? (int) $totalScoreRow['total'] : (int) $visit['score_awarded'];
+            $totalPointsAllGames = $totalScoreRow ? (int) $totalScoreRow['total'] : (int) $visit['score_awarded'];
+
+            $totalScoreGameStmt = $this->db->prepare("
+                SELECT SUM(v.score_awarded) AS total 
+                FROM visits v 
+                JOIN dashpoints d ON v.dashpoint_id = d.id 
+                WHERE v.user_id = :uid AND d.game_id = :game_id
+            ");
+            $totalScoreGameStmt->execute([':uid' => $userId, ':game_id' => $visit['game_id']]);
+            $totalScoreGameRow = $totalScoreGameStmt->fetch(PDO::FETCH_ASSOC);
+            $totalPointsGame = $totalScoreGameRow ? (int) $totalScoreGameRow['total'] : (int) $visit['score_awarded'];
 
             $configPath = __DIR__ . '/../config.ini';
             $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
@@ -154,9 +164,19 @@ class EditService
             $huntsStmt = $this->db->prepare("SELECT COUNT(id) AS previous_hunts FROM visits WHERE user_id = :uid AND reported_time < :visit_time");
             $huntsStmt->execute([':uid' => $userId, ':visit_time' => $visit['reported_time']]);
             $previousHuntsRow = $huntsStmt->fetch(PDO::FETCH_ASSOC);
-            $previousHunts = $previousHuntsRow ? (int) $previousHuntsRow['previous_hunts'] : 0;
+            $previousHuntsAllGames = $previousHuntsRow ? (int) $previousHuntsRow['previous_hunts'] : 0;
 
-            $this->sendVisitReportEmail($visit['username'], $dashpointId, (int)$visit['distance_meters'], (int)$visit['score_awarded'], $totalPoints, (bool)$visit['is_attempt'], $notes, $finalPhotosJson, $previousHunts, $geoContext, true);
+            $huntsGameStmt = $this->db->prepare("
+                SELECT COUNT(v.id) AS previous_hunts 
+                FROM visits v 
+                JOIN dashpoints d ON v.dashpoint_id = d.id 
+                WHERE v.user_id = :uid AND d.game_id = :game_id AND v.reported_time < :visit_time
+            ");
+            $huntsGameStmt->execute([':uid' => $userId, ':game_id' => $visit['game_id'], ':visit_time' => $visit['reported_time']]);
+            $previousHuntsGameRow = $huntsGameStmt->fetch(PDO::FETCH_ASSOC);
+            $previousHuntsGame = $previousHuntsGameRow ? (int) $previousHuntsGameRow['previous_hunts'] : 0;
+
+            $this->sendVisitReportEmail($visit['username'], $dashpointId, (int)$visit['distance_meters'], (int)$visit['score_awarded'], $totalPointsAllGames, $totalPointsGame, (bool)$visit['is_attempt'], $notes, $finalPhotosJson, $previousHuntsAllGames, $previousHuntsGame, $geoContext, true);
         }
 
         return [

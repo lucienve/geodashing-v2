@@ -55,9 +55,9 @@ class MailerTraitTest extends TestCase
                 return true;
             }
 
-            public function publicSendVisitReportEmail(string $username, string $dashpointId, int $distance, int $points, int $totalPoints, bool $isAttempt, ?string $notes, ?string $photosJson, int $previousHunts = 0, ?string $geoContext = null, bool $isEdit = false): void
+            public function publicSendVisitReportEmail(string $username, string $dashpointId, int $distance, int $points, int $totalPointsAllGames, int $totalPointsGame, bool $isAttempt, ?string $notes, ?string $photosJson, int $previousHuntsAllGames = 0, int $previousHuntsGame = 0, ?string $geoContext = null, bool $isEdit = false): void
             {
-                $this->sendVisitReportEmail($username, $dashpointId, $distance, $points, $totalPoints, $isAttempt, $notes, $photosJson, $previousHunts, $geoContext, $isEdit);
+                $this->sendVisitReportEmail($username, $dashpointId, $distance, $points, $totalPointsAllGames, $totalPointsGame, $isAttempt, $notes, $photosJson, $previousHuntsAllGames, $previousHuntsGame, $geoContext, $isEdit);
             }
         };
 
@@ -76,10 +76,12 @@ class MailerTraitTest extends TestCase
             5000,
             10,
             100,
+            20,
             false,
             "Found it!",
             json_encode([["url" => "http://example.com/photo.jpg"]]),
             123,
+            2,
             "Forest"
         );
 
@@ -93,6 +95,26 @@ class MailerTraitTest extends TestCase
         $this->assertStringContainsString("5000 meters", $mailer->lastHtmlMessage);
         $this->assertStringContainsString("Found it!", $mailer->lastHtmlMessage);
         $this->assertStringContainsString("http://example.com/photo.jpg", $mailer->lastHtmlMessage);
-        $this->assertStringContainsString("Number of previous hunts by Lucien:</strong> 123", $mailer->lastHtmlMessage);
+        $this->assertStringContainsString("Total lifetime hunts by Lucien:</strong> 123", $mailer->lastHtmlMessage);
+        $this->assertStringContainsString("Previous hunts in this game by Lucien:</strong> 2", $mailer->lastHtmlMessage);
+        $this->assertStringContainsString("Points in this game:</strong> 20", $mailer->lastHtmlMessage);
+        $this->assertStringContainsString("Lifetime points:</strong> 100", $mailer->lastHtmlMessage);
+
+        // Test the zero-hunt conditionals
+        $mailer->publicSendVisitReportEmail(
+            "Lucien",
+            "DP124",
+            10,
+            5,
+            5,
+            5,
+            false,
+            null,
+            null,
+            0,
+            0
+        );
+        $this->assertStringContainsString("First dashpoint found by user - welcome to geodashing!", $mailer->lastHtmlMessage);
+        $this->assertStringContainsString("First dashpoint this game!", $mailer->lastHtmlMessage);
     }
 }
