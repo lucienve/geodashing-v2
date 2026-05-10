@@ -33,6 +33,7 @@ Ensure all code and syntax is explicitly compatible with the following versions:
 - **Responsiveness:** Ensure layouts are highly responsive and accessible on both mobile and desktop. Refrain from importing heavy external JS/CSS dependencies unless explicitly approved by the user.
 - **Automated Layout Testing:** After every substantial UI or structural change, you must automatically run the Playwright E2E suite to verify that the layouts correctly constrain to mathematical device viewports without overflowing. Because of the environment path config, `npx` requires `node` to be actively mapped in the shell path. **Always run:** `export PATH="/home/lucienve/.config/nvm/versions/node/v22.22.2/bin:$PATH" && npx playwright test --reporter=list`. Do not let Playwright hang or automatically open web browsers to serve results; ensure background runs exit cleanly.
 - **Separation of Concerns:** HTML, CSS, and JS logic must be completely decoupled into separate files. Inline styles (`style="..."`) and inline event handlers (`onclick="..."`) are strictly prohibited in the markup.
+- **Native SPA Routing:** Navigation routing relies strictly on hash fragments instead of standard query parameters. When linking across the ecosystem, always use the SPA structures (e.g., `#profile?username=[username]` and `#dashpoint?id=[id]`).
 - **Validation:** ESLint must be utilized to catch syntax errors and undefined variables prior to any commit (`npm run lint`).
 
 ## 6. E2E Testing Synchronization

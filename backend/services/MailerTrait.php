@@ -110,9 +110,9 @@ trait MailerTrait
             $message = "<html><body>";
             $message .= "<h2>New Dashpoint Log</h2>";
         }
-        $profileUrl = "https://www.geodashing.org/?profile=" . urlencode($username);
+        $profileUrl = "https://www.geodashing.org/#profile?username=" . urlencode($username);
         $message .= "<p><strong>User:</strong> <a href='" . htmlspecialchars($profileUrl, ENT_QUOTES, 'UTF-8') . "'>" . htmlspecialchars($username) . "</a></p>";
-        $dashpointUrl = "https://www.geodashing.org/?dashpoint=" . urlencode($dashpointId);
+        $dashpointUrl = "https://www.geodashing.org/#dashpoint?id=" . urlencode($dashpointId);
         $message .= "<p><strong>Dashpoint:</strong> <a href='" . htmlspecialchars($dashpointUrl, ENT_QUOTES, 'UTF-8') . "'>" . htmlspecialchars($dashpointId) . "</a></p>";
         if ($previousHuntsAllGames === 0) {
             $message .= "<p><strong>First dashpoint found by user - welcome to geodashing!</strong></p>";
