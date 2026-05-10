@@ -6,7 +6,7 @@ Please format the response exclusively as valid HTML. Do not use markdown backti
 When rendering the Player Logs, any provided photo URLs MUST be formatted as embedded HTML images
 using <img> tags. They should be scaled to an appropriate thumbnail size (e.g., width='300'), and
 wrapped in an <a> anchor tag that links to the full-size photo URL so that clicking the thumbnail
-brings up the full-size photo.
+brings up the full-size photo. Analyze the visual content of the photos and include a detailed description of the image as the 'alt' text. Additionally, you MUST make this description text visible directly underneath the image as a caption (e.g., inside a <figcaption> or <p> tag below the image).
 
 Style and Formatting Rules:
 Tone: Enthusiastic, observational, and community-focused.
