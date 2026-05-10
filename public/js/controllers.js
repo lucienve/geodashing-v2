@@ -50,6 +50,22 @@ document.addEventListener('routeLoaded', (e) => {
             .then(json => {
                 if (json.status === 'success') {
                     const dp = json.data;
+
+                    // Switch global context if necessary to ensure map rendering aligns with the dashpoint's game
+                    if (window.currentGameContext && dp.game_id && window.currentGameContext.id !== dp.game_id) {
+                        window.currentGameContext.id = parseInt(dp.game_id);
+                        const gameSelector = document.getElementById('game-selector');
+                        if (gameSelector) {
+                            gameSelector.value = dp.game_id;
+                            const selOpt = gameSelector.options[gameSelector.selectedIndex];
+                            if (selOpt) {
+                                window.currentGameContext.is_active = selOpt.dataset.isActive == '1';
+                                window.currentGameContext.title = selOpt.dataset.title;
+                                window.currentGameContext.monthYear = selOpt.dataset.monthYear;
+                            }
+                        }
+                    }
+
                     if (dpIdLabel) dpIdLabel.innerText = `${dp.id}`;
                     if (dpCoordLabel) dpCoordLabel.innerText = `[ LAT: ${dp.lat.toFixed(5)} | LON: ${dp.lon.toFixed(5)} ]`;
 

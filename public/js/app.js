@@ -263,10 +263,29 @@ function initGameContext() {
             // Find Active Game natively
             const activeGame = json.data.find(g => g.is_active == 1) || json.data[0];
 
-            window.currentGameContext.id = activeGame.id;
-            window.currentGameContext.is_active = activeGame.is_active == 1;
-            window.currentGameContext.title = activeGame.title;
-            const activeD = new Date(activeGame.start_time);
+            let targetGameId = activeGame.id;
+            let fullHash = window.location.hash;
+            const urlParams = new URLSearchParams(window.location.search);
+            if (!fullHash && urlParams.has('dashpoint')) {
+                fullHash = `#dashpoint?id=${urlParams.get('dashpoint')}`;
+            }
+            if (fullHash.startsWith('#dashpoint?id=')) {
+                const dpId = fullHash.split('?id=')[1];
+                if (dpId && dpId.startsWith('GD')) {
+                    const gameIdStr = dpId.split('-')[0].substring(2);
+                    const parsedId = parseInt(gameIdStr, 10);
+                    if (!isNaN(parsedId) && json.data.find(g => g.id === parsedId)) {
+                        targetGameId = parsedId;
+                    }
+                }
+            }
+
+            const selectedGame = json.data.find(g => g.id === targetGameId) || activeGame;
+
+            window.currentGameContext.id = selectedGame.id;
+            window.currentGameContext.is_active = selectedGame.is_active == 1;
+            window.currentGameContext.title = selectedGame.title;
+            const activeD = new Date(selectedGame.start_time);
             window.currentGameContext.monthYear = activeD.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
             // Populate the Dropdown natively
@@ -296,7 +315,7 @@ function initGameContext() {
                     // Removed titleStr to keep the option text short and prevent layout overflow on mobile
                     option.innerText = `Game ${game.id} (${monthYear})${statusTag}`;
 
-                    if (game.id === activeGame.id) {
+                    if (game.id === selectedGame.id) {
                         option.selected = true;
                     }
                     gameSelector.appendChild(option);
