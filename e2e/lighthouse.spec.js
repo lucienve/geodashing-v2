@@ -13,7 +13,8 @@ test.describe('Lighthouse Audits', () => {
     let page;
     let PORT;
 
-    test.beforeAll(async ({ _browserName }, testInfo) => {
+    test.beforeAll(async ({ browserName }, testInfo) => {
+        if (browserName !== 'chromium') return;
         PORT = 9222 + testInfo.workerIndex;
 
         // Load playAudit dynamically
