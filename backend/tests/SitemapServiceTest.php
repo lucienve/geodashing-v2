@@ -66,6 +66,11 @@ class SitemapServiceTest extends TestCase
         // Validate core root
         $this->assertStringContainsString('<loc>http://test.local/</loc>', $xml);
 
+        // Validate static help pages
+        $this->assertStringContainsString('<loc>http://test.local/?page=about</loc>', $xml);
+        $this->assertStringContainsString('<loc>http://test.local/?page=how-to</loc>', $xml);
+        $this->assertStringContainsString('<loc>http://test.local/?page=contact</loc>', $xml);
+
         // Validate dynamic injection
         $this->assertStringContainsString('<loc>http://test.local/?dashpoint=GD001-AAAA</loc>', $xml);
 

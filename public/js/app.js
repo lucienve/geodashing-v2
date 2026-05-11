@@ -174,19 +174,29 @@ function initRouting() {
         const urlParams = new URLSearchParams(window.location.search);
         if (!fullHash && urlParams.has('dashpoint')) {
             fullHash = `#dashpoint?id=${urlParams.get('dashpoint')}`;
+        } else if (!fullHash && urlParams.has('page')) {
+            fullHash = `#${urlParams.get('page')}`;
         } else if (!fullHash) {
             fullHash = '#home';
         }
 
         // Dynamically maintain the Canonical URL for Search Engines
-        const canonicalTag = document.getElementById('canonical-link');
-        if (canonicalTag) {
-            if (fullHash.startsWith('#dashpoint?id=')) {
-                const dpId = fullHash.split('?id=')[1];
-                canonicalTag.href = `https://www.geodashing.org/?dashpoint=${dpId}`;
-            } else {
-                canonicalTag.href = `https://www.geodashing.org/`;
-            }
+        let canonicalTag = document.getElementById('canonical-link');
+        if (!canonicalTag) {
+            canonicalTag = document.createElement('link');
+            canonicalTag.id = 'canonical-link';
+            canonicalTag.rel = 'canonical';
+            document.head.appendChild(canonicalTag);
+        }
+
+        if (fullHash.startsWith('#dashpoint?id=')) {
+            const dpId = fullHash.split('?id=')[1];
+            canonicalTag.href = `https://www.geodashing.org/?dashpoint=${dpId}`;
+        } else if (['#about', '#how-to', '#contact'].includes(fullHash)) {
+            const pageId = fullHash.substring(1);
+            canonicalTag.href = `https://www.geodashing.org/?page=${pageId}`;
+        } else {
+            canonicalTag.href = `https://www.geodashing.org/`;
         }
 
         if (window.trackPageview) {

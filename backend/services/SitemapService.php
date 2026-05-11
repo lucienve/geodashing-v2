@@ -66,6 +66,9 @@ class SitemapService
         // Deep link equivalents for indexing the SPA states if Googlebot follows them
         // Note: To Googlebot these are query params, but we route them via hash natively.
         // We only explicitly output the query param fallback links to guarantee indexing.
+        $this->addUrl($xml, $this->baseUrl . "/?page=about", 'monthly', '0.8');
+        $this->addUrl($xml, $this->baseUrl . "/?page=how-to", 'monthly', '0.8');
+        $this->addUrl($xml, $this->baseUrl . "/?page=contact", 'monthly', '0.5');
     }
 
     /**
