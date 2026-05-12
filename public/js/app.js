@@ -302,6 +302,7 @@ function initGameContext() {
             if (gameSelector) {
                 gameSelector.innerHTML = '';
                 const activeGameStart = new Date(activeGame.start_time).getTime();
+                const fragment = document.createDocumentFragment();
                 
                 json.data.forEach(game => {
                     const d = new Date(game.start_time);
@@ -328,8 +329,10 @@ function initGameContext() {
                     if (game.id === selectedGame.id) {
                         option.selected = true;
                     }
-                    gameSelector.appendChild(option);
+                    fragment.appendChild(option);
                 });
+
+                gameSelector.appendChild(fragment);
 
                 // Bind the Context Switching Handler
                 gameSelector.addEventListener('change', (e) => {
