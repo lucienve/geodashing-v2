@@ -1,44 +1,20 @@
 """Administrative utilities for managing Geodashing game lifecycles."""
 
 import argparse
-import configparser
 import os
 import sys
-import mysql.connector
 
-def get_db_connection(config_path: str) -> mysql.connector.connection.MySQLConnection:
-    """Establishes a connection to the MySQL database securely via config.ini."""
-    if not os.path.exists(config_path):
-        raise FileNotFoundError(f"Database config not found at {config_path}")
-
-    config = configparser.ConfigParser()
-    config.read(config_path)
-
-    host = config['database'].get('DB_HOST', '127.0.0.1').strip('"\'')
-    port = config['database'].get('DB_PORT', '3306').strip('"\'')
-    user = config['database'].get('DB_USER', 'geodashing').strip('"\'')
-    password = config['database'].get('DB_PASS', '').strip('"\'')
-    database = config['database'].get('DB_NAME', 'geodashing').strip('"\'')
-
-    try:
-        conn = mysql.connector.connect(host=host,
-                                       user=user,
-                                       password=password,
-                                       database=database,
-                                       port=port)
-        return conn
-    except mysql.connector.Error as e:
-        raise RuntimeError(f"Database Connection Error: {e}") from e
+from backend.scripts.db_utils import get_db_connection
 
 def list_games(cursor):
     """Prints all games chronologically."""
-    cursor.execute("SELECT id, title, start_time, end_time, is_active FROM games ORDER BY start_time ASC")
+    cursor.execute("SELECT id, title, start_time, end_time, is_active "
+                   "FROM games ORDER BY start_time ASC")
     games = cursor.fetchall()
 
     if not games:
         print("No games found in the database.")
         return
-
     print(f"{'ID':<5} | {'Active':<8} | {'Start Time':<20} | {'End Time':<20} | {'Title'}")
     print("-" * 80)
     for g in games:
@@ -59,7 +35,7 @@ def activate_game(cursor, conn, game_id: int):
 
     print("Retiring all currently active games...")
     cursor.execute("UPDATE games SET is_active = FALSE")
-    
+
     print(f"Activating Game {game_id} ('{game[1]}')...")
     cursor.execute("UPDATE games SET is_active = TRUE WHERE id = %s", (game_id,))
 
@@ -70,7 +46,7 @@ def main() -> None:
     """Main entrypoint for the game administration script."""
     parser = argparse.ArgumentParser(description="Geodashing Game Administration Utility")
     parser.add_argument('--list', action='store_true', help="List all games chronologically")
-    parser.add_argument('--activate', type=int, metavar='GAME_ID', 
+    parser.add_argument('--activate', type=int, metavar='GAME_ID',
                         help="Activate a specific game ID and retire all others")
     args = parser.parse_args()
 

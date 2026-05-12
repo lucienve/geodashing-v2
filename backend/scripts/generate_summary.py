@@ -12,27 +12,8 @@ import mysql.connector
 from google import genai
 from google.genai import types
 
-def get_db_connection(config_path: str) -> mysql.connector.connection.MySQLConnection:
-    """Establishes a connection to the MySQL database securely via config.ini."""
-    if not os.path.exists(config_path):
-        raise FileNotFoundError(f"Database config not found at {config_path}")
+from backend.scripts.db_utils import get_db_connection
 
-    config = configparser.ConfigParser()
-    config.read(config_path)
-
-    host = config['database'].get('DB_HOST', '127.0.0.1').strip('"\'')
-    port = config['database'].get('DB_PORT', '3306').strip('"\'')
-    user = config['database'].get('DB_USER', 'geodashing').strip('"\'')
-    password = config['database'].get('DB_PASS', '').strip('"\'')
-    database = config['database'].get('DB_NAME', 'geodashing').strip('"\'')
-
-    return mysql.connector.connect(
-        host=host,
-        user=user,
-        password=password,
-        database=database,
-        port=port
-    )
 
 def configure_environment(config_path: str) -> dict:
     """Configures environment variables and Vertex AI parameters."""
@@ -266,7 +247,11 @@ def construct_new_data(game_title: str, scores: list, formatted_logs: list) -> l
 def _generate_vertex_summary(ai_config: dict, sys_inst: str,
                              history: list, prompt: list) -> str:
     """Initializes Vertex AI and generates the summary from the prompt parts."""
-    client = genai.Client(vertexai=True, project=ai_config['project_id'], location=ai_config['region'])
+    client = genai.Client(
+        vertexai=True,
+        project=ai_config['project_id'],
+        location=ai_config['region']
+    )
     config = types.GenerateContentConfig(
         system_instruction=sys_inst,
     )
