@@ -20,4 +20,7 @@ Options -Indexes
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
     Header set X-Frame-Options "SAMEORIGIN"
+    Header set Strict-Transport-Security "max-age=2592000"
+    Header set Cross-Origin-Opener-Policy "same-origin-allow-popups"
+    Header set Content-Security-Policy "frame-ancestors 'self';"
 </IfModule>

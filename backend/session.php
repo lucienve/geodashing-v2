@@ -18,8 +18,11 @@ session_set_cookie_params([
 
 // 2. HTTP Defense-in-Depth Headers
 header('X-Content-Type-Options: nosniff');
-header('X-Frame-Options: DENY');
-// Note: We omit CSP because Google Maps dynamically injects complex inline styles and cross-domain iframes that break easily under strict rules.
+header('X-Frame-Options: SAMEORIGIN');
+header('Strict-Transport-Security: max-age=2592000');
+header('Cross-Origin-Opener-Policy: same-origin-allow-popups');
+header("Content-Security-Policy: frame-ancestors 'self';");
+// Note: We omit full CSP because Google Maps dynamically injects complex inline styles and cross-domain iframes that break easily under strict rules.
 
 // 3. Configure custom session storage (Bypass Ubuntu cron job)
 if ((getenv('APP_ENV') ?: ($_ENV['APP_ENV'] ?? '')) !== 'testing') {
