@@ -147,4 +147,32 @@ class GeoContextServiceTest extends TestCase
         $offset = $service->getTimezoneOffset(40.0, -70.0);
         $this->assertEquals(0, $offset);
     }
+
+    public function testEvaluateAndGetExtremeAnnotations()
+    {
+        $pdoMock = $this->createMock(PDO::class);
+        $stmtMock = $this->createMock(PDOStatement::class);
+
+        $pdoMock->method('prepare')->willReturn($stmtMock);
+
+        // Simulating that no records exist yet (fetch returns false)
+        $stmtMock->method('fetch')->willReturn(false);
+        $stmtMock->method('execute')->willReturn(true);
+
+        $service = new GeoContextService($pdoMock, 'fake_api_key');
+
+        $annotations = $service->evaluateAndGetExtremeAnnotations(
+            'GD-123',
+            45.0,
+            -70.0,
+            100.5,
+            'Maine',
+            'US',
+            2026
+        );
+
+        $this->assertStringContainsString('all-time northernmost', $annotations);
+        $this->assertStringContainsString('all-time highest', $annotations);
+        $this->assertStringContainsString('2026 westernmost', $annotations);
+    }
 }

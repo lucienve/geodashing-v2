@@ -260,4 +260,148 @@ class GeoContextService
         $index = (int) round($brng / 45);
         return $directions[$index];
     }
+
+    /**
+     * Fetches the elevation for the given coordinates using the Google Maps Elevation API.
+     *
+     * @param float $lat The latitude.
+     * @param float $lon The longitude.
+     * @return float|null The elevation in meters, or null on failure.
+     */
+    public function getElevation(float $lat, float $lon): ?float
+    {
+        if (empty($this->apiKey)) {
+            return null;
+        }
+
+        $url = sprintf(
+            "https://maps.googleapis.com/maps/api/elevation/json?locations=%f,%f&key=%s",
+            $lat,
+            $lon,
+            urlencode($this->apiKey)
+        );
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || !$response) {
+            error_log("GeoContextService getElevation failed with HTTP {$httpCode}");
+            return null;
+        }
+
+        $data = json_decode($response, true);
+        if (!isset($data['status']) || $data['status'] !== 'OK' || empty($data['results'])) {
+            $errorMessage = $data['errorMessage'] ?? 'Unknown Error';
+            error_log("GeoContextService getElevation API Error: {$errorMessage} (Status: " . ($data['status'] ?? 'None') . ")");
+            return null;
+        }
+
+        return isset($data['results'][0]['elevation']) ? (float) $data['results'][0]['elevation'] : null;
+    }
+
+    /**
+     * Evaluates whether the given dashpoint is a new geographical extreme and returns an annotation string if so.
+     *
+     * @param string $dashpointId
+     * @param float $lat
+     * @param float $lon
+     * @param float|null $elevation
+     * @param string $stateProvince
+     * @param string $countryCode
+     * @param int $visitYear
+     * @return string
+     */
+    public function evaluateAndGetExtremeAnnotations(string $dashpointId, float $lat, float $lon, ?float $elevation, string $stateProvince, string $countryCode, int $visitYear): string
+    {
+        $annotations = [];
+
+        $metrics = [
+            'northernmost' => ['value' => $lat, 'compare' => '>'],
+            'southernmost' => ['value' => $lat, 'compare' => '<'],
+            'easternmost' => ['value' => $lon, 'compare' => '>'],
+            'westernmost' => ['value' => $lon, 'compare' => '<'],
+        ];
+
+        if ($elevation !== null) {
+            $metrics['highest'] = ['value' => $elevation, 'compare' => '>'];
+            $metrics['lowest'] = ['value' => $elevation, 'compare' => '<'];
+        }
+
+        foreach ($metrics as $type => $data) {
+            $value = $data['value'];
+            $compare = $data['compare'];
+
+            // Check All-Time and Yearly
+            foreach ([null, $visitYear] as $year) {
+                $timeScope = ($year === null) ? 'all-time' : "{$year}";
+
+                $yearCondition = ($year === null) ? "year IS NULL" : "year = :year";
+                $params = [
+                    'cc' => $countryCode,
+                    'sp' => $stateProvince,
+                    'type' => $type
+                ];
+                if ($year !== null) {
+                    $params['year'] = $year;
+                }
+
+                $stmt = $this->db->prepare("SELECT id, dashpoint_id, coordinate_value FROM regional_extremes WHERE country_code = :cc AND state_province = :sp AND $yearCondition AND extreme_type = :type LIMIT 1");
+                $stmt->execute($params);
+                $currentRecord = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                $isNewRecord = false;
+                if (!$currentRecord) {
+                    $isNewRecord = true;
+                } else {
+                    $currentValue = (float) $currentRecord['coordinate_value'];
+                    if ($compare === '>' && $value > $currentValue) {
+                        $isNewRecord = true;
+                    } elseif ($compare === '<' && $value < $currentValue) {
+                        $isNewRecord = true;
+                    }
+                }
+
+                if ($isNewRecord) {
+                    // It's a new record!
+                    $annotations[] = "the {$timeScope} {$type} dashpoint found in {$stateProvince}";
+
+                    if ($currentRecord) {
+                        $updateStmt = $this->db->prepare("UPDATE regional_extremes SET dashpoint_id = :dpid, coordinate_value = :val, created_at = NOW() WHERE id = :id");
+                        $updateStmt->execute([
+                            'dpid' => $dashpointId,
+                            'val' => $value,
+                            'id' => $currentRecord['id']
+                        ]);
+                    } else {
+                        $insertParams = [
+                            'cc' => $countryCode,
+                            'sp' => $stateProvince,
+                            'year' => $year,
+                            'type' => $type,
+                            'dpid' => $dashpointId,
+                            'val' => $value
+                        ];
+                        $insertStmt = $this->db->prepare("INSERT INTO regional_extremes (country_code, state_province, year, extreme_type, dashpoint_id, coordinate_value) VALUES (:cc, :sp, :year, :type, :dpid, :val)");
+                        $insertStmt->execute($insertParams);
+                    }
+                }
+            }
+        }
+
+        if (empty($annotations)) {
+            return '';
+        }
+
+        if (count($annotations) === 1) {
+            return ", and is " . $annotations[0];
+        }
+
+        $last = array_pop($annotations);
+        return ", and is " . implode(", ", $annotations) . " and " . $last;
+    }
 }

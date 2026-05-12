@@ -49,6 +49,7 @@ CREATE TABLE dashpoints (
     location POINT SRID 4326 NOT NULL,
     country_code VARCHAR(10),
     state_province VARCHAR(100),
+    elevation DECIMAL(10, 2) NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -104,3 +105,17 @@ CREATE TABLE major_cities (
 
 -- Spatial index to quickly find cities near dashpoints
 CREATE SPATIAL INDEX idx_major_cities_location ON major_cities (location);
+
+-- 8. Regional Extremes (Tracking highest/lowest, northernmost, southernmost, etc.)
+CREATE TABLE regional_extremes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    country_code VARCHAR(10) NOT NULL,
+    state_province VARCHAR(100) NOT NULL,
+    year INT NULL, -- NULL indicates 'All-Time', otherwise e.g. 2026
+    extreme_type ENUM('northernmost', 'southernmost', 'easternmost', 'westernmost', 'highest', 'lowest') NOT NULL,
+    dashpoint_id VARCHAR(20) NOT NULL,
+    coordinate_value DECIMAL(10, 6) NOT NULL, -- The Lat, Lon, or Elevation value
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY (country_code, state_province, year, extreme_type),
+    FOREIGN KEY (dashpoint_id) REFERENCES dashpoints(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

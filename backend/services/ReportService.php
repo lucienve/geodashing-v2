@@ -80,7 +80,10 @@ class ReportService
                 g.is_active,
                 g.id AS game_id,
                 ST_X(d.location) as dp_lat,
-                ST_Y(d.location) as dp_lon
+                ST_Y(d.location) as dp_lon,
+                d.country_code,
+                d.state_province,
+                d.elevation
             FROM dashpoints d
             JOIN games g ON d.game_id = g.id
             WHERE d.id = :id 
@@ -100,6 +103,19 @@ class ReportService
         $distance = (int) round($result['distance_meters']);
         $dpLat = (float) $result['dp_lat'];
         $dpLon = (float) $result['dp_lon'];
+        $dpCountry = $result['country_code'] ?? '';
+        $dpState = $result['state_province'] ?? '';
+        $dpElevation = $result['elevation'] !== null ? (float) $result['elevation'] : null;
+
+        // Fetch and cache elevation if missing
+        if ($dpElevation === null) {
+            $fetchedElevation = $this->geoService->getElevation($dpLat, $dpLon);
+            if ($fetchedElevation !== null) {
+                $dpElevation = $fetchedElevation;
+                $elevStmt = $this->db->prepare("UPDATE dashpoints SET elevation = :elev WHERE id = :id");
+                $elevStmt->execute([':elev' => $dpElevation, ':id' => $dashpointId]);
+            }
+        }
 
         // 4. Enforce the classic 100-meter proximity rule (bypass if it's an attempt)
         if (!$isAttempt && $distance > 100) {
@@ -207,6 +223,15 @@ class ReportService
         $totalPointsGame = $totalScoreGameRow ? (int) $totalScoreGameRow['total'] : $scoreAwarded;
 
         $geoContext = $this->geoService->getDashpointContext($dpLat, $dpLon, $dashpointId);
+
+        // Calculate extremes if valid province is set
+        if (!empty($dpState) && !empty($dpCountry)) {
+            $visitYear = (int) date('Y');
+            $extremeAnnotations = $this->geoService->evaluateAndGetExtremeAnnotations($dashpointId, $dpLat, $dpLon, $dpElevation, $dpState, $dpCountry, $visitYear);
+            if (!empty($extremeAnnotations)) {
+                $geoContext .= $extremeAnnotations;
+            }
+        }
 
         $this->sendVisitReportEmail($username, $dashpointId, $distance, $scoreAwarded, $totalPointsAllGames, $totalPointsGame, $isAttempt, $notes, $photosJson, $previousHuntsAllGames, $previousHuntsGame, $geoContext);
 
