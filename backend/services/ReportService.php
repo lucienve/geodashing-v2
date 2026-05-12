@@ -224,8 +224,8 @@ class ReportService
 
         $geoContext = $this->geoService->getDashpointContext($dpLat, $dpLon, $dashpointId);
 
-        // Calculate extremes if valid province is set
-        if (!empty($dpState) && !empty($dpCountry)) {
+        // Calculate extremes if valid province is set AND it was a successful claim (not an attempt)
+        if (!$isAttempt && !empty($dpState) && !empty($dpCountry)) {
             $visitYear = (int) date('Y');
             $extremeAnnotations = $this->geoService->evaluateAndGetExtremeAnnotations($dashpointId, $dpLat, $dpLon, $dpElevation, $dpState, $dpCountry, $visitYear);
             if (!empty($extremeAnnotations)) {
