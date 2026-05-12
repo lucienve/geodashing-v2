@@ -21,6 +21,12 @@ $absolutePath = __DIR__ . '/../public' . $path;
 if (file_exists($absolutePath) && !is_dir($absolutePath)) {
     // Determine the correct MIME type
     $ext = pathinfo($absolutePath, PATHINFO_EXTENSION);
+    
+    // If it's a PHP file, let the built-in server handle it natively
+    if (strtolower($ext) === 'php') {
+        return false;
+    }
+
     $mimes = [
         'html' => 'text/html',
         'css'  => 'text/css',
