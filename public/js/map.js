@@ -126,8 +126,6 @@ window.initMap = function () {
                 map.setCenter({ lat: position.coords.latitude, lng: position.coords.longitude });
                 map.setZoom(11); // Snap dynamically tightly matching typical hunting zones implicitly
             }
-        }, () => {
-            console.log("Geolocation mapping completely refused or unavailable on this terminal.");
         });
 
         // Continuously update user marker
@@ -280,7 +278,7 @@ function plotVectors(pointsArray) {
             radius: 100,
             clickable: false // Ensure circles don't block clicking pins / dragging the map
         });
-        
+
         activeCircles.push(circle);
     });
 

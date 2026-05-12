@@ -11,7 +11,6 @@ use PDOException;
  * Class ReportService
  *
  * Encapsulates the core business logic required to validate proximity
- * Encapsulates the core business logic required to validate proximity
  * and persist Dashpoint visits, designed to allow for PHPUnit testing.
  */
 class ReportService
