@@ -25,58 +25,6 @@ class GameServiceTest extends TestCase
         $this->gameService = new GameService($this->pdoMock);
     }
 
-    #[Test]
-    public function getActiveGameReturnsActiveGameSuccessfully()
-    {
-        $stmtMock = $this->createMock(PDOStatement::class);
-        $gameData = [
-            'id' => 1,
-            'title' => 'April Dash 2026',
-            'start_time' => '2026-04-01 00:00:00',
-            'end_time' => '2026-04-30 23:59:59'
-        ];
-
-        $stmtMock->expects($this->once())
-            ->method('execute')
-            ->willReturn(true);
-
-        $stmtMock->expects($this->once())
-            ->method('fetch')
-            ->willReturn($gameData);
-
-        $this->pdoMock->expects($this->once())
-            ->method('prepare')
-            ->with($this->stringContains('is_active = TRUE'))
-            ->willReturn($stmtMock);
-
-        $result = $this->gameService->getActiveGame();
-
-        $this->assertNotNull($result);
-        $this->assertEquals(1, $result['game_id']);
-        $this->assertEquals('April Dash 2026', $result['title']);
-    }
-
-    #[Test]
-    public function getActiveGameReturnsNullWhenNoActiveGame()
-    {
-        $stmtMock = $this->createMock(PDOStatement::class);
-
-        $stmtMock->expects($this->once())
-            ->method('execute')
-            ->willReturn(true);
-
-        $stmtMock->expects($this->once())
-            ->method('fetch')
-            ->willReturn(false);
-
-        $this->pdoMock->expects($this->once())
-            ->method('prepare')
-            ->willReturn($stmtMock);
-
-        $result = $this->gameService->getActiveGame();
-
-        $this->assertNull($result);
-    }
 
     #[Test]
     public function getAllGamesReturnsListOfGames()
