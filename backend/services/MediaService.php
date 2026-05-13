@@ -360,16 +360,22 @@ class MediaService
             return [$files];
         }
 
-        foreach ($files['name'] as $i => $name) {
-            if ($files['error'][$i] === UPLOAD_ERR_NO_FILE) {
+        $names = $files['name'];
+        $types = $files['type'];
+        $tmpNames = $files['tmp_name'];
+        $errors = $files['error'];
+        $sizes = $files['size'];
+
+        foreach ($names as $i => $name) {
+            if ($errors[$i] === UPLOAD_ERR_NO_FILE) {
                 continue;
             }
             $normalized[] = [
-                'name'     => $files['name'][$i],
-                'type'     => $files['type'][$i],
-                'tmp_name' => $files['tmp_name'][$i],
-                'error'    => $files['error'][$i],
-                'size'     => $files['size'][$i],
+                'name'     => $names[$i],
+                'type'     => $types[$i],
+                'tmp_name' => $tmpNames[$i],
+                'error'    => $errors[$i],
+                'size'     => $sizes[$i],
             ];
         }
         return $normalized;
