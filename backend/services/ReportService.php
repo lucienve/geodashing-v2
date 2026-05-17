@@ -104,7 +104,7 @@ class ReportService
         $dpLon = (float) $result['dp_lon'];
         $dpCountry = $result['country_code'] ?? '';
         $dpState = $result['state_province'] ?? '';
-        $dpElevation = $result['elevation'] !== null ? (float) $result['elevation'] : null;
+        $dpElevation = isset($result['elevation']) ? (float) $result['elevation'] : null;
 
         // Fetch and cache elevation if missing
         if ($dpElevation === null) {
@@ -165,7 +165,7 @@ class ReportService
             $scoreAwarded = 2; // Second to claim
         }
 
-        $gameId = $result['game_id'];
+        $gameId = $result['game_id'] ?? null;
 
         // 8. Calculate total previous hunts for this user before the new insert
         $huntsStmt = $this->db->prepare("SELECT COUNT(id) AS previous_hunts FROM visits WHERE user_id = :uid");
