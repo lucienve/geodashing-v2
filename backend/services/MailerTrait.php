@@ -91,7 +91,7 @@ trait MailerTrait
     {
         $configPath = __DIR__ . '/../config.ini';
         $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
-        $toList = $config['MAILING_LIST_ADDRESS'] ?? '';
+        $toList = $config['MAILING_LIST_ADDRESS'] ?? getenv('MAILING_LIST_ADDRESS') ?: ($_ENV['MAILING_LIST_ADDRESS'] ?? '');
 
         if (empty($toList)) {
             return;

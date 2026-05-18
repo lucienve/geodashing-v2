@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Tests;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use App\Services\GeoContextService;
 use PDO;
 use PDOStatement;
 
+#[AllowMockObjectsWithoutExpectations]
 class GeoContextServiceTest extends TestCase
 {
     /**

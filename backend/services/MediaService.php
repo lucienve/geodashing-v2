@@ -49,12 +49,17 @@ class MediaService
                 // Neutralize auth natively by supplying a dummy credentials fetcher. This prevents
                 // the SDK from eagerly loading developer Application Default Credentials and hitting OAuth.
                 $config['credentialsFetcher'] = new class implements \Google\Auth\FetchAuthTokenInterface {
-                    public function fetchAuthToken(?callable $httpHandler = null) { 
-                        return ['access_token' => 'mock-token-for-emulator', 'expires_in' => 3600]; 
+                    public function fetchAuthToken(?callable $httpHandler = null)
+                    {
+                        return ['access_token' => 'mock-token-for-emulator', 'expires_in' => 3600];
                     }
-                    public function getCacheKey() { return 'mock-key'; }
-                    public function getLastReceivedToken() { 
-                        return ['access_token' => 'mock-token-for-emulator', 'expires_in' => 3600]; 
+                    public function getCacheKey()
+                    {
+                        return 'mock-key';
+                    }
+                    public function getLastReceivedToken()
+                    {
+                        return ['access_token' => 'mock-token-for-emulator', 'expires_in' => 3600];
                     }
                 };
             }

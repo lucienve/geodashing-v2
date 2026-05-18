@@ -61,14 +61,9 @@ class MailerTraitTest extends TestCase
             }
         };
 
-        // Create a fake config.ini structure for the test
-        $configPath = __DIR__ . '/../../services/../config.ini';
-        if (!file_exists(dirname($configPath))) {
-            mkdir(dirname($configPath), 0777, true);
-        }
-        if (!file_exists($configPath)) {
-            file_put_contents($configPath, "[mail]\nMAILING_LIST_ADDRESS = \"dashers@geodashing.org\"\n");
-        }
+        // Inject testing mailing list address via environment
+        putenv('MAILING_LIST_ADDRESS=dashers@geodashing.org');
+        $_ENV['MAILING_LIST_ADDRESS'] = 'dashers@geodashing.org';
 
         $mailer->publicSendVisitReportEmail(
             "Lucien",
