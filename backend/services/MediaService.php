@@ -46,8 +46,17 @@ class MediaService
             // When in E2E testing, aggressively re-route GCP storage requests to the local emulator mapping
             if (getenv('APP_ENV') === 'testing' && getenv('GCS_EMULATOR_HOST')) {
                 $config['apiEndpoint'] = getenv('GCS_EMULATOR_HOST');
-                $config['hasAuthentication'] = false; // Disable auth for the emulator
-                // The emulator does not execute strict checking on Service Account IAM keys natively.
+                // Neutralize auth natively by supplying a dummy credentials fetcher. This prevents
+                // the SDK from eagerly loading developer Application Default Credentials and hitting OAuth.
+                $config['credentialsFetcher'] = new class implements \Google\Auth\FetchAuthTokenInterface {
+                    public function fetchAuthToken(?callable $httpHandler = null) { 
+                        return ['access_token' => 'mock-token-for-emulator', 'expires_in' => 3600]; 
+                    }
+                    public function getCacheKey() { return 'mock-key'; }
+                    public function getLastReceivedToken() { 
+                        return ['access_token' => 'mock-token-for-emulator', 'expires_in' => 3600]; 
+                    }
+                };
             }
 
             // Natively bridge the production GCP sockets safely wrapping the IAM config map
