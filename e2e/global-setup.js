@@ -8,9 +8,16 @@ module.exports = async (_config) => {
         console.log('Local environment detected: Starting Docker containers...');
         try {
             const composePath = path.resolve(__dirname, 'docker-compose.yml');
-            execSync(`docker-compose -f "${composePath}" up -d`, { stdio: 'inherit' });
+            try {
+                // Prioritize modern Docker Compose V2 (plugin)
+                execSync(`docker compose -f "${composePath}" up -d`, { stdio: 'inherit' });
+            } catch (v2Error) {
+                // Fallback to legacy Docker Compose V1 (standalone) for older developer environments
+                console.log('Falling back to legacy docker-compose (v1)...');
+                execSync(`docker-compose -f "${composePath}" up -d`, { stdio: 'inherit' });
+            }
         } catch (error) {
-            console.error('\nERROR: Failed to start Docker containers via docker-compose!');
+            console.error('\nERROR: Failed to start Docker containers!');
             throw error;
         }
     }
