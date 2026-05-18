@@ -7,7 +7,7 @@ The application allows users to participate in global geographic games where the
 ## Architectural Decisions
 - **Core Stack**: 
   - **Frontend**: Vanilla JS (ES6+), Semantic HTML5, Vanilla CSS3. **No Heavy Frameworks** (React/Vue/etc. are strictly prohibited). Logic is decoupled into separate files (`api.js`, `app.js`, `controllers.js`, `map.js`).
-  - **Backend**: Primary API layer written in **PHP 8.3.6** (`public/api`) supplemented with **Python 3.12** for server-side scripts / game generation algorithms (`generate_game.py`).
+  - **Backend**: Primary API layer written in **PHP 8.3.6** (`public/api`) supplemented with **Python 3.11+** for server-side scripts / game generation algorithms (`generate_game.py`), remaining backward compatible with Debian 12.
   - **Database**: **MySQL 8.4.8** using native drivers (PDO for PHP, `mysql-connector-python` for Python). **No ORM is used**. All queries are securely handled via explicit parameterized statements.
   - **Media Storage**: Google Cloud Storage buckets handle user-uploaded photos natively via PHP APIs.
 - **Security Posture**: 
@@ -18,6 +18,8 @@ The application allows users to participate in global geographic games where the
   - Implementation requires rich aesthetics prioritizing strong responsiveness and mobile-first logic. Includes native mobile photo uploads, responsive layouts, GPS syncing, Google Maps `AdvancedMarkerElement`, and marker clustering.
 - **Testing Constraints**:
   - PHPUnit test files must exclusively live in `backend/tests/` and mirror the structure of the classes they test, rather than in the project root.
+  - Playwright E2E tests are used for automated layout testing and verify the UI constraints across devices without hanging.
+  - Lighthouse tests are integrated to enforce SEO, accessibility, and performance best practices.
 
 ## Detailed Milestones & Implementation History
 
@@ -74,3 +76,24 @@ The application allows users to participate in global geographic games where the
 - Implemented the capability to generate non-active "Preview" games using the `--preview` flag in `generate_game.py`, allowing the community to view upcoming dashpoints without prematurely exposing them to log submissions.
 - Built a localized Python administrative utility (`game_utils.py`) to systematically view chronological game sequences and seamlessly execute monthly rollovers via transactional SQL commands.
 - Configured the frontend UI to parse dynamic game states securely, identifying `[PREVIEW]` and `[COMPLETED]` chronological states using native JavaScript Date comparisons, ensuring robust client-side display logic independent of backend integer IDs.
+
+### 11. AI Game Summaries & Reporting
+- Migrated to the modern `google-genai` Python SDK to automatically synthesize monthly game summaries.
+- The summary engine processes historical logs and selectively curates the best user-submitted photos (rendering them via optimized precomputed thumbnails) to build comprehensive HTML recaps.
+- Implemented data serialization to save inputs and outputs from the GenAI workflows to facilitate future model fine-tuning and few-shot example generation.
+
+### 12. UI, SEO & Performance Optimizations
+- Integrated automated Lighthouse testing to rigorously enforce strict accessibility, performance, and SEO standards.
+- Addressed indexability of deep-linked SPA routes (like `#dashpoint` and `#help`) by dynamically injecting self-referencing canonical links into the document header.
+- Modernized mobile upload capabilities by integrating a native device library selector and restricting uploads to a hard 10-photo limit. Added a custom Material Design "My Location" control for rapid GPS syncing.
+- Enhanced map UX by automatically refreshing marker layers upon successful log submission, removing the need for manual panning.
+- Optimized DOM performance by minimizing repaints during historical game list generation.
+
+### 13. Export Contextualization & Data Portability
+- Constrained the data export engine to strictly respect the historical game context active in the frontend. 
+- Updated dynamic export filenames and search queries to lock tightly to the parsed game ID.
+- Bolstered with extensive E2E validation to ensure exported datasets consistently reflect the user's expected context.
+
+### 14. Advanced Security & Session Integrity
+- Enhanced PHP session management to gracefully bypass Ubuntu's default aggressive GC mechanisms, instead relying on strict 30-day sliding activity windows for cookie expiration.
+- Addressed multiple Unicode encoding edge-cases in the native MySQL connector to safely process varied international characters in dashpoint logs.
