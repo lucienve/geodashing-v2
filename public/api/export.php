@@ -31,6 +31,9 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     $e = filter_var($_GET['e'] ?? '', FILTER_VALIDATE_FLOAT);
     $w = filter_var($_GET['w'] ?? '', FILTER_VALIDATE_FLOAT);
 
+    // Parse the game_id constraint dynamically
+    $gameId = filter_var($_GET['game_id'] ?? null, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
+
     // Default the payload syntax to GPX architectures dynamically
     $format = $_GET['format'] ?? 'gpx';
 
@@ -42,7 +45,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     try {
         $db = \App\Database::getConnection();
         $searchService = new SearchService($db);
-        $points = $searchService->searchRegion($n, $s, $e, $w);
+        $points = $searchService->searchRegion($n, $s, $e, $w, $gameId);
 
         $exportService = new ExportService();
         $xmlOutput = $exportService->generateXml($points, $format);

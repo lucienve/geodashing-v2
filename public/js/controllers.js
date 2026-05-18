@@ -1025,6 +1025,16 @@ document.addEventListener('routeLoaded', (e) => {
         const btnLOC = document.getElementById('btn-export-loc');
         const btnGrabBounds = document.getElementById('btn-grab-bounds');
         const searchFeedback = document.getElementById('search-feedback');
+        const gameInfoDiv = document.getElementById('export-game-info');
+
+        if (gameInfoDiv) {
+            if (window.currentGameContext && window.currentGameContext.id) {
+                const titleText = window.currentGameContext.title ? ` - ${window.escapeHTML(window.currentGameContext.title)}` : '';
+                gameInfoDiv.innerHTML = `Exporting: Game ${window.currentGameContext.id}${titleText} (${window.currentGameContext.monthYear})`;
+            } else {
+                gameInfoDiv.innerHTML = `Exporting: Active Game`;
+            }
+        }
 
         const enforceExportAuth = async () => {
             const disableExportUI = () => {
@@ -1104,7 +1114,10 @@ document.addEventListener('routeLoaded', (e) => {
             btnTarget.innerText = "DOWNLOADING...";
 
             try {
-                const url = `api/export.php?n=${b.n}&s=${b.s}&e=${b.e}&w=${b.w}&format=${format}`;
+                let url = `api/export.php?n=${b.n}&s=${b.s}&e=${b.e}&w=${b.w}&format=${format}`;
+                if (window.currentGameContext && window.currentGameContext.id) {
+                    url += `&game_id=${window.currentGameContext.id}`;
+                }
                 const response = await fetch(url);
 
                 if (!response.ok) {

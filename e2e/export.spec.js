@@ -127,4 +127,48 @@ test.describe('Export Functionality', () => {
         await expect(feedback).toBeVisible();
         await expect(feedback).toContainText('Error: Missing coordinates.');
     });
+
+    test('Honors Historical Game Selection from Dropdown', async ({ page }) => {
+        // Intercept the API request to verify the game_id parameter is present
+        const requestPromise = page.waitForRequest(request => 
+            request.url().includes('api/export.php') && request.url().includes('game_id=')
+        );
+
+        // Enter valid bounds for London (Game 1 historical dashpoint GD000-AAAA)
+        await page.fill('#search-n', '55.0');
+        await page.fill('#search-s', '50.0');
+        await page.fill('#search-e', '5.0');
+        await page.fill('#search-w', '-5.0');
+
+        // Select a different game from the top nav dropdown (assuming game ID 1 exists as historical)
+        // Wait for game selector to be visible and have options
+        await expect(page.locator('#game-selector')).toBeVisible();
+        
+        // Select Game 1 (Historical Game)
+        await page.selectOption('#game-selector', '1');
+
+        // Ensure the export overlay reflects the new game
+        await expect(page.locator('#export-game-info')).toContainText('Exporting: Game');
+
+        // Trigger export
+        const downloadPromise = page.waitForEvent('download');
+        await page.click('#btn-export-gpx', { force: true });
+        
+        // Assert the request was made with game_id
+        const request = await requestPromise;
+        expect(request.url()).toContain('game_id=1');
+
+        const download = await downloadPromise;
+        expect(download.suggestedFilename()).toBe('geodashing_v2_export.gpx');
+
+        // Read the downloaded file stream in memory
+        const path = await download.path();
+        const fileContent = fs.readFileSync(path, 'utf8');
+
+        // Assert valid GPX syntax and the presence of the Game 1 historical point
+        expect(fileContent).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+        expect(fileContent).toContain('version="1.1"');
+        expect(fileContent).toContain('<name>GD000-AAAA</name>');
+        expect(fileContent).toContain('</gpx>');
+    });
 });
