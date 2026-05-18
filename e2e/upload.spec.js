@@ -62,9 +62,17 @@ test.describe('Photo Upload Integration', () => {
         
         await page.fill('#log-textarea', 'Logging a photo natively to the emulator!');
 
-        // Upload our photo
-        const imagePath = path.resolve(__dirname, '../public/images/android-chrome-192x192.png');
-        await page.setInputFiles('#input-photos', imagePath);
+        // Upload our first photo
+        const imagePath1 = path.resolve(__dirname, '../public/images/android-chrome-192x192.png');
+        await page.setInputFiles('#input-photos', imagePath1);
+
+        // Upload our second photo in a separate step to verify accumulation queue logic
+        const imagePath2 = path.resolve(__dirname, '../public/images/android-chrome-512x512.png');
+        await page.setInputFiles('#input-photos', imagePath2);
+
+        // Assert that the preview grid shows exactly 2 photos
+        const previews = page.locator('.photo-preview-item');
+        await expect(previews).toHaveCount(2);
 
         // Submit the report
         await page.click('#btn-submit-report');
@@ -86,6 +94,7 @@ test.describe('Photo Upload Integration', () => {
         // We know the mock emulator binds to http://127.0.0.1:4443
         const loadedImage = userVisit.locator('img');
         await expect(loadedImage.first()).toBeVisible({ timeout: 10000 });
+        await expect(loadedImage).toHaveCount(2);
 
         // Logically verify the image src is hitting our emulator
         const srcAttr = await loadedImage.first().getAttribute('src');

@@ -240,32 +240,106 @@ document.addEventListener('routeLoaded', (e) => {
         const inputPhotos = document.getElementById('input-photos');
         const previewGrid = document.getElementById('photo-preview-grid');
 
+        let currentPhotoQueue = new DataTransfer();
+
+        const renderPhotoGrid = () => {
+            if (!previewGrid) return;
+            previewGrid.innerHTML = '';
+            Array.from(currentPhotoQueue.files).forEach((file, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.classList.add('photo-preview-wrapper');
+                wrapper.draggable = true;
+                wrapper.dataset.index = index;
+
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.classList.add('photo-preview-item');
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.type = 'button';
+                deleteBtn.classList.add('photo-delete-btn');
+                deleteBtn.innerHTML = '&times;';
+                deleteBtn.addEventListener('click', (ev) => {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    const newDt = new DataTransfer();
+                    Array.from(currentPhotoQueue.files).forEach((f, i) => {
+                        if (i !== index) newDt.items.add(f);
+                    });
+                    currentPhotoQueue = newDt;
+                    if (inputPhotos) inputPhotos.files = currentPhotoQueue.files;
+                    renderPhotoGrid();
+                });
+
+                // Drag and Drop implementation
+                wrapper.addEventListener('dragstart', (ev) => {
+                    ev.dataTransfer.effectAllowed = 'move';
+                    ev.dataTransfer.setData('text/plain', index);
+                    setTimeout(() => wrapper.style.opacity = '0.5', 0);
+                });
+
+                wrapper.addEventListener('dragend', () => {
+                    wrapper.style.opacity = '1';
+                });
+
+                wrapper.addEventListener('dragover', (ev) => {
+                    ev.preventDefault();
+                    ev.dataTransfer.dropEffect = 'move';
+                    wrapper.classList.add('photo-drag-over');
+                });
+
+                wrapper.addEventListener('dragleave', () => {
+                    wrapper.classList.remove('photo-drag-over');
+                });
+
+                wrapper.addEventListener('drop', (ev) => {
+                    ev.preventDefault();
+                    wrapper.classList.remove('photo-drag-over');
+                    const sourceIndex = parseInt(ev.dataTransfer.getData('text/plain'), 10);
+                    const targetIndex = index;
+
+                    if (sourceIndex !== targetIndex && !isNaN(sourceIndex)) {
+                        const filesArray = Array.from(currentPhotoQueue.files);
+                        const [movedFile] = filesArray.splice(sourceIndex, 1);
+                        filesArray.splice(targetIndex, 0, movedFile);
+
+                        const newDt = new DataTransfer();
+                        filesArray.forEach(f => newDt.items.add(f));
+                        currentPhotoQueue = newDt;
+                        if (inputPhotos) inputPhotos.files = currentPhotoQueue.files;
+                        renderPhotoGrid();
+                    }
+                });
+
+                wrapper.appendChild(img);
+                wrapper.appendChild(deleteBtn);
+                previewGrid.appendChild(wrapper);
+            });
+        };
+
         if (btnAddPhotos && inputPhotos) {
             btnAddPhotos.addEventListener('click', () => {
                 inputPhotos.click();
             });
 
             inputPhotos.addEventListener('change', (e) => {
-                const files = Array.from(e.target.files);
-                if (files.length > 10) {
+                const newFiles = Array.from(e.target.files);
+                let exceeded = false;
+                
+                newFiles.forEach(file => {
+                    if (currentPhotoQueue.files.length < 10) {
+                        currentPhotoQueue.items.add(file);
+                    } else {
+                        exceeded = true;
+                    }
+                });
+
+                if (exceeded) {
                     alert("Maximum 10 photos allowed.");
-                    // In a DataTransfer object we can filter the files back to 10
-                    const dt = new DataTransfer();
-                    files.slice(0, 10).forEach(file => dt.items.add(file));
-                    inputPhotos.files = dt.files;
                 }
 
-                // Clear previous previews
-                previewGrid.innerHTML = '';
-                Array.from(inputPhotos.files).forEach(file => {
-                    const img = document.createElement('img');
-                    img.src = URL.createObjectURL(file);
-                    img.classList.add('photo-preview-item');
-                    img.style.width = '100%';
-                    img.style.height = '60px';
-                    img.style.border = '1px solid var(--accent-amber)';
-                    previewGrid.appendChild(img);
-                });
+                inputPhotos.files = currentPhotoQueue.files;
+                renderPhotoGrid();
             });
         }
 
