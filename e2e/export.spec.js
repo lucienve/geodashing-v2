@@ -45,7 +45,7 @@ test.describe('Export Functionality', () => {
         
         // Wait for download to trigger and complete
         const download = await downloadPromise;
-        expect(download.suggestedFilename()).toBe('geodashing_v2_export.gpx');
+        expect(download.suggestedFilename()).toBe('geodashing_v2_game_2_export.gpx');
 
         // Read the downloaded file stream in memory
         const path = await download.path();
@@ -73,7 +73,7 @@ test.describe('Export Functionality', () => {
         
         // Wait for download to trigger and complete
         const download = await downloadPromise;
-        expect(download.suggestedFilename()).toBe('geodashing_v2_export.loc');
+        expect(download.suggestedFilename()).toBe('geodashing_v2_game_2_export.loc');
 
         // Read the downloaded file stream in memory
         const path = await download.path();
@@ -101,7 +101,7 @@ test.describe('Export Functionality', () => {
         
         // Wait for download to trigger and complete
         const download = await downloadPromise;
-        expect(download.suggestedFilename()).toBe('geodashing_v2_export.gpx');
+        expect(download.suggestedFilename()).toBe('geodashing_v2_game_2_export.gpx');
 
         // Read the downloaded file stream in memory
         const path = await download.path();
@@ -159,7 +159,7 @@ test.describe('Export Functionality', () => {
         expect(request.url()).toContain('game_id=1');
 
         const download = await downloadPromise;
-        expect(download.suggestedFilename()).toBe('geodashing_v2_export.gpx');
+        expect(download.suggestedFilename()).toBe('geodashing_v2_game_1_export.gpx');
 
         // Read the downloaded file stream in memory
         const path = await download.path();

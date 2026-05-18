@@ -50,14 +50,16 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         $exportService = new ExportService();
         $xmlOutput = $exportService->generateXml($points, $format);
 
+        $filenameSuffix = $gameId !== null ? "_game_{$gameId}" : "";
+
         if ($format === 'gpx') {
             // Force strict caching overrides tricking browser into saving files natively
             header('Content-Type: application/gpx+xml');
-            header('Content-Disposition: attachment; filename="geodashing_v2_export.gpx"');
+            header("Content-Disposition: attachment; filename=\"geodashing_v2{$filenameSuffix}_export.gpx\"");
         } elseif ($format === 'loc') {
             // Geocaching legacy LOC formats
             header('Content-Type: application/xml');
-            header('Content-Disposition: attachment; filename="geodashing_v2_export.loc"');
+            header("Content-Disposition: attachment; filename=\"geodashing_v2{$filenameSuffix}_export.loc\"");
         }
 
         // Output raw buffer bytes mapping HTTP stream correctly

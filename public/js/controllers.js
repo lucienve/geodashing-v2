@@ -1115,8 +1115,10 @@ document.addEventListener('routeLoaded', (e) => {
 
             try {
                 let url = `api/export.php?n=${b.n}&s=${b.s}&e=${b.e}&w=${b.w}&format=${format}`;
+                let gameSuffix = '';
                 if (window.currentGameContext && window.currentGameContext.id) {
                     url += `&game_id=${window.currentGameContext.id}`;
+                    gameSuffix = `_game_${window.currentGameContext.id}`;
                 }
                 const response = await fetch(url);
 
@@ -1140,7 +1142,7 @@ document.addEventListener('routeLoaded', (e) => {
                 const a = document.createElement('a');
                 a.style.display = 'none';
                 a.href = downloadUrl;
-                a.download = `geodashing_v2_export.${format}`;
+                a.download = `geodashing_v2${gameSuffix}_export.${format}`;
                 document.body.appendChild(a);
                 a.click();
 
