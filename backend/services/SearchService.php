@@ -37,11 +37,11 @@ class SearchService
      * @param float $south Minimum Latitude
      * @param float $east  Maximum Longitude
      * @param float $west  Minimum Longitude
-     * @param int|null $gameId Optional historical Game ID
+     * @param int $gameId  Game ID
      * @return array Array of indexed geocoordinates and Dashpoint strings.
      * @throws PDOException
      */
-    public function searchRegion(float $north, float $south, float $east, float $west, ?int $gameId = null): array
+    public function searchRegion(float $north, float $south, float $east, float $west, int $gameId): array
     {
         // 1. Base Query ensuring we actively process points that belong to the specified or LIVE Game State Month.
         $baseQuery = "
@@ -50,13 +50,8 @@ class SearchService
             JOIN games g ON d.game_id = g.id
             LEFT JOIN visits v ON d.id = v.dashpoint_id AND v.status = 'approved'
             WHERE ST_X(d.location) BETWEEN :south AND :north
+            AND g.id = :game_id
         ";
-
-        if ($gameId !== null) {
-            $baseQuery .= " AND g.id = :game_id";
-        } else {
-            $baseQuery .= " AND g.is_active = TRUE";
-        }
 
         // 2. International Date Line Router Algorithm
         if ($east < $west) {
@@ -73,12 +68,9 @@ class SearchService
             ':south' => $south,
             ':north' => $north,
             ':west' => $west,
-            ':east' => $east
+            ':east' => $east,
+            ':game_id' => $gameId
         ];
-
-        if ($gameId !== null) {
-            $params[':game_id'] = $gameId;
-        }
 
         $stmt->execute($params);
 

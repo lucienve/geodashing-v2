@@ -1193,6 +1193,13 @@ document.addEventListener('routeLoaded', (e) => {
                 if (window.currentGameContext && window.currentGameContext.id) {
                     url += `&game_id=${window.currentGameContext.id}`;
                     gameSuffix = `_game_${window.currentGameContext.id}`;
+                } else {
+                    if (searchFeedback) {
+                        searchFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Error: Missing game context. Please select a game.</div>`;
+                    }
+                    btnTarget.disabled = false;
+                    btnTarget.innerText = originalText;
+                    return;
                 }
                 const response = await fetch(url);
 

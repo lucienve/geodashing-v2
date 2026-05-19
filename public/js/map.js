@@ -195,6 +195,9 @@ window.refreshMapBounds = function () {
 function refreshDashpoints(bounds) {
     if (window.currentGameContext && window.currentGameContext.id) {
         bounds.game_id = window.currentGameContext.id;
+    } else {
+        console.warn("Skipping dashpoint refresh: No active game context selected.");
+        return;
     }
     const query = new URLSearchParams(bounds).toString();
 

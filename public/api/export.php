@@ -42,6 +42,11 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         exit('Error: Invalid spatial boundaries completely disrupting parsing.');
     }
 
+    if ($gameId === null || $gameId === false) {
+        http_response_code(400);
+        exit('Error: Missing or invalid game_id parameter.');
+    }
+
     try {
         $db = \App\Database::getConnection();
         $searchService = new SearchService($db);
@@ -50,7 +55,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         $exportService = new ExportService();
         $xmlOutput = $exportService->generateXml($points, $format);
 
-        $filenameSuffix = $gameId !== null ? "_game_{$gameId}" : "";
+        $filenameSuffix = "_game_{$gameId}";
 
         if ($format === 'gpx') {
             // Force strict caching overrides tricking browser into saving files natively

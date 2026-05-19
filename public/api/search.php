@@ -33,12 +33,18 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         exit;
     }
 
+    if ($gameId === null || $gameId === false) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'Missing game_id parameter.']);
+        exit;
+    }
+
     try {
         $db = \App\Database::getConnection();
         $service = new SearchService($db);
 
         // Ping MySQL for the cached bounding box mapping securely
-        $points = $service->searchRegion($n, $s, $e, $w, $gameId ? $gameId : null);
+        $points = $service->searchRegion($n, $s, $e, $w, $gameId);
 
         // JSON block out mapped back to browser for Leaflet/Google Maps parsing natively
         echo json_encode([
