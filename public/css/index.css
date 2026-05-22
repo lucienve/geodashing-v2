@@ -771,6 +771,12 @@ body, html {
   box-shadow: 0 0 10px rgba(16, 185, 129, 0.4) !important;
 }
 
+.btn-kml {
+  background: #0284c7 !important;
+  color: #fff !important;
+  box-shadow: 0 0 10px rgba(2, 132, 199, 0.4) !important;
+}
+
 .export-disclaimer {
   display: block;
   margin-top: 0.75rem;

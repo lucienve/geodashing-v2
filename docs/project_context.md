@@ -97,3 +97,8 @@ The application allows users to participate in global geographic games where the
 ### 14. Advanced Security & Session Integrity
 - Enhanced PHP session management to gracefully bypass Ubuntu's default aggressive GC mechanisms, instead relying on strict 30-day sliding activity windows for cookie expiration.
 - Addressed multiple Unicode encoding edge-cases in the native MySQL connector to safely process varied international characters in dashpoint logs.
+
+### 15. KML Data Portability & GIS Compatibility
+- Integrated standard KML (Keyhole Markup Language) 2.2 export support inside `ExportService.php` to enable visual mapping layers on modern applications like Google Earth, Google My Maps, QGIS, and physical GPS handheld devices.
+- Crafted clean standard KML `<Placemark>` nodes mapping geographic coordinates using standard `longitude,latitude,altitude` ordering clamped directly to the terrain surface.
+- Decoupled KML download endpoints inside the single page application controller, supporting dynamic game active contexts.

@@ -65,6 +65,10 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             // Geocaching legacy LOC formats
             header('Content-Type: application/xml');
             header("Content-Disposition: attachment; filename=\"geodashing_v2{$filenameSuffix}_export.loc\"");
+        } elseif ($format === 'kml') {
+            // Keyhole Markup Language format for Google Earth
+            header('Content-Type: application/vnd.google-earth.kml+xml');
+            header("Content-Disposition: attachment; filename=\"geodashing_v2{$filenameSuffix}_export.kml\"");
         }
 
         // Output raw buffer bytes mapping HTTP stream correctly

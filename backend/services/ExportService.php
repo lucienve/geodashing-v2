@@ -93,6 +93,49 @@ class ExportService
 
                 $loc->appendChild($waypoint);
             }
+        } elseif ($format === 'kml') {
+            // Keyhole Markup Language (KML) 2.2 standard format
+            $kml = $dom->createElement('kml');
+            $kml->setAttribute('xmlns', 'http://www.opengis.net/kml/2.2');
+            $dom->appendChild($kml);
+
+            $document = $dom->createElement('Document');
+            $kml->appendChild($document);
+
+            $docName = $dom->createElement('name', 'Geodashing V2 Dashpoints');
+            $document->appendChild($docName);
+
+            $docDesc = $dom->createElement('desc', 'Exported Dashpoints from Geodashing V2');
+            $document->appendChild($docDesc);
+
+            foreach ($points as $pt) {
+                $placemark = $dom->createElement('Placemark');
+                $idSafe = htmlspecialchars($pt['id']);
+
+                $name = $dom->createElement('name', $idSafe);
+                $placemark->appendChild($name);
+
+                // Build CDATA description
+                $descContent = "Dashpoint: {$idSafe}<br><a href=\"https://www.geodashing.org/#dashpoint?id={$idSafe}\">View on Geodashing</a>";
+                $cdata = $dom->createCDATASection($descContent);
+                $desc = $dom->createElement('description');
+                $desc->appendChild($cdata);
+                $placemark->appendChild($desc);
+
+                $point = $dom->createElement('Point');
+
+                // Set altitudeMode to clampToGround to ensure pins clamp to terrain surface
+                $altMode = $dom->createElement('altitudeMode', 'clampToGround');
+                $point->appendChild($altMode);
+
+                // KML coordinates format: longitude,latitude,altitude (no spaces)
+                $coordsText = (string)$pt['lon'] . ',' . (string)$pt['lat'] . ',0';
+                $coordinates = $dom->createElement('coordinates', $coordsText);
+                $point->appendChild($coordinates);
+
+                $placemark->appendChild($point);
+                $document->appendChild($placemark);
+            }
         } else {
             throw new InvalidArgumentException("Error: Unsupported document format structure securely rejected.");
         }

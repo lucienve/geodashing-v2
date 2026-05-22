@@ -86,6 +86,36 @@ test.describe('Export Functionality', () => {
         expect(fileContent).toContain('</loc>');
     });
 
+    test('Successful KML Export with Dashpoints', async ({ page }) => {
+        // Enter bounds containing NYC mock dashpoint (GD001-AAAA)
+        await page.fill('#search-n', '45.0');
+        await page.fill('#search-s', '35.0');
+        await page.fill('#search-e', '-70.0');
+        await page.fill('#search-w', '-80.0');
+
+        // Setup download listener
+        const downloadPromise = page.waitForEvent('download');
+        
+        // Trigger export
+        await page.click('#btn-export-kml', { force: true });
+        
+        // Wait for download to trigger and complete
+        const download = await downloadPromise;
+        expect(download.suggestedFilename()).toBe('geodashing_v2_game_2_export.kml');
+
+        // Read the downloaded file stream in memory
+        const path = await download.path();
+        const fileContent = fs.readFileSync(path, 'utf8');
+
+        // Assert valid KML syntax and the presence of the mock point
+        expect(fileContent).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+        expect(fileContent).toContain('<kml xmlns="http://www.opengis.net/kml/2.2">');
+        expect(fileContent).toContain('<name>GD001-AAAA</name>');
+        expect(fileContent).toContain('<altitudeMode>clampToGround</altitudeMode>');
+        expect(fileContent).toContain('<coordinates>-74.006,40.7128,0</coordinates>');
+        expect(fileContent).toContain('</kml>');
+    });
+
     test('Empty GPX Export when No Dashpoints in Region', async ({ page }) => {
         // Enter bounds safely far away from NYC (Lat 0-10, Lon 0-10)
         await page.fill('#search-n', '10.0');

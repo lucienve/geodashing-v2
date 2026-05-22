@@ -325,7 +325,7 @@ document.addEventListener('routeLoaded', (e) => {
             inputPhotos.addEventListener('change', (e) => {
                 const newFiles = Array.from(e.target.files);
                 let exceeded = false;
-                
+
                 newFiles.forEach(file => {
                     if (currentPhotoQueue.files.length < 10) {
                         currentPhotoQueue.items.add(file);
@@ -1092,11 +1092,12 @@ document.addEventListener('routeLoaded', (e) => {
     }
 
     // ==========================================================
-    // Controller: SCANNER EXPORT ROUTINES (#search)
+    // Controller: EXPORT ROUTINES (#search)
     // ==========================================================
     if (route === '#search') {
         const btnGPX = document.getElementById('btn-export-gpx');
         const btnLOC = document.getElementById('btn-export-loc');
+        const btnKML = document.getElementById('btn-export-kml');
         const btnGrabBounds = document.getElementById('btn-grab-bounds');
         const searchFeedback = document.getElementById('search-feedback');
         const gameInfoDiv = document.getElementById('export-game-info');
@@ -1114,6 +1115,7 @@ document.addEventListener('routeLoaded', (e) => {
             const disableExportUI = () => {
                 if (btnGPX) btnGPX.disabled = true;
                 if (btnLOC) btnLOC.disabled = true;
+                if (btnKML) btnKML.disabled = true;
                 if (searchFeedback) searchFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Please log in to download Dashpoint coordinates.</div>`;
             };
 
@@ -1182,7 +1184,7 @@ document.addEventListener('routeLoaded', (e) => {
                 return;
             }
 
-            const btnTarget = format === 'gpx' ? btnGPX : btnLOC;
+            const btnTarget = format === 'gpx' ? btnGPX : (format === 'loc' ? btnLOC : btnKML);
             const originalText = btnTarget.innerText;
             btnTarget.disabled = true;
             btnTarget.innerText = "DOWNLOADING...";
@@ -1239,11 +1241,11 @@ document.addEventListener('routeLoaded', (e) => {
                     searchFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Network Error: Unable to fetch export.</div>`;
                 }
                 btnTarget.disabled = false;
-                btnTarget.innerText = originalText;
             }
         };
 
         if (btnGPX) btnGPX.addEventListener('click', () => downloadPayload('gpx'));
         if (btnLOC) btnLOC.addEventListener('click', () => downloadPayload('loc'));
+        if (btnKML) btnKML.addEventListener('click', () => downloadPayload('kml'));
     }
 });

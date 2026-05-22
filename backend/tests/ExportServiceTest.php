@@ -130,6 +130,58 @@ class ExportServiceTest extends TestCase
     }
 
     /**
+     * Verifies that the service correctly generates a KML XML structure
+     * for a valid array of dashpoints.
+     */
+    #[Test]
+    public function processesKmlFormatCorrectlyWithDashpoints()
+    {
+        $points = [
+            ['id' => 'GD001-AAAA', 'lat' => 45.0, 'lon' => -70.0],
+            ['id' => 'GD001-BBBB', 'lat' => 46.0, 'lon' => -71.0],
+        ];
+
+        $xml = $this->exportService->generateXml($points, 'kml');
+
+        $this->assertStringContainsString('<?xml version="1.0" encoding="UTF-8"?>', $xml);
+        $this->assertStringContainsString('<kml xmlns="http://www.opengis.net/kml/2.2">', $xml);
+        $this->assertStringContainsString('<Document>', $xml);
+
+        // Assert first point
+        $this->assertStringContainsString('<Placemark>', $xml);
+        $this->assertStringContainsString('<name>GD001-AAAA</name>', $xml);
+        $this->assertStringContainsString('<description><![CDATA[Dashpoint: GD001-AAAA<br><a href="https://www.geodashing.org/#dashpoint?id=GD001-AAAA">View on Geodashing</a>]]></description>', $xml);
+        $this->assertStringContainsString('<Point>', $xml);
+        $this->assertStringContainsString('<altitudeMode>clampToGround</altitudeMode>', $xml);
+        $this->assertStringContainsString('<coordinates>-70,45,0</coordinates>', $xml);
+
+        // Assert second point
+        $this->assertStringContainsString('<name>GD001-BBBB</name>', $xml);
+        $this->assertStringContainsString('<description><![CDATA[Dashpoint: GD001-BBBB<br><a href="https://www.geodashing.org/#dashpoint?id=GD001-BBBB">View on Geodashing</a>]]></description>', $xml);
+        $this->assertStringContainsString('<coordinates>-71,46,0</coordinates>', $xml);
+
+        $this->assertStringContainsString('</Document>', $xml);
+        $this->assertStringContainsString('</kml>', $xml);
+    }
+
+    /**
+     * Verifies that the service correctly generates an empty KML XML structure
+     * when no dashpoints are provided.
+     */
+    #[Test]
+    public function processesKmlFormatCorrectlyWithNoDashpoints()
+    {
+        $points = [];
+
+        $xml = $this->exportService->generateXml($points, 'kml');
+
+        $this->assertStringContainsString('<?xml version="1.0" encoding="UTF-8"?>', $xml);
+        $this->assertStringContainsString('<kml xmlns="http://www.opengis.net/kml/2.2">', $xml);
+        $this->assertStringContainsString('<Document>', $xml);
+        $this->assertStringNotContainsString('<Placemark>', $xml);
+    }
+
+    /**
      * Verifies that injecting an invalid format securely throws an exception.
      */
     #[Test]
@@ -138,6 +190,6 @@ class ExportServiceTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Error: Unsupported document format structure securely rejected.');
 
-        $this->exportService->generateXml([], 'kml');
+        $this->exportService->generateXml([], 'geojson');
     }
 }

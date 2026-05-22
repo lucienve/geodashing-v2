@@ -92,6 +92,4 @@ class SearchServiceTest extends TestCase
         $this->assertEquals('GD001-SAMO', $result[1]['id']);
         $this->assertEquals(5, $result[1]['visit_count']);
     }
-
-
 }
