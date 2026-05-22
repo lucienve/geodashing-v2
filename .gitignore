@@ -51,3 +51,7 @@ test-results/
 # Agent Rules
 .agents/rules/*
 !.agents/rules/geodashing_rules.md
+
+# Symlinked to global files
+.prettierrc
+.markdownlint.json
