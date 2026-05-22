@@ -76,7 +76,7 @@ class AuthService
                 "is_verified" => 0
             ];
         } catch (PDOException $e) {
-            if ($e->getCode() == 23000) { // Catch MySQL unique constraint violations natively against user data
+            if ($e->getCode() == 23000) { // Catch MySQL unique constraint violations against user data
                 return ["status" => "error", "message" => "That username or email already exists"];
             }
             // Bubble to raw error_log
@@ -104,7 +104,7 @@ class AuthService
             $stmt->execute([':username' => $username]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            // Execute time-safe, dictionary-resistant string compare natively via pass_verify
+            // Execute time-safe, dictionary-resistant string compare via pass_verify
             if ($user && password_verify($password, $user['password_hash'])) {
                 return [
                     "status" => "success",
@@ -269,7 +269,7 @@ class AuthService
     }
 
     /**
-     * Verifies the email token strictly natively.
+     * Verifies the email token strictly.
      *
      * @param string $token
      * @return array Status array with user data on success
@@ -277,7 +277,7 @@ class AuthService
     public function verifyEmail(string $token): array
     {
         try {
-            // Evaluate the physical token strictly matching the Users table
+            // Evaluate the verification token strictly matching the Users table
             $stmt = $this->db->prepare("SELECT id FROM users WHERE verification_token = :token AND is_verified = 0 LIMIT 1");
             $stmt->execute([':token' => $token]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);

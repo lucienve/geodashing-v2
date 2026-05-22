@@ -37,7 +37,7 @@ class LeaderboardService
      */
     public function getSoloRankings(int $gameId, int $limit = 100): array
     {
-        // Execute structural aggregation calculating standard sums natively, filtering explicitly for the dashpoint game array.
+        // Execute structural aggregation calculating standard sums, filtering explicitly for the dashpoint game array.
         $sql = "
             SELECT 
                 u.id AS user_id,

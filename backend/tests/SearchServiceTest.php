@@ -34,10 +34,10 @@ class SearchServiceTest extends TestCase
 
     /**
      * Verifies that the service properly parses a standard bounding box payload
-     * directly into the default BETWEEN clauses natively.
+     * directly into the default BETWEEN clauses.
      */
     #[Test]
-    public function processesStandardBoundingBoxQueryNatively()
+    public function processesStandardBoundingBoxQuery()
     {
         $stmtMock = $this->createMock(PDOStatement::class);
         $stmtMock->method('fetchAll')->willReturn([
@@ -65,7 +65,7 @@ class SearchServiceTest extends TestCase
      * crossings and splits the boundary checking bounds.
      */
     #[Test]
-    public function processesAntiMeridianDateLineOveflowNatively()
+    public function processesAntiMeridianDateLineOverflow()
     {
         $stmtMock = $this->createMock(PDOStatement::class);
         $stmtMock->method('fetchAll')->willReturn([
@@ -73,7 +73,7 @@ class SearchServiceTest extends TestCase
             ['id' => 'GD001-SAMO', 'lat' => -13.0, 'lon' => -171.0, 'visit_count' => 5]
         ]);
 
-        // Assert the SQL definitively overrides the WHERE clause mapping dual hemispheres via ST_Y Longitudes natively
+        // Assert the SQL definitively overrides the WHERE clause mapping dual hemispheres via ST_Y Longitudes
         $this->pdoMock->expects($this->once())
             ->method('prepare')
             ->with($this->logicalAnd(

@@ -41,7 +41,7 @@ class MediaServiceTest extends TestCase
      * massive memory block arrays overriding the Google pipeline constraints.
      */
     #[Test]
-    public function processUploadBlocksMoreThan10ImagesNatively()
+    public function processUploadBlocksMoreThan10Images()
     {
         // Inject the Google Mocks safely wrapping the logic
         $service = new MediaService('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock);
@@ -64,7 +64,7 @@ class MediaServiceTest extends TestCase
     }
 
     /**
-     * Asserts that when PHP silently drops an oversized payload natively matching UPLOAD_ERR_INI_SIZE
+     * Asserts that when PHP silently drops an oversized payload matching UPLOAD_ERR_INI_SIZE
      * the pipeline fails and routes the failure back to the UI.
      */
     #[Test]
@@ -108,7 +108,7 @@ class MediaServiceTest extends TestCase
             'size' => [filesize($tempFile)]
         ];
 
-        // Ensure the bucket mock physically accepts the RESTful stream payload structurally
+        // Ensure the bucket mock accepts the RESTful stream payload structurally
         $this->bucketMock->expects($this->once())->method('upload');
 
         $result = $service->uploadPhotos($fakeFiles, 'GD-TEST', 1);
@@ -142,7 +142,7 @@ class MediaServiceTest extends TestCase
         $fakeObject->expects($this->once())->method('exists')->willReturn(true);
         $fakeObject->expects($this->once())->method('delete');
 
-        // Assert that exactly 'visits/GD001/my_pic.jpg' is passed natively to the Google Bucket Object request
+        // Assert that exactly 'visits/GD001/my_pic.jpg' is passed to the Google Bucket Object request
         $this->bucketMock->expects($this->once())
              ->method('object')
              ->with('visits/GD001/my_pic.jpg')

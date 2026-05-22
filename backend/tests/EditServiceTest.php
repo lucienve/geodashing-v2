@@ -16,8 +16,8 @@ use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 /**
  * EditServiceTest
  *
- * Physically verifies the backend Diff logic ensuring edits strictly validate
- * Session ownership, safely orchestrate GCP Deletions, and rigidly enforce Image Counts.
+ * Verifies the backend Diff logic ensuring edits strictly validate
+ * Session ownership, safely orchestrate GCP Deletions, and strictly enforce Image Counts.
  */
 #[CoversClass(EditService::class)]
 #[AllowMockObjectsWithoutExpectations]
@@ -35,14 +35,14 @@ class EditServiceTest extends TestCase
     }
 
     /**
-     * Asserts that editing fundamentally aborts securely if the user physically
-     * tries to modify a Dashpoint log they do not natively own.
+     * Asserts that editing fundamentally aborts securely if the user
+     * tries to modify a Dashpoint log they do not own.
      */
     #[Test]
     public function processEditRejectsForeignOwnership()
     {
         $stmtMock = $this->createMock(PDOStatement::class);
-        $stmtMock->method('fetch')->willReturn(false); // Simulates standard DB fail natively
+        $stmtMock->method('fetch')->willReturn(false); // Simulates standard DB failure
         $this->pdoMock->method('prepare')->willReturn($stmtMock);
 
         $result = $this->editService->processEdit(1, 'GD001-AAAA', 'Hacking attempt', '[]');
@@ -98,7 +98,7 @@ class EditServiceTest extends TestCase
     }
 
     /**
-     * Proves the architectural 10-Media limitation is strictly enforced post-merge natively
+     * Proves the architectural 10-Media limitation is strictly enforced post-merge
      */
     #[Test]
     public function processEditRestrictsMaximumImageMerges()
@@ -128,7 +128,7 @@ class EditServiceTest extends TestCase
             'error' => [UPLOAD_ERR_OK, UPLOAD_ERR_OK, UPLOAD_ERR_OK]
         ];
 
-        // Ensure MediaService physically uploads the 3 new ones securely
+        // Ensure MediaService uploads the 3 new ones securely
         $this->mediaMock->expects($this->once())
              ->method('uploadPhotos')
              ->willReturn([

@@ -36,11 +36,11 @@ class LeaderboardServiceTest extends TestCase
      * whose `last_find_time` is *earlier* gets the higher rank.
      */
     #[Test]
-    public function getSoloRankingsProperlyResolvesTieBreakersNatively()
+    public function getSoloRankingsProperlyResolvesTieBreakers()
     {
         $stmtMock = $this->createMock(PDOStatement::class);
 
-        // Simulating the MySQL Engine natively returning an Array sorted `ORDER BY total_score DESC, last_find_time ASC`
+        // Simulating the MySQL Engine returning an Array sorted `ORDER BY total_score DESC, last_find_time ASC`
         $stmtMock->method('fetchAll')->willReturn([
             ['user_id' => 1, 'username' => 'Alpha', 'total_score' => 20, 'total_finds' => 10, 'last_find_time' => '2026-03-01 12:00:00'],
             ['user_id' => 2, 'username' => 'Bravo', 'total_score' => 20, 'total_finds' => 8,  'last_find_time' => '2026-03-01 13:00:00'],

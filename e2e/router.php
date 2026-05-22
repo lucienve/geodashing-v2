@@ -22,7 +22,7 @@ if (file_exists($absolutePath) && !is_dir($absolutePath)) {
     // Determine the correct MIME type
     $ext = pathinfo($absolutePath, PATHINFO_EXTENSION);
     
-    // If it's a PHP file, let the built-in server handle it natively
+    // If it's a PHP file, let the built-in server handle it
     if (strtolower($ext) === 'php') {
         return false;
     }
@@ -54,5 +54,5 @@ if (file_exists($absolutePath) && !is_dir($absolutePath)) {
     return true; // Tells PHP built-in server we handled it
 }
 
-// Return false so PHP built-in server handles API scripts natively
+// Return false so PHP built-in server handles API scripts
 return false;

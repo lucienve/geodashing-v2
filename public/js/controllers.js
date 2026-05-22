@@ -78,7 +78,7 @@ document.addEventListener('routeLoaded', (e) => {
                     // Evaluate Ownership & Authentication dynamically wrapping the Primary Button State
                     if (btnLog) {
                         if (window.currentGameContext && !window.currentGameContext.is_active) {
-                            // Immutability: Purely hide actions natively representing the read-only state.
+                            // Immutability: Purely hide actions representing the read-only state.
                             btnLog.style.display = 'none';
                         } else {
                             API.checkSession().then(res => {
@@ -139,7 +139,7 @@ document.addEventListener('routeLoaded', (e) => {
                                 <div style="color:#888; font-size:0.75rem; margin-bottom:1rem;">> LOG_TIME: ${tStr}</div>
                             `;
 
-                            // Map the newly registered Spatial Temporal Edit constraint natively
+                            // Map the newly registered Spatial Temporal Edit constraint
                             if (visit.edited_at) {
                                 const ed = new Date(visit.edited_at);
                                 const edStr = `${ed.getFullYear()}.${(ed.getMonth() + 1).toString().padStart(2, '0')}.${ed.getDate().toString().padStart(2, '0')} @ ${ed.getHours().toString().padStart(2, '0')}:${ed.getMinutes().toString().padStart(2, '0')}`;
@@ -181,7 +181,7 @@ document.addEventListener('routeLoaded', (e) => {
 
                             visitDiv.innerHTML = html;
 
-                            // Bind click listeners natively to completely avoid attribute breakouts
+                            // Bind click listeners to completely avoid attribute breakouts
                             const photoImgs = visitDiv.querySelectorAll('img.log-photo');
                             photoImgs.forEach(img => {
                                 img.addEventListener('click', function () {
@@ -425,7 +425,7 @@ document.addEventListener('routeLoaded', (e) => {
             });
         }
 
-        // Final Logging Form Submitter trapping the Data matrix natively into api.js
+        // Final Logging Form Submitter trapping the Data matrix into api.js
         const reportForm = document.getElementById('form-report');
         if (reportForm) {
             reportForm.addEventListener('submit', async (ev) => {
@@ -434,7 +434,7 @@ document.addEventListener('routeLoaded', (e) => {
                 const submitBtn = document.getElementById('btn-submit-report');
                 const feedbackStatus = document.getElementById('report-feedback');
 
-                // 1. Initial Local Coordinate Validation Matrix natively preventing impossible values
+                // 1. Initial Local Coordinate Validation Matrix preventing impossible values
                 const userLat = parseFloat(latInput.value);
                 const userLon = parseFloat(lonInput.value);
                 const targetId = document.getElementById('dashpoint_id').value;
@@ -554,7 +554,7 @@ document.addEventListener('routeLoaded', (e) => {
         const rawUrlParams = new URLSearchParams(resetTokenRaw);
         const resetToken = rawUrlParams.get('reset_token');
 
-        // Execute imperative reset pane override physically bypassing standard user states
+        // Execute imperative reset pane override bypassing standard user states
         if (resetToken && resetPane) {
             if (loginPane) loginPane.style.display = 'none';
             if (signupPane) signupPane.style.display = 'none';
@@ -570,7 +570,7 @@ document.addEventListener('routeLoaded', (e) => {
                 if (verifyPane) verifyPane.style.display = 'none';
 
                 if (urlArgs.includes('verified=true')) {
-                    // Dynamically build the Victory overlay physically replacing the bounds
+                    // Dynamically build the Victory overlay replacing the bounds
                     const verifiedInject = document.createElement('div');
                     verifiedInject.style.cssText = "border:1px solid var(--accent-green); padding:2.5rem; background:rgba(42, 212, 115, 0.05); text-align:center; margin-top:1rem;";
                     verifiedInject.innerHTML = `
@@ -685,7 +685,7 @@ document.addEventListener('routeLoaded', (e) => {
             const pass1 = document.getElementById('signup-password');
             const pass2 = document.getElementById('signup-password-verify');
 
-            // Dynamically validate matching passwords natively locking the submission button
+            // Dynamically validate matching passwords to lock the submission button
             const validatePasswords = () => {
                 if (pass1.value.length >= 6 && pass1.value === pass2.value) {
                     signupBtn.disabled = false;
@@ -940,7 +940,7 @@ document.addEventListener('routeLoaded', (e) => {
                         return;
                     }
 
-                    // 2. Pre-fill the decoupled Interface natively
+                    // 2. Pre-fill the decoupled Interface
                     document.getElementById('edit-notes').value = userVisit.notes || '';
 
                     let keptPhotosArray = [];
@@ -1051,7 +1051,7 @@ document.addEventListener('routeLoaded', (e) => {
                         return;
                     }
 
-                    // Dynamically render the Glassmorphism Table natively
+                    // Dynamically render the Glassmorphism Table
                     let html = '';
                     data.forEach(row => {
                         let rankStyle = "color:var(--text-muted);";
@@ -1172,7 +1172,7 @@ document.addEventListener('routeLoaded', (e) => {
             w: parseFloat(document.getElementById('search-w').value)
         });
 
-        // Exporters ping the Backend using fetch to natively trigger downloads asynchronously
+        // Exporters ping the Backend using fetch to trigger downloads asynchronously
         const downloadPayload = async (format) => {
             if (searchFeedback) searchFeedback.innerHTML = '';
 

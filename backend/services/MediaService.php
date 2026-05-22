@@ -46,7 +46,7 @@ class MediaService
             // When in E2E testing, aggressively re-route GCP storage requests to the local emulator mapping
             if (getenv('APP_ENV') === 'testing' && getenv('GCS_EMULATOR_HOST')) {
                 $config['apiEndpoint'] = getenv('GCS_EMULATOR_HOST');
-                // Neutralize auth natively by supplying a dummy credentials fetcher. This prevents
+                // Neutralize auth by supplying a dummy credentials fetcher. This prevents
                 // the SDK from eagerly loading developer Application Default Credentials and hitting OAuth.
                 $config['credentialsFetcher'] = new class implements \Google\Auth\FetchAuthTokenInterface {
                     public function fetchAuthToken(?callable $httpHandler = null)
@@ -64,13 +64,13 @@ class MediaService
                 };
             }
 
-            // Natively bridge the production GCP sockets safely wrapping the IAM config map
+            // Bridge the production GCP sockets safely wrapping the IAM config map
             $this->storage = new StorageClient($config);
         }
     }
 
     /**
-     * Normalizes and uploads an array of raw PHP files natively to Google Cloud Storage.
+     * Normalizes and uploads an array of raw PHP files to Google Cloud Storage.
      *
      * @param array $files The raw $_FILES['photos'] multidimensional array dump.
      * @param string $dashpointId The target dashpoint enforcing hierarchical naming.
@@ -136,14 +136,14 @@ class MediaService
                 $extension
             );
 
-            // Execute the RESTful socket stream uploading binary payload natively into Google Cloud
-            // Explicitly disabling resumable uploads forces a direct multipart stream natively preventing
+            // Execute the RESTful socket stream uploading binary payload into Google Cloud
+            // Explicitly disabling resumable uploads forces a direct multipart stream preventing
             // the PHP Apache lifecycle from abandoning the background chunk process mid-upload.
             $bucket->upload(
                 fopen($file['tmp_name'], 'r'),
                 [
                     'name' => $objectName,
-                    'resumable' => false             // Bypass chunked background uploads natively
+                    'resumable' => false             // Bypass chunked background uploads
                 ]
             );
 
@@ -169,7 +169,7 @@ class MediaService
                         'resumable' => false
                     ]
                 );
-                @unlink($thumbPath); // Clean up the temp file natively
+                @unlink($thumbPath); // Clean up the temp file
                 $thumbUrl = "{$publicDomain}/{$this->bucketName}/{$thumbObjectName}";
             }
 
@@ -192,7 +192,7 @@ class MediaService
      * Parses public Google URLs routing them back into internal object paths
      * and deletes the object strictly inside the bucket.
      *
-     * @param string[] $urls An array of raw Google Cloud Storage URL strings natively.
+     * @param string[] $urls An array of raw Google Cloud Storage URL strings.
      */
     public function deletePhotos(array $urls): void
     {
@@ -204,7 +204,7 @@ class MediaService
         $prefix = "{$publicDomain}/{$this->bucketName}/";
 
         foreach ($urls as $url) {
-            // Strip the public HTTP prefix natively to isolate the internal Object mapping (e.g. 'visits/GD01/1_pic')
+            // Strip the public HTTP prefix to isolate the internal Object mapping (e.g. 'visits/GD01/1_pic')
             if (strpos($url, $prefix) === 0) {
                 $objectName = substr($url, strlen($prefix));
 
@@ -218,7 +218,7 @@ class MediaService
     }
 
     /**
-     * Generates a temporary thumbnail file proportional to an 800px max dimension natively.
+     * Generates a temporary thumbnail file proportional to an 800px max dimension.
      *
      * @param string $sourcePath The absolute path to the uploaded image.
      * @param string $mime The mime type to map the GD render function.
@@ -265,7 +265,7 @@ class MediaService
 
         $thumbnail = imagecreatetruecolor($newWidth, $newHeight);
 
-        // Preserve transparency for PNG and WebP natively
+        // Preserve transparency for PNG and WebP
         if ($mime === 'image/png' || $mime === 'image/webp') {
             imagealphablending($thumbnail, false);
             imagesavealpha($thumbnail, true);
@@ -302,7 +302,7 @@ class MediaService
     }
 
     /**
-     * Extracts and calculates EXIF GPS data from an image file natively.
+     * Extracts and calculates EXIF GPS data from an image file.
      *
      * @param string $path Local absolute path to the uploaded image binary.
      * @return array|null Null if no EXIF exists or if coordinates are missing.
@@ -326,7 +326,7 @@ class MediaService
     }
 
     /**
-     * Converts raw EXIF DMS fraction arrays into a strict Decimal Degree natively.
+     * Converts raw EXIF DMS fraction arrays into a strict Decimal Degree.
      */
     private function convertGpsToDecimal(array $exifCoord, string $hemi): ?float
     {
@@ -345,7 +345,7 @@ class MediaService
     }
 
     /**
-     * Evaluates PHP's physical EXIF integer fractions (e.g. "42/1") cleanly.
+     * Evaluates PHP's standard EXIF integer fractions (e.g. "42/1") cleanly.
      */
     private function evalExifFraction($fraction): float
     {
@@ -363,7 +363,7 @@ class MediaService
     }
 
     /**
-     * Cleans the legacy `$_FILES` structure into a standard iterative matrix natively mapping
+     * Cleans the legacy `$_FILES` structure into a standard iterative matrix mapping
      * fields uniformly across multiple HTTP-uploaded binary payload arrays.
      */
     private function normalizeFilesArray(array $files): array

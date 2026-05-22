@@ -24,7 +24,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         $gameId = filter_var($_GET['game_id'] ?? null, FILTER_VALIDATE_INT);
 
         if (!$gameId) {
-            // Natively default to the currently "Active" game mapping dynamically
+            // Default to the currently "Active" game mapping dynamically
             $stmt = $db->query("SELECT id FROM games WHERE is_active = TRUE LIMIT 1");
             $game = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$game) {
@@ -35,7 +35,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             $gameId = (int)$game['id'];
         }
 
-        // 2. Instantiate the Mathematical Aggregator Engine natively
+        // 2. Instantiate the Mathematical Aggregator Engine
         $leaderboardService = new LeaderboardService($db);
 
         // 3. Extract the clean arrays strictly isolating Solo logic bounds

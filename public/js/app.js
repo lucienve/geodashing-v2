@@ -160,7 +160,7 @@ function initRouting() {
         });
     }
 
-    // 2. Bounding the SPA state natively
+    // 2. Bounding the SPA state
     window.loadRoute = async function () {
         if (mobileNavDrawer) {
             mobileNavDrawer.classList.remove('open');
@@ -242,7 +242,7 @@ function initRouting() {
                 contentDiv.innerHTML = html;
                 contentDiv.style.opacity = '1';
 
-                // CRITICAL: Since we just dumped raw HTML into the DOM natively, 
+                // CRITICAL: Since we just injected raw HTML into the DOM, 
                 // any JS listeners tied to buttons inside it must be re-bound.
                 // We fire a custom event telling `controllers.js` to wake up and route the original query bounds.
                 document.dispatchEvent(new CustomEvent('routeLoaded', { detail: { route: fullHash } }));
@@ -255,7 +255,7 @@ function initRouting() {
         }
     };
 
-    // 3. Native History API bindings (so the Phone's 'Back' button physically works)
+    // 3. Native History API bindings (so the Phone's 'Back' button works)
     window.addEventListener('hashchange', window.loadRoute);
 
     // Initial Boot mapping
@@ -268,7 +268,7 @@ function initGameContext() {
 
     API.getGames().then(json => {
         if (json.status === 'success' && json.data.length > 0) {
-            // Find Active Game natively
+            // Find Active Game
             const activeGame = json.data.find(g => g.is_active == 1) || json.data[0];
 
             let targetGameId = activeGame.id;
@@ -296,7 +296,7 @@ function initGameContext() {
             const activeD = new Date(selectedGame.start_time);
             window.currentGameContext.monthYear = activeD.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
-            // Populate the Dropdown natively
+            // Populate the Dropdown
             if (gameSelector) {
                 gameSelector.innerHTML = '';
                 const activeGameStart = new Date(activeGame.start_time).getTime();

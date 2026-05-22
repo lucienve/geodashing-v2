@@ -60,7 +60,7 @@ class DashpointServiceTest extends TestCase
                     'reported_time' => '2026-03-28 12:00:00',
                     'score_awarded' => 3,
                     'notes' => 'Tough hike.',
-                    'photos' => '["/uploads/pic1.jpg"]' // Physically rendering MySQL JSON structures
+                    'photos' => '["/uploads/pic1.jpg"]' // Representing MySQL JSON structures
                 ]
             ]);
 
@@ -71,14 +71,14 @@ class DashpointServiceTest extends TestCase
 
         $result = $this->dashpointService->getDashpointDetails($dashpointId);
 
-        // Core assertions confirming the Payload array builds natively
+        // Core assertions confirming the Payload array builds correctly
         $this->assertNotNull($result);
         $this->assertEquals($dashpointId, $result['id']);
         $this->assertEquals(39.8283, $result['lat']);
         $this->assertCount(1, $result['visits']);
         $this->assertEquals('LucienDashes', $result['visits'][0]['username']);
 
-        // Ensure the JSON parser successfully mapped the raw string back into a PHP Array natively
+        // Ensure the JSON parser successfully mapped the raw string back into a PHP Array
         $this->assertIsArray($result['visits'][0]['photos']);
         $this->assertEquals('/uploads/pic1.jpg', $result['visits'][0]['photos'][0]);
     }
@@ -92,7 +92,7 @@ class DashpointServiceTest extends TestCase
             ->method('execute')
             ->willReturn(true);
 
-        // Simulating the PDO engine returning `false` natively when a Dashpoint lacks physical mapping
+        // Simulating the PDO engine returning `false` when a Dashpoint lacks mapping
         $stmtMock1->expects($this->once())
             ->method('fetch')
             ->willReturn(false);

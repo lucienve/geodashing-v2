@@ -16,7 +16,7 @@ use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 /**
  * AuthServiceTest
  *
- * Verifies core registration boundaries and login payload hashing validity constraints natively against mocked states.
+ * Verifies core registration boundaries and login payload hashing validity constraints against mocked states.
  */
 #[CoversClass(AuthService::class)]
 #[AllowMockObjectsWithoutExpectations]

@@ -41,7 +41,7 @@ test.describe('Photo Upload Integration', () => {
         const responseBody = await response.json();
         expect(responseBody.status).toBe('success');
 
-        // Force verify user natively
+        // Force verify user
         const { execSync } = require('child_process');
         execSync(`mysql -h 127.0.0.1 -u geodashing_test -pgeodashing_test_secure_pass geodashing_test -e "UPDATE users SET is_verified = 1 WHERE username = '${dynamicUser}';"`);
 
@@ -60,7 +60,7 @@ test.describe('Photo Upload Integration', () => {
         await expect(page.locator('#input-lat')).not.toHaveValue('', { timeout: 10000 });
         await expect(page.locator('#input-lon')).not.toHaveValue('', { timeout: 10000 });
         
-        await page.fill('#log-textarea', 'Logging a photo natively to the emulator!');
+        await page.fill('#log-textarea', 'Logging a photo to the emulator!');
 
         // Upload our first photo
         const imagePath1 = path.resolve(__dirname, '../public/images/android-chrome-192x192.png');
@@ -79,15 +79,15 @@ test.describe('Photo Upload Integration', () => {
 
         // Validate success response
         const feedback = page.locator('#report-feedback');
-        await expect(feedback).toContainText('Success!', { timeout: 30000 }); // Uploads take slightly longer natively
+        await expect(feedback).toContainText('Success!', { timeout: 30000 }); // Uploads take slightly longer
 
-        // Let's assert the visit ledger contains the image natively
+        // Let's assert the visit ledger contains the image
         await page.goto('/#dashpoint?id=GD001-AAAA');
         const visitsContainer = page.locator('#dp-visits-container');
         const userVisit = visitsContainer.locator('> div').filter({ hasText: dynamicUser });
         await expect(userVisit).toBeVisible({ timeout: 10000 });
 
-        // Expand the UI mapping to natively render the DOM tree visibility constraints
+        // Expand the UI mapping to render the DOM tree visibility constraints
         await userVisit.locator('button', { hasText: 'VIEW DETAILS' }).click();
 
         // Ensure an img tag with the mapped public URL is visible logically

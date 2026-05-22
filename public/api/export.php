@@ -4,7 +4,7 @@
  * XML Waypoints Export Utility
  *
  * Exposes a structured DOMDocument renderer formatting bounding box subsets
- * purely into GPS-compatible schema wrappers (.gpx, .loc). Natively pushes HTTP
+ * purely into GPS-compatible schema wrappers (.gpx, .loc). Pushes HTTP
  * headers simulating file downloads on web browsers.
  */
 
@@ -25,7 +25,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         exit('Error: Unauthorized. You must be logged in to export dashpoint data.');
     }
 
-    // Parse the spatial layout natively
+    // Parse the spatial layout
     $n = filter_var($_GET['n'] ?? '', FILTER_VALIDATE_FLOAT);
     $s = filter_var($_GET['s'] ?? '', FILTER_VALIDATE_FLOAT);
     $e = filter_var($_GET['e'] ?? '', FILTER_VALIDATE_FLOAT);
@@ -58,7 +58,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         $filenameSuffix = "_game_{$gameId}";
 
         if ($format === 'gpx') {
-            // Force strict caching overrides tricking browser into saving files natively
+            // Force strict caching overrides tricking browser into saving files
             header('Content-Type: application/gpx+xml');
             header("Content-Disposition: attachment; filename=\"geodashing_v2{$filenameSuffix}_export.gpx\"");
         } elseif ($format === 'loc') {

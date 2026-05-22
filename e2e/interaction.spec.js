@@ -7,7 +7,7 @@ test.describe('Component & Interactive Layout Constraints', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/');
 
-        // Let the SPA router and dynamic Map layer settle natively
+        // Let the SPA router and dynamic Map layer settle
         await page.waitForLoadState('networkidle');
 
         // 1. Dismiss Cookie Consent Banner if present
@@ -25,27 +25,27 @@ test.describe('Component & Interactive Layout Constraints', () => {
         // Find the custom "My Location" SVG button
         const recenterBtn = page.locator('button[title="Recenter Map on Current Location"]');
         
-        // Wait for google maps to natively inject the UI overlays
+        // Wait for google maps to inject the UI overlays
         await expect(recenterBtn).toBeVisible({ timeout: 10000 });
         
-        // Validate clickability directly (Playwright throws if covered/hidden natively)
+        // Validate clickability directly (Playwright throws if covered/hidden)
         // Ensure to pass true to trial so it just verifes clickability without actually triggering geolocation API
         await recenterBtn.click({ trial: true });
 
-        // The native Google Map Type Toggle (Satellite vs Terrain toggle)
+        // The Google Map Type Toggle (Satellite vs Terrain toggle)
         const mapTypeToggle = page.locator('button[title="Show street map"], button[title="Show satellite imagery"]').first();
         if (await mapTypeToggle.isVisible()) {
-             // Perform a physical click to pop open the secondary overlay context
+             // Perform a click to pop open the secondary overlay context
              await mapTypeToggle.click({ force: true }); // Google Maps layers can be tricky, force the dispatch
              
-             // Wait for the native Google Maps submenu to render 'Terrain' or 'Labels'
+             // Wait for the Google Maps submenu to render 'Terrain' or 'Labels'
              const subMenuText = page.locator('text=/Terrain|Labels/i').first();
              // Verify the sub-checkboxes pop out without getting blocked.
              await expect(subMenuText).toBeVisible({ timeout: 15000 });
         }
     });
 
-    test('Menu template overlays invoke successfully and confine natively without clipping', async ({ page, isMobile }) => {
+    test('Menu template overlays invoke successfully and confine without clipping', async ({ page, isMobile }) => {
         // Define all textual menu links that trigger a Template View overlay
         const routes = [
             { id: '#leaderboard', type: 'link' },
@@ -58,7 +58,7 @@ test.describe('Component & Interactive Layout Constraints', () => {
         for (const route of routes) {
             // Re-center application safely before each interaction
             await page.goto('/');
-            await page.waitForLoadState('networkidle'); // Allow DOM reset natively
+            await page.waitForLoadState('networkidle'); // Allow DOM reset
 
             if (isMobile) {
                 // Open Hamburger
@@ -163,7 +163,7 @@ test.describe('Component & Interactive Layout Constraints', () => {
         const latInputMode = await latInput.getAttribute('inputmode');
         const lonInputMode = await lonInput.getAttribute('inputmode');
 
-        // Evaluate user agent natively inside Playwright to map our JS check
+        // Evaluate user agent directly inside Playwright to map our JS check
         const ua = await page.evaluate(() => navigator.userAgent);
         const isIOS = /iPad|iPhone|iPod/.test(ua);
 

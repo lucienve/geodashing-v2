@@ -1,6 +1,6 @@
 
 services:
-  # Natively initializes the mock Playwright database matching the CI
+  # Initializes the mock Playwright database matching the CI
   mysql:
     image: mysql:8.4
     restart: unless-stopped
@@ -17,7 +17,7 @@ services:
       timeout: 5s
       retries: 3
 
-  # Natively mocks the Google Cloud Storage backend API
+  # Mocks the Google Cloud Storage backend API
   fake-gcs-server:
     image: fsouza/fake-gcs-server
     restart: unless-stopped

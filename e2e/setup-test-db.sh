@@ -58,7 +58,7 @@ grep -v -E -i "^USE " schema.sql | mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USE
 # 3. Inject shared Mock Testing Data
 echo "Injecting mock CI Test Game, User, and Dashpoint..."
 
-# Generate a valid PHP password hash natively
+# Generate a valid PHP password hash
 PASSWORD_HASH=$(php -r "echo password_hash('testpass', PASSWORD_DEFAULT);")
 
 mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "

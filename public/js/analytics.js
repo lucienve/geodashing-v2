@@ -1,7 +1,7 @@
 /**
  * Analytics Interface Module
  *
- * Implements GA4 securely natively adhering strictly to standard privacy regulations.
+ * Implements GA4 securely adhering strictly to standard privacy regulations.
  */
 
 window.dataLayer = window.dataLayer || [];
@@ -19,7 +19,7 @@ window.initAnalyticsConfig = function () {
 
         gtag('js', new Date());
         
-        // Prevent automatic pageviews because our SPA router physically controls history natively
+        // Prevent automatic pageviews because our SPA router controls history directly
         gtag('config', 'G-RSCKJ16QXT', { send_page_view: false }); 
         
         window.analyticsLoaded = true;

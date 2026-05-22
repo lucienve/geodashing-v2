@@ -24,7 +24,7 @@ class DashpointService
      */
     public function __construct(?PDO $db = null)
     {
-        // Permits dependency injection for PHPUnit Testing natively isolating the Database
+        // Permits dependency injection for PHPUnit Testing isolating the Database
         $this->db = $db ?: \App\Database::getConnection();
     }
 

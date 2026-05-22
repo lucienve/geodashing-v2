@@ -17,7 +17,7 @@ require_once __DIR__ . '/../../backend/Database.php';
 $token = $_GET['token'] ?? '';
 
 if (empty($token)) {
-    // Graceful routing logic natively dumping bad actors
+    // Graceful routing logic dumping bad actors
     header("Location: ../index.html#home");
     exit;
 }

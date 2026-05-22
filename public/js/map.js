@@ -88,7 +88,7 @@ window.initMap = function () {
             n: NE.lat(),
             s: SW.lat(),
             e: NE.lng(),
-            w: SW.lng() // Inherently passes exact Pacific boundary splits natively ensuring Date Line SQL works perfectly
+            w: SW.lng() // Inherently passes exact Pacific boundary splits to ensure Date Line SQL works perfectly
         };
 
         refreshDashpoints(searchMatrix);
@@ -144,7 +144,7 @@ window.initMap = function () {
             }
         }, null, { enableHighAccuracy: true });
 
-        // Add Custom "My Location" Button mapped securely to the Google Control Position array natively
+        // Add Custom "My Location" Button mapped securely to the Google Control Position array
         const locationButton = document.createElement("button");
 
         // Material Design "My Location" SVG
@@ -213,7 +213,7 @@ function refreshDashpoints(bounds) {
 }
 
 /**
- * Natively purges the DOM rendering structure allocating entirely fresh Google Map Marker objects
+ * Purges the DOM rendering structure allocating entirely fresh Google Map Marker objects
  */
 function plotVectors(pointsArray) {
     // Flush old markers and circles
@@ -245,7 +245,7 @@ function plotVectors(pointsArray) {
             rimColor = "#713f12";
         }
 
-        // AdvancedMarkerElement natively replaces deprecated vector geometries with the new PinElement Engine
+        // AdvancedMarkerElement replaces deprecated vector geometries with the new PinElement Engine
         const pinView = new google.maps.marker.PinElement({
             background: bgColor,
             borderColor: rimColor,
@@ -259,7 +259,7 @@ function plotVectors(pointsArray) {
             content: pinView
         });
 
-        // Store state natively on the marker object for the Cluster Renderer
+        // Store state on the marker object for the Cluster Renderer
         marker.visitCount = vCount;
 
         // AdvancedMarkerElement uses `gmp-click` mapping to bypass DOM bubble overlaps.

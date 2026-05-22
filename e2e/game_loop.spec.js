@@ -123,7 +123,7 @@ test.describe('Core Functional Game Loop', () => {
         const dynamicUser = `Worker_${Date.now()}_${testInfo.workerIndex}`;
         const dynamicPass = `SecurePass123!`;
 
-        // Inject E2E Mock Geolocation (NYC mapping to GD001-AAAA) via window.mockGeolocation natively
+        // Inject E2E Mock Geolocation (NYC mapping to GD001-AAAA) via window.mockGeolocation directly
         const mockFn = () => {
             window.mockGeolocation = {
                 getCurrentPosition: (success, _error, _options) => {
@@ -151,7 +151,7 @@ test.describe('Core Functional Game Loop', () => {
 
         await expect(responseBody.status).toBe('success');
 
-        // Explicitly bypass Email Verification constraint natively with a fast DB hit to ensure our dynamic user is authorized to play.
+        // Explicitly bypass Email Verification constraint with a fast DB hit to ensure our dynamic user is authorized to play.
         const { execSync } = require('child_process');
         execSync(`mysql -h 127.0.0.1 -u geodashing_test -pgeodashing_test_secure_pass geodashing_test -e "UPDATE users SET is_verified = 1 WHERE username = '${dynamicUser}';"`);
 

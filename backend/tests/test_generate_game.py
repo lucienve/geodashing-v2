@@ -50,8 +50,8 @@ def test_water_exclusion_logic():
 
 def test_inland_lake_avoidance(monkeypatch):
     """
-    Validates the geometric differencing matrix natively ensuring that Dashpoints
-    never mathematically spawn inside Inland Lakes or Oceans.
+    Validates the geometric differencing matrix ensuring that Dashpoints
+    never spawn inside Inland Lakes or Oceans.
     """
     # 1. Define strictly controlled Mock Boundaries (EPSG:4326 Degrees)
     land_polygon = box(-5, -5, 5, 5)

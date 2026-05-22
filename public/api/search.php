@@ -4,7 +4,7 @@
  * Vector Search API Endpoint
  *
  * Exposes a generic JSON array mapper for frontend map rendering blocks,
- * parsing bounding box filters natively preventing rendering overload on mobile.
+ * parsing bounding box filters preventing rendering overload on mobile.
  */
 
 declare(strict_types=1);
@@ -46,7 +46,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         // Ping MySQL for the cached bounding box mapping securely
         $points = $service->searchRegion($n, $s, $e, $w, $gameId);
 
-        // JSON block out mapped back to browser for Leaflet/Google Maps parsing natively
+        // JSON block out mapped back to browser for Leaflet/Google Maps parsing
         echo json_encode([
             "status" => "success",
             "count" => count($points),

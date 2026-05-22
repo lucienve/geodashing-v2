@@ -5,7 +5,7 @@
  *
  * Allows authenticated users to safely modify their Field Notes or append/delete
  * physical tracking photos without triggering or modifying the 100m Geolocation
- * bounds natively locked during the initial claim.
+ * bounds locked during the initial claim.
  *
  * @package Geodashing\API
  */
