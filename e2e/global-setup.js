@@ -11,7 +11,7 @@ module.exports = async (_config) => {
             try {
                 // Prioritize modern Docker Compose V2 (plugin)
                 execSync(`docker compose -f "${composePath}" up -d`, { stdio: 'inherit' });
-            } catch (v2Error) {
+            } catch (_v2Error) {
                 // Fallback to legacy Docker Compose V1 (standalone) for older developer environments
                 console.log('Falling back to legacy docker-compose (v1)...');
                 execSync(`docker-compose -f "${composePath}" up -d`, { stdio: 'inherit' });
