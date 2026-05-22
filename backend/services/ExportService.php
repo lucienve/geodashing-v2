@@ -105,7 +105,7 @@ class ExportService
             $docName = $dom->createElement('name', 'Geodashing V2 Dashpoints');
             $document->appendChild($docName);
 
-            $docDesc = $dom->createElement('desc', 'Exported Dashpoints from Geodashing V2');
+            $docDesc = $dom->createElement('description', 'Exported Dashpoints from Geodashing V2');
             $document->appendChild($docDesc);
 
             foreach ($points as $pt) {

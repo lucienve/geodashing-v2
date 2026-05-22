@@ -101,4 +101,5 @@ The application allows users to participate in global geographic games where the
 ### 15. KML Data Portability & GIS Compatibility
 - Integrated standard KML (Keyhole Markup Language) 2.2 export support inside `ExportService.php` to enable visual mapping layers on modern applications like Google Earth, Google My Maps, QGIS, and physical GPS handheld devices.
 - Crafted clean standard KML `<Placemark>` nodes mapping geographic coordinates using standard `longitude,latitude,altitude` ordering clamped directly to the terrain surface.
+- Formatted placemark descriptions using standard HTML within `<![CDATA[ ... ]]>` blocks to ensure out-of-the-box clickability in Google Earth Pro, Google My Maps, and Google Earth Web's Local KML data layers, accounting for a known Google Earth Web Projects platform limitation where imported HTML is loaded as plain text in their rich text editor until toggled manually.
 - Decoupled KML download endpoints inside the single page application controller, supporting dynamic game active contexts.
