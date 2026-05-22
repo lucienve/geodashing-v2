@@ -189,14 +189,13 @@ class GeoContextService
         // 100 miles = ~160934 meters
         $radiusMeters = $radiusMiles * 1609.344;
 
-        // Note: In MySQL 8 with SRID 4326, ST_X is Latitude, ST_Y is Longitude
         $sql = "
             SELECT 
                 name, 
                 admin_name, 
                 country_name, 
-                ST_X(location) as lat, 
-                ST_Y(location) as lon,
+                ST_Latitude(location) as lat, 
+                ST_Longitude(location) as lon,
                 ST_Distance_Sphere(location, ST_GeomFromText(:point, 4326)) as distance_meters
             FROM major_cities
             WHERE ST_Distance_Sphere(location, ST_GeomFromText(:point_filter, 4326)) <= :radius

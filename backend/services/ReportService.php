@@ -78,8 +78,8 @@ class ReportService
                 ST_Distance_Sphere(d.location, ST_GeomFromText(:wkt, 4326)) AS distance_meters, 
                 g.is_active,
                 g.id AS game_id,
-                ST_X(d.location) as dp_lat,
-                ST_Y(d.location) as dp_lon,
+                ST_Latitude(d.location) as dp_lat,
+                ST_Longitude(d.location) as dp_lon,
                 d.country_code,
                 d.state_province,
                 d.elevation

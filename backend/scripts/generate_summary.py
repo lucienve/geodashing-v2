@@ -92,7 +92,7 @@ def _parse_photos_json(photos_json: str) -> list:
 def _extract_logs(cursor, game_id: int) -> list:
     """Extracts all approved logs for the game."""
     logs_query = """
-        SELECT v.dashpoint_id, u.username, ST_X(d.location) as dp_lat, ST_Y(d.location) as dp_lon, v.notes, v.photos
+        SELECT v.dashpoint_id, u.username, ST_Latitude(d.location) as dp_lat, ST_Longitude(d.location) as dp_lon, v.notes, v.photos
         FROM visits v
         JOIN users u ON v.user_id = u.id
         JOIN dashpoints d ON v.dashpoint_id = d.id

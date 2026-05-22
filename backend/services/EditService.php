@@ -51,7 +51,7 @@ class EditService
 
         // 1. Security Check: Verify visit existence and edit permissions
         $stmt = $this->db->prepare("
-            SELECT v.id, v.photos, v.is_attempt, v.score_awarded, v.distance_meters, v.reported_time, ST_X(v.reported_location) as dp_lat, ST_Y(v.reported_location) as dp_lon, g.is_active, g.id as game_id, u.username
+            SELECT v.id, v.photos, v.is_attempt, v.score_awarded, v.distance_meters, v.reported_time, ST_Latitude(v.reported_location) as dp_lat, ST_Longitude(v.reported_location) as dp_lon, g.is_active, g.id as game_id, u.username
             FROM visits v
             JOIN dashpoints d ON v.dashpoint_id = d.id
             JOIN games g ON d.game_id = g.id

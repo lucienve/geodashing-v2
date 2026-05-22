@@ -37,7 +37,7 @@ class DashpointService
     public function getDashpointDetails(string $dashpointId): ?array
     {
         // 1. Fetch exact Dashpoint metadata utilizing SRID 4326 correctly mapping Lat/Lon
-        $stmt = $this->db->prepare("SELECT id, ST_X(location) AS lat, ST_Y(location) AS lon, game_id FROM dashpoints WHERE id = :id LIMIT 1");
+        $stmt = $this->db->prepare("SELECT id, ST_Latitude(location) AS lat, ST_Longitude(location) AS lon, game_id FROM dashpoints WHERE id = :id LIMIT 1");
         $stmt->execute(['id' => $dashpointId]);
         $dashpoint = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -48,7 +48,7 @@ class DashpointService
         // 2. Query precisely all approved Historical Visits mapped to this exact dashpoint
         $vStmt = $this->db->prepare("
             SELECT v.id AS visit_id, u.username, v.reported_time, v.edited_at, v.score_awarded, v.is_attempt, v.notes, v.photos,
-                   ST_X(v.reported_location) AS reported_lat, ST_Y(v.reported_location) AS reported_lon, v.distance_meters 
+                   ST_Latitude(v.reported_location) AS reported_lat, ST_Longitude(v.reported_location) AS reported_lon, v.distance_meters 
             FROM visits v 
             JOIN users u ON v.user_id = u.id 
             WHERE v.dashpoint_id = :id AND v.status = 'approved'
