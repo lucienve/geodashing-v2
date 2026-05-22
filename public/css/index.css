@@ -183,6 +183,11 @@ body, html {
   border-radius: 4px;
 }
 
+#nav-user-dropdown .dropdown-content {
+  left: auto;
+  right: 0;
+}
+
 .dropdown-content .nav-link {
   display: block;
   padding: 12px 16px;
@@ -802,4 +807,24 @@ body, html {
 .export-input[type=number] {
   -moz-appearance: textfield;
   appearance: textfield;
+}
+
+#mobile-player-group {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.mobile-player-header {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+}
+
+.mobile-player-link {
+  display: block;
+  margin-bottom: 1rem;
 }

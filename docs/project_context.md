@@ -103,3 +103,10 @@ The application allows users to participate in global geographic games where the
 - Crafted clean standard KML `<Placemark>` nodes mapping geographic coordinates using standard `longitude,latitude,altitude` ordering clamped directly to the terrain surface.
 - Formatted placemark descriptions using standard HTML within `<![CDATA[ ... ]]>` blocks to ensure out-of-the-box clickability in Google Earth Pro, Google My Maps, and Google Earth Web's Local KML data layers, accounting for a known Google Earth Web Projects platform limitation where imported HTML is loaded as plain text in their rich text editor until toggled manually.
 - Decoupled KML download endpoints inside the single page application controller, supporting dynamic game active contexts.
+
+### 16. UI Navigation & Dynamic Player Profile Redesign
+- Evaluated and streamlined the frontend single page application menu structure, removing the redundant `MAP` link in favor of making the `GEODASHING.v2` brand logo a direct navigation anchor targeting `#home`.
+- Replaced the cluttered, flat desktop buttons (`PROFILE` and `LOGOUT [username]`) with a dynamic, glassmorphic dropdown trigger (`👤 [username] ▾`) that reveals integrated "View Profile" and "Logout" actions in a clean overlay.
+- Grouped player management actions cleanly within a distinct, stylized panel inside the mobile navigation drawer to preserve responsive layouts across all mobile screen sizes.
+- Decoupled all styles into `public/css/index.css` to prevent inline style usage, keeping frontend JS logic focused purely on DOM structure.
+- Verified that all 81 Playwright E2E tests, 52 PHPUnit tests, and 14 Python pytest suites pass successfully under verified, local OS dependencies.

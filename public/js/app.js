@@ -50,7 +50,6 @@ function initGlobalState() {
 function initNavigation() {
     // --- BEGIN NAVIGATION BUILDER ---
     const APP_NAVIGATION = [
-        { text: 'MAP', mobileText: 'Map', href: '#home', defaultActive: true },
         { text: 'LEADERBOARD', mobileText: 'Leaderboard', href: '#leaderboard' },
         {
             text: 'HELP ▾', isDropdown: true, children: [
@@ -59,8 +58,7 @@ function initNavigation() {
                 { text: 'Contact', href: '#contact' },
                 { text: 'Export Game Data', mobileText: 'Export Data', href: '#search' }
             ]
-        },
-        { text: 'PROFILE', mobileText: 'Profile', href: '#profile', idDesktop: 'nav-profile-link', idMobile: 'mobile-nav-profile-link', extraClasses: 'd-none' }
+        }
     ];
 
     const desktopContainer = document.getElementById('desktop-links');
@@ -360,55 +358,168 @@ function initGameContext() {
 function initAuthState() {
     // 5. Native Javascript Session Bootstrapper dynamically driving the Nav Auth state securely
     window.updateAuthState = async function () {
-        const authBtns = [document.getElementById('nav-auth-btn'), document.getElementById('mobile-nav-auth-btn')].filter(Boolean);
+        const desktopContainer = document.getElementById('desktop-links');
+        const mobileContainer = document.querySelector('.mobile-nav-links');
+
+        // Locate or recover standard auth buttons, maintaining expected IDs cleanly
+        let navAuthBtn = document.getElementById('nav-auth-btn') || document.getElementById('hidden-nav-auth-btn');
+        let mobileAuthBtn = document.getElementById('mobile-nav-auth-btn') || document.getElementById('hidden-mobile-nav-auth-btn');
+
+        if (navAuthBtn) {
+            navAuthBtn.id = 'nav-auth-btn';
+        }
+        if (mobileAuthBtn) {
+            mobileAuthBtn.id = 'mobile-nav-auth-btn';
+        }
+
+        // Clean up previously created dynamic DOM elements to prevent duplicate groups
+        const oldUserDropdown = document.getElementById('nav-user-dropdown');
+        if (oldUserDropdown) {
+            oldUserDropdown.remove();
+        }
+
+        const oldMobileGroup = document.getElementById('mobile-player-group');
+        if (oldMobileGroup) {
+            oldMobileGroup.remove();
+        }
 
         try {
             const res = await API.checkSession();
             if (res.status === 'success') {
                 window.currentUser = res; // Bind the full Payload (including is_verified) globally
                 if (res.is_verified === 0) {
-                    authBtns.forEach(btn => {
-                        btn.innerText = `UNVERIFIED [CLICK TO RESEND]`;
-                        btn.href = '#login';
-                        btn.style.color = "var(--accent-amber)";
-                        const newBtn = btn.cloneNode(true);
-                        btn.replaceWith(newBtn);
-                    });
+                    if (navAuthBtn) {
+                        navAuthBtn.style.display = '';
+                        navAuthBtn.innerText = `UNVERIFIED [CLICK TO RESEND]`;
+                        navAuthBtn.href = '#login';
+                        navAuthBtn.style.color = "var(--accent-amber)";
+                        const newBtn = navAuthBtn.cloneNode(true);
+                        navAuthBtn.replaceWith(newBtn);
+                        navAuthBtn = newBtn;
+                    }
+                    if (mobileAuthBtn) {
+                        mobileAuthBtn.style.display = '';
+                        mobileAuthBtn.innerText = `UNVERIFIED [CLICK TO RESEND]`;
+                        mobileAuthBtn.href = '#login';
+                        mobileAuthBtn.style.color = "var(--accent-amber)";
+                        const newBtn = mobileAuthBtn.cloneNode(true);
+                        mobileAuthBtn.replaceWith(newBtn);
+                        mobileAuthBtn = newBtn;
+                    }
                 } else {
-                    authBtns.forEach(btn => {
-                        btn.innerText = `LOGOUT [${res.username}]`;
-                        btn.href = '#';
+                    // Authenticated & verified!
+                    
+                    // 1. Desktop Profile & Logout Dropdown Menu
+                    if (navAuthBtn && desktopContainer) {
+                        navAuthBtn.style.display = 'none';
+                        navAuthBtn.id = 'hidden-nav-auth-btn';
 
-                        const newBtn = btn.cloneNode(true);
-                        btn.replaceWith(newBtn);
+                        const dropDiv = document.createElement('div');
+                        dropDiv.id = 'nav-user-dropdown';
+                        dropDiv.className = 'dropdown';
 
-                        newBtn.addEventListener('click', async (e) => {
+                        // Dropdown trigger anchor
+                        const triggerBtn = document.createElement('a');
+                        triggerBtn.id = 'nav-auth-btn';
+                        triggerBtn.className = 'nav-link highlight';
+                        triggerBtn.href = '#';
+                        triggerBtn.innerText = `LOGOUT [${res.username}] ▾`;
+
+                        // Main trigger click also handles logouts to retain full backwards compatibility
+                        triggerBtn.addEventListener('click', async (e) => {
                             e.preventDefault();
                             await API.logout();
                             window.location.reload();
                         });
-                    });
 
-                    const profileLinks = [
-                        document.getElementById('nav-profile-link'),
-                        document.getElementById('mobile-nav-profile-link')
-                    ];
-                    profileLinks.forEach(link => {
-                        if (link) {
-                            link.classList.remove('d-none');
-                            link.href = `#profile?username=${encodeURIComponent(res.username)}`;
-                        }
-                    });
+                        const dropContent = document.createElement('div');
+                        dropContent.className = 'dropdown-content';
+
+                        const profileLink = document.createElement('a');
+                        profileLink.id = 'nav-profile-link';
+                        profileLink.className = 'nav-link';
+                        profileLink.href = `#profile?username=${encodeURIComponent(res.username)}`;
+                        profileLink.innerText = 'My Profile';
+
+                        const logoutLink = document.createElement('a');
+                        logoutLink.id = 'desktop-logout-link';
+                        logoutLink.className = 'nav-link';
+                        logoutLink.href = '#';
+                        logoutLink.innerText = 'Logout';
+                        logoutLink.addEventListener('click', async (e) => {
+                            e.preventDefault();
+                            await API.logout();
+                            window.location.reload();
+                        });
+
+                        dropContent.appendChild(profileLink);
+                        dropContent.appendChild(logoutLink);
+
+                        dropDiv.appendChild(triggerBtn);
+                        dropDiv.appendChild(dropContent);
+
+                        desktopContainer.appendChild(dropDiv);
+                    }
+
+                    // 2. Mobile Grouped Navigation Setup
+                    if (mobileAuthBtn && mobileContainer) {
+                        mobileAuthBtn.style.display = 'none';
+                        mobileAuthBtn.id = 'hidden-mobile-nav-auth-btn';
+
+                        const mobileGroup = document.createElement('div');
+                        mobileGroup.id = 'mobile-player-group';
+
+                        const header = document.createElement('div');
+                        header.className = 'mobile-player-header';
+                        header.innerText = 'Player Actions';
+
+                        const profileLink = document.createElement('a');
+                        profileLink.id = 'mobile-nav-profile-link';
+                        profileLink.className = 'nav-link mobile-player-link';
+                        profileLink.href = `#profile?username=${encodeURIComponent(res.username)}`;
+                        profileLink.innerText = 'Profile';
+
+                        const logoutLink = document.createElement('a');
+                        logoutLink.id = 'mobile-logout-link';
+                        logoutLink.className = 'nav-link mobile-player-link';
+                        logoutLink.href = '#';
+                        logoutLink.innerText = 'Logout';
+                        logoutLink.addEventListener('click', async (e) => {
+                            e.preventDefault();
+                            await API.logout();
+                            window.location.reload();
+                        });
+
+                        mobileGroup.appendChild(header);
+                        mobileGroup.appendChild(profileLink);
+                        mobileGroup.appendChild(logoutLink);
+
+                        mobileContainer.appendChild(mobileGroup);
+                    }
                 }
             } else {
+                // Logged out!
                 window.currentUser = null;
-                authBtns.forEach(btn => {
-                    btn.innerText = `Player login`;
-                    btn.href = '#login';
 
-                    const newBtn = btn.cloneNode(true);
-                    btn.replaceWith(newBtn);
-                });
+                if (navAuthBtn) {
+                    navAuthBtn.style.display = '';
+                    navAuthBtn.innerText = `Player login`;
+                    navAuthBtn.href = '#login';
+                    navAuthBtn.style.color = '';
+                    const newBtn = navAuthBtn.cloneNode(true);
+                    navAuthBtn.replaceWith(newBtn);
+                    navAuthBtn = newBtn;
+                }
+
+                if (mobileAuthBtn) {
+                    mobileAuthBtn.style.display = '';
+                    mobileAuthBtn.innerText = `Player login`;
+                    mobileAuthBtn.href = '#login';
+                    mobileAuthBtn.style.color = '';
+                    const newBtn = mobileAuthBtn.cloneNode(true);
+                    mobileAuthBtn.replaceWith(newBtn);
+                    mobileAuthBtn = newBtn;
+                }
 
                 const verifyBanner = document.getElementById('verify-banner');
                 if (verifyBanner) verifyBanner.classList.add('d-none');
