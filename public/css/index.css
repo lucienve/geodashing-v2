@@ -38,12 +38,12 @@
 
 /* Global Link Contrast Controls */
 a {
-  color: var(--accent-amber);
+  color: var(--accent-green);
   transition: color 0.2s ease;
 }
 
 a:visited {
-  color: var(--accent-amber);
+  color: var(--accent-green);
 }
 
 body, html {
@@ -958,7 +958,7 @@ body, html {
 
 .summary-rich-content a,
 .summary-rich-content a:visited {
-  color: var(--accent-amber);
+  color: var(--accent-green);
   text-decoration: none;
   font-weight: 600;
   transition: all 0.2s ease;
@@ -966,8 +966,8 @@ body, html {
 
 .summary-rich-content a:hover {
   text-decoration: underline;
-  color: #fbbf24;
-  text-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+  color: #34d399;
+  text-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
 }
 
 @keyframes modalSlideIn {

@@ -255,7 +255,7 @@ test.describe('E2E Accessibility & Visual Contrast Suite', () => {
         for (let i = 0; i < linkCount; i++) {
             const link = links.nth(i);
             const color = await link.evaluate(el => window.getComputedStyle(el).color);
-            expect(color).toBe('rgb(245, 158, 11)'); // Must match HSL high-contrast amber accent
+            expect(color).toBe('rgb(16, 185, 129)'); // Must match HSL high-contrast green accent
         }
 
         // Close modal
