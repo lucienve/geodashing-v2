@@ -407,6 +407,27 @@ body, html {
   right: 0;
 }
 
+#mobile-nav-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+#mobile-nav-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 #mobile-close-btn {
   align-self: flex-end;
   background: transparent;
@@ -471,6 +492,17 @@ body, html {
     max-width: 100%;
     padding: 0;
     position: relative; /* Anchor for absolute sheet */
+    transition: background 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease;
+    background: rgba(0, 0, 0, 0);
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+
+  #app-content.overlay-active {
+    pointer-events: auto;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
   }
   
   .template-view {

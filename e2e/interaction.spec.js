@@ -176,4 +176,66 @@ test.describe('Component & Interactive Layout Constraints', () => {
         }
     });
 
+    test('Mobile overlays can be closed by tapping outside', async ({ page, isMobile }) => {
+        // This behavior is only active and expected on mobile viewports
+        if (!isMobile) {
+            test.skip();
+            return;
+        }
+
+        // --- 1. Test Navigation Drawer Backdrop Tap-Close ---
+        await page.goto('/');
+        await page.waitForLoadState('networkidle');
+
+        // Confirm mobile navigation drawer is initially closed
+        const mobileNavDrawer = page.locator('#mobile-nav-drawer');
+        const mobileNavBackdrop = page.locator('#mobile-nav-backdrop');
+        await expect(mobileNavDrawer).not.toHaveClass(/open/);
+        await expect(mobileNavBackdrop).not.toHaveClass(/open/);
+
+        // Click hamburger menu button
+        const menuBtn = page.locator('#mobile-menu-btn');
+        await menuBtn.click();
+        await page.waitForTimeout(350); // wait for slide-in animation
+
+        // Confirm drawer and backdrop are open
+        await expect(mobileNavDrawer).toHaveClass(/open/);
+        await expect(mobileNavBackdrop).toHaveClass(/open/);
+
+        // Click outside (on the left portion of the backdrop, not covered by the drawer)
+        await mobileNavBackdrop.click({ position: { x: 10, y: 10 }, force: true });
+        await page.waitForTimeout(350); // wait for slide-out animation
+
+        // Confirm both closed
+        await expect(mobileNavDrawer).not.toHaveClass(/open/);
+        await expect(mobileNavBackdrop).not.toHaveClass(/open/);
+
+        // --- 2. Test Template View (Bottom Sheet) Backdrop Tap-Close ---
+        // Open a template view (e.g. About page)
+        await page.goto('/#about');
+        await page.waitForLoadState('networkidle');
+
+        const templateView = page.locator('.template-view').first();
+        await expect(templateView).toBeVisible();
+
+        // Verify URL has the #about hash
+        expect(page.url()).toContain('#about');
+
+        // Click outside the template view, which on mobile is `#app-content`
+        const appContent = page.locator('#app-content');
+        await expect(appContent).toHaveClass(/overlay-active/);
+        
+        // Tap on the top part of #app-content (e.g. at x: 10, y: 10 relative to the element, representing empty space above bottom sheet)
+        await appContent.click({ position: { x: 10, y: 10 }, force: true });
+        
+        // Wait for route reload to settle
+        await page.waitForTimeout(350);
+
+        // Confirm the hash changed back to #home or empty
+        const currentUrl = page.url();
+        expect(currentUrl.endsWith('#home') || currentUrl.endsWith('/')).toBe(true);
+        await expect(templateView).not.toBeVisible();
+    });
+
 });
+

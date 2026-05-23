@@ -147,24 +147,45 @@ function initRouting() {
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
     const mobileNavDrawer = document.getElementById('mobile-nav-drawer');
     const mobileCloseBtn = document.getElementById('mobile-close-btn');
+    const mobileNavBackdrop = document.getElementById('mobile-nav-backdrop');
+
+    const closeMobileDrawer = () => {
+        if (mobileNavDrawer) {
+            mobileNavDrawer.classList.remove('open');
+        }
+        if (mobileNavBackdrop) {
+            mobileNavBackdrop.classList.remove('open');
+        }
+    };
 
     if (mobileMenuBtn && mobileNavDrawer) {
         mobileMenuBtn.addEventListener('click', () => {
             mobileNavDrawer.classList.add('open');
+            if (mobileNavBackdrop) {
+                mobileNavBackdrop.classList.add('open');
+            }
         });
     }
 
-    if (mobileCloseBtn && mobileNavDrawer) {
-        mobileCloseBtn.addEventListener('click', () => {
-            mobileNavDrawer.classList.remove('open');
+    if (mobileCloseBtn) {
+        mobileCloseBtn.addEventListener('click', closeMobileDrawer);
+    }
+
+    if (mobileNavBackdrop) {
+        mobileNavBackdrop.addEventListener('click', closeMobileDrawer);
+    }
+
+    if (contentDiv) {
+        contentDiv.addEventListener('click', (e) => {
+            if (e.target === contentDiv && window.innerWidth <= 768) {
+                window.location.hash = '#home';
+            }
         });
     }
 
     // 2. Bounding the SPA state
     window.loadRoute = async function () {
-        if (mobileNavDrawer) {
-            mobileNavDrawer.classList.remove('open');
-        }
+        closeMobileDrawer();
         
         let fullHash = window.location.hash;
         
@@ -222,6 +243,7 @@ function initRouting() {
 
         if (templatePath === undefined) {
             contentDiv.innerHTML = '<div class="template-view"><h2>PAGE NOT FOUND</h2><p class="data-input" style="color:var(--accent-red)">Could not locate that page.</p></div>';
+            contentDiv.classList.add('overlay-active');
             return;
         }
 
@@ -233,6 +255,7 @@ function initRouting() {
             if (templatePath === null) {
                 setTimeout(() => {
                     contentDiv.innerHTML = '';
+                    contentDiv.classList.remove('overlay-active');
                     contentDiv.style.opacity = '1';
                     document.dispatchEvent(new CustomEvent('routeLoaded', { detail: { route: fullHash } }));
                 }, 100);
@@ -246,6 +269,7 @@ function initRouting() {
 
             setTimeout(() => {
                 contentDiv.innerHTML = html;
+                contentDiv.classList.add('overlay-active');
                 contentDiv.style.opacity = '1';
 
                 // CRITICAL: Since we just injected raw HTML into the DOM, 
@@ -257,6 +281,7 @@ function initRouting() {
         } catch (err) {
             console.error("Router Error: ", err);
             contentDiv.innerHTML = '<div class="template-view"><h2>NETWORK ERROR</h2><p class="data-input" style="color:var(--accent-red)">Oops! Having trouble communicating with the server.</p></div>';
+            contentDiv.classList.add('overlay-active');
             contentDiv.style.opacity = '1';
         }
     };
