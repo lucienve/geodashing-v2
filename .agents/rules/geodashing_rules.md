@@ -42,4 +42,7 @@ Ensure all code and syntax is explicitly compatible with the following versions:
 
 ## 7. Environments (Local vs. Production)
 - **Local Environment:** This is the local workspace where you are running commands, testing, formatting, and verifying code. This environment leverages mocked data (like GCS fakes) and safe database seeds (`setup-test-db.sh`) configured strictly for local development and testing.
-- **Production Environment:** The live server is isolated and unreachable by you. You must act as if you are preparing code for this external server. Database schema changes or direct data modifications on production are strictly prohibited; you must explicitly provide raw SQL scripts and clear instructions for the human operator to manually execute any schema updates.
+- **Production Environment:** The live server is isolated and completely unreachable by the agent (this antigravity instance runs strictly on a local development machine with no access to production servers, databases, or live environment data).
+  - **No Direct Operations:** The agent must never attempt to run shell commands on production, execute database queries against production, or request credentials/connections to production.
+  - **Human Operator Orchestration:** If diagnostic data, schema changes, or database modifications from production are required, the agent must provide the precise reasoning, the exact SQL scripts, or the explicit CLI commands for the human operator to manually execute on the production environment and transfer the results/data back into this conversation.
+
