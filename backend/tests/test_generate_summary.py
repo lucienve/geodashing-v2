@@ -10,9 +10,17 @@ from backend.scripts import generate_summary
 def test_parse_photos_json():
     """Test parsing of photos JSON string."""
     res1 = generate_summary._parse_photos_json('["http://example.com/1.jpg"]')
-    assert res1 == [{"url": "http://example.com/1.jpg"}]
+    assert not res1
     res2 = generate_summary._parse_photos_json('[{"url": "http://example.com/1.jpg"}]')
-    assert res2 == [{"url": "http://example.com/1.jpg", "thumb_url": None}]
+    assert not res2
+    res3 = generate_summary._parse_photos_json(
+        '[{"url": "http://example.com/1.jpg", '
+        '"thumb_url": "http://example.com/1_thumb.jpg"}]'
+    )
+    assert res3 == [{
+        "url": "http://example.com/1.jpg",
+        "thumb_url": "http://example.com/1_thumb.jpg"
+    }]
     assert not generate_summary._parse_photos_json('')
     assert not generate_summary._parse_photos_json('invalid json')
 
@@ -24,7 +32,10 @@ def test_construct_new_data(mock_urlopen):
         'dp_id': 123,
         'username': 'testuser',
         'city': 'TestCity',
-        'photos': [{'url': 'http://example.com/1.jpg'}],
+        'photos': [{
+            'url': 'http://example.com/1.jpg',
+            'thumb_url': 'http://example.com/1_thumb.jpg'
+        }],
         'notes': 'Log notes'
     }]
 

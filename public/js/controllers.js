@@ -162,9 +162,9 @@ document.addEventListener('routeLoaded', (e) => {
                             if (visit.photos && visit.photos.length > 0) {
                                 html += `<div style="display:grid; grid-template-columns: 1fr; gap:1rem;">`;
                                 visit.photos.forEach(photo => {
-                                    let encodedUrl = encodeURI(photo.url);
-                                    let thumbUrl = photo.thumb_url ? encodeURI(photo.thumb_url) : encodedUrl;
-                                    let imgHtml = `<img src="${thumbUrl}" class="log-photo" data-dpid="${window.escapeHTML(dp.id)}" data-url="${encodedUrl}" style="width:100%; height:auto; border:1px solid var(--accent-amber); cursor:pointer;" loading="lazy">`;
+                                     let encodedUrl = encodeURI(photo.url);
+                                     let thumbUrl = encodeURI(photo.thumb_url);
+                                     let imgHtml = `<img src="${thumbUrl}" class="log-photo" data-dpid="${window.escapeHTML(dp.id)}" data-url="${encodedUrl}" style="width:100%; height:auto; border:1px solid var(--accent-amber); cursor:pointer;" loading="lazy">`;
 
                                     if (photo.lat !== null && photo.lon !== null && dp.lat !== undefined) {
                                         // Native JS Haversine Distance Mapper cleanly invoking the global SPA utility

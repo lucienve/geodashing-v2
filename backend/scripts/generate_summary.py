@@ -78,13 +78,11 @@ def _parse_photos_json(photos_json: str) -> list:
         try:
             photos_data = json.loads(photos_json)
             for item in photos_data:
-                if isinstance(item, dict):
+                if isinstance(item, dict) and 'url' in item and 'thumb_url' in item:
                     photos.append({
-                        'thumb_url': item.get('thumb_url'),
-                        'url': item.get('url')
+                        'thumb_url': item['thumb_url'],
+                        'url': item['url']
                     })
-                elif isinstance(item, str):
-                    photos.append({'url': item})
         except json.JSONDecodeError:
             pass
     return photos
@@ -165,43 +163,37 @@ def _append_photo_parts(parts: list, photos: list) -> None:
 
     parts.append("Photos:\n")
     for photo in photos:
-        full_url = photo.get('url')
-        thumb_url = photo.get('thumb_url')
-        if full_url and thumb_url:
-            parts.append(f"Thumb: {thumb_url} | Full: {full_url}\nImage Content:\n")
-        elif thumb_url:
-            parts.append(f"Thumb: {thumb_url}\nImage Content:\n")
-        elif full_url:
-            parts.append(f"Full: {full_url}\nImage Content:\n")
-        download_url = full_url or thumb_url
-        if download_url:
-            if download_url.startswith("https://storage.googleapis.com/"):
-                gs_uri = download_url.replace("https://storage.googleapis.com/", "gs://")
-                ext = gs_uri.split('.')[-1].lower()
-                mime_type = "image/jpeg"
-                if ext == "png":
-                    mime_type = "image/png"
-                elif ext == "webp":
-                    mime_type = "image/webp"
-                parts.append(types.Part.from_uri(file_uri=gs_uri, mime_type=mime_type))
-                parts.append("\n")
-            else:
-                try:
-                    req = urllib.request.Request(
-                        download_url, headers={'User-Agent': 'Mozilla/5.0'}
-                    )
-                    with urllib.request.urlopen(req, timeout=10) as response:
-                        image_bytes = response.read()
-                        mime_type = response.headers.get_content_type()
-                        valid_mimes = ["image/jpeg", "image/png", "image/webp",
-                                       "image/heic", "image/heif"]
-                        if mime_type not in valid_mimes:
-                            mime_type = "image/jpeg"
-                        parts.append(types.Part.from_bytes(data=image_bytes, mime_type=mime_type))
-                        parts.append("\n")
-                except urllib.error.URLError as err:
-                    print(f"Failed to fetch image {download_url}: {err}", file=sys.stderr)
-                    parts.append("(Image could not be downloaded)\n")
+        full_url = photo['url']
+        thumb_url = photo['thumb_url']
+        parts.append(f"Thumb: {thumb_url} | Full: {full_url}\nImage Content:\n")
+        download_url = full_url
+        if download_url.startswith("https://storage.googleapis.com/"):
+            gs_uri = download_url.replace("https://storage.googleapis.com/", "gs://")
+            ext = gs_uri.split('.')[-1].lower()
+            mime_type = "image/jpeg"
+            if ext == "png":
+                mime_type = "image/png"
+            elif ext == "webp":
+                mime_type = "image/webp"
+            parts.append(types.Part.from_uri(file_uri=gs_uri, mime_type=mime_type))
+            parts.append("\n")
+        else:
+            try:
+                req = urllib.request.Request(
+                    download_url, headers={'User-Agent': 'Mozilla/5.0'}
+                )
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    image_bytes = response.read()
+                    mime_type = response.headers.get_content_type()
+                    valid_mimes = ["image/jpeg", "image/png", "image/webp",
+                                   "image/heic", "image/heif"]
+                    if mime_type not in valid_mimes:
+                        mime_type = "image/jpeg"
+                    parts.append(types.Part.from_bytes(data=image_bytes, mime_type=mime_type))
+                    parts.append("\n")
+            except urllib.error.URLError as err:
+                print(f"Failed to fetch image {download_url}: {err}", file=sys.stderr)
+                parts.append("(Image could not be downloaded)\n")
     parts.append("\n")
 
 def construct_new_data(game_title: str, scores: list, formatted_logs: list) -> list:

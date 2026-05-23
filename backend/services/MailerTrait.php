@@ -145,14 +145,14 @@ trait MailerTrait
             if (is_array($photos) && count($photos) > 0) {
                 $message .= "<h3>Photos</h3>";
                 foreach ($photos as $photoObj) {
-                    if (is_array($photoObj)) {
-                        $photoUrl = !empty($photoObj['thumb_url']) ? $photoObj['thumb_url'] : ($photoObj['url'] ?? null);
-                        $fullUrl = !empty($photoObj['url']) ? $photoObj['url'] : $photoUrl;
-                        if ($photoUrl) {
-                            $message .= "<div style='margin-bottom: 10px;'><a href='" . htmlspecialchars($fullUrl, ENT_QUOTES, 'UTF-8') . "' target='_blank'><img src='" . htmlspecialchars($photoUrl, ENT_QUOTES, 'UTF-8') . "' alt='Dashpoint Photo' style='max-width: 100%; height: auto;' /></a></div>";
-                        }
-                    } elseif (is_string($photoObj)) {
-                        $message .= "<div style='margin-bottom: 10px;'><a href='" . htmlspecialchars($photoObj, ENT_QUOTES, 'UTF-8') . "' target='_blank'><img src='" . htmlspecialchars($photoObj, ENT_QUOTES, 'UTF-8') . "' alt='Dashpoint Photo' style='max-width: 100%; height: auto;' /></a></div>";
+                    if (is_array($photoObj) && !empty($photoObj['thumb_url']) && !empty($photoObj['url'])) {
+                        $thumbUrl = $photoObj['thumb_url'];
+                        $fullUrl = $photoObj['url'];
+                        $message .= "<div style='margin-bottom: 10px;'>";
+                        $message .= "<a href='" . htmlspecialchars($fullUrl, ENT_QUOTES, 'UTF-8') . "' target='_blank'>";
+                        $message .= "<img src='" . htmlspecialchars($thumbUrl, ENT_QUOTES, 'UTF-8') . "' alt='Dashpoint Photo' style='max-width: 100%; height: auto;' />";
+                        $message .= "</a>";
+                        $message .= "</div>";
                     }
                 }
             }
