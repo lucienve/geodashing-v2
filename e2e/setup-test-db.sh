@@ -63,8 +63,8 @@ PASSWORD_HASH=$(php -r "echo password_hash('testpass', PASSWORD_DEFAULT);")
 
 mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "
     -- Game 1 (Historical)
-    INSERT INTO games (id, title, start_time, end_time, is_active) 
-    VALUES (1, 'Historical Game', DATE_SUB(NOW(), INTERVAL 35 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY), FALSE);
+    INSERT INTO games (id, title, start_time, end_time, is_active, summary) 
+    VALUES (1, 'Historical Game', DATE_SUB(NOW(), INTERVAL 35 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY), FALSE, '<h3>Game 1 Finished!</h3><p>What an incredible month of geodashing! Here is a <a href=\"#profile?username=TestUser\" id=\"test-summary-link\">link to TestUser profile</a> and a <a href=\"https://example.com/visited\" id=\"test-summary-visited-link\">visited link</a> to verify styling.</p>');
 
     -- Game 2 (Active)
     INSERT INTO games (id, title, start_time, end_time, is_active) 
