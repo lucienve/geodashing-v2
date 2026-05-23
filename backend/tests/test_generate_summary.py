@@ -1,6 +1,7 @@
 """Unit tests for generate_summary.py."""
 # pylint: disable=protected-access
 
+import http.client
 from unittest import mock
 
 from google.genai import types
@@ -39,9 +40,13 @@ def test_construct_new_data(mock_urlopen):
         'notes': 'Log notes'
     }]
 
-    mock_response = mock_urlopen.return_value.__enter__.return_value
+    mock_response = mock.MagicMock(spec=http.client.HTTPResponse)
+    mock_headers = mock.MagicMock(spec=http.client.HTTPMessage)
+    mock_headers.get_content_type.return_value = "image/jpeg"
+    mock_response.headers = mock_headers
     mock_response.read.return_value = b"fake image"
-    mock_response.headers.get_content_type.return_value = "image/jpeg"
+
+    mock_urlopen.return_value.__enter__.return_value = mock_response
 
     game_title = "Test Game Title"
     result = generate_summary.construct_new_data(game_title, scores, logs)
