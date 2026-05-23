@@ -946,6 +946,20 @@ body, html {
   transform: scale(1.02);
 }
 
+.summary-rich-content a,
+.summary-rich-content a:visited {
+  color: var(--accent-amber);
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.summary-rich-content a:hover {
+  text-decoration: underline;
+  color: #fbbf24;
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+}
+
 @keyframes modalSlideIn {
   from { opacity: 0; transform: translateY(-20px); }
   to { opacity: 1; transform: translateY(0); }
