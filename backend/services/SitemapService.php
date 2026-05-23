@@ -49,6 +49,12 @@ class SitemapService
             $this->addUrl($xml, $this->baseUrl . "/?dashpoint=" . urlencode($dpId), 'weekly', '0.6');
         }
 
+        // Fetch and add Games with Summaries dynamically for SEO
+        $gamesWithSummaries = $this->getGamesWithSummaries();
+        foreach ($gamesWithSummaries as $gameId) {
+            $this->addUrl($xml, $this->baseUrl . "/?summary=" . (int)$gameId, 'monthly', '0.7');
+        }
+
         $xml->endElement(); // urlset
         $xml->endDocument();
 
@@ -98,5 +104,23 @@ class SitemapService
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    /**
+     * Retrieves all Game IDs that have a populated summary.
+     *
+     * @return array Array of game IDs
+     */
+    public function getGamesWithSummaries(): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT id 
+            FROM games 
+            WHERE summary IS NOT NULL AND summary != ''
+            ORDER BY id DESC
+        ");
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
     }
 }

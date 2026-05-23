@@ -36,14 +36,16 @@ class GameServiceTest extends TestCase
                 'title' => 'April Dash 2026',
                 'start_time' => '2026-04-01 00:00:00',
                 'end_time' => '2026-04-30 23:59:59',
-                'is_active' => 1
+                'is_active' => 1,
+                'has_summary' => 0
             ],
             [
                 'id' => 1,
                 'title' => 'March Dash 2026',
                 'start_time' => '2026-03-01 00:00:00',
                 'end_time' => '2026-03-31 23:59:59',
-                'is_active' => 0
+                'is_active' => 0,
+                'has_summary' => 1
             ]
         ];
 

@@ -1041,6 +1041,79 @@ document.addEventListener('routeLoaded', (e) => {
                 }
             }
 
+            // Display and bind Game Summary Button if available
+            const summaryContainer = document.getElementById('leaderboard-summary-container');
+            const btnViewSummary = document.getElementById('btn-view-summary');
+
+            if (summaryContainer && btnViewSummary) {
+                if (window.currentGameContext && window.currentGameContext.has_summary) {
+                    summaryContainer.classList.remove('d-none');
+
+                    btnViewSummary.onclick = async () => {
+                        const originalText = btnViewSummary.innerHTML;
+                        btnViewSummary.disabled = true;
+                        btnViewSummary.innerText = "LOADING SUMMARY...";
+
+                        try {
+                            const res = await fetch(`api/summary.php?game_id=${window.currentGameContext.id}`);
+                            const data = await res.json();
+
+                            if (data.status === 'success' && data.summary) {
+                                // Dynamic Creation of the Glassmorphic Modal Overlay
+                                const overlay = document.createElement('div');
+                                overlay.className = 'modal-overlay';
+                                overlay.id = 'summary-modal-overlay';
+
+                                const content = document.createElement('div');
+                                content.className = 'modal-content';
+
+                                const close = document.createElement('div');
+                                close.className = 'modal-close';
+                                close.innerHTML = '&times;';
+                                close.onclick = () => overlay.remove();
+
+                                const title = document.createElement('h2');
+                                title.innerText = `${window.currentGameContext.monthYear} Game Summary`;
+
+                                const richDiv = document.createElement('div');
+                                richDiv.className = 'summary-rich-content';
+                                richDiv.innerHTML = data.summary;
+
+                                content.appendChild(close);
+                                content.appendChild(title);
+                                content.appendChild(richDiv);
+                                overlay.appendChild(content);
+
+                                document.body.appendChild(overlay);
+
+                                // Close on click outside modal content
+                                overlay.onclick = (e) => {
+                                    if (e.target === overlay) {
+                                        overlay.remove();
+                                    }
+                                };
+                            } else {
+                                alert("Failed to load summary: " + (data.message || "Unknown error"));
+                            }
+                        } catch (err) {
+                            console.error("Summary Fetch Error:", err);
+                            alert("Failed to load summary due to network or server failure.");
+                        } finally {
+                            btnViewSummary.disabled = false;
+                            btnViewSummary.innerHTML = originalText;
+                        }
+                    };
+
+                    // Auto-open summary if deep linked
+                    if (window.autoOpenSummaryId && window.autoOpenSummaryId === window.currentGameContext.id) {
+                        window.autoOpenSummaryId = null;
+                        btnViewSummary.click();
+                    }
+                } else {
+                    summaryContainer.classList.add('d-none');
+                }
+            }
+
             // Ping the JSON endpoint directly mapping the arrays
             API.getLeaderboard(ldParams).then(json => {
                 if (json.status === 'success') {

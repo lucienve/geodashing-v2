@@ -172,6 +172,9 @@ function initRouting() {
         const urlParams = new URLSearchParams(window.location.search);
         if (!fullHash && urlParams.has('dashpoint')) {
             fullHash = `#dashpoint?id=${urlParams.get('dashpoint')}`;
+        } else if (!fullHash && urlParams.has('summary')) {
+            fullHash = '#leaderboard';
+            window.autoOpenSummaryId = parseInt(urlParams.get('summary'), 10);
         } else if (!fullHash && urlParams.has('page')) {
             fullHash = `#${urlParams.get('page')}`;
         } else if (!fullHash) {
@@ -190,6 +193,9 @@ function initRouting() {
         if (fullHash.startsWith('#dashpoint?id=')) {
             const dpId = fullHash.split('?id=')[1];
             canonicalTag.href = `https://www.geodashing.org/?dashpoint=${dpId}`;
+        } else if (fullHash === '#leaderboard' && (window.autoOpenSummaryId || (window.currentGameContext && !window.currentGameContext.is_active && window.currentGameContext.has_summary))) {
+            const sumId = window.autoOpenSummaryId || window.currentGameContext.id;
+            canonicalTag.href = `https://www.geodashing.org/?summary=${sumId}`;
         } else if (['#about', '#how-to', '#contact'].includes(fullHash)) {
             const pageId = fullHash.substring(1);
             canonicalTag.href = `https://www.geodashing.org/?page=${pageId}`;
@@ -276,6 +282,11 @@ function initGameContext() {
             const urlParams = new URLSearchParams(window.location.search);
             if (!fullHash && urlParams.has('dashpoint')) {
                 fullHash = `#dashpoint?id=${urlParams.get('dashpoint')}`;
+            } else if (!fullHash && urlParams.has('summary')) {
+                const parsedId = parseInt(urlParams.get('summary'), 10);
+                if (!isNaN(parsedId) && json.data.find(g => g.id === parsedId)) {
+                    targetGameId = parsedId;
+                }
             }
             if (fullHash.startsWith('#dashpoint?id=')) {
                 const dpId = fullHash.split('?id=')[1];
@@ -293,6 +304,7 @@ function initGameContext() {
             window.currentGameContext.id = selectedGame.id;
             window.currentGameContext.is_active = selectedGame.is_active == 1;
             window.currentGameContext.title = selectedGame.title;
+            window.currentGameContext.has_summary = selectedGame.has_summary == 1;
             const activeD = new Date(selectedGame.start_time);
             window.currentGameContext.monthYear = activeD.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
@@ -311,6 +323,7 @@ function initGameContext() {
                     option.dataset.isActive = game.is_active;
                     option.dataset.title = game.title;
                     option.dataset.monthYear = monthYear;
+                    option.dataset.hasSummary = game.has_summary;
 
                     let statusTag = '';
                     if (game.id !== activeGame.id) {
@@ -339,6 +352,7 @@ function initGameContext() {
                     window.currentGameContext.is_active = selOpt.dataset.isActive == '1';
                     window.currentGameContext.title = selOpt.dataset.title;
                     window.currentGameContext.monthYear = selOpt.dataset.monthYear;
+                    window.currentGameContext.has_summary = selOpt.dataset.hasSummary == '1';
 
                     if (window.location.hash === '' || window.location.hash === '#home') {
                         if (typeof window.refreshMapBounds === 'function') {

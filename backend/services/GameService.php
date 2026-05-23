@@ -34,7 +34,7 @@ class GameService
      */
     public function getAllGames(): array
     {
-        $stmt = $this->db->query("SELECT id, title, start_time, end_time, is_active FROM games ORDER BY id DESC");
+        $stmt = $this->db->query("SELECT id, title, start_time, end_time, is_active, (summary IS NOT NULL AND summary != '') as has_summary FROM games ORDER BY id DESC");
         $games = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         return $games ?: [];

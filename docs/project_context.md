@@ -110,3 +110,13 @@ The application allows users to participate in global geographic games where the
 - Grouped player management actions cleanly within a distinct, stylized panel inside the mobile navigation drawer to preserve responsive layouts across all mobile screen sizes.
 - Decoupled all styles into `public/css/index.css` to prevent inline style usage, keeping frontend JS logic focused purely on DOM structure.
 - Verified that all 81 Playwright E2E tests, 52 PHPUnit tests, and 14 Python pytest suites pass successfully under verified, local OS dependencies.
+
+### 17. Game Summaries & Administrative CLI Validator
+- Extended the core MySQL database schema (`schema.sql` and E2E databases) with a `summary` column of type `MEDIUMTEXT` inside the `games` table.
+- Added comprehensive HTML fragment validation inside `game_utils.py` using Python's built-in `html.parser.HTMLParser`. The CLI tool strictly whitelists structural/semantic tags (`<h2>`–`<h6>`, `<p>`, `<strong>`, `<a>`, `<img>`, etc.), validates balanced tags via stack tracking, and actively blocks layout wrappers (`<html>`, `<body>`) and script elements (`<script>`) to prevent Stored XSS or style bleeding.
+- Integrated a new namespaced PHP service class `SummaryService.php` and public JSON controller (`public/api/summary.php`) to retrieve game summaries securely on-demand.
+- Registered dynamic summary URLs (`/?summary=ID`) inside `SitemapService.php` to guarantee dynamic search engine crawlability and sitemap parity.
+- Implemented deep-link routing fallbacks in `public/js/app.js` to client-side convert query parameters to hash routes and automatically highlight context games.
+- Built a glassmorphic floating modal popup overlay and responsive trigger button inside the `#leaderboard` view of `public/js/controllers.js` and `public/templates/leaderboard.html` cleanly styled within `public/css/index.css`.
+- Developed extensive unit test coverage in `backend/tests/test_game_utils.py` and `backend/tests/SummaryServiceTest.php` achieving 100% test success and a perfect 10.00/10 pylint quality rating.
+- Aligned `data/summary_system_instructions.txt` system instructions to generate clean HTML fragments matching the whitelist expected by `game_utils.py` and conform to single-page SEO accessibility standards (nesting subheadings starting at `<h2>`/`<h3>` tags).

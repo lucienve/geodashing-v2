@@ -49,13 +49,17 @@ class SitemapServiceTest extends TestCase
     #[Test]
     public function testGenerateSitemapXmlOutputsValidXmlStructure(): void
     {
-        $stmtMock = $this->createMock(PDOStatement::class);
-        $stmtMock->expects($this->once())->method('execute')->willReturn(true);
-        $stmtMock->method('fetchAll')->willReturn(['GD001-AAAA']);
+        $stmtMock1 = $this->createMock(PDOStatement::class);
+        $stmtMock1->expects($this->once())->method('execute')->willReturn(true);
+        $stmtMock1->method('fetchAll')->willReturn(['GD001-AAAA']);
 
-        $this->pdoMock->expects($this->once())
+        $stmtMock2 = $this->createMock(PDOStatement::class);
+        $stmtMock2->expects($this->once())->method('execute')->willReturn(true);
+        $stmtMock2->method('fetchAll')->willReturn([15]);
+
+        $this->pdoMock->expects($this->exactly(2))
             ->method('prepare')
-            ->willReturn($stmtMock);
+            ->willReturnOnConsecutiveCalls($stmtMock1, $stmtMock2);
 
         $xml = $this->sitemapService->generateSitemapXml();
 
@@ -73,9 +77,29 @@ class SitemapServiceTest extends TestCase
 
         // Validate dynamic injection
         $this->assertStringContainsString('<loc>http://test.local/?dashpoint=GD001-AAAA</loc>', $xml);
+        $this->assertStringContainsString('<loc>http://test.local/?summary=15</loc>', $xml);
 
         // Ensure valid XML parse
         $dom = new \DOMDocument();
         $this->assertTrue($dom->loadXML($xml));
+    }
+
+    #[Test]
+    public function testGetGamesWithSummariesReturnsIds(): void
+    {
+        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock->expects($this->once())->method('execute')->willReturn(true);
+        $stmtMock->method('fetchAll')->willReturn([15, 12]);
+
+        $this->pdoMock->expects($this->once())
+            ->method('prepare')
+            ->with($this->stringContains("summary IS NOT NULL AND summary != ''"))
+            ->willReturn($stmtMock);
+
+        $result = $this->sitemapService->getGamesWithSummaries();
+
+        $this->assertCount(2, $result);
+        $this->assertEquals(15, $result[0]);
+        $this->assertEquals(12, $result[1]);
     }
 }

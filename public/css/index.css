@@ -828,3 +828,125 @@ body, html {
   display: block;
   margin-bottom: 1rem;
 }
+
+/* =========================================================================
+   Game Summary & Glassmorphic Modal Overlays
+   ========================================================================= */
+.summary-container {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.btn-summary {
+  border-color: var(--accent-amber);
+  color: var(--accent-amber);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-summary:hover {
+  background-color: rgba(245, 158, 11, 0.1);
+  box-shadow: 0 0 10px var(--accent-amber-glow);
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem;
+  pointer-events: auto;
+}
+
+.modal-content {
+  background: var(--bg-glass-heavy);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: var(--border-neon);
+  border-radius: 8px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 80vh;
+  max-height: 80dvh;
+  overflow-y: auto;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.9);
+  padding: 2rem;
+  position: relative;
+  font-family: var(--font-mono);
+  animation: modalSlideIn 0.3s ease-out forwards;
+}
+
+.modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1.5rem;
+  font-size: 2rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 0.5;
+  transition: all 0.2s ease;
+  z-index: 2010;
+}
+
+.modal-close:hover {
+  color: var(--accent-red);
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.7);
+}
+
+.summary-rich-content {
+  font-family: var(--font-sans);
+  color: var(--text-main);
+  line-height: 1.6;
+}
+
+.summary-rich-content h2, .summary-rich-content h3 {
+  font-family: var(--font-mono);
+  color: var(--accent-amber);
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: 1px;
+}
+
+.summary-rich-content p {
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+.summary-rich-content ul, .summary-rich-content ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.summary-rich-content li {
+  margin-bottom: 0.5rem;
+}
+
+.summary-rich-content img {
+  max-width: 100%;
+  border-radius: 4px;
+  border: 1px solid var(--accent-green);
+  box-shadow: 0 0 10px var(--accent-green-glow);
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  transition: transform 0.2s;
+}
+
+.summary-rich-content img:hover {
+  transform: scale(1.02);
+}
+
+@keyframes modalSlideIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
