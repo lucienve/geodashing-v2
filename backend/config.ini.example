@@ -1,0 +1,18 @@
+[database]
+DB_HOST = "127.0.0.1"
+DB_PORT = "3306"
+DB_NAME = "geodashing"
+DB_USER = "geodashing"
+DB_PASS = "geodashing"
+
+[mail]
+GOOGLE_APPLICATION_CREDENTIALS = "backend/gcp-credentials.json"
+MAILING_LIST_ADDRESS = "tracker@geodashing.org"
+
+[google]
+GOOGLE_MAPS_API_KEY = "AIzaSy..."
+
+[gemini]
+GEMINI_API_KEY = "AIzaSy..."
+GEMINI_MODEL = "gemini-3.5-pro"
+GEMINI_PROJECT_ID = "your-gcp-project-id"
