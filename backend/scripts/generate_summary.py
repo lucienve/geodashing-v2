@@ -30,18 +30,26 @@ def configure_environment(config_path: str) -> dict:
         creds_path = config['mail']['GOOGLE_APPLICATION_CREDENTIALS'].strip('"\'')
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = creds_path
 
-    model_name = "gemini-3.5-pro"
+    model_name = None
     project_id = None
 
     # Support loading API key, model, and project ID from config.ini
     if 'gemini' in config:
-        model_name = config['gemini'].get('GEMINI_MODEL', model_name).strip('"\'')
+        model_name = config['gemini'].get('GEMINI_MODEL')
+        if model_name:
+            model_name = model_name.strip('"\'')
         api_key = config['gemini'].get('GEMINI_API_KEY')
         if api_key:
             os.environ['GEMINI_API_KEY'] = api_key.strip('"\'')
         project_id = config['gemini'].get('GEMINI_PROJECT_ID')
         if project_id:
             project_id = project_id.strip('"\'')
+
+    if not model_name:
+        raise ValueError(
+            "GEMINI_MODEL must be explicitly defined under the [gemini] section "
+            "of config.ini."
+        )
 
     return {"model_name": model_name, "project_id": project_id}
 
