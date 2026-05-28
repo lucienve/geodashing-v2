@@ -80,7 +80,7 @@ The application allows users to participate in global geographic games where the
 ### 11. AI Game Summaries & Reporting
 - Migrated to the modern `google-genai` Python SDK to automatically synthesize monthly game summaries.
 - Upgraded the summary generation engine from GCP Vertex AI to the Google AI Studio (Gemini Developer API) platform to simplify developer setups and facilitate seamless local testing.
-- Upgraded the default AI summary model to the next-generation 3.x series (**`gemini-3.1-pro`**), fully parameterized alongside `GEMINI_API_KEY` under the new `[gemini]` section of `config.ini` (with a complete template supplied in `config.ini.example`).
+- Upgraded the default AI summary model to the next-generation series (**`gemini-3.5-flash`** or **`gemini-3.1-pro-preview`**), fully parameterized alongside `GEMINI_API_KEY` under the new `[gemini]` section of `config.ini` (with a complete template supplied in `config.ini.example`).
 - Streamlined image input processing by bypassing Vertex-specific GCS `gs://` URIs and instead downloading photos via standard HTTPS URLs to feed raw image bytes inline via `types.Part.from_bytes()`, ensuring absolute environment portability.
 - The summary engine processes historical logs and selectively curates the best user-submitted photos (rendering them via optimized precomputed thumbnails) to build comprehensive HTML recaps.
 - Implemented data serialization to save inputs and outputs from the GenAI workflows to facilitate future model fine-tuning and few-shot example generation.
