@@ -1,12 +1,13 @@
 """Unit tests for game_utils.py administrative and validation scripts."""
 # pylint: disable=protected-access
 
+import datetime
 import unittest
 from unittest import mock
 import mysql.connector
 import mysql.connector.cursor
 
-from backend.scripts.game_utils import HTMLFragmentValidator, upload_summary
+from backend.scripts.game_utils import HTMLFragmentValidator, upload_summary, email_summary
 
 class TestHTMLFragmentValidator(unittest.TestCase):
     """Test case verifying HTML fragment whitelisting, stack-nesting, and format checks."""
@@ -157,3 +158,105 @@ class TestUploadSummaryCLI(unittest.TestCase):
 
         mock_file_open.assert_called_once_with("bad.html", 'r', encoding='utf-8')
         mock_conn.commit.assert_not_called()
+
+
+class TestEmailSummaryCLI(unittest.TestCase):
+    """Test cases validating the email_summary configurations and API."""
+
+    def setUp(self):
+        self.mock_cursor = mock.MagicMock(spec=mysql.connector.cursor.MySQLCursor)
+        self.mock_conn = mock.MagicMock(spec=mysql.connector.connection.MySQLConnection)
+
+    @mock.patch("backend.scripts.game_utils.os.path.exists", autospec=True)
+    def test_missing_game_id_aborts(self, mock_path_exists):
+        """If the game_id does not exist, the script should terminate with SystemExit."""
+        mock_path_exists.return_value = True
+        self.mock_cursor.fetchone.return_value = None
+
+        with self.assertRaises(SystemExit):
+            email_summary(self.mock_cursor, 999, "dummy_config.ini")
+
+    @mock.patch("backend.scripts.game_utils.os.path.exists", autospec=True)
+    def test_missing_summary_aborts(self, mock_path_exists):
+        """If the game exists but has no summary, the script should terminate with SystemExit."""
+        mock_path_exists.return_value = True
+        self.mock_cursor.fetchone.return_value = (
+            "Game 12", None, datetime.datetime(2026, 5, 1, 0, 0)
+        )
+
+        with self.assertRaises(SystemExit):
+            email_summary(self.mock_cursor, 12, "dummy_config.ini")
+
+    @mock.patch("backend.scripts.game_utils.os.path.exists", autospec=True)
+    def test_testing_env_bypass(self, mock_path_exists):
+        """If APP_ENV is 'testing', physical email sending must be bypassed and exit cleanly."""
+        mock_path_exists.return_value = True
+        self.mock_cursor.fetchone.return_value = (
+            "Game 12", "<p>Summary html</p>", datetime.datetime(2026, 5, 1, 0, 0)
+        )
+
+        config_data = (
+            "[mail]\n"
+            "MAILING_LIST_ADDRESS=tracker@geodashing.org\n"
+            "GOOGLE_APPLICATION_CREDENTIALS=creds.json"
+        )
+        with mock.patch("builtins.open", mock.mock_open(read_data=config_data)), \
+             mock.patch.dict("os.environ", {"APP_ENV": "testing"}):
+            # Should complete cleanly without raising SystemExit or calling APIs
+            email_summary(self.mock_cursor, 12, "dummy_config.ini")
+
+    @mock.patch("backend.scripts.game_utils.os.path.exists", autospec=True)
+    def test_successful_email_dispatch(self, mock_path_exists):
+        """A valid game, summary, and configs should dispatch successfully via Gmail REST API."""
+        mock_path_exists.return_value = True
+        self.mock_cursor.fetchone.return_value = (
+            "Game 12", "<p>Summary html</p>", datetime.datetime(2026, 5, 1, 0, 0)
+        )
+
+        # Mock Credentials
+        mock_creds = mock.MagicMock()
+        mock_creds.token = "fake_access_token"
+        mock_creds.with_subject.return_value = mock_creds
+
+        # Mock API Response
+        mock_response = mock.MagicMock()
+        mock_response.read.return_value = b'{"id": "msg123"}'
+        mock_response.__enter__.return_value = mock_response
+
+        config_data = (
+            "[mail]\n"
+            "MAILING_LIST_ADDRESS=tracker@geodashing.org\n"
+            "GOOGLE_APPLICATION_CREDENTIALS=creds.json"
+        )
+
+        with mock.patch("builtins.open", mock.mock_open(read_data=config_data)), \
+             mock.patch("google.oauth2.service_account.Credentials"
+                        ".from_service_account_file") as mock_creds_file, \
+             mock.patch("google.auth.transport.requests.Request"), \
+             mock.patch("urllib.request.urlopen") as mock_urlopen, \
+             mock.patch.dict("os.environ", {"APP_ENV": ""}):
+
+            mock_creds_file.return_value = mock_creds
+            mock_urlopen.return_value = mock_response
+
+            # Execute
+            email_summary(self.mock_cursor, 12, "dummy_config.ini")
+
+            # Verify Google service account called with domain-wide delegation impersonation
+            mock_creds_file.assert_called_once_with(
+                "creds.json",
+                scopes=['https://www.googleapis.com/auth/gmail.send']
+            )
+            mock_creds.with_subject.assert_called_once_with("tracker@geodashing.org")
+            mock_creds.refresh.assert_called_once()
+
+            # Verify HTTP post request was sent to Gmail REST API
+            args, _ = mock_urlopen.call_args
+            req = args[0]
+            self.assertEqual(
+                req.get_full_url(),
+                "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
+            )
+            self.assertEqual(req.get_header("Authorization"), "Bearer fake_access_token")
+            self.assertEqual(req.get_header("Content-type"), "application/json")
+            self.assertEqual(req.get_method(), "POST")

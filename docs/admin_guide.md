@@ -108,7 +108,8 @@ Maintains game activation status and provides strict schema validation for admin
 | `--list` | `flag` | — | Lists all database games chronologically, showing ID, active status, start/end times, and titles. |
 | `--activate` | `int` | `GAME_ID` | Deactivates all currently active games and sets the target game's `is_active` to `TRUE`. |
 | `--upload-summary` | `str` | `FILE_PATH` | Parses, validates, and uploads a local HTML summary file. Requires `--game_id`. |
-| `--game_id` | `int` | `GAME_ID` | Specifies the target game ID when uploading an HTML summary. |
+| `--email-summary` | `flag` | — | Emails the HTML summary for the specified game_id to the mailing list. Requires `--game_id`. |
+| `--game_id` | `int` | `GAME_ID` | Specifies the target game ID when uploading or emailing an HTML summary. |
 
 #### HTML Fragment Safety & Validation rules
 To prevent cross-site scripting (Stored XSS) and layout breakages in user browsers and sitemaps, the parser enforces these rules:

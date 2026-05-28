@@ -141,3 +141,11 @@ The application allows users to participate in global geographic games where the
 - Created the game administrator's CLI utilities guide in `docs/admin_guide.md` and the standalone `docs/game_rollover.md` operations guide.
 - Documented system setup, prerequisites, configurations (`backend/config.ini`), and details of key administrative scripts (`generate_game.py`, `game_utils.py`, `generate_summary.py`, `seed_major_cities.py`, `catchup_emails.php`) in the administrative utilities guide.
 - Formulated the exact chronological step-by-step rollover procedure (compiling the completed month's AI summary, promoting the current month's preview game to active, and seeding the next month's preview game) as a separate operational playbook (`docs/game_rollover.md`) for safe production environments.
+
+### 21. End-of-Month Summary Emailing
+- Added `--email-summary` functionality to the `game_utils.py` administrative utility script to dispatch the completed month's HTML summary directly to the player mailing list.
+- Implemented secure Google Service Account authentication with Domain-Wide Delegation impersonation of `tracker@geodashing.org` via the official Gmail REST API, matching the security mechanism of the backend PHP visitation emails.
+- Extracted and formatted both a rich HTML message and a clean, tag-stripped plain-text fallback, setting the custom subject line to `Geodashing Game <game_id> (<Month> <Year>) Results` using the game's chronological database metadata.
+- Implemented an `APP_ENV=testing` environment variable bypass to suppress physical API transmission during automated test executions.
+- Modularized the Python implementation to prevent linter variable complexity, achieving a perfect 10.00/10 Pylint rating on both scripts (`game_utils.py`) and test suites (`test_game_utils.py`).
+- Integrated the new email execution step into the system operations documentation (`docs/admin_guide.md` and `docs/game_rollover.md`) and updated the Rollover Process Map diagram.

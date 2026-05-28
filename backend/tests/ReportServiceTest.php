@@ -27,6 +27,10 @@ class ReportServiceTest extends TestCase
 
     protected function setUp(): void
     {
+        // Force the testing environment variable to prevent physical email dispatches
+        putenv('APP_ENV=testing');
+        $_ENV['APP_ENV'] = 'testing';
+
         // Create a mock of the PDO object
         $this->pdoMock = $this->createMock(PDO::class);
 

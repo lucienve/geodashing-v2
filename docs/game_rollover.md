@@ -17,8 +17,8 @@ The entire rollover process takes place at the **transition boundary** (the 1st 
 
 ```mermaid
 graph TD
-    A[June 1st: May Game Concludes] --> B[Step 1: Generate & Upload May Summary]
-    B -->|generate_summary.py| C[Step 2: Activate June Game]
+    A[June 1st: May Game Concludes] --> B[Step 1: Generate, Upload & Email May Summary]
+    B -->|generate_summary.py & game_utils.py| C[Step 2: Activate June Game]
     C -->|game_utils.py --activate| D[Step 3: Seed July Game as Preview]
     D -->|generate_game.py --preview| E[Step 4: Verify & Cleanup]
 ```
@@ -71,6 +71,17 @@ python -m backend.scripts.game_utils \
 
 > [!NOTE]
 > If errors are reported by the validator, fix the tags in the HTML file and re-run the upload command.
+
+#### 4. Email the Game Summary to the Player List
+Once the summary is successfully saved in the database, dispatch it to the registered geodashing player mailing list specified in the `config.ini` file using:
+
+```bash
+python -m backend.scripts.game_utils \
+  --email-summary \
+  --game_id 13
+```
+
+This will format the email with the subject `"Geodashing Game 13 (May 2026) Results"`, construct both rich HTML and a clean, tag-stripped text fallback version, and securely send it via the Gmail REST API using the project's service account domain-wide delegation credentials.
 
 ---
 

@@ -1,9 +1,19 @@
 """Administrative utilities for managing Geodashing game lifecycles."""
 
 import argparse
+import base64
+import configparser
+import email.mime.multipart
+import email.mime.text
 import html.parser
+import json
 import os
+import re
 import sys
+import urllib.request
+
+from google.oauth2 import service_account
+import google.auth.transport.requests
 
 from backend.scripts.db_utils import get_db_connection
 
@@ -171,6 +181,155 @@ def upload_summary(cursor, conn, game_id: int, file_path: str):
     conn.commit()
     print("Summary uploaded and saved to the database successfully!")
 
+def load_mail_config(config_path: str) -> tuple:
+    """Reads and validates mail configurations from config.ini."""
+    if not os.path.exists(config_path):
+        print(f"Error: Config not found at {config_path}")
+        sys.exit(1)
+
+    config = configparser.ConfigParser()
+    config.read(config_path)
+
+    if 'mail' not in config:
+        print("Error: [mail] section is missing in config.ini.")
+        sys.exit(1)
+
+    to_email = config['mail'].get('MAILING_LIST_ADDRESS', '').strip('"\'')
+    credentials_path = config['mail'].get('GOOGLE_APPLICATION_CREDENTIALS', '').strip('"\'')
+
+    if not to_email:
+        print("Error: MAILING_LIST_ADDRESS is not configured in config.ini.")
+        sys.exit(1)
+
+    if not credentials_path:
+        print("Error: GOOGLE_APPLICATION_CREDENTIALS is not configured in config.ini.")
+        sys.exit(1)
+
+    if not os.path.exists(credentials_path):
+        print(f"Error: Credentials file not found at '{credentials_path}'.")
+        sys.exit(1)
+
+    return to_email, credentials_path
+
+
+def send_via_gmail_api(credentials_path: str, to_email: str, subject: str, html_body: str) -> None:
+    """Authenticates and sends an email via Gmail REST API."""
+    sender = 'tracker@geodashing.org'
+
+    creds = service_account.Credentials.from_service_account_file(
+        credentials_path,
+        scopes=['https://www.googleapis.com/auth/gmail.send']
+    )
+    delegated_creds = creds.with_subject(sender)
+
+    # Refresh token to get access token
+    auth_req = google.auth.transport.requests.Request()
+    delegated_creds.refresh(auth_req)
+    access_token = delegated_creds.token
+
+    # Generate a plain-text fallback by stripping tags
+    plain_text = (html_body.replace('<br>', '\n')
+                  .replace('<br/>', '\n')
+                  .replace('<br />', '\n')
+                  .replace('</p>', '\n'))
+    plain_text = re.sub('<[^<]+?>', '', plain_text)
+
+    msg = email.mime.multipart.MIMEMultipart('alternative')
+    msg['Subject'] = subject
+    msg['From'] = sender
+    msg['To'] = to_email
+
+    msg.attach(email.mime.text.MIMEText(plain_text, 'plain', 'utf-8'))
+    msg.attach(email.mime.text.MIMEText(html_body, 'html', 'utf-8'))
+
+    # Base64url encode the message
+    raw_message = base64.urlsafe_b64encode(msg.as_bytes()).decode('utf-8')
+
+    # Send via Gmail REST API
+    api_req = urllib.request.Request(
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        data=json.dumps({"raw": raw_message}).encode('utf-8'),
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        },
+        method='POST'
+    )
+    with urllib.request.urlopen(api_req) as response:
+        if 'id' in json.loads(response.read().decode('utf-8')):
+            print("Email dispatched successfully!")
+        else:
+            print("Error: Response did not contain email ID.")
+            sys.exit(1)
+
+
+def email_summary(cursor, game_id: int, config_path: str):
+    """Sends the end-of-month game summary to the mailing list specified in config.ini."""
+    # 1. Fetch game summary, title, and start_time from database
+    cursor.execute("SELECT title, summary, start_time FROM games WHERE id = %s", (game_id,))
+    row = cursor.fetchone()
+    if not row:
+        print(f"Error: Game ID {game_id} does not exist.")
+        sys.exit(1)
+
+    title, summary, start_time = row
+    if not summary:
+        print(
+            f"Error: Game ID {game_id} ('{title}') "
+            "does not have a summary uploaded yet. "
+            "Run summary generation and upload first."
+        )
+        sys.exit(1)
+
+    to_email, credentials_path = load_mail_config(config_path)
+
+    # Bypass physical API interaction during E2E/unit testing
+    app_env = os.getenv('APP_ENV') or ''
+    if app_env == 'testing':
+        print(f"APP_ENV=testing: Suppressed physical email transmission to {to_email}")
+        return
+
+    print(f"Preparing to email summary for Game {game_id} ('{title}') to {to_email}...")
+
+    # Authenticate and send email cleanly
+    try:
+        month_year = start_time.strftime("%B %Y")  # e.g., "May 2026"
+        subject = f"Geodashing Game {game_id} ({month_year}) Results"
+        send_via_gmail_api(credentials_path, to_email, subject, summary)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        # Catching all base exceptions is architecturally unavoidable here to ensure
+        # the CLI does not crash with raw Python/Google SDK tracebacks in production
+        # and instead reports a clean, professional error message to the admin.
+        print(f"Failed to email summary: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def execute_cli_actions(cursor, conn, args, config_path: str):
+    """Executes the specific actions chosen via command line arguments."""
+    need_separator = False
+
+    if args.list:
+        list_games(cursor)
+        need_separator = True
+
+    if args.activate is not None:
+        if need_separator:
+            print("\n" + "=" * 80 + "\n")
+        activate_game(cursor, conn, args.activate)
+        need_separator = True
+
+    if args.upload_summary is not None:
+        if need_separator:
+            print("\n" + "=" * 80 + "\n")
+        upload_summary(cursor, conn, args.game_id, args.upload_summary)
+        need_separator = True
+
+    if args.email_summary:
+        if need_separator:
+            print("\n" + "=" * 80 + "\n")
+        email_summary(cursor, args.game_id, config_path)
+
+
 def main() -> None:
     """Main entrypoint for the game administration script."""
     parser = argparse.ArgumentParser(description="Geodashing Game Administration Utility")
@@ -179,16 +338,23 @@ def main() -> None:
                         help="Activate a specific game ID and retire all others")
     parser.add_argument('--upload-summary', type=str, metavar='FILE_PATH',
                         help="Upload an HTML summary fragment for the specified game_id")
+    parser.add_argument('--email-summary', action='store_true',
+                        help="Email the HTML summary for the specified game_id")
     parser.add_argument('--game_id', type=int, metavar='GAME_ID',
-                        help="The game ID for the summary upload")
+                        help="The game ID for the summary upload or email")
     args = parser.parse_args()
 
-    if not args.list and args.activate is None and args.upload_summary is None:
+    if (not args.list and args.activate is None and
+            args.upload_summary is None and not args.email_summary):
         parser.print_help()
         sys.exit(1)
 
     if args.upload_summary is not None and args.game_id is None:
         print("Error: --game_id is required when using --upload-summary.")
+        sys.exit(1)
+
+    if args.email_summary and args.game_id is None:
+        print("Error: --game_id is required when using --email-summary.")
         sys.exit(1)
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -197,19 +363,7 @@ def main() -> None:
     try:
         conn = get_db_connection(config_path)
         cursor = conn.cursor()
-
-        if args.list:
-            list_games(cursor)
-
-        if args.activate is not None:
-            if args.list:
-                print("\n" + "="*80 + "\n")
-            activate_game(cursor, conn, args.activate)
-
-        if args.upload_summary is not None:
-            if args.list or args.activate is not None:
-                print("\n" + "="*80 + "\n")
-            upload_summary(cursor, conn, args.game_id, args.upload_summary)
+        execute_cli_actions(cursor, conn, args, config_path)
 
     except (FileNotFoundError, RuntimeError) as e:
         print(f"\nExecution Error: {e}")
