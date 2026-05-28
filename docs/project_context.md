@@ -136,3 +136,8 @@ The application allows users to participate in global geographic games where the
 - Designed full-screen fixed glassmorphic dimming scrim backdrops (`#mobile-nav-backdrop` and `.overlay-active` inside `#app-content`) featuring a subtle `backdrop-filter: blur(4px)` and smooth transition effects to isolate the focused overlay while visually obscuring the Google Map underneath.
 - Strictly scoped the responsive dimming and tap-outside close triggers to mobile screen sizes (`max-width: 768px`) using precise CSS media queries and client-side viewport check logic, preserving the interactive desktop sidebar/map viewport split layout.
 - Added comprehensive E2E interaction coverage inside `e2e/interaction.spec.js` programmatically validating mobile close actions using offset click triggers to avoid narrow layout element overlap.
+
+### 20. Comprehensive Administrative Documentation
+- Created the game administrator's CLI utilities guide in `docs/admin_guide.md` and the standalone `docs/game_rollover.md` operations guide.
+- Documented system setup, prerequisites, configurations (`backend/config.ini`), and details of key administrative scripts (`generate_game.py`, `game_utils.py`, `generate_summary.py`, `seed_major_cities.py`, `catchup_emails.php`) in the administrative utilities guide.
+- Formulated the exact chronological step-by-step rollover procedure (compiling the completed month's AI summary, promoting the current month's preview game to active, and seeding the next month's preview game) as a separate operational playbook (`docs/game_rollover.md`) for safe production environments.
