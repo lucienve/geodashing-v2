@@ -149,3 +149,7 @@ The application allows users to participate in global geographic games where the
 - Implemented an `APP_ENV=testing` environment variable bypass to suppress physical API transmission during automated test executions.
 - Modularized the Python implementation to prevent linter variable complexity, achieving a perfect 10.00/10 Pylint rating on both scripts (`game_utils.py`) and test suites (`test_game_utils.py`).
 - Integrated the new email execution step into the system operations documentation (`docs/admin_guide.md` and `docs/game_rollover.md`) and updated the Rollover Process Map diagram.
+
+### 22. Python Virtual Environment Directory Migration
+- Migrated the Python virtual environment folder standard from `venv` to `.venv` across all system setups and operations documentation.
+- Updated all occurrences of virtual environment creation and activation commands in `docs/admin_guide.md` and `docs/game_rollover.md` to consistently reference `.venv`.

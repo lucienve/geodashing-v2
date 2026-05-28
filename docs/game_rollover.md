@@ -31,7 +31,7 @@ All commands on the production machine must be executed inside the project's vir
 # (Example working directory: /home/lucien/src/geodashing-v2)
 
 # Activate the virtual environment
-source venv/bin/activate
+source .venv/bin/activate
 ```
 
 ---
