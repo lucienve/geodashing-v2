@@ -61,7 +61,18 @@ setcookie('csrf_token', $_SESSION['csrf_token'], [
     'samesite' => 'Strict'
 ]);
 
-// 5. CSRF Token Validation
+// 5. POST Request size limit validation
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST) && empty($_FILES) && isset($_SERVER['CONTENT_LENGTH']) && (int)$_SERVER['CONTENT_LENGTH'] > 0) {
+    header('Content-Type: application/json');
+    http_response_code(413);
+    echo json_encode([
+        "status" => "error",
+        "message" => "Upload rejected: Total request size exceeds the server's post_max_size limit (" . ini_get('post_max_size') . "). Please select fewer photos or reduce their resolution."
+    ]);
+    exit;
+}
+
+// 6. CSRF Token Validation
 // We only enforce CSRF checks if the user currently holds an active, authenticated Session Context.
 // This allows initial unauthenticated POST operations (like login, signup) to establish state seamlessly.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SESSION['user_id'])) {
@@ -76,4 +87,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SESSION['user_id'])) {
         ]);
         exit;
     }
+}
+
+/**
+ * Parses PHP post_max_size configuration string into bytes.
+ *
+ * @return int The max size in bytes.
+ */
+function getPostMaxSizeInBytes(): int
+{
+    $val = trim(ini_get('post_max_size'));
+    if (empty($val)) {
+        return 0;
+    }
+    $last = strtolower($val[strlen($val) - 1]);
+    $val = (int)$val;
+    switch ($last) {
+        case 'g':
+            $val *= 1024;
+            // Fallthrough
+        case 'm':
+            $val *= 1024;
+            // Fallthrough
+        case 'k':
+            $val *= 1024;
+    }
+    return $val;
 }

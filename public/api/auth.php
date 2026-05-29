@@ -123,7 +123,9 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
                     "status" => "success",
                     "user_id" => $_SESSION['user_id'],
                     "username" => $_SESSION['username'],
-                    "is_verified" => $_SESSION['is_verified'] ?? 0
+                    "is_verified" => $_SESSION['is_verified'] ?? 0,
+                    "post_max_size" => ini_get('post_max_size'),
+                    "post_max_size_bytes" => getPostMaxSizeInBytes()
                 ]);
             } else {
                 http_response_code(401);

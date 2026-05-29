@@ -153,3 +153,11 @@ The application allows users to participate in global geographic games where the
 ### 22. Python Virtual Environment Directory Migration
 - Migrated the Python virtual environment folder standard from `venv` to `.venv` across all system setups and operations documentation.
 - Updated all occurrences of virtual environment creation and activation commands in `docs/admin_guide.md` and `docs/game_rollover.md` to consistently reference `.venv`.
+
+### 23. POST Upload Size Limit & Graceful File Validation
+- Added server-side detection for POST size limit exceeded inside `backend/session.php`. When a user attempts to upload payloads exceeding the server's `post_max_size` limit, the API now returns a structured `413 Payload Too Large` JSON response with a helpful descriptive message rather than failing on validation checks.
+- Developed the `getPostMaxSizeInBytes()` helper in `backend/session.php` to parse standard shorthand PHP configuration formats (like `25M` or `100M`) into absolute byte limits.
+- Exposed these limits dynamically to the frontend by adding `post_max_size` and `post_max_size_bytes` payloads to the auth session endpoint (`public/api/auth.php`).
+- Implemented robust client-side validation in `public/js/controllers.js` and `public/js/app.js` that dynamically reads the server's limits from global state. Both the "Log a Visit" (`#report`) and "Edit Log" (`#edit`) controllers now warn users and restrict uploads relative to the active server configurations dynamically.
+- Fixed potential empty-block linting errors in catch statements to satisfy ESLint checks.
+- Verified that all PHPUnit tests, ESLint checks, and the E2E suites pass successfully.

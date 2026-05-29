@@ -45,6 +45,8 @@ function initGlobalState() {
         title: '',
         monthYear: ''
     };
+    window.postMaxSize = '25M';
+    window.postSizeBytes = 25 * 1024 * 1024; // Fallback fallback to 25MB
 }
 
 function initNavigation() {
@@ -426,6 +428,12 @@ function initAuthState() {
             const res = await API.checkSession();
             if (res.status === 'success') {
                 window.currentUser = res; // Bind the full Payload (including is_verified) globally
+                if (res.post_max_size) {
+                    window.postMaxSize = res.post_max_size;
+                }
+                if (res.post_max_size_bytes) {
+                    window.postSizeBytes = res.post_max_size_bytes;
+                }
                 if (res.is_verified === 0) {
                     if (navAuthBtn) {
                         navAuthBtn.style.display = '';

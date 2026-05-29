@@ -338,6 +338,15 @@ document.addEventListener('routeLoaded', (e) => {
                     alert("Maximum 10 photos allowed.");
                 }
 
+                let totalSize = 0;
+                Array.from(currentPhotoQueue.files).forEach(file => {
+                    totalSize += file.size;
+                });
+                const limitBytes = window.postSizeBytes || (25 * 1024 * 1024);
+                if (totalSize > limitBytes) {
+                    alert(`Warning: The total size of selected photos (${(totalSize / 1024 / 1024).toFixed(1)}MB) exceeds the ${window.postMaxSize || '25M'} server upload limit. Please select fewer or smaller images.`);
+                }
+
                 inputPhotos.files = currentPhotoQueue.files;
                 renderPhotoGrid();
             });
@@ -479,6 +488,21 @@ document.addEventListener('routeLoaded', (e) => {
                     // Reject log client-side before photo transfers if not an attempt
                     if (!isAttempt && distance > 100) {
                         feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Too far away. You are <strong>${distance.toFixed(1)}m</strong> from the dashpoint. You must be within 100m.</div>`;
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = "SUBMIT LOG";
+                        return;
+                    }
+
+                    // Check file size client-side before sending
+                    let totalSize = 0;
+                    if (inputPhotos && inputPhotos.files) {
+                        Array.from(inputPhotos.files).forEach(file => {
+                            totalSize += file.size;
+                        });
+                    }
+                    const limitBytes = window.postSizeBytes || (25 * 1024 * 1024);
+                    if (totalSize > limitBytes) {
+                        feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Upload rejected: Total photo size (${(totalSize / 1024 / 1024).toFixed(1)}MB) exceeds the ${window.postMaxSize || '25M'} server limit. Please reduce image resolution or attach fewer photos.</div>`;
                         submitBtn.disabled = false;
                         submitBtn.innerText = "SUBMIT LOG";
                         return;
@@ -999,9 +1023,73 @@ document.addEventListener('routeLoaded', (e) => {
         });
 
         // 4. Capture the form submission securely routing to the new Diff endpoint
+        const editPhotosInput = document.getElementById('edit-photos');
+        if (editPhotosInput) {
+            editPhotosInput.addEventListener('change', () => {
+                let keptPhotosCount = 0;
+                try {
+                    const keptPhotos = JSON.parse(keptPhotosInput.value);
+                    if (Array.isArray(keptPhotos)) {
+                        keptPhotosCount = keptPhotos.length;
+                    }
+                } catch (_) {
+                    keptPhotosCount = 0;
+                }
+
+                let newPhotosCount = editPhotosInput.files ? editPhotosInput.files.length : 0;
+                let newPhotosSize = 0;
+                if (editPhotosInput.files) {
+                    Array.from(editPhotosInput.files).forEach(file => {
+                        newPhotosSize += file.size;
+                    });
+                }
+
+                if (keptPhotosCount + newPhotosCount > 10) {
+                    alert(`Maximum 10 photos allowed. You currently have ${keptPhotosCount} retained and selected ${newPhotosCount} new photos.`);
+                }
+
+                const limitBytes = window.postSizeBytes || (25 * 1024 * 1024);
+                if (newPhotosSize > limitBytes) {
+                    alert(`Warning: The total size of new selected photos (${(newPhotosSize / 1024 / 1024).toFixed(1)}MB) exceeds the ${window.postMaxSize || '25M'} server upload limit. Please select fewer or smaller images.`);
+                }
+            });
+        }
+
         if (editForm) {
             editForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
+
+                // Validate photos count and size
+                let keptPhotosCount = 0;
+                try {
+                    const keptPhotos = JSON.parse(keptPhotosInput.value);
+                    if (Array.isArray(keptPhotos)) {
+                        keptPhotosCount = keptPhotos.length;
+                    }
+                } catch (_) {
+                    keptPhotosCount = 0;
+                }
+
+                let newPhotosCount = 0;
+                let newPhotosSize = 0;
+                if (editPhotosInput && editPhotosInput.files) {
+                    newPhotosCount = editPhotosInput.files.length;
+                    Array.from(editPhotosInput.files).forEach(file => {
+                        newPhotosSize += file.size;
+                    });
+                }
+
+                if (keptPhotosCount + newPhotosCount > 10) {
+                    statusDiv.innerHTML = `<div class="alert alert-error">[-] EDIT REJECTED: Maximum 10 photos allowed (retained + new). You have ${keptPhotosCount} retained and selected ${newPhotosCount} new photos.</div>`;
+                    return;
+                }
+
+                const limitBytes = window.postSizeBytes || (25 * 1024 * 1024);
+                if (newPhotosSize > limitBytes) {
+                    statusDiv.innerHTML = `<div class="alert alert-error">[-] EDIT REJECTED: Total new photo size (${(newPhotosSize / 1024 / 1024).toFixed(1)}MB) exceeds the ${window.postMaxSize || '25M'} server limit. Please reduce image resolution or attach fewer photos.</div>`;
+                    return;
+                }
+
                 submitBtn.disabled = true;
                 submitBtn.innerText = "UPDATING LOG...";
 
