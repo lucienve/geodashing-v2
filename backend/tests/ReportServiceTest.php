@@ -338,4 +338,120 @@ class ReportServiceTest extends TestCase
         $this->assertEquals('success', $result['status']);
         $this->assertEquals(2, $result['points'], "Claims on a subsequent day with 1 prior-day claim should award 2 points.");
     }
+
+    /**
+     * Verifies that processVisit sends email by default (when $suppressEmail is false).
+     */
+    #[Test]
+    public function processVisitSendsEmailByDefault()
+    {
+        $userMock = $this->createMock(PDOStatement::class);
+        $userMock->method('fetch')->willReturn(['is_verified' => 1]);
+
+        $distMock = $this->createMock(PDOStatement::class);
+        $distMock->method('fetch')->willReturn(['distance_meters' => 45.0, 'is_active' => 1, 'dp_lat' => 40.0, 'dp_lon' => -75.0, 'game_id' => 1, 'elevation' => null]);
+
+        $duplicateMock = $this->createMock(PDOStatement::class);
+        $duplicateMock->method('fetch')->willReturn(false);
+
+        $teamMock = $this->createMock(PDOStatement::class);
+        $teamMock->method('fetch')->willReturn(false);
+
+        $scoreMock = $this->createMock(PDOStatement::class);
+        $scoreMock->method('fetch')->willReturn(['previous_claims' => 0]);
+
+        $huntsMock = $this->createMock(PDOStatement::class);
+        $huntsMock->method('fetch')->willReturn(['previous_hunts' => 123]);
+
+        $huntsGameMock = $this->createMock(PDOStatement::class);
+        $huntsGameMock->method('fetch')->willReturn(['previous_hunts' => 2]);
+
+        $insertMock = $this->createMock(PDOStatement::class);
+        $insertMock->method('execute')->willReturn(true);
+
+        $usernameMock = $this->createMock(PDOStatement::class);
+        $usernameMock->method('fetch')->willReturn(['username' => 'TestUser']);
+
+        $totalScoreMock = $this->createMock(PDOStatement::class);
+        $totalScoreMock->method('fetch')->willReturn(['total' => 15]);
+
+        $totalScoreGameMock = $this->createMock(PDOStatement::class);
+        $totalScoreGameMock->method('fetch')->willReturn(['total' => 5]);
+
+        $this->pdoMock->expects($this->exactly(11))
+            ->method('prepare')
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock, $totalScoreMock, $totalScoreGameMock);
+
+        $testableService = new class ($this->pdoMock, $this->geoMock) extends ReportService {
+            public bool $emailSent = false;
+
+            protected function sendVisitReportEmail(string $username, string $dashpointId, int $distance, int $points, int $totalPointsAllGames, int $totalPointsGame, bool $isAttempt, ?string $notes, ?string $photosJson, int $previousHuntsAllGames = 0, int $previousHuntsGame = 0, ?string $geoContext = null, bool $isEdit = false): void
+            {
+                $this->emailSent = true;
+            }
+        };
+
+        $result = $testableService->processVisit(1, 'GD001-AAAA', 40.0, -75.0);
+
+        $this->assertEquals('success', $result['status']);
+        $this->assertTrue($testableService->emailSent);
+    }
+
+    /**
+     * Verifies that processVisit suppresses email notification when $suppressEmail is true.
+     */
+    #[Test]
+    public function processVisitSuppressesEmailWhenFlagged()
+    {
+        $userMock = $this->createMock(PDOStatement::class);
+        $userMock->method('fetch')->willReturn(['is_verified' => 1]);
+
+        $distMock = $this->createMock(PDOStatement::class);
+        $distMock->method('fetch')->willReturn(['distance_meters' => 45.0, 'is_active' => 1, 'dp_lat' => 40.0, 'dp_lon' => -75.0, 'game_id' => 1, 'elevation' => null]);
+
+        $duplicateMock = $this->createMock(PDOStatement::class);
+        $duplicateMock->method('fetch')->willReturn(false);
+
+        $teamMock = $this->createMock(PDOStatement::class);
+        $teamMock->method('fetch')->willReturn(false);
+
+        $scoreMock = $this->createMock(PDOStatement::class);
+        $scoreMock->method('fetch')->willReturn(['previous_claims' => 0]);
+
+        $huntsMock = $this->createMock(PDOStatement::class);
+        $huntsMock->method('fetch')->willReturn(['previous_hunts' => 123]);
+
+        $huntsGameMock = $this->createMock(PDOStatement::class);
+        $huntsGameMock->method('fetch')->willReturn(['previous_hunts' => 2]);
+
+        $insertMock = $this->createMock(PDOStatement::class);
+        $insertMock->method('execute')->willReturn(true);
+
+        $usernameMock = $this->createMock(PDOStatement::class);
+        $usernameMock->method('fetch')->willReturn(['username' => 'TestUser']);
+
+        $totalScoreMock = $this->createMock(PDOStatement::class);
+        $totalScoreMock->method('fetch')->willReturn(['total' => 15]);
+
+        $totalScoreGameMock = $this->createMock(PDOStatement::class);
+        $totalScoreGameMock->method('fetch')->willReturn(['total' => 5]);
+
+        $this->pdoMock->expects($this->exactly(11))
+            ->method('prepare')
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock, $totalScoreMock, $totalScoreGameMock);
+
+        $testableService = new class ($this->pdoMock, $this->geoMock) extends ReportService {
+            public bool $emailSent = false;
+
+            protected function sendVisitReportEmail(string $username, string $dashpointId, int $distance, int $points, int $totalPointsAllGames, int $totalPointsGame, bool $isAttempt, ?string $notes, ?string $photosJson, int $previousHuntsAllGames = 0, int $previousHuntsGame = 0, ?string $geoContext = null, bool $isEdit = false): void
+            {
+                $this->emailSent = true;
+            }
+        };
+
+        $result = $testableService->processVisit(1, 'GD001-AAAA', 40.0, -75.0, false, null, null, true);
+
+        $this->assertEquals('success', $result['status']);
+        $this->assertFalse($testableService->emailSent);
+    }
 }

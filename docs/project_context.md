@@ -161,3 +161,10 @@ The application allows users to participate in global geographic games where the
 - Implemented robust client-side validation in `public/js/controllers.js` and `public/js/app.js` that dynamically reads the server's limits from global state. Both the "Log a Visit" (`#report`) and "Edit Log" (`#edit`) controllers now warn users and restrict uploads relative to the active server configurations dynamically.
 - Fixed potential empty-block linting errors in catch statements to satisfy ESLint checks.
 - Verified that all PHPUnit tests, ESLint checks, and the E2E suites pass successfully.
+
+### 24. Placeholder Log Email Suppression Option
+- Added a mobile-friendly checkbox `"Placeholder log (suppress email)"` to the **LOG A VISIT** form (`../public/templates/report.html`) below the attempt checkbox, allowing players logging from the field to choose not to send initial notifications to the mailing list.
+- Propagated the `suppress_email` flag from the dynamic `FormData` post in `[report.php](../public/api/report.php)` to the backend service.
+- Refactored `ReportService::processVisit` to accept a default-false `bool $suppressEmail` parameter and wrap the `sendVisitReportEmail` dispatch call inside a conditional check.
+- Added comprehensive unit testing coverage in `[ReportServiceTest.php](../backend/tests/ReportServiceTest.php)` using custom inline anonymous PHP classes that extend `ReportService` to spy on method execution. Tested both standard (email sent) and suppressed (no email sent) execution flows, achieving 100% test success.
+- Verified that our custom checkbox is fully mobile-compliant and passes all automated E2E layout constraints using Playwright viewports testing.

@@ -56,11 +56,12 @@ class ReportService
      * @param bool        $isAttempt    Whether this is logged as a 0-point attempt.
      * @param string|null $notes        Optional narrative submitted by the user.
      * @param string|null $photosJson   Optional pre-compiled JSON string array of valid GCS image paths.
+     * @param bool        $suppressEmail Optional boolean to bypass the initial email notification to the mailing list.
      *
      * @return array Associative array containing the JSON-ready API response.
      * @throws PDOException If the database connection fails.
      */
-    public function processVisit($userId, string $dashpointId, float $lat, float $lon, bool $isAttempt = false, ?string $notes = null, ?string $photosJson = null): array
+    public function processVisit($userId, string $dashpointId, float $lat, float $lon, bool $isAttempt = false, ?string $notes = null, ?string $photosJson = null, bool $suppressEmail = false): array
     {
         $userStmt = $this->db->prepare("SELECT is_verified FROM users WHERE id = :user_id LIMIT 1");
         $userStmt->execute([':user_id' => $userId]);
@@ -232,7 +233,9 @@ class ReportService
             }
         }
 
-        $this->sendVisitReportEmail($username, $dashpointId, $distance, $scoreAwarded, $totalPointsAllGames, $totalPointsGame, $isAttempt, $notes, $photosJson, $previousHuntsAllGames, $previousHuntsGame, $geoContext);
+        if (!$suppressEmail) {
+            $this->sendVisitReportEmail($username, $dashpointId, $distance, $scoreAwarded, $totalPointsAllGames, $totalPointsGame, $isAttempt, $notes, $photosJson, $previousHuntsAllGames, $previousHuntsGame, $geoContext);
+        }
 
         $action = $isAttempt ? "Attempt logged" : "Dashpoint successfully claimed";
         $pointsMessage = $isAttempt ? "This attempt earned 0 points." : "You earned {$scoreAwarded} points.";
