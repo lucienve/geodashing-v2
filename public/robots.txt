@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Prevent crawling of backend endpoints and raw templates
+Disallow: /api/
+Disallow: /templates/
+
+# Point to the dynamic sitemap
+Sitemap: https://www.geodashing.org/sitemap.xml
