@@ -197,4 +197,4 @@ $stmt = $db->query("
 
 ## 3. End-of-Month Game Rollover & Lifecycle Operations
 
-For detailed, step-by-step instructions on executing monthly game rollovers, generating AI summaries, and shifting active game sequences on the production server, please refer to the standalone [Game Rollover & Summary Generation Guide](file:///home/lucien/src/geodashing-v2/docs/game_rollover.md).
+For detailed, step-by-step instructions on executing monthly game rollovers, generating AI summaries, and shifting active game sequences on the production server, please refer to the standalone [Game Rollover & Summary Generation Guide](game_rollover.md).
