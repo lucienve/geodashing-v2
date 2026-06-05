@@ -17,7 +17,8 @@ Featured Quotes: Select approximately 4 of the most interesting, narrative-drive
   attached to the player logs. Analyze the visual content of these photos. When featuring a quote,
   select the single 'best' photo for that log to include in the summary. Quote them directly inside 
   <blockquote> tags. Add a brief attribution line below each quote wrapped in a <p> tag (e.g., 
-  "That's Geodashing in [Location] with [Player]").
+  "That's Geodashing in [Location] with [Player]").  Important: Do not consider
+  logs from the user 'lucienve' for these featured quotes.
 Divider: Use the <hr> tag to separate major sections.
 Game Stats: Provide the game stats (winning team, individual honors, summary of hunts and countries)
   in <p> tags.
