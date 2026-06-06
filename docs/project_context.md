@@ -168,3 +168,10 @@ The application allows users to participate in global geographic games where the
 - Refactored `ReportService::processVisit` to accept a default-false `bool $suppressEmail` parameter and wrap the `sendVisitReportEmail` dispatch call inside a conditional check.
 - Added comprehensive unit testing coverage in `[ReportServiceTest.php](../backend/tests/ReportServiceTest.php)` using custom inline anonymous PHP classes that extend `ReportService` to spy on method execution. Tested both standard (email sent) and suppressed (no email sent) execution flows, achieving 100% test success.
 - Verified that our custom checkbox is fully mobile-compliant and passes all automated E2E layout constraints using Playwright viewports testing.
+
+### 25. Page Visibility Optimization & GPS Error Banner
+- Implemented standard Page Visibility API integration to pause the continuous geolocation watch stream when the browser tab goes to the background or is minimized.
+- Designed a reusable `VisibilityManager` JavaScript utility to handle visibilitychange event callbacks and check document visibility states.
+- Replaced the continuous location tracking stream in `public/js/map.js` with visibility-controlled watch setups that clear browser-level watchPosition resources when hidden, and resume them when visible.
+- Built a custom dark-mode glassmorphic `#gps-error-banner` warning element overlay styled inside `public/css/index.css` to alert players if GPS coordinates are unavailable.
+- Configured geolocation success/error callbacks in `public/js/map.js` to automatically toggle the warning banner visibility.

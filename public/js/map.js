@@ -108,7 +108,8 @@ window.initMap = function () {
 
     // 3. Optional Geographic Snapping Routine
     // Request user location dropping them perfectly into their active regional gaming sector
-    if (navigator.geolocation) {
+    const geoProvider = window.mockGeolocation || navigator.geolocation;
+    if (geoProvider) {
         let userLocationMarker = null;
 
         // Google Maps style blue dot SVG for current location
@@ -121,7 +122,7 @@ window.initMap = function () {
         `;
 
         // Center map initially, unless the user is explicitly deep-linked to a dashpoint
-        navigator.geolocation.getCurrentPosition((position) => {
+        geoProvider.getCurrentPosition((position) => {
             if (!window.location.hash.startsWith('#dashpoint')) {
                 map.setCenter({ lat: position.coords.latitude, lng: position.coords.longitude });
                 map.setZoom(11); // Snap dynamically tightly matching typical hunting zones implicitly
@@ -133,8 +134,13 @@ window.initMap = function () {
 
         const startLocationWatch = () => {
             if (watchId !== null) return;
-            watchId = navigator.geolocation.watchPosition((position) => {
+            watchId = geoProvider.watchPosition((position) => {
                 const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
+                
+                // Hide GPS error banner if visible on success
+                const banner = document.getElementById('gps-error-banner');
+                if (banner) banner.classList.add('d-none');
+
                 if (!userLocationMarker) {
                     userLocationMarker = new google.maps.marker.AdvancedMarkerElement({
                         map: map,
@@ -146,14 +152,22 @@ window.initMap = function () {
                 } else {
                     userLocationMarker.position = pos;
                 }
-            }, null, { enableHighAccuracy: true });
+            }, (error) => {
+                console.error("GPS Watch error:", error);
+                // Show GPS error banner on failure
+                const banner = document.getElementById('gps-error-banner');
+                if (banner) banner.classList.remove('d-none');
+            }, { enableHighAccuracy: true });
         };
 
         const stopLocationWatch = () => {
             if (watchId !== null) {
-                navigator.geolocation.clearWatch(watchId);
+                geoProvider.clearWatch(watchId);
                 watchId = null;
             }
+            // Ensure error banner is hidden when watch is stopped
+            const banner = document.getElementById('gps-error-banner');
+            if (banner) banner.classList.add('d-none');
         };
 
         const locationVisibility = new window.VisibilityManager(
@@ -188,7 +202,7 @@ window.initMap = function () {
 
         locationButton.addEventListener("click", () => {
             locationButton.style.opacity = "0.5";
-            navigator.geolocation.getCurrentPosition((position) => {
+            geoProvider.getCurrentPosition((position) => {
                 map.panTo({ lat: position.coords.latitude, lng: position.coords.longitude });
                 locationButton.style.opacity = "1";
             }, () => {

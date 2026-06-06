@@ -298,5 +298,50 @@ test.describe('Component & Interactive Layout Constraints', () => {
         expect(watchCalls).toBe(2);
     });
 
+    test('GPS Error Banner displays on geolocation failure and hides on success', async ({ page }) => {
+        // Mock geolocation to trigger the error callback first
+        await page.addInitScript(() => {
+            window.mockGeolocation = {
+                watchPosition: (success, error, _options) => {
+                    setTimeout(() => {
+                        error({ code: 1, message: "User denied Geolocation" });
+                    }, 100);
+                    
+                    window.__triggerSuccess = () => {
+                        success({ coords: { latitude: 43.0606, longitude: -88.1065, accuracy: 10 } });
+                    };
+                    return 12345;
+                },
+                clearWatch: (_watchId) => {},
+                getCurrentPosition: (_success, error, _options) => {
+                    if (typeof error === 'function') {
+                        error({ code: 1, message: "User denied Geolocation" });
+                    }
+                }
+            };
+            Object.defineProperty(navigator, 'geolocation', {
+                value: window.mockGeolocation,
+                configurable: true
+            });
+        });
+
+        await page.goto('/');
+        await page.waitForLoadState('networkidle');
+
+        // Verify GPS error banner is visible
+        const banner = page.locator('#gps-error-banner');
+        await expect(banner).toBeVisible({ timeout: 10000 });
+        await expect(banner).not.toHaveClass(/d-none/);
+
+        // Trigger success and verify banner is hidden
+        await page.evaluate(() => {
+            if (window.__triggerSuccess) {
+                window.__triggerSuccess();
+            }
+        });
+        await expect(banner).not.toBeVisible({ timeout: 10000 });
+        await expect(banner).toHaveClass(/d-none/);
+    });
+
 });
 
