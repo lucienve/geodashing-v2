@@ -175,3 +175,10 @@ The application allows users to participate in global geographic games where the
 - Replaced the continuous location tracking stream in `public/js/map.js` with visibility-controlled watch setups that clear browser-level watchPosition resources when hidden, and resume them when visible.
 - Built a custom dark-mode glassmorphic `#gps-error-banner` warning element overlay styled inside `public/css/index.css` to alert players if GPS coordinates are unavailable.
 - Configured geolocation success/error callbacks in `public/js/map.js` to automatically toggle the warning banner visibility.
+
+### 26. Specific Game Leaderboard Deep-Linking
+- Added frontend support for deep-linking directly to a specific game's leaderboard using hash parameters (`#leaderboard?game=[game_id]`) or query parameters (`?game=[game_id]`).
+- Updated the canonical link constructor inside `public/js/app.js` to automatically index `#leaderboard?game=[game_id]` to `https://www.geodashing.org/?game=[game_id]`.
+- Implemented global promise state caching for game context data loading (`window.gameContextLoaded`) to prevent race conditions during deep-linked route controller activations.
+- Integrated URL hash rewriting inside the dropdown `#game-selector` change handler to seamlessly synchronize the active path while navigating leaderboards, ensuring that changing the game dynamically updates the URL, and resetting it to `#leaderboard` when switching back to the active game.
+- Added comprehensive integration tests in `e2e/multi_game.spec.js` to verify specific game leaderboard deep-linking, context updates, and standings rendering.

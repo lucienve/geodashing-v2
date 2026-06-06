@@ -74,4 +74,17 @@ test.describe('Multi-Game State and Logic', () => {
         await expect(profileContainer).toContainText('Historical Game', { timeout: 10000 });
         await expect(profileContainer).toContainText('GD000-AAAA', { timeout: 10000 });
     });
+
+    test('Leaderboard loads specific game context when deep-linked', async ({ page }) => {
+        // Go directly to game 1 leaderboard
+        await page.goto('/#leaderboard?game=1');
+
+        // Verify the game selector is set to Game 1
+        await expect(page.locator('#game-selector')).toHaveValue('1', { timeout: 10000 });
+
+        // Verify leaderboard container contains Game 1 stats (TestUser with score 3)
+        const leaderboardContainer = page.locator('#leaderboard-tbody');
+        await expect(leaderboardContainer).toContainText('TestUser', { timeout: 10000 });
+        await expect(leaderboardContainer).toContainText('3', { timeout: 10000 });
+    });
 });

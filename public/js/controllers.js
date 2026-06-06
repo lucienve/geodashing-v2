@@ -1117,130 +1117,162 @@ document.addEventListener('routeLoaded', (e) => {
     // ==========================================================
     // Controller: GLOBAL LEADERBOARDS (#leaderboard)
     // ==========================================================
-    if (route === '#leaderboard') {
-        const tbody = document.getElementById('leaderboard-tbody');
-        if (tbody) {
-            let ldParams = null;
-            if (window.currentGameContext && window.currentGameContext.id) {
-                ldParams = window.currentGameContext.id;
-                const cycleTitle = document.getElementById('leaderboard-cycle-title');
-                if (cycleTitle && window.currentGameContext.title) {
-                    cycleTitle.innerText = `${window.currentGameContext.monthYear} - Game ${window.currentGameContext.id}: ${window.escapeHTML(window.currentGameContext.title)}`;
+    if (route.startsWith('#leaderboard')) {
+        const initLeaderboard = () => {
+            const tbody = document.getElementById('leaderboard-tbody');
+            if (tbody) {
+                let gameId = null;
+                if (route.includes('?')) {
+                    const hashParams = new URLSearchParams(route.split('?')[1]);
+                    const gameIdStr = hashParams.get('game') || hashParams.get('game_id');
+                    if (gameIdStr) {
+                        gameId = parseInt(gameIdStr, 10);
+                    }
                 }
-            }
 
-            // Display and bind Game Summary Button if available
-            const summaryContainer = document.getElementById('leaderboard-summary-container');
-            const btnViewSummary = document.getElementById('btn-view-summary');
-
-            if (summaryContainer && btnViewSummary) {
-                if (window.currentGameContext && window.currentGameContext.has_summary) {
-                    summaryContainer.classList.remove('d-none');
-
-                    btnViewSummary.onclick = async () => {
-                        const originalText = btnViewSummary.innerHTML;
-                        btnViewSummary.disabled = true;
-                        btnViewSummary.innerText = "LOADING SUMMARY...";
-
-                        try {
-                            const res = await fetch(`api/summary.php?game_id=${window.currentGameContext.id}`);
-                            const data = await res.json();
-
-                            if (data.status === 'success' && data.summary) {
-                                // Dynamic Creation of the Glassmorphic Modal Overlay
-                                const overlay = document.createElement('div');
-                                overlay.className = 'modal-overlay';
-                                overlay.id = 'summary-modal-overlay';
-
-                                const content = document.createElement('div');
-                                content.className = 'modal-content';
-
-                                const close = document.createElement('div');
-                                close.className = 'modal-close';
-                                close.innerHTML = '&times;';
-                                close.onclick = () => overlay.remove();
-
-                                const title = document.createElement('h2');
-                                title.innerText = `${window.currentGameContext.monthYear} Game Summary`;
-
-                                const richDiv = document.createElement('div');
-                                richDiv.className = 'summary-rich-content';
-                                richDiv.innerHTML = data.summary;
-
-                                content.appendChild(close);
-                                content.appendChild(title);
-                                content.appendChild(richDiv);
-                                overlay.appendChild(content);
-
-                                document.body.appendChild(overlay);
-
-                                // Close on click outside modal content
-                                overlay.onclick = (e) => {
-                                    if (e.target === overlay) {
-                                        overlay.remove();
-                                    }
-                                };
-                            } else {
-                                alert("Failed to load summary: " + (data.message || "Unknown error"));
-                            }
-                        } catch (err) {
-                            console.error("Summary Fetch Error:", err);
-                            alert("Failed to load summary due to network or server failure.");
-                        } finally {
-                            btnViewSummary.disabled = false;
-                            btnViewSummary.innerHTML = originalText;
+                if (gameId) {
+                    const gameSelector = document.getElementById('game-selector');
+                    if (gameSelector && parseInt(gameSelector.value) !== gameId) {
+                        const option = Array.from(gameSelector.options).find(opt => parseInt(opt.value) === gameId);
+                        if (option) {
+                            gameSelector.value = gameId.toString();
+                            window.currentGameContext.id = gameId;
+                            window.currentGameContext.is_active = option.dataset.isActive == '1';
+                            window.currentGameContext.title = option.dataset.title;
+                            window.currentGameContext.monthYear = option.dataset.monthYear;
+                            window.currentGameContext.has_summary = option.dataset.hasSummary == '1';
                         }
-                    };
-
-                    // Auto-open summary if deep linked
-                    if (window.autoOpenSummaryId && window.autoOpenSummaryId === window.currentGameContext.id) {
-                        window.autoOpenSummaryId = null;
-                        btnViewSummary.click();
                     }
-                } else {
-                    summaryContainer.classList.add('d-none');
                 }
+
+                let ldParams = null;
+                if (window.currentGameContext && window.currentGameContext.id) {
+                    ldParams = window.currentGameContext.id;
+                    const cycleTitle = document.getElementById('leaderboard-cycle-title');
+                    if (cycleTitle && window.currentGameContext.title) {
+                        cycleTitle.innerText = `${window.currentGameContext.monthYear} - Game ${window.currentGameContext.id}: ${window.escapeHTML(window.currentGameContext.title)}`;
+                    }
+                }
+
+                // Display and bind Game Summary Button if available
+                const summaryContainer = document.getElementById('leaderboard-summary-container');
+                const btnViewSummary = document.getElementById('btn-view-summary');
+
+                if (summaryContainer && btnViewSummary) {
+                    if (window.currentGameContext && window.currentGameContext.has_summary) {
+                        summaryContainer.classList.remove('d-none');
+
+                        btnViewSummary.onclick = async () => {
+                            const originalText = btnViewSummary.innerHTML;
+                            btnViewSummary.disabled = true;
+                            btnViewSummary.innerText = "LOADING SUMMARY...";
+
+                            try {
+                                const res = await fetch(`api/summary.php?game_id=${window.currentGameContext.id}`);
+                                const data = await res.json();
+
+                                if (data.status === 'success' && data.summary) {
+                                    // Dynamic Creation of the Glassmorphic Modal Overlay
+                                    const overlay = document.createElement('div');
+                                    overlay.className = 'modal-overlay';
+                                    overlay.id = 'summary-modal-overlay';
+
+                                    const content = document.createElement('div');
+                                    content.className = 'modal-content';
+
+                                    const close = document.createElement('div');
+                                    close.className = 'modal-close';
+                                    close.innerHTML = '&times;';
+                                    close.onclick = () => overlay.remove();
+
+                                    const title = document.createElement('h2');
+                                    title.innerText = `${window.currentGameContext.monthYear} Game Summary`;
+
+                                    const richDiv = document.createElement('div');
+                                    richDiv.className = 'summary-rich-content';
+                                    richDiv.innerHTML = data.summary;
+
+                                    content.appendChild(close);
+                                    content.appendChild(title);
+                                    content.appendChild(richDiv);
+                                    overlay.appendChild(content);
+
+                                    document.body.appendChild(overlay);
+
+                                    // Close on click outside modal content
+                                    overlay.onclick = (e) => {
+                                        if (e.target === overlay) {
+                                            overlay.remove();
+                                        }
+                                    };
+                                } else {
+                                    alert("Failed to load summary: " + (data.message || "Unknown error"));
+                                }
+                            } catch (err) {
+                                console.error("Summary Fetch Error:", err);
+                                alert("Failed to load summary due to network or server failure.");
+                            } finally {
+                                btnViewSummary.disabled = false;
+                                btnViewSummary.innerHTML = originalText;
+                            }
+                        };
+
+                        // Auto-open summary if deep linked
+                        if (window.autoOpenSummaryId && window.autoOpenSummaryId === window.currentGameContext.id) {
+                            window.autoOpenSummaryId = null;
+                            btnViewSummary.click();
+                        }
+                    } else {
+                        summaryContainer.classList.add('d-none');
+                    }
+                }
+
+                // Ping the JSON endpoint directly mapping the arrays
+                API.getLeaderboard(ldParams).then(json => {
+                    if (json.status === 'success') {
+                        const data = json.data;
+
+                        if (data.length === 0) {
+                            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);">[ NO LOGS YET ]</td></tr>`;
+                            return;
+                        }
+
+                        // Dynamically render the Glassmorphism Table
+                        let html = '';
+                        data.forEach(row => {
+                            let rankStyle = "color:var(--text-muted);";
+                            if (row.rank === 1) rankStyle = "color:var(--accent-amber); font-weight:bold;";
+                            else if (row.rank === 2) rankStyle = "color:#ccc; font-weight:bold;";
+                            else if (row.rank === 3) rankStyle = "color:#b08d55; font-weight:bold;"; // Bronze
+
+                            html += `
+                                <tr style="border-bottom:1px solid #222; transition: background 0.2s;">
+                                    <td style="padding:10px; ${rankStyle}">#${row.rank}</td>
+                                    <td style="padding:10px; font-family:var(--font-mono);">
+                                        <a href="#profile?username=${encodeURIComponent(row.username)}" style="color:var(--text-main); text-decoration:none;">
+                                            ${window.escapeHTML(row.username)}
+                                        </a>
+                                    </td>
+                                    <td style="padding:10px; color:var(--accent-amber); text-align:right;">${row.total_score}</td>
+                                    <td style="padding:10px; color:var(--text-muted); text-align:right;">${row.total_finds}</td>
+                                </tr>
+                            `;
+                        });
+
+                        tbody.innerHTML = html;
+                    } else {
+                        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--accent-red);">[-] Global rankings currently unavailable.</td></tr>`;
+                    }
+                }).catch(_err => {
+                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--accent-red);">[-] SYNC RUPTURED: Network Timeout.</td></tr>`;
+                });
             }
+        };
 
-            // Ping the JSON endpoint directly mapping the arrays
-            API.getLeaderboard(ldParams).then(json => {
-                if (json.status === 'success') {
-                    const data = json.data;
-
-                    if (data.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);">[ NO LOGS YET ]</td></tr>`;
-                        return;
-                    }
-
-                    // Dynamically render the Glassmorphism Table
-                    let html = '';
-                    data.forEach(row => {
-                        let rankStyle = "color:var(--text-muted);";
-                        if (row.rank === 1) rankStyle = "color:var(--accent-amber); font-weight:bold;";
-                        else if (row.rank === 2) rankStyle = "color:#ccc; font-weight:bold;";
-                        else if (row.rank === 3) rankStyle = "color:#b08d55; font-weight:bold;"; // Bronze
-
-                        html += `
-                            <tr style="border-bottom:1px solid #222; transition: background 0.2s;">
-                                <td style="padding:10px; ${rankStyle}">#${row.rank}</td>
-                                <td style="padding:10px; font-family:var(--font-mono);">
-                                    <a href="#profile?username=${encodeURIComponent(row.username)}" style="color:var(--text-main); text-decoration:none;">
-                                        ${window.escapeHTML(row.username)}
-                                    </a>
-                                </td>
-                                <td style="padding:10px; color:var(--accent-amber); text-align:right;">${row.total_score}</td>
-                                <td style="padding:10px; color:var(--text-muted); text-align:right;">${row.total_finds}</td>
-                            </tr>
-                        `;
-                    });
-
-                    tbody.innerHTML = html;
-                } else {
-                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--accent-red);">[-] Global rankings currently unavailable.</td></tr>`;
-                }
-            }).catch(_err => {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--accent-red);">[-] SYNC RUPTURED: Network Timeout.</td></tr>`;
-            });
+        if (window.gameContextLoaded) {
+            window.gameContextLoaded.then(initLeaderboard);
+        } else {
+            initLeaderboard();
         }
     }
 

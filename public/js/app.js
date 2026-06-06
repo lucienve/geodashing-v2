@@ -198,6 +198,8 @@ function initRouting() {
         } else if (!fullHash && urlParams.has('summary')) {
             fullHash = '#leaderboard';
             window.autoOpenSummaryId = parseInt(urlParams.get('summary'), 10);
+        } else if (!fullHash && urlParams.has('game')) {
+            fullHash = `#leaderboard?game=${urlParams.get('game')}`;
         } else if (!fullHash && urlParams.has('page')) {
             fullHash = `#${urlParams.get('page')}`;
         } else if (!fullHash) {
@@ -216,9 +218,21 @@ function initRouting() {
         if (fullHash.startsWith('#dashpoint?id=')) {
             const dpId = fullHash.split('?id=')[1];
             canonicalTag.href = `https://www.geodashing.org/?dashpoint=${dpId}`;
-        } else if (fullHash === '#leaderboard' && (window.autoOpenSummaryId || (window.currentGameContext && !window.currentGameContext.is_active && window.currentGameContext.has_summary))) {
-            const sumId = window.autoOpenSummaryId || window.currentGameContext.id;
-            canonicalTag.href = `https://www.geodashing.org/?summary=${sumId}`;
+        } else if (fullHash.startsWith('#leaderboard')) {
+            if (window.autoOpenSummaryId || (window.currentGameContext && !window.currentGameContext.is_active && window.currentGameContext.has_summary && !fullHash.includes('?'))) {
+                const sumId = window.autoOpenSummaryId || window.currentGameContext.id;
+                canonicalTag.href = `https://www.geodashing.org/?summary=${sumId}`;
+            } else if (fullHash.includes('?')) {
+                const hashParams = new URLSearchParams(fullHash.split('?')[1]);
+                const gameId = hashParams.get('game') || hashParams.get('game_id');
+                if (gameId) {
+                    canonicalTag.href = `https://www.geodashing.org/?game=${gameId}`;
+                } else {
+                    canonicalTag.href = `https://www.geodashing.org/`;
+                }
+            } else {
+                canonicalTag.href = `https://www.geodashing.org/`;
+            }
         } else if (['#about', '#how-to', '#contact'].includes(fullHash)) {
             const pageId = fullHash.substring(1);
             canonicalTag.href = `https://www.geodashing.org/?page=${pageId}`;
@@ -299,10 +313,11 @@ function initGameContext() {
     // 4. One-time Global Data Boot: Pings the active game parameters explicitly into the Header Navigation Bar
     const gameSelector = document.getElementById('game-selector');
 
-    API.getGames().then(json => {
+    window.gameContextLoaded = API.getGames().then(json => {
         if (json.status === 'success' && json.data.length > 0) {
             // Find Active Game
             const activeGame = json.data.find(g => g.is_active == 1) || json.data[0];
+            window.activeGameId = activeGame.id;
 
             let targetGameId = activeGame.id;
             let fullHash = window.location.hash;
@@ -314,6 +329,11 @@ function initGameContext() {
                 if (!isNaN(parsedId) && json.data.find(g => g.id === parsedId)) {
                     targetGameId = parsedId;
                 }
+            } else if (!fullHash && urlParams.has('game')) {
+                const parsedId = parseInt(urlParams.get('game'), 10);
+                if (!isNaN(parsedId) && json.data.find(g => g.id === parsedId)) {
+                    targetGameId = parsedId;
+                }
             }
             if (fullHash.startsWith('#dashpoint?id=')) {
                 const dpId = fullHash.split('?id=')[1];
@@ -322,6 +342,18 @@ function initGameContext() {
                     const parsedId = parseInt(gameIdStr, 10);
                     if (!isNaN(parsedId) && json.data.find(g => g.id === parsedId)) {
                         targetGameId = parsedId;
+                    }
+                }
+            }
+            if (fullHash.startsWith('#leaderboard')) {
+                if (fullHash.includes('?')) {
+                    const hashParams = new URLSearchParams(fullHash.split('?')[1]);
+                    const gameIdStr = hashParams.get('game') || hashParams.get('game_id');
+                    if (gameIdStr) {
+                        const parsedId = parseInt(gameIdStr, 10);
+                        if (!isNaN(parsedId) && json.data.find(g => g.id === parsedId)) {
+                            targetGameId = parsedId;
+                        }
                     }
                 }
             }
@@ -375,13 +407,26 @@ function initGameContext() {
                 // Bind the Context Switching Handler
                 gameSelector.addEventListener('change', (e) => {
                     const selOpt = e.target.options[e.target.selectedIndex];
-                    window.currentGameContext.id = parseInt(e.target.value);
+                    const gameId = parseInt(e.target.value);
+                    window.currentGameContext.id = gameId;
                     window.currentGameContext.is_active = selOpt.dataset.isActive == '1';
                     window.currentGameContext.title = selOpt.dataset.title;
                     window.currentGameContext.monthYear = selOpt.dataset.monthYear;
                     window.currentGameContext.has_summary = selOpt.dataset.hasSummary == '1';
 
-                    if (window.location.hash === '' || window.location.hash === '#home') {
+                    if (window.location.hash.startsWith('#leaderboard')) {
+                        const targetHash = (window.activeGameId && gameId === window.activeGameId) 
+                            ? '#leaderboard' 
+                            : `#leaderboard?game=${gameId}`;
+                        
+                        if (window.location.hash !== targetHash) {
+                            window.location.hash = targetHash;
+                        } else {
+                            if (window.loadRoute) {
+                                window.loadRoute();
+                            }
+                        }
+                    } else if (window.location.hash === '' || window.location.hash === '#home') {
                         if (typeof window.refreshMapBounds === 'function') {
                             window.refreshMapBounds();
                         }
