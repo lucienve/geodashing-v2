@@ -1011,11 +1011,11 @@ body, html {
    GPS Error Banner Alert
    ========================================================================= */
 #gps-error-banner {
-  background: rgba(239, 68, 68, 0.2);
+  background: var(--bg-glass-heavy);
   border: 1px solid var(--accent-red);
-  color: #ffb3b3;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  color: var(--text-main);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   padding: 0.75rem 1.25rem;
   font-family: var(--font-mono);
   font-size: 0.85rem;
@@ -1032,6 +1032,10 @@ body, html {
   justify-content: center;
   gap: 8px;
   animation: fadeIn 0.3s ease-out;
+}
+
+#gps-error-banner .error-icon {
+  color: var(--accent-red);
 }
 
 @keyframes fadeIn {
