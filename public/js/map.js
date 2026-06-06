@@ -128,21 +128,39 @@ window.initMap = function () {
             }
         });
 
-        // Continuously update user marker
-        navigator.geolocation.watchPosition((position) => {
-            const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
-            if (!userLocationMarker) {
-                userLocationMarker = new google.maps.marker.AdvancedMarkerElement({
-                    map: map,
-                    position: pos,
-                    content: userLocationWrapper,
-                    title: "Your Location",
-                    zIndex: 99999
-                });
-            } else {
-                userLocationMarker.position = pos;
+        // Continuously update user marker when visible
+        let watchId = null;
+
+        const startLocationWatch = () => {
+            if (watchId !== null) return;
+            watchId = navigator.geolocation.watchPosition((position) => {
+                const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
+                if (!userLocationMarker) {
+                    userLocationMarker = new google.maps.marker.AdvancedMarkerElement({
+                        map: map,
+                        position: pos,
+                        content: userLocationWrapper,
+                        title: "Your Location",
+                        zIndex: 99999
+                    });
+                } else {
+                    userLocationMarker.position = pos;
+                }
+            }, null, { enableHighAccuracy: true });
+        };
+
+        const stopLocationWatch = () => {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
             }
-        }, null, { enableHighAccuracy: true });
+        };
+
+        const locationVisibility = new window.VisibilityManager(
+            startLocationWatch,
+            stopLocationWatch
+        );
+        locationVisibility.start();
 
         // Add Custom "My Location" Button mapped securely to the Google Control Position array
         const locationButton = document.createElement("button");

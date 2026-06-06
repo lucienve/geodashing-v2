@@ -237,5 +237,66 @@ test.describe('Component & Interactive Layout Constraints', () => {
         await expect(templateView).not.toBeVisible();
     });
 
+    test('VisibilityManager pauses and resumes geolocation watchPosition stream', async ({ page }) => {
+        // Mock geolocation watchPosition and clearWatch to count calls
+        await page.addInitScript(() => {
+            const mockGeo = {
+                watchPosition: (success, _error, _options) => {
+                    window.__watchCalls = (window.__watchCalls || 0) + 1;
+                    setTimeout(() => {
+                        success({ coords: { latitude: 43.0606, longitude: -88.1065, accuracy: 10 } });
+                    }, 0);
+                    return 12345;
+                },
+                clearWatch: (watchId) => {
+                    if (watchId === 12345) {
+                        window.__clearCalls = (window.__clearCalls || 0) + 1;
+                    }
+                },
+                getCurrentPosition: (success, _error, _options) => {
+                    success({ coords: { latitude: 43.0606, longitude: -88.1065, accuracy: 10 } });
+                }
+            };
+            Object.defineProperty(navigator, 'geolocation', {
+                value: mockGeo,
+                configurable: true
+            });
+        });
+
+        await page.goto('/');
+        await page.waitForLoadState('networkidle');
+
+        // Verify watchPosition is initially called once
+        await page.waitForFunction(() => window.__watchCalls !== undefined, { timeout: 10000 });
+        let watchCalls = await page.evaluate(() => window.__watchCalls);
+        expect(watchCalls).toBe(1);
+
+        // Hide page and verify clearWatch is called
+        await page.evaluate(() => {
+            Object.defineProperty(document, 'visibilityState', {
+                value: 'hidden',
+                writable: true,
+                configurable: true
+            });
+            document.dispatchEvent(new Event('visibilitychange'));
+        });
+        await page.waitForFunction(() => window.__clearCalls !== undefined, { timeout: 10000 });
+        let clearCalls = await page.evaluate(() => window.__clearCalls);
+        expect(clearCalls).toBe(1);
+
+        // Make page visible again and verify watchPosition is restarted
+        await page.evaluate(() => {
+            Object.defineProperty(document, 'visibilityState', {
+                value: 'visible',
+                writable: true,
+                configurable: true
+            });
+            document.dispatchEvent(new Event('visibilitychange'));
+        });
+        await page.waitForFunction(() => window.__watchCalls === 2, { timeout: 10000 });
+        watchCalls = await page.evaluate(() => window.__watchCalls);
+        expect(watchCalls).toBe(2);
+    });
+
 });
 
