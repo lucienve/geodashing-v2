@@ -188,3 +188,4 @@ The application allows users to participate in global geographic games where the
 - Implemented `readExifData` helper inside `MediaService.php` to fetch metadata safely.
 - Enhanced `generateThumbnail` in `MediaService.php` to parse EXIF Orientation tags and automatically perform corresponding rotations/flips using PHP GD functions (`imagerotate` and `imageflip`) before resizing.
 - Added comprehensive unit test coverage in `MediaServiceTest.php` simulating image uploads with specific EXIF orientation tags and asserting corrected thumbnail aspect/dimension layouts.
+- Developed `backend/scripts/recreate_thumbnails.php` as a one-time-use administrative utility to retroactively correct and replace affected GCS thumbnails.
