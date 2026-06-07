@@ -243,4 +243,5 @@ The application allows users to participate in global geographic games where the
 - Relocated the "Export Game Data" menu item from under the unauthenticated "Help" dropdown menu to the authenticated "Profile" dropdown menu (desktop) and "Player Actions" group (mobile).
 - Restructured `public/js/app.js` navigation builders (`APP_NAVIGATION`, `initAuthState`) to construct the navigation links dynamically upon successful session verification.
 - Updated the automated E2E test suite in `e2e/interaction.spec.js` to log in as `TestUser` prior to verifying the `#search` (Export Coordinates) overlay layout. Modified the desktop selector hover target to trigger the user profile dropdown (`#nav-auth-btn`) instead of the help dropdown.
+- Configured higher timeout limits in `e2e/export.spec.js` (`test.setTimeout(90000)`) to prevent flaky execution timeouts on slow containerized CI environments.
 - Confirmed that the client linter (`npm run lint`) and Playwright E2E tests run successfully with zero errors.

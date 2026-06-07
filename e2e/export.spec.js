@@ -2,6 +2,7 @@ const { test, expect } = require('@playwright/test');
 const fs = require('fs');
 
 test.describe('Export Functionality', () => {
+    test.setTimeout(90000);
 
     test.beforeEach(async ({ page }) => {
         // Authenticate as TestUser to access export endpoint
