@@ -117,12 +117,13 @@ window.API = {
     /**
      * Register a new user
      */
-    signup: async function (username, email, password) {
+    signup: async function (username, email, password, subscribe) {
         try {
             const data = new URLSearchParams();
             data.append('username', username);
             data.append('email', email);
             data.append('password', password);
+            data.append('subscribe', subscribe ? '1' : '0');
 
             const res = await fetch('api/auth.php?action=signup', {
                 method: 'POST',

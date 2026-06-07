@@ -76,8 +76,8 @@ mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "
 
     
     -- Test User
-    INSERT INTO users (id, username, email, password_hash, is_verified)
-    VALUES (1, 'TestUser', 'testuser@example.com', '${PASSWORD_HASH}', TRUE);
+    INSERT INTO users (id, username, email, password_hash, is_verified, subscribe_group)
+    VALUES (1, 'TestUser', 'testuser@example.com', '${PASSWORD_HASH}', TRUE, FALSE);
     
     -- Test Dashpoints
     -- Game 1 dashpoint (London)

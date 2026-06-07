@@ -35,7 +35,8 @@ try {
         $_SESSION['is_verified'] = 1;
 
         // Redirect with success anchor
-        header("Location: ../index.html#login?verified=true");
+        $subscribeParam = !empty($result['subscribe_group']) ? '&subscribe=1' : '';
+        header("Location: ../index.html#login?verified=true" . $subscribeParam);
         exit;
     } else {
         // Token invalid or already consumed

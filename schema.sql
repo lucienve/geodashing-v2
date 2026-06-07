@@ -11,6 +11,7 @@ CREATE TABLE users (
     verification_token VARCHAR(64) NULL,
     reset_token VARCHAR(64) NULL,
     reset_token_expires TIMESTAMP NULL,
+    subscribe_group BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

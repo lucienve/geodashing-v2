@@ -596,11 +596,31 @@ document.addEventListener('routeLoaded', (e) => {
                 if (urlArgs.includes('verified=true')) {
                     // Dynamically build the Victory overlay replacing the bounds
                     const verifiedInject = document.createElement('div');
-                    verifiedInject.style.cssText = "border:1px solid var(--accent-green); padding:2.5rem; background:rgba(42, 212, 115, 0.05); text-align:center; margin-top:1rem;";
+                    verifiedInject.className = 'verified-success-box';
+                    
+                    let mailtoSection = '';
+                    if (urlArgs.includes('subscribe=1')) {
+                        mailtoSection = `
+                        <div class="verify-subscribe-box">
+                            <h4>Subscribe to Mailing List</h4>
+                            <p>
+                                You requested to join <strong>dashers@geodashing.org</strong>. Click below to launch your email client, then hit send. You will receive a verification email from Google Groups to finalize your subscription.
+                            </p>
+                            <a href="mailto:dashers+subscribe@geodashing.org?subject=Subscribe&body=Please%20add%20me%20to%20the%20dashers%40geodashing.org%20mailing%20list." class="btn btn-secondary btn-send-subscribe">
+                                ✉ SEND SUBSCRIPTION EMAIL
+                            </a>
+                            <p class="verify-subscribe-fallback">
+                                <em>Trouble with the button?</em> Manually send a blank email to <strong style="color:var(--text-main);">dashers+subscribe@geodashing.org</strong> from your registered email address.
+                            </p>
+                        </div>
+                        `;
+                    }
+
                     verifiedInject.innerHTML = `
-                    <h3 style="color:var(--accent-green); margin-bottom:1rem; border-bottom:1px dashed var(--accent-green); padding-bottom:1rem;">Email confirmed.</h3>
-                    <p style="color:var(--text-main); line-height:1.6; font-size:1.1rem;">Welcome to Geodashing!</p>
-                    <a href="#home" class="btn btn-primary" style="display:inline-block; margin-top:2rem; font-size:1.2rem; padding:12px 24px;">Return to the map.</a>
+                    <h3>Email confirmed.</h3>
+                    <p>Welcome to Geodashing!</p>
+                    ${mailtoSection}
+                    <a href="#home" class="btn btn-primary ${mailtoSection ? 'btn-primary-reduced' : ''}">Return to the map.</a>
                 `;
                     document.getElementById('view-login').appendChild(verifiedInject);
                 } else {
@@ -737,8 +757,9 @@ document.addEventListener('routeLoaded', (e) => {
                 const user = document.getElementById('signup-username').value;
                 const email = document.getElementById('signup-email').value;
                 const pass = pass1.value;
+                const subscribe = document.getElementById('signup-subscribe').checked;
 
-                const res = await API.signup(user, email, pass);
+                const res = await API.signup(user, email, pass, subscribe);
                 if (res.status === 'success') {
                     signupFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] WELCOME: Account created.</div>`;
                     if (typeof window.updateAuthState === 'function') window.updateAuthState();

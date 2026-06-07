@@ -42,7 +42,7 @@ class AuthService
      *
      * @return array Standardized JSON-ready map containing explicit error/success states.
      */
-    public function signup(string $username, string $email, string $password): array
+    public function signup(string $username, string $email, string $password, bool $subscribeGroup = false): array
     {
         if (empty($username) || empty($email) || empty($password)) {
             return ["status" => "error", "message" => "All fields are required"];
@@ -58,12 +58,13 @@ class AuthService
         $token = bin2hex(random_bytes(32));
 
         try {
-            $stmt = $this->db->prepare("INSERT INTO users (username, email, password_hash, is_verified, verification_token) VALUES (:username, :email, :hash, 0, :token)");
+            $stmt = $this->db->prepare("INSERT INTO users (username, email, password_hash, is_verified, verification_token, subscribe_group) VALUES (:username, :email, :hash, 0, :token, :subscribe_group)");
             $stmt->execute([
                 ':username' => $username,
                 ':email' => $email,
                 ':hash' => $hash,
-                ':token' => $token
+                ':token' => $token,
+                ':subscribe_group' => $subscribeGroup ? 1 : 0
             ]);
 
             $this->sendVerificationEmail($email, $token);
@@ -278,7 +279,7 @@ class AuthService
     {
         try {
             // Evaluate the verification token strictly matching the Users table
-            $stmt = $this->db->prepare("SELECT id FROM users WHERE verification_token = :token AND is_verified = 0 LIMIT 1");
+            $stmt = $this->db->prepare("SELECT id, subscribe_group FROM users WHERE verification_token = :token AND is_verified = 0 LIMIT 1");
             $stmt->execute([':token' => $token]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -289,7 +290,8 @@ class AuthService
 
                 return [
                     "status" => "success",
-                    "user_id" => (int) $user['id']
+                    "user_id" => (int) $user['id'],
+                    "subscribe_group" => (bool) $user['subscribe_group']
                 ];
             } else {
                 return ["status" => "error", "message" => "Invalid or consumed token."];

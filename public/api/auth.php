@@ -36,8 +36,9 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             $username = trim($_POST['username'] ?? '');
             $email = trim($_POST['email'] ?? '');
             $password = $_POST['password'] ?? '';
+            $subscribe = isset($_POST['subscribe']) && $_POST['subscribe'] === '1';
 
-            $result = $authService->signup($username, $email, $password);
+            $result = $authService->signup($username, $email, $password, $subscribe);
 
             // Auto sign-in
             if ($result['status'] === 'success') {

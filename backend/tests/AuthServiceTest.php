@@ -148,4 +148,44 @@ class AuthServiceTest extends TestCase
         $this->assertEquals('success', $result['status']);
         $this->assertEquals('Verification email resent successfully.', $result['message']);
     }
+
+    #[Test]
+    public function signupSavesSubscribeGroupPreference()
+    {
+        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock->expects($this->once())
+            ->method('execute')
+            ->with($this->callback(function ($params) {
+                return $params[':subscribe_group'] === 1;
+            }))
+            ->willReturn(true);
+
+        $this->pdoMock->method('prepare')->willReturn($stmtMock);
+
+        $result = $this->authService->signup('LucienSubscribe', 'lucien.sub@example.com', 'secure123', true);
+        $this->assertEquals('success', $result['status']);
+    }
+
+    #[Test]
+    public function verifyEmailReturnsSubscribeGroupPreference()
+    {
+        $selectMock = $this->createMock(PDOStatement::class);
+        $selectMock->method('fetch')->willReturn([
+            'id' => 42,
+            'subscribe_group' => 1
+        ]);
+
+        $updateMock = $this->createMock(PDOStatement::class);
+        $updateMock->method('execute')->willReturn(true);
+
+        $this->pdoMock->expects($this->exactly(2))
+            ->method('prepare')
+            ->willReturnOnConsecutiveCalls($selectMock, $updateMock);
+
+        $result = $this->authService->verifyEmail('some_token');
+
+        $this->assertEquals('success', $result['status']);
+        $this->assertEquals(42, $result['user_id']);
+        $this->assertTrue($result['subscribe_group']);
+    }
 }

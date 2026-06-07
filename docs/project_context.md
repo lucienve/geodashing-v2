@@ -189,3 +189,10 @@ The application allows users to participate in global geographic games where the
 - Enhanced `generateThumbnail` in `MediaService.php` to parse EXIF Orientation tags and automatically perform corresponding rotations/flips using PHP GD functions (`imagerotate` and `imageflip`) before resizing.
 - Added comprehensive unit test coverage in `MediaServiceTest.php` simulating image uploads with specific EXIF orientation tags and asserting corrected thumbnail aspect/dimension layouts.
 - Developed `backend/scripts/recreate_thumbnails.php` as a one-time-use administrative utility to retroactively correct and replace affected GCS thumbnails.
+
+### 28. Native Google Group Subscription Option
+- Added an opt-in checkbox to subscribe to the player mailing list (`dashers@geodashing.org`) during player registration.
+- Persisted user preferences using a new `subscribe_group` boolean database column in the `users` table.
+- Updated the backend email verification redirect flow to append `&subscribe=1` to the confirmation redirect URL upon successful account activation.
+- Created a themed, glassmorphic mailing list card on the verification confirmation screen providing a mailto subscription button and clear copyable instructions as a backup.
+- Added comprehensive unit test coverage in `AuthServiceTest.php` verifying subscription state storage and verification endpoint response.
