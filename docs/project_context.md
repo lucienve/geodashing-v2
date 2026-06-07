@@ -206,3 +206,8 @@ The application allows users to participate in global geographic games where the
 - Updated the database connection library `Database.php` to resolve `DB_HOST` dynamically in testing mode.
 - Reconfigured the GitHub Actions workflow (`ci-e2e.yml`) to start all services via Docker Compose, establishing 100% test parity between local dev and CI.
 - Mocked external Google Maps API requests (elevation, timezone, geocoding) by routing them to a local mock API controller (`public/api/mock_maps.php`) via a constructor-injected base URL configuration, preventing production logic from checking E2E environment variables and reducing average test suite execution time from 4.5 minutes to 2.1 minutes (a 53% speedup).
+
+### 31. Desktop User Navigation Dropdown Bug Fix
+- Corrected the behavior of the user navigation dropdown trigger button on desktop, preventing it from logging the user out immediately upon click.  Issue #19
+- Re-labeled the dropdown trigger button to `👤 [Username] ▾` for clarity and clean visuals.
+- Updated the E2E verification tests to reflect the new navigation label.

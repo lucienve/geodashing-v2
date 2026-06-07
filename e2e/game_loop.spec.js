@@ -23,7 +23,7 @@ test.describe('Core Functional Game Loop', () => {
         await page.waitForURL('**/#home');
 
         const desktopAuthBtn = page.locator('#nav-auth-btn');
-        await expect(desktopAuthBtn).toContainText('LOGOUT [TestUser]');
+        await expect(desktopAuthBtn).toContainText('👤 TestUser ▾');
     });
 
     test('Geolocation Bounds Validation - Too Far Rejection', async ({ page }) => {

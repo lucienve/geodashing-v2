@@ -515,13 +515,10 @@ function initAuthState() {
                         triggerBtn.id = 'nav-auth-btn';
                         triggerBtn.className = 'nav-link highlight';
                         triggerBtn.href = '#';
-                        triggerBtn.innerText = `LOGOUT [${res.username}] ▾`;
+                        triggerBtn.innerText = `👤 ${res.username} ▾`;
 
-                        // Main trigger click also handles logouts to retain full backwards compatibility
-                        triggerBtn.addEventListener('click', async (e) => {
+                        triggerBtn.addEventListener('click', (e) => {
                             e.preventDefault();
-                            await API.logout();
-                            window.location.reload();
                         });
 
                         const dropContent = document.createElement('div');
