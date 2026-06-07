@@ -36,13 +36,14 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+        python -m venv .venv
+        .venv/bin/pip install --upgrade pip
+        if [ -f requirements-dev.txt ]; then .venv/bin/pip install -r requirements-dev.txt; fi
 
     - name: Run mypy
       run: |
-        mypy backend/
+        .venv/bin/mypy backend/
 
     - name: Run pyright
       run: |
-        pyright backend/
+        .venv/bin/pyright backend/
