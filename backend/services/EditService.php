@@ -19,17 +19,20 @@ class EditService
 
     private PDO $db;
     private ?MediaService $mediaService;
+    private ProfileService $profileService;
 
     /**
      * Constructor.
      *
      * @param PDO $db The PDO connection.
      * @param MediaService|null $mediaService The media service handler.
+     * @param ProfileService|null $profileService The profile service helper.
      */
-    public function __construct(PDO $db, ?MediaService $mediaService = null)
+    public function __construct(PDO $db, ?MediaService $mediaService = null, ?ProfileService $profileService = null)
     {
         $this->db = $db;
         $this->mediaService = $mediaService;
+        $this->profileService = $profileService ?? new ProfileService($this->db);
     }
 
     /**
@@ -139,20 +142,11 @@ class EditService
         ]);
 
         if ($sendEmail) {
-            $totalScoreStmt = $this->db->prepare("SELECT SUM(score_awarded) AS total FROM visits WHERE user_id = :uid");
-            $totalScoreStmt->execute([':uid' => $userId]);
-            $totalScoreRow = $totalScoreStmt->fetch(PDO::FETCH_ASSOC);
-            $totalPointsAllGames = $totalScoreRow ? (int) $totalScoreRow['total'] : (int) $visit['score_awarded'];
-
-            $totalScoreGameStmt = $this->db->prepare("
-                SELECT SUM(v.score_awarded) AS total 
-                FROM visits v 
-                JOIN dashpoints d ON v.dashpoint_id = d.id 
-                WHERE v.user_id = :uid AND d.game_id = :game_id
-            ");
-            $totalScoreGameStmt->execute([':uid' => $userId, ':game_id' => $visit['game_id']]);
-            $totalScoreGameRow = $totalScoreGameStmt->fetch(PDO::FETCH_ASSOC);
-            $totalPointsGame = $totalScoreGameRow ? (int) $totalScoreGameRow['total'] : (int) $visit['score_awarded'];
+            $stats = $this->profileService->getPlayerMailStats($userId, (int)$visit['game_id'], $visit['reported_time']);
+            $totalPointsAllGames = $stats['total_points_all_games'];
+            $totalPointsGame = $stats['total_points_game'];
+            $previousHuntsAllGames = $stats['previous_hunts_all_games'];
+            $previousHuntsGame = $stats['previous_hunts_game'];
 
             $configPath = __DIR__ . '/../config.ini';
             $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
@@ -162,21 +156,6 @@ class EditService
 
             $geoContextService = new GeoContextService($this->db, $apiKey, $apiBaseUrl);
             $geoContext = $geoContextService->getDashpointContext((float)$visit['dp_lat'], (float)$visit['dp_lon'], $dashpointId);
-
-            $huntsStmt = $this->db->prepare("SELECT COUNT(id) AS previous_hunts FROM visits WHERE user_id = :uid AND reported_time < :visit_time");
-            $huntsStmt->execute([':uid' => $userId, ':visit_time' => $visit['reported_time']]);
-            $previousHuntsRow = $huntsStmt->fetch(PDO::FETCH_ASSOC);
-            $previousHuntsAllGames = $previousHuntsRow ? (int) $previousHuntsRow['previous_hunts'] : 0;
-
-            $huntsGameStmt = $this->db->prepare("
-                SELECT COUNT(v.id) AS previous_hunts 
-                FROM visits v 
-                JOIN dashpoints d ON v.dashpoint_id = d.id 
-                WHERE v.user_id = :uid AND d.game_id = :game_id AND v.reported_time < :visit_time
-            ");
-            $huntsGameStmt->execute([':uid' => $userId, ':game_id' => $visit['game_id'], ':visit_time' => $visit['reported_time']]);
-            $previousHuntsGameRow = $huntsGameStmt->fetch(PDO::FETCH_ASSOC);
-            $previousHuntsGame = $previousHuntsGameRow ? (int) $previousHuntsGameRow['previous_hunts'] : 0;
 
             $this->sendVisitReportEmail($visit['username'], $dashpointId, (int)$visit['distance_meters'], (int)$visit['score_awarded'], $totalPointsAllGames, $totalPointsGame, (bool)$visit['is_attempt'], $notes, $finalPhotosJson, $previousHuntsAllGames, $previousHuntsGame, $geoContext, true);
         }

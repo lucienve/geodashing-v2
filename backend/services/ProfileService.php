@@ -105,4 +105,66 @@ class ProfileService
             "games" => array_values($gamesHistory)
         ];
     }
+
+    /**
+     * Retrieves aggregated player statistics for email notifications.
+     *
+     * @param int $userId The ID of the user.
+     * @param int $gameId The ID of the active game.
+     * @param string|null $beforeTime Optional ISO timestamp to only count hunts prior to a specific time.
+     * @return array Array containing 'total_points_all_games', 'total_points_game', 'previous_hunts_all_games', and 'previous_hunts_game'.
+     */
+    public function getPlayerMailStats(int $userId, int $gameId, ?string $beforeTime = null): array
+    {
+        $scoreQuery = "SELECT SUM(score_awarded) AS total FROM visits WHERE user_id = :uid";
+        $stmtScore = $this->db->prepare($scoreQuery);
+        $stmtScore->execute([':uid' => $userId]);
+        $rowScore = $stmtScore->fetch(PDO::FETCH_ASSOC);
+        $totalPointsAllGames = $rowScore ? (int) $rowScore['total'] : 0;
+
+        $scoreGameQuery = "
+            SELECT SUM(v.score_awarded) AS total 
+            FROM visits v 
+            JOIN dashpoints d ON v.dashpoint_id = d.id 
+            WHERE v.user_id = :uid AND d.game_id = :game_id
+        ";
+        $stmtScoreGame = $this->db->prepare($scoreGameQuery);
+        $stmtScoreGame->execute([':uid' => $userId, ':game_id' => $gameId]);
+        $rowScoreGame = $stmtScoreGame->fetch(PDO::FETCH_ASSOC);
+        $totalPointsGame = $rowScoreGame ? (int) $rowScoreGame['total'] : 0;
+
+        $huntsParams = [':uid' => $userId];
+        $huntsQuery = "SELECT COUNT(id) AS previous_hunts FROM visits WHERE user_id = :uid";
+        if ($beforeTime !== null) {
+            $huntsQuery .= " AND reported_time < :before_time";
+            $huntsParams[':before_time'] = $beforeTime;
+        }
+        $stmtHunts = $this->db->prepare($huntsQuery);
+        $stmtHunts->execute($huntsParams);
+        $rowHunts = $stmtHunts->fetch(PDO::FETCH_ASSOC);
+        $previousHuntsAllGames = $rowHunts ? (int) $rowHunts['previous_hunts'] : 0;
+
+        $huntsGameParams = [':uid' => $userId, ':game_id' => $gameId];
+        $huntsGameQuery = "
+            SELECT COUNT(v.id) AS previous_hunts 
+            FROM visits v 
+            JOIN dashpoints d ON v.dashpoint_id = d.id 
+            WHERE v.user_id = :uid AND d.game_id = :game_id
+        ";
+        if ($beforeTime !== null) {
+            $huntsGameQuery .= " AND v.reported_time < :before_time";
+            $huntsGameParams[':before_time'] = $beforeTime;
+        }
+        $stmtHuntsGame = $this->db->prepare($huntsGameQuery);
+        $stmtHuntsGame->execute($huntsGameParams);
+        $rowHuntsGame = $stmtHuntsGame->fetch(PDO::FETCH_ASSOC);
+        $previousHuntsGame = $rowHuntsGame ? (int) $rowHuntsGame['previous_hunts'] : 0;
+
+        return [
+            'total_points_all_games' => $totalPointsAllGames,
+            'total_points_game' => $totalPointsGame,
+            'previous_hunts_all_games' => $previousHuntsAllGames,
+            'previous_hunts_game' => $previousHuntsGame,
+        ];
+    }
 }

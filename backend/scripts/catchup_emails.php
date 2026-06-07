@@ -12,6 +12,7 @@ require_once __DIR__ . '/../Database.php';
 
 use App\Database;
 use App\Services\ReportService;
+use App\Services\ProfileService;
 
 try {
     $db = Database::getConnection();
@@ -35,8 +36,9 @@ try {
 
     echo "Found " . count($visits) . " visits. Preparing to send...\n";
 
-    // Instantiate ReportService and use Reflection to unlock the private email method
-    $reportService = new ReportService($db);
+    // Instantiate ReportService and ProfileService
+    $profileService = new ProfileService($db);
+    $reportService = new ReportService($db, null, $profileService);
     $reflection = new \ReflectionClass(ReportService::class);
     $method = $reflection->getMethod('sendVisitReportEmail');
     $method->setAccessible(true);
@@ -44,36 +46,11 @@ try {
     foreach ($visits as $visit) {
         $userId = $visit['user_id'];
 
-        // Calculate the user's current total score
-        $totalScoreStmt = $db->prepare("SELECT SUM(score_awarded) AS total FROM visits WHERE user_id = :uid");
-        $totalScoreStmt->execute([':uid' => $userId]);
-        $totalScoreRow = $totalScoreStmt->fetch();
-        $totalPointsAllGames = $totalScoreRow ? (int) $totalScoreRow['total'] : (int)$visit['score_awarded'];
-
-        $totalScoreGameStmt = $db->prepare("
-            SELECT SUM(v.score_awarded) AS total 
-            FROM visits v 
-            JOIN dashpoints d ON v.dashpoint_id = d.id 
-            WHERE v.user_id = :uid AND d.game_id = :game_id
-        ");
-        $totalScoreGameStmt->execute([':uid' => $userId, ':game_id' => $visit['game_id']]);
-        $totalScoreGameRow = $totalScoreGameStmt->fetch();
-        $totalPointsGame = $totalScoreGameRow ? (int) $totalScoreGameRow['total'] : (int)$visit['score_awarded'];
-
-        $huntsStmt = $db->prepare("SELECT COUNT(id) AS previous_hunts FROM visits WHERE user_id = :uid AND reported_time < :visit_time");
-        $huntsStmt->execute([':uid' => $userId, ':visit_time' => $visit['reported_time']]);
-        $previousHuntsRow = $huntsStmt->fetch();
-        $previousHuntsAllGames = $previousHuntsRow ? (int) $previousHuntsRow['previous_hunts'] : 0;
-
-        $huntsGameStmt = $db->prepare("
-            SELECT COUNT(v.id) AS previous_hunts 
-            FROM visits v 
-            JOIN dashpoints d ON v.dashpoint_id = d.id 
-            WHERE v.user_id = :uid AND d.game_id = :game_id AND v.reported_time < :visit_time
-        ");
-        $huntsGameStmt->execute([':uid' => $userId, ':game_id' => $visit['game_id'], ':visit_time' => $visit['reported_time']]);
-        $previousHuntsGameRow = $huntsGameStmt->fetch();
-        $previousHuntsGame = $previousHuntsGameRow ? (int) $previousHuntsGameRow['previous_hunts'] : 0;
+        $stats = $profileService->getPlayerMailStats($userId, (int)$visit['game_id'], $visit['reported_time']);
+        $totalPointsAllGames = $stats['total_points_all_games'];
+        $totalPointsGame = $stats['total_points_game'];
+        $previousHuntsAllGames = $stats['previous_hunts_all_games'];
+        $previousHuntsGame = $stats['previous_hunts_game'];
 
         echo "-> Sending email for dashpoint {$visit['dashpoint_id']} logged by {$visit['username']}...\n";
 

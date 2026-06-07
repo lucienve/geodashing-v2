@@ -91,4 +91,31 @@ class ProfileServiceTest extends TestCase
         $this->assertEquals(5, $result['games'][0]['game_total_score']);
         $this->assertCount(2, $result['games'][0]['visits']);
     }
+
+    #[Test]
+    public function getPlayerMailStatsReturnsAggregatedStats()
+    {
+        $stmtScoreMock = $this->createMock(PDOStatement::class);
+        $stmtScoreMock->method('fetch')->willReturn(['total' => 15]);
+
+        $stmtScoreGameMock = $this->createMock(PDOStatement::class);
+        $stmtScoreGameMock->method('fetch')->willReturn(['total' => 5]);
+
+        $stmtHuntsMock = $this->createMock(PDOStatement::class);
+        $stmtHuntsMock->method('fetch')->willReturn(['previous_hunts' => 12]);
+
+        $stmtHuntsGameMock = $this->createMock(PDOStatement::class);
+        $stmtHuntsGameMock->method('fetch')->willReturn(['previous_hunts' => 3]);
+
+        $this->pdoMock->expects($this->exactly(4))
+            ->method('prepare')
+            ->willReturnOnConsecutiveCalls($stmtScoreMock, $stmtScoreGameMock, $stmtHuntsMock, $stmtHuntsGameMock);
+
+        $result = $this->profileService->getPlayerMailStats(1, 2, '2026-06-07 00:00:00');
+
+        $this->assertEquals(15, $result['total_points_all_games']);
+        $this->assertEquals(5, $result['total_points_game']);
+        $this->assertEquals(12, $result['previous_hunts_all_games']);
+        $this->assertEquals(3, $result['previous_hunts_game']);
+    }
 }

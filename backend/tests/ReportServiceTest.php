@@ -154,7 +154,7 @@ class ReportServiceTest extends TestCase
         // Chain the PDO prepares to return the distinct statements sequentially in order
         $this->pdoMock->expects($this->exactly(11))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock, $totalScoreMock, $totalScoreGameMock);
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $totalScoreMock, $totalScoreGameMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock);
 
         $result = $this->reportService->processVisit(1, 'GD001-AAAA', 40.0, -75.0);
 
@@ -228,7 +228,7 @@ class ReportServiceTest extends TestCase
 
         $this->pdoMock->expects($this->exactly(11))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock, $totalScoreMock, $totalScoreGameMock);
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $totalScoreMock, $totalScoreGameMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock);
 
         $result = $this->reportService->processVisit(1, 'GD001-AAAA', 40.0, -75.0, true);
 
@@ -281,7 +281,7 @@ class ReportServiceTest extends TestCase
 
         $this->pdoMock->expects($this->exactly(11))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock, $totalScoreMock, $totalScoreGameMock);
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $totalScoreMock, $totalScoreGameMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock);
 
         $result = $this->reportService->processVisit(2, 'GD001-SAME', 40.0, -75.0);
 
@@ -331,7 +331,7 @@ class ReportServiceTest extends TestCase
 
         $this->pdoMock->expects($this->exactly(11))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock, $totalScoreMock, $totalScoreGameMock);
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $totalScoreMock, $totalScoreGameMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock);
 
         $result = $this->reportService->processVisit(3, 'GD001-NEXT', 40.0, -75.0);
 
@@ -380,7 +380,7 @@ class ReportServiceTest extends TestCase
 
         $this->pdoMock->expects($this->exactly(11))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock, $totalScoreMock, $totalScoreGameMock);
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $totalScoreMock, $totalScoreGameMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock);
 
         $testableService = new class ($this->pdoMock, $this->geoMock) extends ReportService {
             public bool $emailSent = false;
@@ -438,7 +438,7 @@ class ReportServiceTest extends TestCase
 
         $this->pdoMock->expects($this->exactly(11))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock, $totalScoreMock, $totalScoreGameMock);
+            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $totalScoreMock, $totalScoreGameMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock);
 
         $testableService = new class ($this->pdoMock, $this->geoMock) extends ReportService {
             public bool $emailSent = false;

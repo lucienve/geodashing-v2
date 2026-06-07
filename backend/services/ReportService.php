@@ -28,12 +28,18 @@ class ReportService
     private GeoContextService $geoService;
 
     /**
+     * @var ProfileService
+     */
+    private ProfileService $profileService;
+
+    /**
      * Constructor.
      *
      * @param PDO $db The PDO connection instance.
      * @param GeoContextService|null $geoService Optional injected GeoContextService for testing.
+     * @param ProfileService|null $profileService Optional injected ProfileService for testing.
      */
-    public function __construct(PDO $db, ?GeoContextService $geoService = null)
+    public function __construct(PDO $db, ?GeoContextService $geoService = null, ?ProfileService $profileService = null)
     {
         $this->db = $db;
         if ($geoService === null) {
@@ -46,6 +52,7 @@ class ReportService
         } else {
             $this->geoService = $geoService;
         }
+        $this->profileService = $profileService ?? new ProfileService($this->db);
     }
 
     /**
@@ -170,21 +177,10 @@ class ReportService
 
         $gameId = $result['game_id'];
 
-        // 8. Calculate total previous hunts for this user before the new insert
-        $huntsStmt = $this->db->prepare("SELECT COUNT(id) AS previous_hunts FROM visits WHERE user_id = :uid");
-        $huntsStmt->execute([':uid' => $userId]);
-        $previousHuntsRow = $huntsStmt->fetch(PDO::FETCH_ASSOC);
-        $previousHuntsAllGames = $previousHuntsRow ? (int) $previousHuntsRow['previous_hunts'] : 0;
-
-        $huntsGameStmt = $this->db->prepare("
-            SELECT COUNT(v.id) AS previous_hunts 
-            FROM visits v 
-            JOIN dashpoints d ON v.dashpoint_id = d.id 
-            WHERE v.user_id = :uid AND d.game_id = :game_id
-        ");
-        $huntsGameStmt->execute([':uid' => $userId, ':game_id' => $gameId]);
-        $previousHuntsGameRow = $huntsGameStmt->fetch(PDO::FETCH_ASSOC);
-        $previousHuntsGame = $previousHuntsGameRow ? (int) $previousHuntsGameRow['previous_hunts'] : 0;
+        // 8. Fetch player mail statistics before insert (gets hunts counts before this visit)
+        $stats = $this->profileService->getPlayerMailStats($userId, $gameId);
+        $previousHuntsAllGames = $stats['previous_hunts_all_games'];
+        $previousHuntsGame = $stats['previous_hunts_game'];
 
         // 9. Log the Visit and Secure the Calculated Score Automatically alongside bounded JSON image paths
         $insertStmt = $this->db->prepare("
@@ -209,20 +205,9 @@ class ReportService
         $userRow = $userStmt->fetch(PDO::FETCH_ASSOC);
         $username = $userRow ? $userRow['username'] : 'Unknown User';
 
-        $totalScoreStmt = $this->db->prepare("SELECT SUM(score_awarded) AS total FROM visits WHERE user_id = :uid");
-        $totalScoreStmt->execute([':uid' => $userId]);
-        $totalScoreRow = $totalScoreStmt->fetch(PDO::FETCH_ASSOC);
-        $totalPointsAllGames = $totalScoreRow ? (int) $totalScoreRow['total'] : $scoreAwarded;
-
-        $totalScoreGameStmt = $this->db->prepare("
-            SELECT SUM(v.score_awarded) AS total 
-            FROM visits v 
-            JOIN dashpoints d ON v.dashpoint_id = d.id 
-            WHERE v.user_id = :uid AND d.game_id = :game_id
-        ");
-        $totalScoreGameStmt->execute([':uid' => $userId, ':game_id' => $gameId]);
-        $totalScoreGameRow = $totalScoreGameStmt->fetch(PDO::FETCH_ASSOC);
-        $totalPointsGame = $totalScoreGameRow ? (int) $totalScoreGameRow['total'] : $scoreAwarded;
+        // Calculate updated scores (which now include the newly inserted visit)
+        $totalPointsAllGames = $stats['total_points_all_games'] + $scoreAwarded;
+        $totalPointsGame = $stats['total_points_game'] + $scoreAwarded;
 
         $geoContext = $this->geoService->getDashpointContext($dpLat, $dpLon, $dashpointId);
 
