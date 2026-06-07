@@ -211,3 +211,6 @@ The application allows users to participate in global geographic games where the
 - Corrected the behavior of the user navigation dropdown trigger button on desktop, preventing it from logging the user out immediately upon click.  Issue #19
 - Re-labeled the dropdown trigger button to `👤 [Username] ▾` for clarity and clean visuals.
 - Updated the E2E verification tests to reflect the new navigation label.
+
+### 32. Lighthouse Audits CI Isolation
+- Configured [lighthouse.spec.js](e2e/lighthouse.spec.js) to skip Lighthouse audits in local development environments unless explicitly forced via `RUN_LIGHTHOUSE=true`. This avoids launching a separate Chromium debugger and running heavy audits locally, significantly reducing local test suite execution time while preserving full verification on CI.

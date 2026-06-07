@@ -4,6 +4,8 @@ const { test, chromium } = require('@playwright/test');
 let playAudit;
 
 test.describe('Lighthouse Audits', () => {
+    // Only run in CI or when specifically requested via RUN_LIGHTHOUSE environment variable
+    test.skip(!process.env.CI && !process.env.RUN_LIGHTHOUSE, 'Lighthouse audits only run in CI or when RUN_LIGHTHOUSE=true');
     test.skip(({ browserName }) => browserName !== 'chromium', 'Lighthouse only supports Chromium');
     // Run tests sequentially to avoid port collision
     test.describe.configure({ mode: 'serial' });
