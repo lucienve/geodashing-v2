@@ -43,7 +43,7 @@ class MediaService
                 $config['keyFilePath'] = $keyFilePath;
             }
 
-            // When in E2E testing, aggressively re-route GCP storage requests to the local emulator mapping
+            // When in E2E testing, re-route GCP storage requests to the local emulator mapping
             if (getenv('APP_ENV') === 'testing' && getenv('GCS_EMULATOR_HOST')) {
                 $config['apiEndpoint'] = getenv('GCS_EMULATOR_HOST');
                 // Neutralize auth by supplying a dummy credentials fetcher. This prevents
@@ -83,7 +83,7 @@ class MediaService
         $urls = [];
         $bucket = $this->storage->bucket($this->bucketName);
 
-        // Normalize the heavily disjointed $_FILES multi-upload array architecture into an iterable linear map
+        // Normalize the $_FILES multi-upload array architecture into an iterable linear map
         $normalizedFiles = $this->normalizeFilesArray($files);
 
         if (count($normalizedFiles) > 10) {

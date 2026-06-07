@@ -25,7 +25,7 @@ class ExportService
      */
     public function generateXml(array $points, string $format): string
     {
-        // Bootstrap the rigorous XML layout builder blocking syntax exploits internally
+        // Bootstrap the XML layout builder blocking syntax exploits
         $dom = new DOMDocument('1.0', 'UTF-8');
         $dom->formatOutput = true; // Maps clean indentation
 

@@ -442,7 +442,7 @@ function initGameContext() {
 }
 
 function initAuthState() {
-    // 5. Native Javascript Session Bootstrapper dynamically driving the Nav Auth state securely
+    // 5. Javascript Session Bootstrapper driving the Nav Auth state
     window.updateAuthState = async function () {
         const desktopContainer = document.getElementById('desktop-links');
         const mobileContainer = document.querySelector('.mobile-nav-links');

@@ -78,12 +78,12 @@ document.addEventListener('routeLoaded', (e) => {
                     // Evaluate Ownership & Authentication dynamically wrapping the Primary Button State
                     if (btnLog) {
                         if (window.currentGameContext && !window.currentGameContext.is_active) {
-                            // Immutability: Purely hide actions representing the read-only state.
+                            // Hide actions representing the read-only state.
                             btnLog.style.display = 'none';
                         } else {
                             API.checkSession().then(res => {
                                 if (res.status === 'success') {
-                                    // 1. Scan the Ledger for an exact Username match proving physical ownership
+                                    // 1. Scan the Ledger for an exact Username match proving log ownership
                                     const userOwnedVisit = dp.visits.find(v => v.username === res.username);
                                     if (userOwnedVisit) {
                                         btnLog.innerText = "EDIT LOG";
@@ -510,7 +510,7 @@ document.addEventListener('routeLoaded', (e) => {
 
                     submitBtn.innerText = "Uploading photo...";
 
-                    // 4. Actuating the standard POST injection seamlessly wrapper wrapping all data safely
+                    // 4. Actuating the standard POST request wrapper wrapping all data safely
                     const formData = new FormData(reportForm);
                     const result = await API.logVisit(formData);
 

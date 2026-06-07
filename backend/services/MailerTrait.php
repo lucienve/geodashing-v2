@@ -28,7 +28,7 @@ trait MailerTrait
      */
     protected function executeMail(string $to, string $subject, string $htmlMessage, ?string $textMessage = null): bool
     {
-        // Bypass physical API interaction during E2E testing
+        // Bypass actual API interaction during E2E testing
         if ((getenv('APP_ENV') ?: ($_ENV['APP_ENV'] ?? '')) === 'testing') {
             error_log("APP_ENV=testing: Suppressed physical email transmission to $to");
             return true;
