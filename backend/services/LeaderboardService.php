@@ -50,7 +50,7 @@ class LeaderboardService
             JOIN dashpoints d ON v.dashpoint_id = d.id
             WHERE d.game_id = :game_id AND v.status = 'approved'
             GROUP BY u.id, u.username
-            ORDER BY total_score DESC, last_find_time ASC
+            ORDER BY total_score DESC, u.username ASC
             LIMIT :limit
         ";
 
@@ -71,15 +71,13 @@ class LeaderboardService
         $currentRank = 1;
         $idx = 1;
         $prevScore = null;
-        $prevTime = null;
 
         foreach ($rawRankings as $row) {
             $rowScore = (int) $row['total_score'];
-            $rowTime = $row['last_find_time'];
 
-            // Enforce standard competition tie-breaking (Rank 1, 1, 3, 4) if parameters are identical.
-            if ($prevScore !== null && $rowScore === $prevScore && $rowTime === $prevTime) {
-                // Exact identical score AND exact identical finish time. Holds the current rank string mapping structurally.
+            // Enforce standard competition tie-breaking (Rank 1, 1, 3, 4) if points are identical.
+            if ($prevScore !== null && $rowScore === $prevScore) {
+                // Exact identical score. Holds the current rank mapping.
             } else {
                 $currentRank = $idx;
             }
@@ -90,11 +88,10 @@ class LeaderboardService
                 'username' => $row['username'],
                 'total_score' => $rowScore,
                 'total_finds' => (int) $row['total_finds'],
-                'last_find_time' => $rowTime
+                'last_find_time' => $row['last_find_time']
             ];
 
             $prevScore = $rowScore;
-            $prevTime = $rowTime;
             $idx++;
         }
 

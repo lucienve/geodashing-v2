@@ -321,10 +321,20 @@ def construct_new_data(
     if not scores:
         score_text = "No players scored in this game."
     else:
-        winner = scores[0]
-        score_text = f"Winner: {winner[0]} with {winner[1]} points.\n\nOther Players:\n"
-        for user, points in scores[1:]:
-            score_text += f"- {user}: {points} points\n"
+        max_score = scores[0][1]
+        winners = [s for s in scores if s[1] == max_score]
+        other_players = [s for s in scores if s[1] < max_score]
+
+        if len(winners) > 1:
+            winner_names = ", ".join(w[0] for w in winners)
+            score_text = f"Winners (tied): {winner_names} with {max_score} points.\n\n"
+        else:
+            score_text = f"Winner: {winners[0][0]} with {max_score} points.\n\n"
+
+        if other_players:
+            score_text += "Other Players:\n"
+            for user, points in other_players:
+                score_text += f"- {user}: {points} points\n"
 
     parts: list[str | google.genai.types.File] = []
     initial_text = (

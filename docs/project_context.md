@@ -250,3 +250,11 @@ The application allows users to participate in global geographic games where the
 - Resolved an issue where navigating to a completed game's leaderboard via the menu showed the static hash `#leaderboard` instead of `#leaderboard?game=ID`, making it hard to share.
 - Modified the frontend router in `public/js/app.js` to automatically redirect `#leaderboard` to `#leaderboard?game=ID` if the selected game context is different from the active game.
 - Added comprehensive Playwright E2E integration tests in `e2e/multi_game.spec.js` using viewport-independent hash navigation to assert that selecting a completed game and loading the leaderboard updates the URL correctly.
+
+### 39. Leaderboard Tie Handling & Visual Grouping (Strategy 4)
+- Updated the backend [LeaderboardService.php](backend/services/LeaderboardService.php) to rank players purely on points (`total_score`), removing temporal (`last_find_time`) tie-breaking and alphabetical username sorting in the ranking database logic.
+- Updated [LeaderboardServiceTest.php](backend/tests/LeaderboardServiceTest.php) to cover the new point-only tie ranking behavior (tied users receive identical ranks, skipping the next ranking index in standard competition style).
+- Refactored [generate_summary.py](backend/scripts/generate_summary.py) prompt builder and [test_generate_summary.py](backend/tests/test_generate_summary.py) to format game summaries correctly when there are tied winners (designating them as `Winners (tied): UserA, UserB` instead of a single winner).
+- Decoupled styling logic from frontend JS by implementing CSS classes in [index.css](public/css/index.css) for leaderboard cells and visual bracketing layout.
+- Modified the `#leaderboard` controller in [controllers.js](public/js/controllers.js) to pre-process raw standings data into contiguous groups of ties, dynamically merging the rank cell using `rowspan` and formatting the rank with a `T` prefix (e.g. `T1`).
+- Confirmed that all backend PHP/Python tests, linters, and frontend ESLint and Playwright integration tests pass successfully with zero errors.

@@ -32,15 +32,15 @@ class LeaderboardServiceTest extends TestCase
     }
 
     /**
-     * Asserts that when two players tie with the exact same Score `(20)`, the one
-     * whose `last_find_time` is *earlier* gets the higher rank.
+     * Asserts that when two players tie with the exact same Score `(20)`, they get
+     * the exact same rank under the points-only ranking rules.
      */
     #[Test]
     public function getSoloRankingsProperlyResolvesTieBreakers()
     {
         $stmtMock = $this->createMock(PDOStatement::class);
 
-        // Simulating the MySQL Engine returning an Array sorted `ORDER BY total_score DESC, last_find_time ASC`
+        // Simulating the MySQL Engine returning an Array sorted `ORDER BY total_score DESC, u.username ASC`
         $stmtMock->method('fetchAll')->willReturn([
             ['user_id' => 1, 'username' => 'Alpha', 'total_score' => 20, 'total_finds' => 10, 'last_find_time' => '2026-03-01 12:00:00'],
             ['user_id' => 2, 'username' => 'Bravo', 'total_score' => 20, 'total_finds' => 8,  'last_find_time' => '2026-03-01 13:00:00'],
@@ -53,13 +53,14 @@ class LeaderboardServiceTest extends TestCase
 
         $this->assertCount(3, $rankings);
 
-        // Assert that Alpha and Bravo tied on 20 points, but Alpha finished first.
+        // Alpha and Bravo tied on 20 points, so both earn Rank #1.
         $this->assertEquals(1, $rankings[0]['rank']);
         $this->assertEquals('Alpha', $rankings[0]['username']);
 
-        $this->assertEquals(2, $rankings[1]['rank']);
+        $this->assertEquals(1, $rankings[1]['rank']);
         $this->assertEquals('Bravo', $rankings[1]['username']);
 
+        // Charlie gets rank 3 (skipping rank 2 due to standard competition ranking).
         $this->assertEquals(3, $rankings[2]['rank']);
         $this->assertEquals('Charlie', $rankings[2]['username']);
     }

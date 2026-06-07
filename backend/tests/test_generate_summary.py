@@ -91,6 +91,31 @@ def test_construct_new_data(mock_urlopen: unittest.mock.MagicMock) -> None:
     assert "No players scored in this game." in text_empty
 
 
+def test_construct_new_data_tied_scores() -> None:
+    """Test construct_new_data with tied scores to ensure correct winners format."""
+    scores = [("player1", 100), ("player2", 100), ("player3", 50)]
+    logs: list[backend.scripts.generate_summary.LogEntry] = [{
+        'dp_id': '123',
+        'username': 'testuser',
+        'city': 'TestCity',
+        'photos': [],
+        'notes': 'Log notes'
+    }]
+    mock_client = unittest.mock.MagicMock()
+    upload_context: backend.scripts.generate_summary.UploadContext = {
+        "client": mock_client,
+        "local_temp_files": [],
+        "uploaded_ai_files": []
+    }
+    result = backend.scripts.generate_summary.construct_new_data(
+        "Test Game Title", scores, logs, upload_context
+    )
+    text_result = "".join([p for p in result if isinstance(p, str)])
+    assert "Winners (tied): player1, player2 with 100 points" in text_result
+    assert "- player3: 50 points" in text_result
+    assert "- player2: 100 points" not in text_result
+
+
 @unittest.mock.patch("backend.scripts.generate_summary.os.path.isdir", autospec=True)
 @unittest.mock.patch("backend.scripts.generate_summary.os.listdir", autospec=True)
 @unittest.mock.patch("backend.scripts.generate_summary.os.path.exists", autospec=True)

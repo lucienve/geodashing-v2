@@ -1258,26 +1258,84 @@ document.addEventListener('routeLoaded', (e) => {
                             return;
                         }
 
-                        // Dynamically render the Glassmorphism Table
-                        let html = '';
-                        data.forEach(row => {
-                            let rankStyle = "color:var(--text-muted);";
-                            if (row.rank === 1) rankStyle = "color:var(--accent-amber); font-weight:bold;";
-                            else if (row.rank === 2) rankStyle = "color:#ccc; font-weight:bold;";
-                            else if (row.rank === 3) rankStyle = "color:#b08d55; font-weight:bold;"; // Bronze
+                        // Group consecutive tied players by score
+                        const groups = [];
+                        let currentGroup = [];
 
-                            html += `
-                                <tr style="border-bottom:1px solid #222; transition: background 0.2s;">
-                                    <td style="padding:10px; ${rankStyle}">#${row.rank}</td>
-                                    <td style="padding:10px; font-family:var(--font-mono);">
-                                        <a href="#profile?username=${encodeURIComponent(row.username)}" style="color:var(--text-main); text-decoration:none;">
-                                            ${window.escapeHTML(row.username)}
+                        for (let i = 0; i < data.length; i++) {
+                            const player = data[i];
+                            if (currentGroup.length === 0) {
+                                currentGroup.push(player);
+                            } else {
+                                const prevPlayer = currentGroup[0];
+                                if (player.total_score === prevPlayer.total_score) {
+                                    currentGroup.push(player);
+                                } else {
+                                    groups.push(currentGroup);
+                                    currentGroup = [player];
+                                }
+                            }
+                        }
+                        if (currentGroup.length > 0) {
+                            groups.push(currentGroup);
+                        }
+
+                        // Dynamically render the Glassmorphism Table using Strategy 4
+                        let html = '';
+                        groups.forEach(group => {
+                            const isTied = group.length > 1;
+                            const firstPlayer = group[0];
+                            const rankNum = firstPlayer.rank;
+
+                            // Rank label: T1 for ties, #3 for singletons
+                            const rankLabel = isTied ? `T${rankNum}` : `#${rankNum}`;
+
+                            // Determine rank styling class
+                            let rankStyleClass = 'leaderboard-rank-cell';
+                            if (isTied) {
+                                rankStyleClass += ' tie-rank';
+                            }
+
+                            if (rankNum === 1) {
+                                rankStyleClass += ' rank-gold';
+                            } else if (rankNum === 2) {
+                                rankStyleClass += ' rank-silver';
+                            } else if (rankNum === 3) {
+                                rankStyleClass += ' rank-bronze';
+                            } else {
+                                rankStyleClass += ' rank-other';
+                            }
+
+                            group.forEach((player, index) => {
+                                const isFirst = index === 0;
+                                const isLast = index === group.length - 1;
+
+                                let rowClass = 'leaderboard-row';
+                                if (isTied) {
+                                    rowClass += ' tie-group-row';
+                                    if (isFirst) rowClass += ' tie-group-start';
+                                    if (isLast) rowClass += ' tie-group-end';
+                                }
+
+                                html += `<tr class="${rowClass}">`;
+
+                                // Only render the rank cell for the first player of the group (using rowspan)
+                                if (isFirst) {
+                                    const rowspanAttr = isTied ? ` rowspan="${group.length}"` : '';
+                                    html += `<td class="${rankStyleClass}"${rowspanAttr}>${rankLabel}</td>`;
+                                }
+
+                                html += `
+                                    <td class="leaderboard-user-cell">
+                                        <a href="#profile?username=${encodeURIComponent(player.username)}">
+                                            ${window.escapeHTML(player.username)}
                                         </a>
                                     </td>
-                                    <td style="padding:10px; color:var(--accent-amber); text-align:right;">${row.total_score}</td>
-                                    <td style="padding:10px; color:var(--text-muted); text-align:right;">${row.total_finds}</td>
+                                    <td class="leaderboard-score-cell">${player.total_score}</td>
+                                    <td class="leaderboard-logs-cell">${player.total_finds}</td>
                                 </tr>
-                            `;
+                                `;
+                            });
                         });
 
                         tbody.innerHTML = html;

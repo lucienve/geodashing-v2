@@ -1283,3 +1283,92 @@ body, html {
   margin-left: auto;
   margin-right: auto;
 }
+
+/* =========================================================================
+   Leaderboard Row & Tie Group Styling (Strategy 4)
+   ========================================================================= */
+.leaderboard-row {
+  border-bottom: 1px solid #222;
+  transition: background 0.2s;
+}
+
+.leaderboard-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.leaderboard-row td {
+  padding: 10px;
+}
+
+.leaderboard-rank-cell {
+  text-align: center;
+  vertical-align: middle;
+  font-family: var(--font-mono);
+  padding: 10px;
+}
+
+.leaderboard-rank-cell.tie-rank {
+  border-right: 1px dashed rgba(245, 158, 11, 0.2);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.leaderboard-rank-cell.rank-gold {
+  color: var(--accent-amber);
+  font-weight: bold;
+}
+
+.leaderboard-rank-cell.rank-silver {
+  color: #ccc;
+  font-weight: bold;
+}
+
+.leaderboard-rank-cell.rank-bronze {
+  color: #b08d55;
+  font-weight: bold;
+}
+
+.leaderboard-rank-cell.rank-other {
+  color: var(--text-muted);
+}
+
+.leaderboard-user-cell {
+  font-family: var(--font-mono);
+}
+
+.leaderboard-user-cell a {
+  color: var(--text-main);
+  text-decoration: none;
+}
+
+.leaderboard-user-cell a:hover {
+  color: var(--accent-green);
+  text-decoration: underline;
+}
+
+.leaderboard-score-cell {
+  color: var(--accent-amber);
+  text-align: right;
+}
+
+.leaderboard-logs-cell {
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* Tie group row overrides */
+.tie-group-row {
+  background: rgba(255, 255, 255, 0.008);
+}
+
+.tie-group-row td {
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+}
+
+.tie-group-row.tie-group-end td {
+  border-bottom: 1px solid #333;
+}
+
+/* Enforce the bottom border alignment on spanned rank cells */
+.tie-group-row.tie-group-start td.leaderboard-rank-cell.tie-rank {
+  border-bottom: 1px solid #333 !important;
+}
