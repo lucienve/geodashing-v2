@@ -245,3 +245,8 @@ The application allows users to participate in global geographic games where the
 - Updated the automated E2E test suite in `e2e/interaction.spec.js` to log in as `TestUser` prior to verifying the `#search` (Export Coordinates) overlay layout. Modified the desktop selector hover target to trigger the user profile dropdown (`#nav-auth-btn`) instead of the help dropdown.
 - Configured higher timeout limits in `e2e/export.spec.js` (`test.setTimeout(90000)`) to prevent flaky execution timeouts on slow containerized CI environments.
 - Confirmed that the client linter (`npm run lint`) and Playwright E2E tests run successfully with zero errors.
+
+### 38. Completed Game Leaderboard URL Redirection
+- Resolved an issue where navigating to a completed game's leaderboard via the menu showed the static hash `#leaderboard` instead of `#leaderboard?game=ID`, making it hard to share.
+- Modified the frontend router in `public/js/app.js` to automatically redirect `#leaderboard` to `#leaderboard?game=ID` if the selected game context is different from the active game.
+- Added comprehensive Playwright E2E integration tests in `e2e/multi_game.spec.js` using viewport-independent hash navigation to assert that selecting a completed game and loading the leaderboard updates the URL correctly.

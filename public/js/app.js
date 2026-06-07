@@ -190,6 +190,14 @@ function initRouting() {
         
         let fullHash = window.location.hash;
         
+        // Redirect '#leaderboard' to '#leaderboard?game=ID' if a non-current game is selected.
+        if (fullHash === '#leaderboard') {
+            if (window.currentGameContext && window.currentGameContext.id && window.activeGameId && window.currentGameContext.id !== window.activeGameId) {
+                window.location.hash = `#leaderboard?game=${window.currentGameContext.id}`;
+                return;
+            }
+        }
+        
         // SEO-friendly Query Parameter Fallback for indexing
         const urlParams = new URLSearchParams(window.location.search);
         if (!fullHash && urlParams.has('dashpoint')) {

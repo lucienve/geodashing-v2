@@ -87,4 +87,24 @@ test.describe('Multi-Game State and Logic', () => {
         await expect(leaderboardContainer).toContainText('TestUser', { timeout: 10000 });
         await expect(leaderboardContainer).toContainText('3', { timeout: 10000 });
     });
+
+    test('Leaderboard url updates and shows game ID when navigating to leaderboard menu after selecting completed game', async ({ page }) => {
+        await expect(page.locator('#game-selector option')).toHaveCount(3, { timeout: 10000 });
+
+        // Switch to Game 1
+        await page.selectOption('#game-selector', '1');
+
+        // Go to leaderboard by changing the hash directly (viewport-independent simulation of navigation click)
+        await page.evaluate(() => {
+            window.location.hash = '#leaderboard';
+        });
+
+        // Verify the URL includes the game parameter redirecting correctly
+        await expect(page).toHaveURL(/#leaderboard\?game=1/, { timeout: 10000 });
+
+        // Verify leaderboard container contains Game 1 stats (TestUser with score 3)
+        const leaderboardContainer = page.locator('#leaderboard-tbody');
+        await expect(leaderboardContainer).toContainText('TestUser', { timeout: 10000 });
+        await expect(leaderboardContainer).toContainText('3', { timeout: 10000 });
+    });
 });
