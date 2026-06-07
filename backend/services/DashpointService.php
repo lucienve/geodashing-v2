@@ -6,8 +6,6 @@ namespace App\Services;
 
 use PDO;
 
-require_once __DIR__ . '/../Database.php';
-
 /**
  * Class DashpointService
  *

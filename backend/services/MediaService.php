@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-// Load Composer autoload specifically for Google Cloud Storage Library mapping
-// require_once __DIR__ . '/../../vendor/autoload.php';
-
 use Exception;
 use finfo;
 use Google\Cloud\Storage\StorageClient;

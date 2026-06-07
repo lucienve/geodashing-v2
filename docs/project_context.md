@@ -214,3 +214,6 @@ The application allows users to participate in global geographic games where the
 
 ### 32. Lighthouse Audits CI Isolation
 - Configured [lighthouse.spec.js](e2e/lighthouse.spec.js) to skip Lighthouse audits in local development environments unless explicitly forced via `RUN_LIGHTHOUSE=true`. This avoids launching a separate Chromium debugger and running heavy audits locally, significantly reducing local test suite execution time while preserving full verification on CI.
+
+### 33. Code Refactoring & Optimization (Phase 1)
+- Cleaned up redundant `require_once` statements for `Database.php` in [DashpointService.php](backend/services/DashpointService.php) and commented-out autoloading logic in [MediaService.php](backend/services/MediaService.php) to rely on the centralized Composer autoloader.
