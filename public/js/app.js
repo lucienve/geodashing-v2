@@ -57,8 +57,7 @@ function initNavigation() {
             text: 'HELP ▾', isDropdown: true, children: [
                 { text: 'About', href: '#about' },
                 { text: 'How to Play', href: '#how-to' },
-                { text: 'Contact', href: '#contact' },
-                { text: 'Export Game Data', mobileText: 'Export Data', href: '#search' }
+                { text: 'Contact', href: '#contact' }
             ]
         }
     ];
@@ -530,6 +529,12 @@ function initAuthState() {
                         profileLink.href = `#profile?username=${encodeURIComponent(res.username)}`;
                         profileLink.innerText = 'My Profile';
 
+                        const exportLink = document.createElement('a');
+                        exportLink.id = 'nav-export-link';
+                        exportLink.className = 'nav-link';
+                        exportLink.href = '#search';
+                        exportLink.innerText = 'Export Game Data';
+
                         const logoutLink = document.createElement('a');
                         logoutLink.id = 'desktop-logout-link';
                         logoutLink.className = 'nav-link';
@@ -542,6 +547,7 @@ function initAuthState() {
                         });
 
                         dropContent.appendChild(profileLink);
+                        dropContent.appendChild(exportLink);
                         dropContent.appendChild(logoutLink);
 
                         dropDiv.appendChild(triggerBtn);
@@ -568,6 +574,12 @@ function initAuthState() {
                         profileLink.href = `#profile?username=${encodeURIComponent(res.username)}`;
                         profileLink.innerText = 'Profile';
 
+                        const exportLink = document.createElement('a');
+                        exportLink.id = 'mobile-nav-export-link';
+                        exportLink.className = 'nav-link mobile-player-link';
+                        exportLink.href = '#search';
+                        exportLink.innerText = 'Export Data';
+
                         const logoutLink = document.createElement('a');
                         logoutLink.id = 'mobile-logout-link';
                         logoutLink.className = 'nav-link mobile-player-link';
@@ -581,6 +593,7 @@ function initAuthState() {
 
                         mobileGroup.appendChild(header);
                         mobileGroup.appendChild(profileLink);
+                        mobileGroup.appendChild(exportLink);
                         mobileGroup.appendChild(logoutLink);
 
                         mobileContainer.appendChild(mobileGroup);

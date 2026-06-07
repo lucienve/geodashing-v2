@@ -60,6 +60,18 @@ test.describe('Component & Interactive Layout Constraints', () => {
             await page.goto('/');
             await page.waitForLoadState('networkidle'); // Allow DOM reset
 
+            if (route.id === '#search') {
+                // Log in as TestUser to reveal Profile menu
+                await page.goto('/#login');
+                await page.fill('#login-username', 'TestUser');
+                await page.fill('#login-password', 'testpass');
+                await Promise.all([
+                    page.waitForResponse(resp => resp.url().includes('action=login') && resp.status() === 200),
+                    page.click('#btn-submit-login')
+                ]);
+                await page.waitForURL('**/#home');
+            }
+
             if (isMobile) {
                 // Open Hamburger
                 const menuBtn = page.locator('#mobile-menu-btn');
@@ -72,8 +84,13 @@ test.describe('Component & Interactive Layout Constraints', () => {
                 await link.click();
             } else {
                 if (route.type === 'dropdown') {
-                    // Hover glass dropdown to reveal
-                    await page.locator('text="HELP ▾"').first().hover();
+                    if (route.id === '#search') {
+                        // Hover Profile dropdown instead of HELP ▾
+                        await page.locator('#nav-auth-btn').first().hover();
+                    } else {
+                        // Hover glass dropdown to reveal
+                        await page.locator('text="HELP ▾"').first().hover();
+                    }
                     await page.waitForTimeout(200); // Allow rapid CSS state change
                 }
                 const link = page.locator(`#desktop-links a.nav-link[href="${route.id}"]`);

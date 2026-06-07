@@ -238,3 +238,9 @@ The application allows users to participate in global geographic games where the
 - Aligned Google GenAI prompt and context lists to use `list[str | google.genai.types.File]` and history collections to use `list[google.genai.types.Content | google.genai.types.ContentDict]`, resolving list invariance errors on Gemini SDK integrations.
 - Conformed test fixtures and variables under `backend/tests/test_generate_summary.py` to match defined TypedDict structures (`LogEntry`, `UploadContext`).
 - Verified 100% test success (31/31 passed), 10.00/10 pylint rating, and 0 errors under both `mypy` and `pyright`.
+
+### 37. Export Game Data Relocation to Profile Menu
+- Relocated the "Export Game Data" menu item from under the unauthenticated "Help" dropdown menu to the authenticated "Profile" dropdown menu (desktop) and "Player Actions" group (mobile).
+- Restructured `public/js/app.js` navigation builders (`APP_NAVIGATION`, `initAuthState`) to construct the navigation links dynamically upon successful session verification.
+- Updated the automated E2E test suite in `e2e/interaction.spec.js` to log in as `TestUser` prior to verifying the `#search` (Export Coordinates) overlay layout. Modified the desktop selector hover target to trigger the user profile dropdown (`#nav-auth-btn`) instead of the help dropdown.
+- Confirmed that the client linter (`npm run lint`) and Playwright E2E tests run successfully with zero errors.
