@@ -3,17 +3,19 @@
 import argparse
 import calendar
 import os
-from datetime import datetime
-from typing import List
+import datetime
+import typing
 
 import geopandas as gpd
+import mysql.connector.cursor
 import numpy as np
-from shapely.geometry import Point
+import shapely.geometry
+import shapely.geometry.base
 
-from backend.scripts.db_utils import get_db_connection
+import backend.scripts.db_utils
 
 
-def load_blocklist(bad_words_path: str) -> set:
+def load_blocklist(bad_words_path: str) -> set[str]:
     """Loads a set of blocked 4-letter strings from a file."""
     if not os.path.exists(bad_words_path):
         raise FileNotFoundError(f"Profanity blocklist not found at {bad_words_path}")
@@ -30,7 +32,7 @@ def int_to_letters(index: int) -> str:
     return "".join(reversed(result))
 
 
-def generate_valid_sequence_id(start_index: int, blocklist: set) -> tuple:
+def generate_valid_sequence_id(start_index: int, blocklist: set[str]) -> tuple[str, int]:
     """Finds the next valid alphabetic sequence ID not present in the blocklist."""
     current = start_index
     while True:
@@ -42,10 +44,14 @@ def generate_valid_sequence_id(start_index: int, blocklist: set) -> tuple:
 
 
 def _initialize_new_game(
-        cursor, game_title: str, year: int = None, month: int = None, is_preview: bool = False
+    cursor: mysql.connector.cursor.MySQLCursor,
+    game_title: str,
+    year: int | None = None,
+    month: int | None = None,
+    is_preview: bool = False
 ) -> int:
     """Retires old games and creates a new game record."""
-    now = datetime.now()
+    now = datetime.datetime.now()
     if year is None:
         year = now.year
     if month is None:
@@ -76,11 +82,16 @@ def _initialize_new_game(
         """
 
     cursor.execute(insert_game_sql, (game_title, start_time, end_time))
-    return cursor.lastrowid
+    assert cursor.lastrowid is not None
+    return int(cursor.lastrowid)
 
 
-def _bulk_insert_dashpoints(cursor, points: List[Point], game_id: int,
-                            bad_words_path: str) -> None:
+def _bulk_insert_dashpoints(
+    cursor: mysql.connector.cursor.MySQLCursor,
+    points: list[shapely.geometry.Point],
+    game_id: int,
+    bad_words_path: str
+) -> None:
     """Inserts dashpoints systematically in chunks."""
     blocklist = load_blocklist(bad_words_path)
     current_seq_index = 0
@@ -104,8 +115,8 @@ def _bulk_insert_dashpoints(cursor, points: List[Point], game_id: int,
         cursor.executemany(insert_dp_sql, batch_data)
 
 
-def seed_database(points: List[Point], config_path: str, game_title: str,
-                  bad_words_path: str, **kwargs) -> None:
+def seed_database(points: list[shapely.geometry.Point], config_path: str, game_title: str,
+                  bad_words_path: str, **kwargs: typing.Any) -> None:
     """Seeds the newly generated Dashpoints into tracking tables along with a new active Game state.
 
     Args:
@@ -121,34 +132,32 @@ def seed_database(points: List[Point], config_path: str, game_title: str,
     """
     print("\nConnecting to the database to seed points...")
     try:
-        conn = get_db_connection(config_path)
-        cursor = conn.cursor()
+        with backend.scripts.db_utils.db_session(config_path) as (conn, cursor):
+            year = kwargs.get('year')
+            month = kwargs.get('month')
+            is_preview = kwargs.get('is_preview')
 
-        game_id = _initialize_new_game(
-            cursor, game_title, kwargs.get('year'), kwargs.get('month'), kwargs.get('is_preview')
-        )
+            year_val = int(year) if year is not None else None
+            month_val = int(month) if month is not None else None
+            is_preview_val = bool(is_preview) if is_preview is not None else False
 
-        print(
-            f"Bulk inserting {len(points)} Dashpoints for Game ID format GD{game_id:03d}..."
-        )
-        _bulk_insert_dashpoints(cursor, points, game_id, bad_words_path)
+            game_id = _initialize_new_game(
+                cursor, game_title, year_val, month_val, is_preview_val
+            )
 
-        conn.commit()
-        print("Database seeding completed successfully!")
+            print(
+                f"Bulk inserting {len(points)} Dashpoints for Game ID format GD{game_id:03d}..."
+            )
+            _bulk_insert_dashpoints(cursor, points, game_id, bad_words_path)
+
+            conn.commit()
+            print("Database seeding completed successfully!")
 
     except Exception as e:
-        if 'conn' in locals() and conn.is_connected():
-            conn.rollback()
         raise RuntimeError(f"Failed to seed database: {e}") from e
 
-    finally:
-        if 'cursor' in locals():
-            cursor.close()
-        if 'conn' in locals() and conn.is_connected():
-            conn.close()
 
-
-def generate_spherical_points(num_points: int) -> List[Point]:
+def generate_spherical_points(num_points: int) -> list[shapely.geometry.Point]:
     """Generates random global coordinates with equal geographic density.
 
     Args:
@@ -163,10 +172,13 @@ def generate_spherical_points(num_points: int) -> List[Point]:
     v = np.random.uniform(-1, 1, num_points)
     lats = np.degrees(np.arcsin(v))
 
-    return [Point(lon, lat) for lon, lat in zip(lons, lats)]
+    return [shapely.geometry.Point(lon, lat) for lon, lat in zip(lons, lats)]
 
 
-def _calculate_land_geometry(land_zip_path: str, lakes_zip_path: str):
+def _calculate_land_geometry(
+    land_zip_path: str,
+    lakes_zip_path: str
+) -> shapely.geometry.base.BaseGeometry:
     """Loads and computes the hole-punched landmass geometry in EPSG:6933."""
     try:
         land_gdf = gpd.read_file(f"zip://{land_zip_path}")
@@ -189,7 +201,7 @@ def _calculate_land_geometry(land_zip_path: str, lakes_zip_path: str):
 def generate_valid_dashpoints(
         target_count: int = 2000,
         land_zip_path: str = '../../data/ne_10m_land.zip',
-        lakes_zip_path: str = '../../data/ne_10m_lakes.zip') -> List[Point]:
+        lakes_zip_path: str = '../../data/ne_10m_lakes.zip') -> list[shapely.geometry.Point]:
     """Generates valid dashpoints ensuring they are on land or <= 100m offshore.
     
     Algorithm:
@@ -217,7 +229,7 @@ def generate_valid_dashpoints(
     """
     land_geometry = _calculate_land_geometry(land_zip_path, lakes_zip_path)
 
-    valid_points: List[Point] = []
+    valid_points: list[shapely.geometry.Point] = []
     batch_size = 10000
 
     while len(valid_points) < target_count:

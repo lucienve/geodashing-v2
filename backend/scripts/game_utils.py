@@ -2,6 +2,8 @@
 
 import argparse
 import base64
+import datetime
+import typing
 import configparser
 import email.mime.multipart
 import email.mime.text
@@ -12,10 +14,12 @@ import re
 import sys
 import urllib.request
 
-from google.oauth2 import service_account
+import google.oauth2.service_account
 import google.auth.transport.requests
+import mysql.connector.connection
+import mysql.connector.cursor
 
-from backend.scripts.db_utils import get_db_connection
+import backend.scripts.db_utils
 
 class HTMLFragmentValidator(html.parser.HTMLParser):
     """Validates HTML summary fragments ensuring safety, proper structure, and styling limits."""
@@ -37,7 +41,7 @@ class HTMLFragmentValidator(html.parser.HTMLParser):
         self.errors = []
         self.has_content = False
 
-    def handle_starttag(self, tag, attrs):
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         tag_lower = tag.lower()
         self.stack.append(tag_lower)
 
@@ -52,10 +56,11 @@ class HTMLFragmentValidator(html.parser.HTMLParser):
             for attr, val in attrs:
                 if attr.lower() == 'href':
                     has_href = True
-                    is_valid = (val.startswith('http://') or
+                    is_valid = (val is not None and (
+                                val.startswith('http://') or
                                 val.startswith('https://') or
                                 val.startswith('#') or
-                                val.startswith('/'))
+                                val.startswith('/')))
                     if not val or not is_valid:
                         self.errors.append(f"Invalid or empty href in <a> tag: '{val}'")
             if not has_href:
@@ -71,7 +76,7 @@ class HTMLFragmentValidator(html.parser.HTMLParser):
             if not has_src:
                 self.errors.append("Image <img> tag is missing src attribute")
 
-    def handle_endtag(self, tag):
+    def handle_endtag(self, tag: str) -> None:
         tag_lower = tag.lower()
         if not self.stack:
             self.errors.append(f"Unexpected closing tag: </{tag}> (no opening tag)")
@@ -81,11 +86,11 @@ class HTMLFragmentValidator(html.parser.HTMLParser):
         if expected != tag_lower:
             self.errors.append(f"Mismatched closing tag: </{tag}>. Expected </{expected}>")
 
-    def handle_data(self, data):
+    def handle_data(self, data: str) -> None:
         if data.strip():
             self.has_content = True
 
-    def validate(self, html_content: str) -> list:
+    def validate(self, html_content: str) -> list[str]:
         """Parses the HTML and returns list of validation errors. Empty if valid."""
         self.errors = []
         self.stack = []
@@ -109,11 +114,14 @@ class HTMLFragmentValidator(html.parser.HTMLParser):
         return self.errors
 
 
-def list_games(cursor):
+def list_games(cursor: mysql.connector.cursor.MySQLCursor) -> None:
     """Prints all games chronologically."""
     cursor.execute("SELECT id, title, start_time, end_time, is_active "
                    "FROM games ORDER BY start_time ASC")
-    games = cursor.fetchall()
+    games = typing.cast(
+        list[tuple[int, str, datetime.datetime | None, datetime.datetime | None, bool]],
+        cursor.fetchall()
+    )
 
     if not games:
         print("No games found in the database.")
@@ -127,11 +135,15 @@ def list_games(cursor):
         end_str = end_time.strftime("%Y-%m-%d %H:%M:%S") if end_time else "N/A"
         print(f"{g_id:<5} | {active_str:<8} | {start_str:<20} | {end_str:<20} | {title}")
 
-def activate_game(cursor, conn, game_id: int):
+def activate_game(
+    cursor: mysql.connector.cursor.MySQLCursor,
+    conn: mysql.connector.connection.MySQLConnection,
+    game_id: int
+) -> None:
     """Sets the specified game to active and retires all others."""
     # Validate game exists
     cursor.execute("SELECT id, title FROM games WHERE id = %s", (game_id,))
-    game = cursor.fetchone()
+    game = typing.cast(tuple[int, str] | None, cursor.fetchone())
     if not game:
         print(f"Error: Game ID {game_id} does not exist.")
         return
@@ -145,11 +157,16 @@ def activate_game(cursor, conn, game_id: int):
     conn.commit()
     print("Game rollover completed successfully!")
 
-def upload_summary(cursor, conn, game_id: int, file_path: str):
+def upload_summary(
+    cursor: mysql.connector.cursor.MySQLCursor,
+    conn: mysql.connector.connection.MySQLConnection,
+    game_id: int,
+    file_path: str
+) -> None:
     """Validates and uploads an HTML summary fragment to the specified game."""
     # Check if game exists
     cursor.execute("SELECT id, title FROM games WHERE id = %s", (game_id,))
-    game = cursor.fetchone()
+    game = typing.cast(tuple[int, str] | None, cursor.fetchone())
     if not game:
         print(f"Error: Game ID {game_id} does not exist.")
         sys.exit(1)
@@ -181,7 +198,7 @@ def upload_summary(cursor, conn, game_id: int, file_path: str):
     conn.commit()
     print("Summary uploaded and saved to the database successfully!")
 
-def load_mail_config(config_path: str) -> tuple:
+def load_mail_config(config_path: str) -> tuple[str, str]:
     """Reads and validates mail configurations from config.ini."""
     if not os.path.exists(config_path):
         print(f"Error: Config not found at {config_path}")
@@ -216,7 +233,7 @@ def send_via_gmail_api(credentials_path: str, to_email: str, subject: str, html_
     """Authenticates and sends an email via Gmail REST API."""
     sender = 'tracker@geodashing.org'
 
-    creds = service_account.Credentials.from_service_account_file(
+    creds = google.oauth2.service_account.Credentials.from_service_account_file(
         credentials_path,
         scopes=['https://www.googleapis.com/auth/gmail.send']
     )
@@ -263,11 +280,18 @@ def send_via_gmail_api(credentials_path: str, to_email: str, subject: str, html_
             sys.exit(1)
 
 
-def email_summary(cursor, game_id: int, config_path: str):
+def email_summary(
+    cursor: mysql.connector.cursor.MySQLCursor,
+    game_id: int,
+    config_path: str
+) -> None:
     """Sends the end-of-month game summary to the mailing list specified in config.ini."""
     # 1. Fetch game summary, title, and start_time from database
     cursor.execute("SELECT title, summary, start_time FROM games WHERE id = %s", (game_id,))
-    row = cursor.fetchone()
+    row = typing.cast(
+        tuple[str, str | None, datetime.datetime | None] | None,
+        cursor.fetchone()
+    )
     if not row:
         print(f"Error: Game ID {game_id} does not exist.")
         sys.exit(1)
@@ -293,7 +317,9 @@ def email_summary(cursor, game_id: int, config_path: str):
 
     # Authenticate and send email cleanly
     try:
-        month_year = start_time.strftime("%B %Y")  # e.g., "May 2026"
+        month_year = (
+            start_time.strftime("%B %Y") if start_time else "Unknown Month"
+        )
         subject = f"Geodashing Game {game_id} ({month_year}) Results"
         send_via_gmail_api(credentials_path, to_email, subject, summary)
     except Exception as e:  # pylint: disable=broad-exception-caught
@@ -304,7 +330,12 @@ def email_summary(cursor, game_id: int, config_path: str):
         sys.exit(1)
 
 
-def execute_cli_actions(cursor, conn, args, config_path: str):
+def execute_cli_actions(
+    cursor: mysql.connector.cursor.MySQLCursor,
+    conn: mysql.connector.connection.MySQLConnection,
+    args: argparse.Namespace,
+    config_path: str
+) -> None:
     """Executes the specific actions chosen via command line arguments."""
     need_separator = False
 
@@ -361,18 +392,11 @@ def main() -> None:
     config_path = os.path.join(current_dir, '../config.ini')
 
     try:
-        conn = get_db_connection(config_path)
-        cursor = conn.cursor()
-        execute_cli_actions(cursor, conn, args, config_path)
-
+        with backend.scripts.db_utils.db_session(config_path) as (conn, cursor):
+            execute_cli_actions(cursor, conn, args, config_path)
     except (FileNotFoundError, RuntimeError) as e:
         print(f"\nExecution Error: {e}")
         sys.exit(1)
-    finally:
-        if 'cursor' in locals() and cursor is not None:
-            cursor.close()
-        if 'conn' in locals() and conn.is_connected():
-            conn.close()
 
 if __name__ == "__main__":
     main()

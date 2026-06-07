@@ -1,42 +1,42 @@
 """Tests for the Geodashing V2 point generator script."""
+# pylint: disable=protected-access
+# Architecturally, unit testing private helper functions (_initialize_new_game and
+# _bulk_insert_dashpoints) is required to verify the correctness of individual database
+# operations without executing the entire orchestrator.
 
-from unittest.mock import MagicMock
-
+import unittest.mock
 import geopandas as gpd
 import mysql.connector.cursor
-from shapely.geometry import Point, Polygon, box
+import pytest
+import shapely.geometry
 
-from backend.scripts.generate_game import (_bulk_insert_dashpoints,
-                                           _initialize_new_game,
-                                           generate_spherical_points,
-                                           generate_valid_dashpoints,
-                                           int_to_letters)
+import backend.scripts.generate_game
 
 
-def test_generate_spherical_points():
+def test_generate_spherical_points() -> None:
     """Verify coordinate bounding boxes and type generations."""
-    points = generate_spherical_points(10)
+    points = backend.scripts.generate_game.generate_spherical_points(10)
     assert len(points) == 10
 
     for pt in points:
-        assert isinstance(pt, Point)
+        assert isinstance(pt, shapely.geometry.Point)
         assert -180 <= pt.x <= 180
         assert -90 <= pt.y <= 90
 
 
-def test_water_exclusion_logic():
+def test_water_exclusion_logic() -> None:
     """Verify that the 500m buffer logic accurately intersects land.
     Uses an EPSG:6933 (Cylindrical Equal Area) mock polygon for testing.
     """
     # Create a simple 1km x 1km square 'island' at the equator
-    island_geom = Polygon([(-500, -500), (500, -500), (500, 500), (-500, 500)])
+    island_geom = shapely.geometry.Polygon([(-500, -500), (500, -500), (500, 500), (-500, 500)])
 
     # Point 1: On the island
-    p1 = Point(0, 0)
+    p1 = shapely.geometry.Point(0, 0)
     # Point 2: 400m offshore (Valid = within 500m)
-    p2 = Point(900, 0)
+    p2 = shapely.geometry.Point(900, 0)
     # Point 3: 600m offshore (Invalid = >500m)
-    p3 = Point(1100, 0)
+    p3 = shapely.geometry.Point(1100, 0)
 
     points_gdf = gpd.GeoDataFrame(geometry=[p1, p2, p3], crs="EPSG:6933")
     buffered_points = points_gdf.buffer(500)
@@ -48,16 +48,16 @@ def test_water_exclusion_logic():
     assert bool(intersections.iloc[2]) is False  # 600m offshore
 
 
-def test_inland_lake_avoidance(monkeypatch):
+def test_inland_lake_avoidance(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     Validates the geometric differencing matrix ensuring that Dashpoints
     never spawn inside Inland Lakes or Oceans.
     """
     # 1. Define strictly controlled Mock Boundaries (EPSG:4326 Degrees)
-    land_polygon = box(-5, -5, 5, 5)
-    lake_polygon = box(-1, -1, 1, 1)
+    land_polygon = shapely.geometry.box(-5, -5, 5, 5)
+    lake_polygon = shapely.geometry.box(-1, -1, 1, 1)
 
-    def read_file_side_effect(path):
+    def read_file_side_effect(path: str) -> gpd.GeoDataFrame:
         if 'land' in path:
             return gpd.GeoDataFrame(geometry=[land_polygon], crs="EPSG:4326")
         if 'lakes' in path:
@@ -69,9 +69,9 @@ def test_inland_lake_avoidance(monkeypatch):
 
     # 2. Inject target coordinates dynamically representing the random generator logic
     test_points = [
-        Point(0, 0),  # Target 1: Dead center of the Lake (Should be EXCLUDED)
-        Point(3, 3),  # Target 2: Dry Land away from water (Should be KEPT)
-        Point(10,
+        shapely.geometry.Point(0, 0),  # Target 1: Dead center of the Lake (Should be EXCLUDED)
+        shapely.geometry.Point(3, 3),  # Target 2: Dry Land away from water (Should be KEPT)
+        shapely.geometry.Point(10,
               10)  # Target 3: Remote Ocean outside island (Should be EXCLUDED)
     ]
 
@@ -80,7 +80,7 @@ def test_inland_lake_avoidance(monkeypatch):
         lambda *args, **kwargs: test_points)
 
     # 3. Execute the Geopandas Mathematics constraint engine
-    valid_points = generate_valid_dashpoints(target_count=1,
+    valid_points = backend.scripts.generate_game.generate_valid_dashpoints(target_count=1,
                                              land_zip_path="mock_land.zip",
                                              lakes_zip_path="mock_lakes.zip")
 
@@ -90,21 +90,21 @@ def test_inland_lake_avoidance(monkeypatch):
     assert valid_points[0].y == 3.0, "Point Y did not match land bounds"
 
 
-def test_int_to_letters():
+def test_int_to_letters() -> None:
     """Verify numeric to alphabetic sequence generation."""
-    assert int_to_letters(0) == "AAAA"
-    assert int_to_letters(1) == "AAAB"
-    assert int_to_letters(25) == "AAAZ"
-    assert int_to_letters(26) == "AABA"
-    assert int_to_letters(27) == "AABB"
+    assert backend.scripts.generate_game.int_to_letters(0) == "AAAA"
+    assert backend.scripts.generate_game.int_to_letters(1) == "AAAB"
+    assert backend.scripts.generate_game.int_to_letters(25) == "AAAZ"
+    assert backend.scripts.generate_game.int_to_letters(26) == "AABA"
+    assert backend.scripts.generate_game.int_to_letters(27) == "AABB"
 
 
-def test_initialize_new_game():
+def test_initialize_new_game() -> None:
     """Verify that starting a new game successfully updates the DB state."""
-    mock_cursor = MagicMock(spec=mysql.connector.cursor.MySQLCursor)
+    mock_cursor = unittest.mock.MagicMock(spec=mysql.connector.cursor.MySQLCursor)
     mock_cursor.lastrowid = 42
 
-    game_id = _initialize_new_game(mock_cursor, "Global Dash")
+    game_id = backend.scripts.generate_game._initialize_new_game(mock_cursor, "Global Dash")
 
     assert game_id == 42
     # Verify the initial retirement of old games ran
@@ -120,16 +120,16 @@ def test_initialize_new_game():
     assert payload[0] == "Global Dash"
 
 
-def test_bulk_insert_dashpoints(monkeypatch):
+def test_bulk_insert_dashpoints(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify that multiple generated points are chunked and executed properly."""
     # Mock away blocklist reading logic
     monkeypatch.setattr('backend.scripts.generate_game.load_blocklist',
                         lambda path: set())
 
-    mock_cursor = MagicMock(spec=mysql.connector.cursor.MySQLCursor)
-    points = [Point(10, 20), Point(-30, 40)]
+    mock_cursor = unittest.mock.MagicMock(spec=mysql.connector.cursor.MySQLCursor)
+    points = [shapely.geometry.Point(10, 20), shapely.geometry.Point(-30, 40)]
 
-    _bulk_insert_dashpoints(mock_cursor,
+    backend.scripts.generate_game._bulk_insert_dashpoints(mock_cursor,
                             points,
                             game_id=7,
                             bad_words_path="mock/path")

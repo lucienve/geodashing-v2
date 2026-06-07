@@ -1,8 +1,13 @@
 """Shared database utilities for backend scripts."""
 
 import configparser
+import contextlib
 import os
+import typing
+
 import mysql.connector
+import mysql.connector.connection
+import mysql.connector.cursor
 
 def get_db_connection(config_path: str) -> mysql.connector.connection.MySQLConnection:
     """Establishes a connection to the MySQL database securely via config.ini.
@@ -37,6 +42,36 @@ def get_db_connection(config_path: str) -> mysql.connector.connection.MySQLConne
             database=database,
             port=port
         )
-        return conn
+        return typing.cast(mysql.connector.connection.MySQLConnection, conn)
     except mysql.connector.Error as e:
         raise RuntimeError(f"Database Connection Error: {e}") from e
+
+
+@contextlib.contextmanager
+def db_session(
+    config_path: str
+) -> typing.Iterator[
+    tuple[
+        mysql.connector.connection.MySQLConnection,
+        mysql.connector.cursor.MySQLCursor
+    ]
+]:
+    """Context manager for establishing and closing a database session.
+
+    Args:
+        config_path (str): The absolute or relative path to backend/config.ini.
+
+    Yields:
+        Tuple[MySQLConnection, MySQLCursor]: Active connection and cursor.
+    """
+    conn = get_db_connection(config_path)
+    cursor = conn.cursor()
+    try:
+        yield conn, cursor
+    except Exception as e:
+        if conn.is_connected():
+            conn.rollback()
+        raise e
+    finally:
+        cursor.close()
+        conn.close()

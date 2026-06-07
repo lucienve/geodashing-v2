@@ -6,19 +6,37 @@ import json
 import os
 import sys
 import tempfile
+import typing
 import urllib.request
 import urllib.error
 
 import mysql.connector
+import mysql.connector.cursor
 import google.auth
 import google.auth.exceptions
-from google import genai
-from google.genai import types
+import google.genai
+import google.genai.types
 
-from backend.scripts.db_utils import get_db_connection
+import backend.scripts.db_utils
 
 
-def configure_environment(config_path: str) -> dict:
+class LogEntry(typing.TypedDict):
+    """Represents a structured player dashpoint log entry."""
+    dp_id: str
+    username: str
+    city: str
+    photos: list[dict[str, str]]
+    notes: str | None
+
+
+class UploadContext(typing.TypedDict):
+    """Context container for local and uploaded GenAI files."""
+    client: google.genai.Client
+    local_temp_files: list[str]
+    uploaded_ai_files: list[google.genai.types.File]
+
+
+def configure_environment(config_path: str) -> dict[str, str | None]:
     """Configures environment variables and Gemini AI parameters."""
     if not os.path.exists(config_path):
         raise FileNotFoundError(f"Config not found at {config_path}")
@@ -54,7 +72,7 @@ def configure_environment(config_path: str) -> dict:
     return {"model_name": model_name, "project_id": project_id}
 
 
-def get_gemini_client(ai_config: dict) -> genai.Client:
+def get_gemini_client(ai_config: dict[str, str | None]) -> google.genai.Client:
     """Builds a GenAI client using project billing credentials."""
     project_id = ai_config.get('project_id')
     try:
@@ -66,14 +84,14 @@ def get_gemini_client(ai_config: dict) -> genai.Client:
         creds = None
         target_project = project_id
 
-    return genai.Client(
+    return google.genai.Client(
         vertexai=False,
         project=target_project,
         credentials=creds
     )
 
 
-def download_file_to_temp(url: str) -> str:
+def download_file_to_temp(url: str) -> str | None:
     """Downloads a file via HTTP to a local temporary file."""
     try:
         req = urllib.request.Request(
@@ -94,7 +112,7 @@ def download_file_to_temp(url: str) -> str:
         return None
 
 
-def get_nearest_city(cursor, lat: float, lon: float) -> str:
+def get_nearest_city(cursor: mysql.connector.cursor.MySQLCursor, lat: float, lon: float) -> str:
     """Finds the nearest major city to the given coordinates."""
     query = """
         SELECT name, admin_name, country_name
@@ -104,7 +122,7 @@ def get_nearest_city(cursor, lat: float, lon: float) -> str:
     """
     wkt = f"POINT({lat} {lon})"
     cursor.execute(query, (wkt,))
-    row = cursor.fetchone()
+    row = typing.cast(tuple[str | None, str | None, str | None] | None, cursor.fetchone())
     if row:
         name, admin_name, country_name = row
         parts = [p for p in [name, admin_name, country_name] if p]
@@ -112,7 +130,10 @@ def get_nearest_city(cursor, lat: float, lon: float) -> str:
     return "Unknown Location"
 
 
-def _extract_scores(cursor, game_id: int) -> list:
+def _extract_scores(
+    cursor: mysql.connector.cursor.MySQLCursor,
+    game_id: int
+) -> list[tuple[str, int]]:
     """Extracts scores strictly constrained to the game."""
     score_query = """
         SELECT u.username, SUM(v.score_awarded) as total_points
@@ -124,12 +145,12 @@ def _extract_scores(cursor, game_id: int) -> list:
         ORDER BY total_points DESC, u.username ASC
     """
     cursor.execute(score_query, (game_id,))
-    return cursor.fetchall()
+    return typing.cast(list[tuple[str, int]], cursor.fetchall())
 
 
-def _parse_photos_json(photos_json: str) -> list:
+def _parse_photos_json(photos_json: str | None) -> list[dict[str, str]]:
     """Parses the photos JSON string into a list of photo dictionaries."""
-    photos = []
+    photos: list[dict[str, str]] = []
     if photos_json:
         try:
             photos_data = json.loads(photos_json)
@@ -144,7 +165,10 @@ def _parse_photos_json(photos_json: str) -> list:
     return photos
 
 
-def _extract_logs(cursor, game_id: int) -> list:
+def _extract_logs(
+    cursor: mysql.connector.cursor.MySQLCursor,
+    game_id: int
+) -> list[LogEntry]:
     """Extracts all approved logs for the game."""
     logs_query = """
         SELECT v.dashpoint_id, u.username, ST_Latitude(d.location) as dp_lat,
@@ -156,9 +180,12 @@ def _extract_logs(cursor, game_id: int) -> list:
         ORDER BY v.reported_time ASC
     """
     cursor.execute(logs_query, (game_id,))
-    raw_logs = cursor.fetchall()
+    raw_logs = typing.cast(
+        list[tuple[str, str, float, float, str | None, str | None]],
+        cursor.fetchall()
+    )
 
-    formatted_logs = []
+    formatted_logs: list[LogEntry] = []
     for dp_id, username, dp_lat, dp_lon, notes, photos_json in raw_logs:
         city = get_nearest_city(cursor, dp_lat, dp_lon)
         photos = _parse_photos_json(photos_json)
@@ -173,10 +200,13 @@ def _extract_logs(cursor, game_id: int) -> list:
     return formatted_logs
 
 
-def extract_logs_and_scores(cursor, game_id: int) -> tuple:
+def extract_logs_and_scores(
+    cursor: mysql.connector.cursor.MySQLCursor,
+    game_id: int
+) -> tuple[str, list[tuple[str, int]], list[LogEntry]]:
     """Extracts the game title, scores, and all approved logs."""
     cursor.execute("SELECT title FROM games WHERE id = %s", (game_id,))
-    row = cursor.fetchone()
+    row = typing.cast(tuple[str] | None, cursor.fetchone())
     game_title = row[0] if row else f"Game {game_id}"
 
     scores = _extract_scores(cursor, game_id)
@@ -190,9 +220,11 @@ def load_system_instructions(instructions_path: str) -> str:
         return f.read().strip()
 
 
-def load_chat_history(examples_dir: str) -> list:
+def load_chat_history(
+    examples_dir: str
+) -> list[google.genai.types.Content | google.genai.types.ContentDict]:
     """Loads few-shot examples into AI Studio Chat History."""
-    history = []
+    history: list[google.genai.types.Content | google.genai.types.ContentDict] = []
     if not os.path.isdir(examples_dir):
         return history
 
@@ -211,12 +243,22 @@ def load_chat_history(examples_dir: str) -> list:
                 in_text = f.read().strip()
             with open(out_path, 'r', encoding='utf-8') as f:
                 out_text = f.read().strip()
-            history.append(types.Content(role="user", parts=[types.Part.from_text(text=in_text)]))
-            history.append(types.Content(role="model", parts=[types.Part.from_text(text=out_text)]))
+            history.append(google.genai.types.Content(
+                role="user",
+                parts=[google.genai.types.Part.from_text(text=in_text)]
+            ))
+            history.append(google.genai.types.Content(
+                role="model",
+                parts=[google.genai.types.Part.from_text(text=out_text)]
+            ))
     return history
 
 
-def _append_photo_parts(parts: list, photos: list, upload_context: dict) -> None:
+def _append_photo_parts(
+    parts: list[str | google.genai.types.File],
+    photos: list[dict[str, str]],
+    upload_context: UploadContext
+) -> None:
     """Appends photo text and uploaded AI files to the prompt parts list."""
     if not photos:
         parts.append("Photos: None\n\n")
@@ -245,14 +287,17 @@ def _append_photo_parts(parts: list, photos: list, upload_context: dict) -> None
     parts.append("\n")
 
 
-def _format_log_entry(log: dict, upload_context: dict) -> list:
+def _format_log_entry(
+    log: LogEntry,
+    upload_context: UploadContext
+) -> list[str | google.genai.types.File]:
     """Formats a single player log entry list of prompt parts."""
     dp_id = log['dp_id']
     username = log['username']
     city = log['city']
     notes = log['notes'] or ''
 
-    entry_parts = []
+    entry_parts: list[str | google.genai.types.File] = []
     log_header = (
         "---------------------\n"
         f"Log: {dp_id}.txt\n"
@@ -266,8 +311,12 @@ def _format_log_entry(log: dict, upload_context: dict) -> list:
     return entry_parts
 
 
-def construct_new_data(game_title: str, scores: list, formatted_logs: list,
-                       upload_context: dict) -> list:
+def construct_new_data(
+    game_title: str,
+    scores: list[tuple[str, int]],
+    formatted_logs: list[LogEntry],
+    upload_context: UploadContext
+) -> list[str | google.genai.types.File]:
     """Constructs the final input prompt parts with game title, scores, and logs."""
     if not scores:
         score_text = "No players scored in this game."
@@ -277,7 +326,7 @@ def construct_new_data(game_title: str, scores: list, formatted_logs: list,
         for user, points in scores[1:]:
             score_text += f"- {user}: {points} points\n"
 
-    parts = []
+    parts: list[str | google.genai.types.File] = []
     initial_text = (
         "[NEW INPUT DATA SET]\n\n"
         f"--- GAME TITLE ---\n{game_title}\n\n"
@@ -292,20 +341,25 @@ def construct_new_data(game_title: str, scores: list, formatted_logs: list,
     return parts
 
 
-def _generate_summary(client: genai.Client, model_name: str, instructions_path: str,
-                      examples_dir: str, prompt: list) -> str:
+def _generate_summary(client: google.genai.Client, model_name: str, instructions_path: str,
+                      examples_dir: str, prompt: list[str | google.genai.types.File]) -> str:
     """Generates the summary using the initialized client and prompt."""
     sys_inst = load_system_instructions(instructions_path)
     history = load_chat_history(examples_dir)
-    config = types.GenerateContentConfig(
+    config = google.genai.types.GenerateContentConfig(
         system_instruction=sys_inst,
     )
     chat = client.chats.create(model=model_name, config=config, history=history)
     response = chat.send_message(prompt)
-    return response.text
+    return response.text or ""
 
 
-def write_summary_files(output_dir: str, game_id: int, prompt: list, summary_html: str) -> None:
+def write_summary_files(
+    output_dir: str,
+    game_id: int,
+    prompt: list[str | google.genai.types.File],
+    summary_html: str
+) -> None:
     """Writes the generated summary and input prompt to files."""
     in_path = os.path.join(output_dir, f"game_{game_id}_input.txt")
     out_path = os.path.join(output_dir, f"game_{game_id}_output.html")
@@ -327,9 +381,12 @@ def write_summary_files(output_dir: str, game_id: int, prompt: list, summary_htm
     print(f"Output file: {out_path}")
 
 
-def _get_game_data(config_path: str, game_id: int) -> tuple:
+def _get_game_data(
+    config_path: str,
+    game_id: int
+) -> tuple[str, list[tuple[str, int]], list[LogEntry]]:
     """Extracts game title, scores, and formatted logs from the database."""
-    conn = get_db_connection(config_path)
+    conn = backend.scripts.db_utils.get_db_connection(config_path)
     cursor = conn.cursor()
     try:
         return extract_logs_and_scores(cursor, game_id)
@@ -342,20 +399,24 @@ def run_summary_generation(args: argparse.Namespace, config_path: str,
                            instructions_path: str, examples_dir: str) -> None:
     """Orchestrates the data extraction, AI upload, and generation process."""
     ai_config = configure_environment(config_path)
-    game_title, scores, formatted_logs = _get_game_data(config_path, args.game_id)
+    game_data = _get_game_data(config_path, args.game_id)
 
     client = get_gemini_client(ai_config)
 
-    upload_context = {
+    upload_context: UploadContext = {
         "client": client,
         "local_temp_files": [],
         "uploaded_ai_files": []
     }
 
     try:
-        prompt = construct_new_data(game_title, scores, formatted_logs, upload_context)
+        prompt = construct_new_data(
+            game_data[0], game_data[1], game_data[2], upload_context
+        )
+        model_name = ai_config['model_name']
+        assert model_name is not None
         summary_html = _generate_summary(
-            client, ai_config['model_name'], instructions_path, examples_dir, prompt
+            client, model_name, instructions_path, examples_dir, prompt
         )
         write_summary_files(args.output_dir, args.game_id, prompt, summary_html)
 
@@ -371,7 +432,8 @@ def run_summary_generation(args: argparse.Namespace, config_path: str,
         # B. Clean up uploaded remote AI Studio files
         for uploaded_file in upload_context["uploaded_ai_files"]:
             try:
-                client.files.delete(name=uploaded_file.name)
+                if uploaded_file.name:
+                    client.files.delete(name=uploaded_file.name)
             except Exception as e:  # pylint: disable=broad-exception-caught
                 print(
                     f"Failed to delete remote AI Studio file {uploaded_file.name}: {e}",

@@ -223,3 +223,18 @@ The application allows users to participate in global geographic games where the
 ### 34. Production Logging & Error Reporting
 - Configured production error tracking using **Google Cloud Error Reporting** and the **Google Cloud Ops Agent** on the GCE production VM.
 - Documented step-by-step setup instructions inside [admin_guide.md](admin_guide.md) including GCE default service account identification, IAM configuration, Ops Agent installation pipelines, and the custom `/etc/google-cloud-ops-agent/config.yaml` logging filters targeting rotated Apache access and error logs (`geodashing_error.log` and `geodashing_access.log`).
+
+### 35. Python Style Guide & Type Safety Alignment
+- Aligned the Python codebase in the project for full compliance with the updated style guide and strict typing rules.
+- Added development requirements for type checking via `mypy` and `pyright` in [requirements-dev.txt](requirements-dev.txt).
+- Configured path resolution using a root-level [pytest.ini](pytest.ini) and [pyrightconfig.json](pyrightconfig.json).
+- Refactored imports in all Python scripts and test files to strictly use standard namespace style (`import package` or `import module`) and namespace calls, adhering to Google Python Style Guide principles.
+- Fully annotated all function and method signatures with mandatory type hints across the entire Python codebase (e.g., [db_utils.py](backend/scripts/db_utils.py), [generate_game.py](backend/scripts/generate_game.py), [generate_summary.py](backend/scripts/generate_summary.py), [game_utils.py](backend/scripts/game_utils.py), and all corresponding test suites under `backend/tests/`).
+- Resolved all linter messages and complexity constraints to achieve a perfect 10.00/10 rating under `pylint`, and verified that all type checking (`mypy`, `pyright`) and unit tests (`pytest`) execute cleanly with 0 errors.
+
+### 36. Python Exact Type Refactoring
+- Evaluated and eliminated type checking suppressions and `typing.Any` types across the backend Python modules.
+- Refactored `mysql-connector` database cursor fetch operations to use precise tuple type-casting (e.g., `tuple[str, str, float, float, str | None, str | None]`) instead of dynamically-inferred database union types.
+- Aligned Google GenAI prompt and context lists to use `list[str | google.genai.types.File]` and history collections to use `list[google.genai.types.Content | google.genai.types.ContentDict]`, resolving list invariance errors on Gemini SDK integrations.
+- Conformed test fixtures and variables under `backend/tests/test_generate_summary.py` to match defined TypedDict structures (`LogEntry`, `UploadContext`).
+- Verified 100% test success (31/31 passed), 10.00/10 pylint rating, and 0 errors under both `mypy` and `pyright`.
