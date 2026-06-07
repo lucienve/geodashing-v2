@@ -196,3 +196,7 @@ The application allows users to participate in global geographic games where the
 - Updated the backend email verification redirect flow to append `&subscribe=1` to the confirmation redirect URL upon successful account activation.
 - Created a themed, glassmorphic mailing list card on the verification confirmation screen providing a mailto subscription button and clear copyable instructions as a backup.
 - Added comprehensive unit test coverage in `AuthServiceTest.php` verifying subscription state storage and verification endpoint response.
+
+### 29. Session Restoration on Email Verification Success
+- Resolved session incompleteness issue where `$_SESSION['username']` was missing after successful email token verification, causing subsequent validation endpoints to reject the active session and prevent showing the victory card.
+- Updated `AuthService::verifyEmail` to return the `username` upon verification, and updated `verify.php` to persist it in the active session variables.  Issue #18

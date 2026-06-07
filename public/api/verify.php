@@ -32,6 +32,7 @@ try {
         // Mark the user as logged in.
         session_regenerate_id(true);
         $_SESSION['user_id'] = $result['user_id'];
+        $_SESSION['username'] = $result['username'];
         $_SESSION['is_verified'] = 1;
 
         // Redirect with success anchor
