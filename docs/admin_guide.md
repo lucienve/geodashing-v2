@@ -198,3 +198,76 @@ $stmt = $db->query("
 ## 3. End-of-Month Game Rollover & Lifecycle Operations
 
 For detailed, step-by-step instructions on executing monthly game rollovers, generating AI summaries, and shifting active game sequences on the production server, please refer to the standalone [Game Rollover & Summary Generation Guide](game_rollover.md).
+
+---
+
+## 4. Production Monitoring & Error Reporting (Google Cloud)
+
+To automatically track application exceptions, database failures, and runtime errors, the production instance uses **Google Cloud Error Reporting** integrated with the **Google Cloud Ops Agent**. This setup provides centralized logging and real-time error grouping without modifying application source code.
+
+### Step 1: Assign IAM Roles to GCE Service Account
+
+The production GCE instance (`vm2019-vpc`) runs under the following Google Compute Engine service account:
+*   **Service Account Email**: `174669942892-compute@developer.gserviceaccount.com`
+
+For the Ops Agent to successfully upload metrics, write logs, and report error stack traces, this service account must be granted the following IAM roles in the Google Cloud Console:
+
+1.  **Logs Writer** (`roles/logging.logWriter`): Permits the agent to stream files to Google Cloud Logging.
+2.  **Error Reporting Writer** (`roles/clouderrorreporting.writer`): Permits the agent to write exception events to Error Reporting.
+3.  **Monitoring Metric Writer** (`roles/monitoring.metricWriter`): (Recommended) Permits writing VM-level performance metrics (CPU, Memory, Disk) to Cloud Monitoring.
+
+#### How to Assign Roles:
+1.  Navigate to **IAM & Admin > IAM** in the Google Cloud Console.
+2.  Locate `174669942892-compute@developer.gserviceaccount.com` in the list of principals.
+3.  Click the edit pencil icon on its row.
+4.  Click **Add Another Role** and assign the three roles listed above.
+5.  Click **Save**.
+
+### Step 2: Install the Ops Agent on the VM
+Log in to the GCE instance via SSH and run the official GCP installation script to install the Ops Agent:
+```bash
+# Download and run the Ops Agent installation script
+curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
+sudo bash add-google-cloud-ops-agent-repo.sh --also-install
+
+# Verify that the service is running
+sudo systemctl status google-cloud-ops-agent
+```
+
+### Step 3: Configure the Ops Agent Logging Pipeline
+The Ops Agent must be configured to monitor the Geodashing Apache logs, which are rotated daily in `/var/log/apache2/`.
+
+1.  Open the configuration file using a text editor (e.g. `nano`):
+    ```bash
+    sudo nano /etc/google-cloud-ops-agent/config.yaml
+    ```
+2.  Overwrite or append the following configuration:
+    ```yaml
+    logging:
+      receivers:
+        geodashing_error:
+          type: apache_error
+          include_paths:
+            - /var/log/apache2/geodashing_error.log
+        geodashing_access:
+          type: apache_access
+          include_paths:
+            - /var/log/apache2/geodashing_access.log
+      service:
+        pipelines:
+          geodashing_pipeline:
+            receivers:
+              - geodashing_error
+              - geodashing_access
+    ```
+    *(Note: The built-in `apache_error` and `apache_access` receiver types automatically parse the timestamps, severities, and messages. The agent tracks rotated files like `*.log.1` and `*.log.2.gz` automatically via active file descriptors/inodes).*
+3.  Save the file and restart the agent to apply changes:
+    ```bash
+    sudo systemctl restart google-cloud-ops-agent
+    ```
+
+### Step 4: Accessing Error Reports & Alerts
+Once configured, all errors captured in `geodashing_error.log` (such as uncaught PHP Exceptions, PHP Fatal Errors, or Database Connection Failures) are streamed to Cloud Logging.
+*   **Console Access**: Open the GCP Console and navigate to **Error Reporting** to see aggregated, grouped error groups with frequency counts and stack trace details.
+*   **Email Notifications**: In the **Error Reporting** dashboard, you can toggle notifications to immediately receive emails when a new error signature is detected by Google Cloud.
+
