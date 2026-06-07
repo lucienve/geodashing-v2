@@ -162,9 +162,9 @@ document.addEventListener('routeLoaded', (e) => {
                             if (visit.photos && visit.photos.length > 0) {
                                 html += `<div style="display:grid; grid-template-columns: 1fr; gap:1rem;">`;
                                 visit.photos.forEach(photo => {
-                                     let encodedUrl = encodeURI(photo.url);
-                                     let thumbUrl = encodeURI(photo.thumb_url);
-                                     let imgHtml = `<img src="${thumbUrl}" class="log-photo" data-dpid="${window.escapeHTML(dp.id)}" data-url="${encodedUrl}" style="width:100%; height:auto; border:1px solid var(--accent-amber); cursor:pointer;" loading="lazy">`;
+                                    let encodedUrl = encodeURI(photo.url);
+                                    let thumbUrl = encodeURI(photo.thumb_url);
+                                    let imgHtml = `<img src="${thumbUrl}" class="log-photo" data-dpid="${window.escapeHTML(dp.id)}" data-url="${encodedUrl}" style="width:100%; height:auto; border:1px solid var(--accent-amber); cursor:pointer;" loading="lazy">`;
 
                                     if (photo.lat !== null && photo.lon !== null && dp.lat !== undefined) {
                                         // Native JS Haversine Distance Mapper cleanly invoking the global SPA utility
@@ -597,14 +597,14 @@ document.addEventListener('routeLoaded', (e) => {
                     // Dynamically build the Victory overlay replacing the bounds
                     const verifiedInject = document.createElement('div');
                     verifiedInject.className = 'verified-success-box';
-                    
+
                     let mailtoSection = '';
                     if (urlArgs.includes('subscribe=1')) {
                         mailtoSection = `
                         <div class="verify-subscribe-box">
                             <h4>Subscribe to Mailing List</h4>
                             <p>
-                                You requested to join <strong>dashers@geodashing.org</strong>. Click below to launch your email client, then hit send. You will receive a verification email from Google Groups to finalize your subscription.
+                                You requested to join the <strong>dashers@geodashing.org</strong> mailing list. Stay active in the community with game announcements, game results, player discussions, and real-time logs. Click below to launch your email client, then hit send to request to join. You can unsubscribe at any time.
                             </p>
                             <a href="mailto:dashers+subscribe@geodashing.org?subject=Subscribe&body=Please%20add%20me%20to%20the%20dashers%40geodashing.org%20mailing%20list." class="btn btn-secondary btn-send-subscribe">
                                 ✉ SEND SUBSCRIPTION EMAIL

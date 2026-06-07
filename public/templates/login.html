@@ -43,16 +43,23 @@
             </div>
             <div class="form-group">
                 <label>PASSWORD <span>[MIN 6 CHARS]</span></label>
-                <input type="password" id="signup-password" name="password" class="data-input" required autocomplete="new-password" minlength="6">
+                <input type="password" id="signup-password" name="password" class="data-input" required
+                    autocomplete="new-password" minlength="6">
             </div>
             <div class="form-group">
                 <label>VERIFY PASSWORD <span>[MIN 6 CHARS]</span></label>
-                <input type="password" id="signup-password-verify" name="password_verify" class="data-input" required autocomplete="new-password" minlength="6">
+                <input type="password" id="signup-password-verify" name="password_verify" class="data-input" required
+                    autocomplete="new-password" minlength="6">
             </div>
             <div class="auth-subscribe-group">
                 <input type="checkbox" id="signup-subscribe" name="subscribe" value="1">
                 <label for="signup-subscribe">
-                    Subscribe to the dashers@geodashing.org Google Group (requires email confirmation)
+                    <strong>(Recommended) Subscribe to dashers@geodashing.org mailing list</strong><br>
+                    <span>
+                        Receive game announcements, end-of-game results, player discussions, and logs of player visits.
+                        Highly recommended to stay active in the community. Requires email confirmation. Unsubscribe at
+                        any time.
+                    </span>
                 </label>
             </div>
             <button type="submit" class="btn btn-secondary" id="btn-submit-signup" disabled>CREATE ACCOUNT</button>
@@ -71,7 +78,8 @@
         <form id="form-forgot">
             <div class="form-group">
                 <label>USERNAME</label>
-                <input type="text" id="forgot-username" name="username" class="data-input" required autocomplete="username">
+                <input type="text" id="forgot-username" name="username" class="data-input" required
+                    autocomplete="username">
             </div>
             <button type="submit" class="btn btn-secondary" id="btn-submit-forgot">SEND EMAIL</button>
         </form>
@@ -84,16 +92,19 @@
     <!-- Reset Password Pane -->
     <div id="reset-pane" class="auth-pane-amber">
         <h3>RESET PASSWORD</h3>
-        <div id="reset-feedback" class="auth-pane-feedback">Create a new password. Ensure your password exceeds 6 characters.</div>
+        <div id="reset-feedback" class="auth-pane-feedback">Create a new password. Ensure your password exceeds 6
+            characters.</div>
 
         <form id="form-reset">
             <div class="form-group">
                 <label>NEW PASSWORD</label>
-                <input type="password" id="reset-password" name="password" class="data-input" required autocomplete="new-password" minlength="6">
+                <input type="password" id="reset-password" name="password" class="data-input" required
+                    autocomplete="new-password" minlength="6">
             </div>
             <div class="form-group">
                 <label>VERIFY PASSWORD</label>
-                <input type="password" id="reset-password-verify" name="password_verify" class="data-input" required autocomplete="new-password" minlength="6">
+                <input type="password" id="reset-password-verify" name="password_verify" class="data-input" required
+                    autocomplete="new-password" minlength="6">
             </div>
             <button type="submit" class="btn btn-primary" id="btn-submit-reset" disabled>CONFIRM</button>
         </form>
