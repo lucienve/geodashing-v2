@@ -4,7 +4,7 @@
         "squizlabs/php_codesniffer": "^4.0"
     },
     "require": {
-        "google/cloud-storage": "^1.50",
+        "google/cloud-storage": "^2.3",
         "ext-gd": "*",
         "google/apiclient": "^2.15",
         "symfony/mime": "^7.0",
