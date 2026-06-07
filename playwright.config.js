@@ -31,6 +31,6 @@ module.exports = defineConfig({
   webServer: {
     command: 'docker compose -f e2e/docker-compose.yml up --build',
     url: 'http://localhost:8081',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,
   },
 });
