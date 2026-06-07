@@ -107,16 +107,8 @@ class GeoContextService
             urlencode($this->apiKey)
         );
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode !== 200 || !$response) {
-            error_log("GeoContextService getTimezoneOffset failed with HTTP {$httpCode}");
+        $response = $this->makeApiCall($url, 'getTimezoneOffset');
+        if ($response === null) {
             return 0;
         }
 
@@ -148,15 +140,8 @@ class GeoContextService
 
         $url = sprintf("%s/maps/api/geocode/json?latlng=%f,%f&key=%s", $this->apiBaseUrl, $lat, $lon, urlencode($this->apiKey));
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode !== 200 || !$response) {
+        $response = $this->makeApiCall($url);
+        if ($response === null) {
             return null;
         }
 
@@ -289,16 +274,8 @@ class GeoContextService
             urlencode($this->apiKey)
         );
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode !== 200 || !$response) {
-            error_log("GeoContextService getElevation failed with HTTP {$httpCode}");
+        $response = $this->makeApiCall($url, 'getElevation');
+        if ($response === null) {
             return null;
         }
 
@@ -411,5 +388,32 @@ class GeoContextService
 
         $last = array_pop($annotations);
         return ", and is " . implode(", ", $annotations) . " and " . $last;
+    }
+
+    /**
+     * Helper to perform a GET API request using cURL with a 5-second timeout.
+     *
+     * @param string $url The API URL to request.
+     * @param string|null $contextErrorDesc Contextual error description for error logs, or null to suppress logging.
+     * @return string|null The response body, or null on failure.
+     */
+    private function makeApiCall(string $url, ?string $contextErrorDesc = null): ?string
+    {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || !$response) {
+            if ($contextErrorDesc !== null) {
+                error_log("GeoContextService {$contextErrorDesc} failed with HTTP {$httpCode}");
+            }
+            return null;
+        }
+
+        return $response;
     }
 }
