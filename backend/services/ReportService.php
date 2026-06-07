@@ -40,7 +40,9 @@ class ReportService
             $configPath = __DIR__ . '/../config.ini';
             $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
             $apiKey = $config['GOOGLE_MAPS_API_KEY'] ?? '';
-            $this->geoService = new GeoContextService($this->db, $apiKey);
+            $apiBaseUrl = $config['GOOGLE_MAPS_API_BASE_URL']
+                ?? ((getenv('APP_ENV') === 'testing') ? 'http://127.0.0.1:8081/api/mock_maps.php?' : 'https://maps.googleapis.com');
+            $this->geoService = new GeoContextService($this->db, $apiKey, $apiBaseUrl);
         } else {
             $this->geoService = $geoService;
         }

@@ -157,8 +157,10 @@ class EditService
             $configPath = __DIR__ . '/../config.ini';
             $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
             $apiKey = $config['GOOGLE_MAPS_API_KEY'] ?? '';
+            $apiBaseUrl = $config['GOOGLE_MAPS_API_BASE_URL']
+                ?? ((getenv('APP_ENV') === 'testing') ? 'http://127.0.0.1:8081/api/mock_maps.php?' : 'https://maps.googleapis.com');
 
-            $geoContextService = new GeoContextService($this->db, $apiKey);
+            $geoContextService = new GeoContextService($this->db, $apiKey, $apiBaseUrl);
             $geoContext = $geoContextService->getDashpointContext((float)$visit['dp_lat'], (float)$visit['dp_lon'], $dashpointId);
 
             $huntsStmt = $this->db->prepare("SELECT COUNT(id) AS previous_hunts FROM visits WHERE user_id = :uid AND reported_time < :visit_time");

@@ -34,7 +34,7 @@ class Database
 
             // Intercept credentials securely for the E2E testing framework
             if ((getenv('APP_ENV') ?: ($_ENV['APP_ENV'] ?? '')) === 'testing') {
-                $host = '127.0.0.1';
+                $host = getenv('DB_HOST') ?: '127.0.0.1';
                 $port = $config['DB_PORT'] ?? '3306';
                 $db   = 'geodashing_test';
                 $user = 'geodashing_test';

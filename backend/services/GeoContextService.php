@@ -26,15 +26,22 @@ class GeoContextService
     private string $apiKey;
 
     /**
+     * @var string The Google Maps API base URL.
+     */
+    private string $apiBaseUrl;
+
+    /**
      * Constructor.
      *
      * @param PDO $db The PDO connection instance.
      * @param string $apiKey The Google Maps API Key.
+     * @param string $apiBaseUrl The Google Maps API base URL.
      */
-    public function __construct(PDO $db, string $apiKey)
+    public function __construct(PDO $db, string $apiKey, string $apiBaseUrl = 'https://maps.googleapis.com')
     {
         $this->db = $db;
         $this->apiKey = $apiKey;
+        $this->apiBaseUrl = $apiBaseUrl;
     }
 
     /**
@@ -92,7 +99,8 @@ class GeoContextService
 
         $timestamp = $timestamp ?? time();
         $url = sprintf(
-            "https://maps.googleapis.com/maps/api/timezone/json?location=%f,%f&timestamp=%d&key=%s",
+            "%s/maps/api/timezone/json?location=%f,%f&timestamp=%d&key=%s",
+            $this->apiBaseUrl,
             $lat,
             $lon,
             $timestamp,
@@ -138,7 +146,7 @@ class GeoContextService
             return null;
         }
 
-        $url = sprintf("https://maps.googleapis.com/maps/api/geocode/json?latlng=%f,%f&key=%s", $lat, $lon, urlencode($this->apiKey));
+        $url = sprintf("%s/maps/api/geocode/json?latlng=%f,%f&key=%s", $this->apiBaseUrl, $lat, $lon, urlencode($this->apiKey));
 
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
@@ -274,7 +282,8 @@ class GeoContextService
         }
 
         $url = sprintf(
-            "https://maps.googleapis.com/maps/api/elevation/json?locations=%f,%f&key=%s",
+            "%s/maps/api/elevation/json?locations=%f,%f&key=%s",
+            $this->apiBaseUrl,
             $lat,
             $lon,
             urlencode($this->apiKey)

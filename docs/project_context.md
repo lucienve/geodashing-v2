@@ -198,5 +198,11 @@ The application allows users to participate in global geographic games where the
 - Added comprehensive unit test coverage in `AuthServiceTest.php` verifying subscription state storage and verification endpoint response.
 
 ### 29. Session Restoration on Email Verification Success
-- Resolved session incompleteness issue where `$_SESSION['username']` was missing after successful email token verification, causing subsequent validation endpoints to reject the active session and prevent showing the victory card.
 - Updated `AuthService::verifyEmail` to return the `username` upon verification, and updated `verify.php` to persist it in the active session variables.  Issue #18
+
+### 30. Containerized E2E Testing Server & Performance Optimization
+- Replaced the single-threaded PHP built-in CLI server setup for E2E tests with a highly concurrent Apache + PHP 8.3 container environment in Docker Compose.  Issue #21
+- Shared the GCS emulator's network namespace (`network_mode: "service:fake-gcs-server"`) to maintain dynamic backend and frontend integration URLs without custom local hostname configuration.
+- Updated the database connection library `Database.php` to resolve `DB_HOST` dynamically in testing mode.
+- Reconfigured the GitHub Actions workflow (`ci-e2e.yml`) to start all services via Docker Compose, establishing 100% test parity between local dev and CI.
+- Mocked external Google Maps API requests (elevation, timezone, geocoding) by routing them to a local mock API controller (`public/api/mock_maps.php`) via a constructor-injected base URL configuration, preventing production logic from checking E2E environment variables and reducing average test suite execution time from 4.5 minutes to 2.1 minutes (a 53% speedup).

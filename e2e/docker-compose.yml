@@ -23,9 +23,29 @@ services:
     restart: unless-stopped
     ports:
       - "4443:4443"
+      - "8081:8081"
     volumes:
       - ./gcs-data:/data
     command: >-
       -scheme http
       -public-host localhost:4443
       -data /data
+
+  # Multi-process Apache + PHP 8.3 E2E test server
+  web:
+    build:
+      context: ..
+      dockerfile: e2e/Dockerfile
+    restart: unless-stopped
+    network_mode: "service:fake-gcs-server"
+    volumes:
+      - ..:/var/www/html
+    environment:
+      APP_ENV: testing
+      DB_HOST: mysql
+      GCS_EMULATOR_HOST: http://127.0.0.1:4443
+    depends_on:
+      mysql:
+        condition: service_healthy
+      fake-gcs-server:
+        condition: service_started

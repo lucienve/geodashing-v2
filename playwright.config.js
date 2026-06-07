@@ -29,7 +29,7 @@ module.exports = defineConfig({
   globalSetup: require.resolve('./e2e/global-setup.js'),
 
   webServer: {
-    command: 'APP_ENV=testing GCS_EMULATOR_HOST=http://127.0.0.1:4443 php -S localhost:8081 -t public/ e2e/router.php',
+    command: 'docker compose -f e2e/docker-compose.yml up --build',
     url: 'http://localhost:8081',
     reuseExistingServer: !process.env.CI,
   },
