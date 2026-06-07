@@ -182,3 +182,9 @@ The application allows users to participate in global geographic games where the
 - Implemented global promise state caching for game context data loading (`window.gameContextLoaded`) to prevent race conditions during deep-linked route controller activations.
 - Integrated URL hash rewriting inside the dropdown `#game-selector` change handler to seamlessly synchronize the active path while navigating leaderboards, ensuring that changing the game dynamically updates the URL, and resetting it to `#leaderboard` when switching back to the active game.
 - Added comprehensive integration tests in `e2e/multi_game.spec.js` to verify specific game leaderboard deep-linking, context updates, and standings rendering.
+
+### 27. Image Orientation Correction for Thumbnails
+- Addressed EXIF orientation mismatch where thumbnail images displayed at incorrect orientations (rotated by 90 degrees) relative to their full-size counterparts.
+- Implemented `readExifData` helper inside `MediaService.php` to fetch metadata safely.
+- Enhanced `generateThumbnail` in `MediaService.php` to parse EXIF Orientation tags and automatically perform corresponding rotations/flips using PHP GD functions (`imagerotate` and `imageflip`) before resizing.
+- Added comprehensive unit test coverage in `MediaServiceTest.php` simulating image uploads with specific EXIF orientation tags and asserting corrected thumbnail aspect/dimension layouts.

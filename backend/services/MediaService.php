@@ -248,6 +248,57 @@ class MediaService
             return null;
         }
 
+        // Correct orientation based on EXIF metadata if present
+        $exif = $this->readExifData($sourcePath);
+        if ($exif && !empty($exif['Orientation'])) {
+            $orientation = (int)$exif['Orientation'];
+            switch ($orientation) {
+                case 2:
+                    imageflip($image, IMG_FLIP_HORIZONTAL);
+                    break;
+                case 3:
+                    $rotated = @imagerotate($image, 180, 0);
+                    if ($rotated !== false) {
+                        imagedestroy($image);
+                        $image = $rotated;
+                    }
+                    break;
+                case 4:
+                    imageflip($image, IMG_FLIP_VERTICAL);
+                    break;
+                case 5:
+                    imageflip($image, IMG_FLIP_VERTICAL);
+                    $rotated = @imagerotate($image, 270, 0);
+                    if ($rotated !== false) {
+                        imagedestroy($image);
+                        $image = $rotated;
+                    }
+                    break;
+                case 6:
+                    $rotated = @imagerotate($image, 270, 0);
+                    if ($rotated !== false) {
+                        imagedestroy($image);
+                        $image = $rotated;
+                    }
+                    break;
+                case 7:
+                    imageflip($image, IMG_FLIP_HORIZONTAL);
+                    $rotated = @imagerotate($image, 270, 0);
+                    if ($rotated !== false) {
+                        imagedestroy($image);
+                        $image = $rotated;
+                    }
+                    break;
+                case 8:
+                    $rotated = @imagerotate($image, 90, 0);
+                    if ($rotated !== false) {
+                        imagedestroy($image);
+                        $image = $rotated;
+                    }
+                    break;
+            }
+        }
+
         $width = imagesx($image);
         $height = imagesy($image);
 
@@ -309,8 +360,7 @@ class MediaService
      */
     private function parseExifGPS(string $path): ?array
     {
-        // Suppress warnings because WebP/PNG uploads often lack EXIF headers.
-        $exif = @exif_read_data($path);
+        $exif = $this->readExifData($path);
         if (!$exif || !isset($exif['GPSLatitude'], $exif['GPSLongitude'], $exif['GPSLatitudeRef'], $exif['GPSLongitudeRef'])) {
             return null;
         }
@@ -387,5 +437,20 @@ class MediaService
             ];
         }
         return $normalized;
+    }
+
+    /**
+     * Reads EXIF data from an image file path.
+     *
+     * @param string $path Local absolute path to the image file.
+     * @return array|null
+     */
+    protected function readExifData(string $path): ?array
+    {
+        if (!function_exists('exif_read_data')) {
+            return null;
+        }
+        $data = @exif_read_data($path);
+        return $data === false ? null : $data;
     }
 }

@@ -151,4 +151,72 @@ class MediaServiceTest extends TestCase
         $urlsToDelete = ['https://storage.googleapis.com/geodashing-test-blobs/visits/GD001/my_pic.jpg'];
         $service->deletePhotos($urlsToDelete);
     }
+
+    /**
+     * Verifies that the thumbnail generator correctly rotates the image based on EXIF orientation.
+     */
+    #[Test]
+    public function processUploadRotatesThumbnailBasedOnExif()
+    {
+        if (!extension_loaded('gd')) {
+            $this->markTestSkipped('GD extension not loaded');
+        }
+
+        // Construct our custom testable media service with mocked EXIF reader
+        $service = new class ('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock) extends MediaService {
+            public ?array $mockExif = null;
+            protected function readExifData(string $path): ?array
+            {
+                return $this->mockExif;
+            }
+        };
+
+        // Set the mock EXIF to simulate orientation 6 (90 degrees CW)
+        $service->mockExif = ['Orientation' => 6];
+
+        // Construct a valid tiny 10x20 JPEG image (width 10, height 20)
+        $tempFile = tempnam(sys_get_temp_dir(), 'fktst');
+        $img = imagecreatetruecolor(10, 20);
+        imagejpeg($img, $tempFile);
+        imagedestroy($img);
+
+        $fakeFiles = [
+            'name' => ['valid_pic.jpg'],
+            'type' => ['image/jpeg'],
+            'tmp_name' => [$tempFile],
+            'error' => [UPLOAD_ERR_OK],
+            'size' => [filesize($tempFile)]
+        ];
+
+        // We expect upload to be called twice:
+        // 1. For the original image (which stays 10x20 because we don't modify the source file upload)
+        // 2. For the thumbnail (which should be rotated 90 deg CW, resulting in width 20, height 10)
+        $thumbWidth = null;
+        $thumbHeight = null;
+
+        $this->bucketMock->expects($this->exactly(2))
+            ->method('upload')
+            ->willReturnCallback(function ($resource, $options) use (&$thumbWidth, &$thumbHeight) {
+                // If it's the thumbnail, the object name ends with '_thumb.jpg'
+                if (isset($options['name']) && strpos($options['name'], '_thumb.jpg') !== false) {
+                    $meta = stream_get_meta_data($resource);
+                    $path = $meta['uri'];
+                    $size = getimagesize($path);
+                    if ($size !== false) {
+                        $thumbWidth = $size[0];
+                        $thumbHeight = $size[1];
+                    }
+                }
+                return $this->createMock(\Google\Cloud\Storage\StorageObject::class);
+            });
+
+        $service->uploadPhotos($fakeFiles, 'GD-TEST', 1);
+
+        unlink($tempFile);
+
+        // Assert that the thumbnail was rotated.
+        // Width should be 20 and height should be 10 (rotated 90 degrees)
+        $this->assertEquals(20, $thumbWidth, "Thumbnail width should be 20 after rotation");
+        $this->assertEquals(10, $thumbHeight, "Thumbnail height should be 10 after rotation");
+    }
 }
