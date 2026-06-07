@@ -258,3 +258,7 @@ The application allows users to participate in global geographic games where the
 - Decoupled styling logic from frontend JS by implementing CSS classes in [index.css](public/css/index.css) for leaderboard cells and visual bracketing layout.
 - Modified the `#leaderboard` controller in [controllers.js](public/js/controllers.js) to pre-process raw standings data into contiguous groups of ties, dynamically merging the rank cell using `rowspan` and formatting the rank with a `T` prefix (e.g. `T1`).
 - Confirmed that all backend PHP/Python tests, linters, and frontend ESLint and Playwright integration tests pass successfully with zero errors.
+
+### 40. GitHub Dependabot Configuration
+- Added a new GitHub Dependabot configuration file [dependabot.yml](../.github/dependabot.yml) to enable weekly version updates.
+- Enabled version tracking for the project's dependency ecosystems: npm, composer, pip, and github-actions.
