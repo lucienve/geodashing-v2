@@ -262,3 +262,9 @@ The application allows users to participate in global geographic games where the
 ### 40. GitHub Dependabot Configuration
 - Added a new GitHub Dependabot configuration file [dependabot.yml](../.github/dependabot.yml) to enable weekly version updates.
 - Enabled version tracking for the project's dependency ecosystems: npm, composer, pip, and github-actions.
+
+### 41. E2E Gemini Model and System Instructions Validation Suite
+- Designed and implemented a manual, on-demand end-to-end evaluation suite to validate new Gemini models and `summary_system_instructions.txt` changes against static log benchmarks.
+- Created [test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py) containing a static log parser, a custom rule-based HTML validator (checking tags whitelist, XHTML self-closing void tags, absolute SPA links, and image thumbnail hierarchies), and an LLM-as-a-Judge API grader with a strict score threshold of $\ge 4/5$.
+- Created developer documentation [gemini_model_evaluation.md](gemini_model_evaluation.md) detailing configuration setup and manual run commands.
+- Verified 100% test success (including skipped status by default) and a perfect 10.00/10 pylint code rating across the entire test suite.
