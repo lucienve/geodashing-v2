@@ -31,6 +31,8 @@ vendor/
 data/*
 !data/README.md
 !data/summary_system_instructions.txt
+!data/summary_examples/
+data/summary_examples/example_*
 
 # IDEs and Editors
 .vscode/
