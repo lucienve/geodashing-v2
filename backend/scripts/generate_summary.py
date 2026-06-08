@@ -145,7 +145,11 @@ def _extract_scores(
         ORDER BY total_points DESC, u.username ASC
     """
     cursor.execute(score_query, (game_id,))
-    return typing.cast(list[tuple[str, int]], cursor.fetchall())
+    rows = cursor.fetchall()
+    return [
+        (str(r[0]), int(typing.cast(typing.Any, r[1])) if r[1] is not None else 0)
+        for r in rows
+    ]
 
 
 def _parse_photos_json(photos_json: str | None) -> list[dict[str, str]]:
