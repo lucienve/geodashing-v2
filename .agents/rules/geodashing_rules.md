@@ -19,7 +19,7 @@ Ensure all code and syntax is explicitly compatible with the following versions:
 
 ## 3. Backend Directives: Python Architecture
 - **Database Rules:** Connect using `mysql-connector-python`. **Do not use an ORM**. You must use strictly parameterized queries / prepared statements for all database interactions. String interpolation or concatenation for SQL queries is strictly forbidden to prevent SQL injections.
-- **Testing & Linting Commands:** Run `pytest backend/` for testing and `pylint backend/` for linting.
+- **Testing, Linting, & Type Checking Commands:** Run `pytest backend/` for testing, `pylint backend/` for linting, and `.venv/bin/mypy backend/` for type checking.
 
 ## 4. Backend Directives: PHP
 - **Documentation:** Utilize clear PHPDoc-style block comments (`/** ... */`) for functions, classes, and properties.
