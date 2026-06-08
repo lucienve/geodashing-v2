@@ -14,7 +14,8 @@ from backend.scripts.generate_summary import (
     get_gemini_client,
     construct_new_data,
     _generate_summary,
-    LogEntry
+    LogEntry,
+    UploadContext
 )
 
 # Skip all tests in this module unless RUN_LIVE_API_EVAL=1 is set in the environment
@@ -357,7 +358,7 @@ def _get_eval_config(cfg_p: str) -> tuple[dict, google.genai.Client, str]:
 # This duplicate code block is architecturally necessary because the test suite
 # replicates the local temp file and remote GenAI file cleanup logic from
 # generate_summary.py to ensure identical resource hygiene under test conditions.
-def _cleanup_context(client: google.genai.Client, upload_context: dict) -> None:
+def _cleanup_context(client: google.genai.Client, upload_context: UploadContext) -> None:
     """Closes and deletes all local temporary files and uploaded remote assets."""
     for local_file in upload_context["local_temp_files"]:
         try:
@@ -391,7 +392,7 @@ def test_evaluate_benchmark_summary(prefix: str) -> None:
 
     raw_input_text = _load_benchmark_input(exs_d, prefix)
     parsed = parse_benchmark_input(raw_input_text)
-    upload_context = {
+    upload_context: UploadContext = {
         "client": client,
         "local_temp_files": [],
         "uploaded_ai_files": []
