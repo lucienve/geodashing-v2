@@ -160,10 +160,13 @@ def _parse_photos_json(photos_json: str | None) -> list[dict[str, str]]:
             photos_data = json.loads(photos_json)
             for item in photos_data:
                 if isinstance(item, dict) and 'url' in item and 'thumb_url' in item:
-                    photos.append({
+                    photo_dict = {
                         'thumb_url': item['thumb_url'],
                         'url': item['url']
-                    })
+                    }
+                    if 'caption' in item and isinstance(item['caption'], str):
+                        photo_dict['caption'] = item['caption']
+                    photos.append(photo_dict)
         except json.JSONDecodeError:
             pass
     return photos
@@ -273,7 +276,18 @@ def _append_photo_parts(
     for photo in photos:
         full_url = photo['url']
         thumb_url = photo['thumb_url']
-        parts.append(f"Thumb: {thumb_url} | Full: {full_url}\nImage Content:\n")
+        caption = photo.get('caption')
+        if caption:
+            parts.append(
+                f"Thumb: {thumb_url} | Full: {full_url}\n"
+                f"Caption: {caption}\n"
+                "Image Content:\n"
+            )
+        else:
+            parts.append(
+                f"Thumb: {thumb_url} | Full: {full_url}\n"
+                "Image Content:\n"
+            )
 
         local_path = download_file_to_temp(full_url)
         if local_path:

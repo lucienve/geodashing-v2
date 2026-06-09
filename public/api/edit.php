@@ -72,8 +72,13 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             $mediaService = new MediaService('geodashing-v2', 'geodashing-v2-blobs', $keyPath);
         }
 
+        $newCaptions = $_POST['new_captions'] ?? [];
+        if (!is_array($newCaptions)) {
+            $newCaptions = [];
+        }
+
         $editService = new EditService($db, $mediaService);
-        $result = $editService->processEdit($_SESSION['user_id'], $dashpoint_id, $notes, $keptPhotosRaw, $_FILES['photos'] ?? null, $sendEmail);
+        $result = $editService->processEdit($_SESSION['user_id'], $dashpoint_id, $notes, $keptPhotosRaw, $_FILES['photos'] ?? null, $sendEmail, $newCaptions);
 
         if ($result['status'] === 'success') {
             echo json_encode($result);

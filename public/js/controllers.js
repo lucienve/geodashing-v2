@@ -7,6 +7,77 @@
 
 let activeIntervals = [];
 
+/**
+ * Opens a glassmorphic modal to view the image, show EXIF details, and write a caption.
+ */
+function openCaptionModal(imgSrc, initialCaption, onSave) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'caption-modal-overlay';
+
+    const content = document.createElement('div');
+    content.className = 'modal-content caption-modal-content';
+
+    const closeBtn = document.createElement('span');
+    closeBtn.className = 'modal-close';
+    closeBtn.innerHTML = '&times;';
+    const closeModal = () => {
+        overlay.remove();
+    };
+    closeBtn.addEventListener('click', closeModal);
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeModal();
+    });
+
+    content.innerHTML = `
+        <h3 class="caption-modal-title">
+            Photo Caption
+        </h3>
+        <div class="caption-modal-img-wrap">
+            <img src="${imgSrc}" class="caption-modal-img">
+        </div>
+        <div class="form-group caption-modal-group">
+            <label for="modal-caption-text" class="caption-modal-label">
+                Caption (Max 200 chars)
+            </label>
+            <textarea id="modal-caption-text" class="data-input caption-textarea" maxlength="200" placeholder="Describe what you saw here..."></textarea>
+            <div id="modal-char-counter" class="caption-modal-counter">200 chars remaining</div>
+        </div>
+        <button type="button" class="btn btn-primary caption-modal-save-btn" id="btn-save-caption">Save Caption</button>
+    `;
+
+    content.insertBefore(closeBtn, content.firstChild);
+    overlay.appendChild(content);
+    document.body.appendChild(overlay);
+
+    const textarea = document.getElementById('modal-caption-text');
+    if (textarea) {
+        textarea.value = initialCaption || '';
+        textarea.focus();
+        
+        const updateCounter = () => {
+            const len = textarea.value.length;
+            const remaining = 200 - len;
+            const counter = document.getElementById('modal-char-counter');
+            if (counter) {
+                counter.innerText = `${remaining} chars remaining`;
+                counter.classList.toggle('warning', remaining <= 10);
+            }
+        };
+        textarea.addEventListener('input', updateCounter);
+        updateCounter();
+    }
+
+    const saveBtn = document.getElementById('btn-save-caption');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', () => {
+            const captionValue = textarea ? textarea.value.trim() : '';
+            onSave(captionValue);
+            closeModal();
+        });
+    }
+}
+
 document.addEventListener('routeLoaded', (e) => {
     const route = e.detail.route;
 
@@ -173,7 +244,12 @@ document.addEventListener('routeLoaded', (e) => {
                                         imgHtml += `<div style="text-align:center; font-size:0.75rem; color:var(--accent-green); margin-top:0.3rem;">[ EXIF GPS: ${photo.lat.toFixed(5)}, ${photo.lon.toFixed(5)} | DISTANCE FROM DASHPOINT: ${distance.toFixed(1)}m ]</div>`;
                                     }
 
-                                    html += `<div>${imgHtml}</div>`;
+                                    let captionHtml = '';
+                                    if (photo.caption && photo.caption.trim() !== '') {
+                                        captionHtml = `<div class="photo-caption-text">"${window.escapeHTML(photo.caption)}"</div>`;
+                                    }
+
+                                    html += `<div style="margin-bottom: 0.5rem;">${imgHtml}${captionHtml}</div>`;
                                 });
                                 html += `</div>`;
                             }
@@ -242,6 +318,8 @@ document.addEventListener('routeLoaded', (e) => {
 
         let currentPhotoQueue = new DataTransfer();
 
+        let photoCaptions = [];
+
         const renderPhotoGrid = () => {
             if (!previewGrid) return;
             previewGrid.innerHTML = '';
@@ -263,13 +341,39 @@ document.addEventListener('routeLoaded', (e) => {
                     ev.preventDefault();
                     ev.stopPropagation();
                     const newDt = new DataTransfer();
+                    const newCaptions = [];
                     Array.from(currentPhotoQueue.files).forEach((f, i) => {
-                        if (i !== index) newDt.items.add(f);
+                        if (i !== index) {
+                            newDt.items.add(f);
+                            newCaptions.push(photoCaptions[i]);
+                        }
                     });
                     currentPhotoQueue = newDt;
+                    photoCaptions = newCaptions;
                     if (inputPhotos) inputPhotos.files = currentPhotoQueue.files;
                     renderPhotoGrid();
                 });
+
+                // Tap to add caption
+                wrapper.addEventListener('click', (e) => {
+                    if (e.target === deleteBtn) return;
+                    const imgSrc = URL.createObjectURL(file);
+                    openCaptionModal(imgSrc, photoCaptions[index], (newCaption) => {
+                        photoCaptions[index] = newCaption;
+                        renderPhotoGrid();
+                    });
+                });
+
+                const badge = document.createElement('div');
+                badge.className = 'photo-caption-badge';
+                const hasCaption = photoCaptions[index] && photoCaptions[index].trim() !== '';
+                if (hasCaption) {
+                    badge.classList.add('has-caption');
+                    badge.innerText = '💬 CAPTIONED';
+                } else {
+                    badge.innerText = '➕ ADD CAPTION';
+                }
+                wrapper.appendChild(badge);
 
                 // Drag and Drop implementation
                 wrapper.addEventListener('dragstart', (ev) => {
@@ -303,6 +407,9 @@ document.addEventListener('routeLoaded', (e) => {
                         const [movedFile] = filesArray.splice(sourceIndex, 1);
                         filesArray.splice(targetIndex, 0, movedFile);
 
+                        const [movedCaption] = photoCaptions.splice(sourceIndex, 1);
+                        photoCaptions.splice(targetIndex, 0, movedCaption);
+
                         const newDt = new DataTransfer();
                         filesArray.forEach(f => newDt.items.add(f));
                         currentPhotoQueue = newDt;
@@ -329,6 +436,7 @@ document.addEventListener('routeLoaded', (e) => {
                 newFiles.forEach(file => {
                     if (currentPhotoQueue.files.length < 10) {
                         currentPhotoQueue.items.add(file);
+                        photoCaptions.push('');
                     } else {
                         exceeded = true;
                     }
@@ -512,6 +620,9 @@ document.addEventListener('routeLoaded', (e) => {
 
                     // 4. Actuating the standard POST request wrapper wrapping all data safely
                     const formData = new FormData(reportForm);
+                    photoCaptions.forEach(c => {
+                        formData.append('captions[]', c);
+                    });
                     const result = await API.logVisit(formData);
 
                     if (result.status === 'success') {
@@ -525,6 +636,9 @@ document.addEventListener('routeLoaded', (e) => {
                         const targetPersistence = document.getElementById('dashpoint_id').value;
                         reportForm.reset();
                         document.getElementById('dashpoint_id').value = targetPersistence;
+                        currentPhotoQueue = new DataTransfer();
+                        photoCaptions = [];
+                        renderPhotoGrid();
 
                         btnGeo.innerText = "SYNC LIVE GPS";
                         btnGeo.style.color = ""; // Reset inline CSS
@@ -994,17 +1108,23 @@ document.addEventListener('routeLoaded', (e) => {
                     if (userVisit.photos && userVisit.photos.length > 0) {
                         existingPhotosContainer.innerHTML = ''; // Pop the generic "None" message
 
-                        userVisit.photos.forEach(photo => {
-                            // Extract String uniquely ensuring structural backwards-compatibility
+                        userVisit.photos.forEach((photo) => {
                             const urlStr = typeof photo === 'string' ? photo : photo.url;
-                            keptPhotosArray.push(urlStr);
+                            const captionStr = typeof photo === 'string' ? '' : (photo.caption || '');
+                            keptPhotosArray.push({ url: urlStr, caption: captionStr });
 
                             const wrap = document.createElement('div');
                             wrap.style.position = 'relative';
+                            wrap.className = 'photo-preview-wrapper';
+                            wrap.style.width = '100%';
+                            wrap.style.height = '120px';
+                            wrap.style.cursor = 'pointer';
 
                             const img = document.createElement('img');
                             img.src = urlStr;
                             img.style.width = '100%';
+                            img.style.height = '100%';
+                            img.style.objectFit = 'cover';
                             img.style.border = '1px solid var(--accent-amber)';
                             wrap.appendChild(img);
 
@@ -1022,10 +1142,11 @@ document.addEventListener('routeLoaded', (e) => {
                             delBtn.style.cursor = 'pointer';
                             delBtn.style.fontWeight = 'bold';
                             delBtn.style.borderRadius = '3px';
+                            delBtn.style.zIndex = '10';
 
-                            delBtn.onclick = () => {
-                                // Purge the URL from the retained struct.
-                                keptPhotosArray = keptPhotosArray.filter(u => u !== urlStr);
+                            delBtn.onclick = (e) => {
+                                e.stopPropagation();
+                                keptPhotosArray = keptPhotosArray.filter(item => item.url !== urlStr);
                                 keptPhotosInput.value = JSON.stringify(keptPhotosArray);
                                 wrap.remove();
 
@@ -1034,6 +1155,36 @@ document.addEventListener('routeLoaded', (e) => {
                                 }
                             };
 
+                            const badge = document.createElement('div');
+                            badge.className = 'photo-caption-badge';
+                            
+                            const updateBadgeVisual = () => {
+                                const currentItem = keptPhotosArray.find(item => item.url === urlStr);
+                                const hasCap = currentItem && currentItem.caption && currentItem.caption.trim() !== '';
+                                if (hasCap) {
+                                    badge.classList.add('has-caption');
+                                    badge.innerText = '💬 CAPTIONED';
+                                } else {
+                                    badge.classList.remove('has-caption');
+                                    badge.innerText = '✏️ EDIT CAPTION';
+                                }
+                            };
+
+                            wrap.addEventListener('click', (e) => {
+                                if (e.target === delBtn) return;
+                                
+                                const targetIndex = keptPhotosArray.findIndex(item => item.url === urlStr);
+                                if (targetIndex !== -1) {
+                                    openCaptionModal(urlStr, keptPhotosArray[targetIndex].caption, (newCaption) => {
+                                        keptPhotosArray[targetIndex].caption = newCaption;
+                                        keptPhotosInput.value = JSON.stringify(keptPhotosArray);
+                                        updateBadgeVisual();
+                                    });
+                                }
+                            });
+
+                            updateBadgeVisual();
+                            wrap.appendChild(badge);
                             wrap.appendChild(delBtn);
                             existingPhotosContainer.appendChild(wrap);
                         });
@@ -1043,36 +1194,150 @@ document.addEventListener('routeLoaded', (e) => {
                 });
         });
 
-        // 4. Capture the form submission securely routing to the new Diff endpoint
+        // 4. Capture new files and captions during edit
         const editPhotosInput = document.getElementById('edit-photos');
-        if (editPhotosInput) {
-            editPhotosInput.addEventListener('change', () => {
-                let keptPhotosCount = 0;
-                try {
-                    const keptPhotos = JSON.parse(keptPhotosInput.value);
-                    if (Array.isArray(keptPhotos)) {
-                        keptPhotosCount = keptPhotos.length;
-                    }
-                } catch (_) {
-                    keptPhotosCount = 0;
-                }
+        const editNewPhotoPreviewGrid = document.getElementById('edit-new-photo-preview-grid');
+        const btnAddEditPhotos = document.getElementById('btn-add-edit-photos');
 
-                let newPhotosCount = editPhotosInput.files ? editPhotosInput.files.length : 0;
-                let newPhotosSize = 0;
-                if (editPhotosInput.files) {
-                    Array.from(editPhotosInput.files).forEach(file => {
-                        newPhotosSize += file.size;
+        let newPhotoQueue = new DataTransfer();
+        let newPhotoCaptions = [];
+
+        const renderEditNewPhotoGrid = () => {
+            if (!editNewPhotoPreviewGrid) return;
+            editNewPhotoPreviewGrid.innerHTML = '';
+            Array.from(newPhotoQueue.files).forEach((file, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.classList.add('photo-preview-wrapper');
+                wrapper.draggable = true;
+                wrapper.dataset.index = index;
+
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.classList.add('photo-preview-item');
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.type = 'button';
+                deleteBtn.classList.add('photo-delete-btn');
+                deleteBtn.innerHTML = '&times;';
+                deleteBtn.addEventListener('click', (ev) => {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    const newDt = new DataTransfer();
+                    const newCaptions = [];
+                    Array.from(newPhotoQueue.files).forEach((f, i) => {
+                        if (i !== index) {
+                            newDt.items.add(f);
+                            newCaptions.push(newPhotoCaptions[i]);
+                        }
                     });
+                    newPhotoQueue = newDt;
+                    newPhotoCaptions = newCaptions;
+                    if (editPhotosInput) editPhotosInput.files = newPhotoQueue.files;
+                    renderEditNewPhotoGrid();
+                });
+
+                // Tap to add caption
+                wrapper.addEventListener('click', (e) => {
+                    if (e.target === deleteBtn) return;
+                    const imgSrc = URL.createObjectURL(file);
+                    openCaptionModal(imgSrc, newPhotoCaptions[index], (newCaption) => {
+                        newPhotoCaptions[index] = newCaption;
+                        renderEditNewPhotoGrid();
+                    });
+                });
+
+                const badge = document.createElement('div');
+                badge.className = 'photo-caption-badge';
+                const hasCaption = newPhotoCaptions[index] && newPhotoCaptions[index].trim() !== '';
+                if (hasCaption) {
+                    badge.classList.add('has-caption');
+                    badge.innerText = '💬 CAPTIONED';
+                } else {
+                    badge.innerText = '➕ ADD CAPTION';
+                }
+                wrapper.appendChild(badge);
+
+                // Drag and Drop implementation
+                wrapper.addEventListener('dragstart', (ev) => {
+                    ev.dataTransfer.effectAllowed = 'move';
+                    ev.dataTransfer.setData('text/plain', index);
+                    setTimeout(() => wrapper.style.opacity = '0.5', 0);
+                });
+
+                wrapper.addEventListener('dragend', () => {
+                    wrapper.style.opacity = '1';
+                });
+
+                wrapper.addEventListener('dragover', (ev) => {
+                    ev.preventDefault();
+                    ev.dataTransfer.dropEffect = 'move';
+                    wrapper.classList.add('photo-drag-over');
+                });
+
+                wrapper.addEventListener('dragleave', () => {
+                    wrapper.classList.remove('photo-drag-over');
+                });
+
+                wrapper.addEventListener('drop', (ev) => {
+                    ev.preventDefault();
+                    wrapper.classList.remove('photo-drag-over');
+                    const sourceIndex = parseInt(ev.dataTransfer.getData('text/plain'), 10);
+                    const targetIndex = index;
+
+                    if (sourceIndex !== targetIndex && !isNaN(sourceIndex)) {
+                        const filesArray = Array.from(newPhotoQueue.files);
+                        const [movedFile] = filesArray.splice(sourceIndex, 1);
+                        filesArray.splice(targetIndex, 0, movedFile);
+
+                        const [movedCaption] = newPhotoCaptions.splice(sourceIndex, 1);
+                        newPhotoCaptions.splice(targetIndex, 0, movedCaption);
+
+                        const newDt = new DataTransfer();
+                        filesArray.forEach(f => newDt.items.add(f));
+                        newPhotoQueue = newDt;
+                        if (editPhotosInput) editPhotosInput.files = newPhotoQueue.files;
+                        renderEditNewPhotoGrid();
+                    }
+                });
+
+                wrapper.appendChild(img);
+                wrapper.appendChild(deleteBtn);
+                editNewPhotoPreviewGrid.appendChild(wrapper);
+            });
+        };
+
+        if (btnAddEditPhotos && editPhotosInput) {
+            btnAddEditPhotos.addEventListener('click', () => {
+                editPhotosInput.click();
+            });
+
+            editPhotosInput.addEventListener('change', (e) => {
+                const newFiles = Array.from(e.target.files);
+                let exceeded = false;
+
+                newFiles.forEach(file => {
+                    let keptCount = 0;
+                    try {
+                        const kept = JSON.parse(keptPhotosInput.value);
+                        if (Array.isArray(kept)) keptCount = kept.length;
+                    } catch (err) {
+                        console.warn("Parsing kept photos failed:", err);
+                    }
+
+                    if (keptCount + newPhotoQueue.files.length < 10) {
+                        newPhotoQueue.items.add(file);
+                        newPhotoCaptions.push('');
+                    } else {
+                        exceeded = true;
+                    }
+                });
+
+                if (exceeded) {
+                    alert("Maximum 10 photos allowed.");
                 }
 
-                if (keptPhotosCount + newPhotosCount > 10) {
-                    alert(`Maximum 10 photos allowed. You currently have ${keptPhotosCount} retained and selected ${newPhotosCount} new photos.`);
-                }
-
-                const limitBytes = window.postSizeBytes || (25 * 1024 * 1024);
-                if (newPhotosSize > limitBytes) {
-                    alert(`Warning: The total size of new selected photos (${(newPhotosSize / 1024 / 1024).toFixed(1)}MB) exceeds the ${window.postMaxSize || '25M'} server upload limit. Please select fewer or smaller images.`);
-                }
+                editPhotosInput.files = newPhotoQueue.files;
+                renderEditNewPhotoGrid();
             });
         }
 
@@ -1091,14 +1356,11 @@ document.addEventListener('routeLoaded', (e) => {
                     keptPhotosCount = 0;
                 }
 
-                let newPhotosCount = 0;
+                let newPhotosCount = newPhotoQueue.files.length;
                 let newPhotosSize = 0;
-                if (editPhotosInput && editPhotosInput.files) {
-                    newPhotosCount = editPhotosInput.files.length;
-                    Array.from(editPhotosInput.files).forEach(file => {
-                        newPhotosSize += file.size;
-                    });
-                }
+                Array.from(newPhotoQueue.files).forEach(file => {
+                    newPhotosSize += file.size;
+                });
 
                 if (keptPhotosCount + newPhotosCount > 10) {
                     statusDiv.innerHTML = `<div class="alert alert-error">[-] EDIT REJECTED: Maximum 10 photos allowed (retained + new). You have ${keptPhotosCount} retained and selected ${newPhotosCount} new photos.</div>`;
@@ -1116,11 +1378,28 @@ document.addEventListener('routeLoaded', (e) => {
 
                 try {
                     const formData = new FormData(editForm);
+
+                    // Append new photo captions
+                    newPhotoCaptions.forEach(c => {
+                        formData.append('new_captions[]', c);
+                    });
+
                     const result = await API.editVisit(formData);
 
                     if (result.status === 'success') {
                         statusDiv.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] SYNCHRONIZED: ${result.message}</div>`;
                         submitBtn.innerText = "EDITS SAVED";
+                        
+                        // Clear new photos queue since they are now uploaded & saved
+                        newPhotoQueue = new DataTransfer();
+                        newPhotoCaptions = [];
+                        if (editPhotosInput) editPhotosInput.files = newPhotoQueue.files;
+                        renderEditNewPhotoGrid();
+                        
+                        // Wait briefly then reload hash to refresh details drawer
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
                     } else {
                         statusDiv.innerHTML = `<div class="alert alert-error">[-] EDIT REJECTED: ${result.message}</div>`;
                         submitBtn.disabled = false;

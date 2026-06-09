@@ -72,10 +72,11 @@ class MediaService
      * @param array $files The raw $_FILES['photos'] multidimensional array dump.
      * @param string $dashpointId The target dashpoint enforcing hierarchical naming.
      * @param int|string $userId The uploader identity bounding scope.
+     * @param array $captions Optional array of captions mapped to original photo indexes.
      * @return array Array of public GCS URLs mapping directly to the successfully stored images.
      * @throws Exception If an upload logically fails or hits invalid mime blocks.
      */
-    public function uploadPhotos(array $files, string $dashpointId, $userId): array
+    public function uploadPhotos(array $files, string $dashpointId, $userId, array $captions = []): array
     {
         $urls = [];
         $bucket = $this->storage->bucket($this->bucketName);
@@ -133,6 +134,16 @@ class MediaService
                 $extension
             );
 
+            // Extract standard EXIF GPS coordinates before modifying the local file.
+            $exifData = $this->parseExifGPS($file['tmp_name']);
+
+            // Embed IPTC caption metadata into the local JPEG temp file before upload if provided
+            $origIndex = $file['index'] ?? $index;
+            $caption = isset($captions[$origIndex]) ? trim((string)$captions[$origIndex]) : '';
+            if ($caption !== '') {
+                $this->embedIptcCaption($file['tmp_name'], $caption);
+            }
+
             // Execute the RESTful socket stream uploading binary payload into Google Cloud
             // Explicitly disabling resumable uploads forces a direct multipart stream preventing
             // the PHP Apache lifecycle from abandoning the background chunk process mid-upload.
@@ -170,15 +181,13 @@ class MediaService
                 $thumbUrl = "{$publicDomain}/{$this->bucketName}/{$thumbObjectName}";
             }
 
-            // Extract standard EXIF GPS coordinates before removing the local tmp_name.
-            $exifData = $this->parseExifGPS($file['tmp_name']);
-
             // Construct standard GS public URL path resolving identically via HTTP
             $urls[] = [
                 'url' => "{$publicDomain}/{$this->bucketName}/{$objectName}",
                 'thumb_url' => $thumbUrl,
                 'lat' => $exifData ? $exifData['lat'] : null,
-                'lon' => $exifData ? $exifData['lon'] : null
+                'lon' => $exifData ? $exifData['lon'] : null,
+                'caption' => $caption !== '' ? $caption : null
             ];
         }
 
@@ -418,7 +427,9 @@ class MediaService
         $normalized = [];
         // Determine whether HTML explicitly passed a single file or a multi-part array map
         if (!is_array($files['name'])) {
-            return [$files];
+            $single = $files;
+            $single['index'] = 0;
+            return [$single];
         }
 
         foreach ($files['name'] as $i => $name) {
@@ -431,6 +442,7 @@ class MediaService
                 'tmp_name' => $files['tmp_name'][$i],
                 'error'    => $files['error'][$i],
                 'size'     => $files['size'][$i],
+                'index'    => $i,
             ];
         }
         return $normalized;
@@ -449,5 +461,65 @@ class MediaService
         }
         $data = @exif_read_data($path);
         return $data === false ? null : $data;
+    }
+
+    /**
+     * Embeds a caption into the physical JPEG image using native IPTC headers.
+     *
+     * @param string $filePath The absolute path to the local file.
+     * @param string $caption The caption string to embed.
+     */
+    private function embedIptcCaption(string $filePath, string $caption): void
+    {
+        if (!function_exists('iptcembed')) {
+            return;
+        }
+
+        $caption = trim($caption);
+        if ($caption === '') {
+            return;
+        }
+
+        // Verify that the file is indeed a JPEG before attempting metadata injection
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mime = $finfo->file($filePath);
+        if ($mime !== 'image/jpeg') {
+            return;
+        }
+
+        // Construct standard IPTC payload containing tag 2:120 (Caption/Abstract)
+        // Set tag 1:90 to UTF-8 escape sequence to declare UTF-8 encoding standard
+        $utf8Seq = "\x1b\x25\x47";
+        $data = $this->iptcMakeTag(1, 90, $utf8Seq) . $this->iptcMakeTag(2, 120, $caption);
+
+        // Inject standard IPTC markers into the JPEG stream
+        $content = @iptcembed($data, $filePath);
+        if ($content !== false) {
+            $fp = @fopen($filePath, 'wb');
+            if ($fp) {
+                @fwrite($fp, $content);
+                @fclose($fp);
+            }
+        }
+    }
+
+    /**
+     * Helper to construct a single IPTC binary tag structure.
+     */
+    private function iptcMakeTag(int $rec, int $data, string $value): string
+    {
+        $length = strlen($value);
+        $retval = chr(0x1C) . chr($rec) . chr($data);
+
+        if ($length < 0x8000) {
+            $retval .= chr($length >> 8) . chr($length & 0xFF);
+        } else {
+            $retval .= chr(0x80) . chr(0x04) .
+                       chr(($length >> 24) & 0xFF) .
+                       chr(($length >> 16) & 0xFF) .
+                       chr(($length >> 8) & 0xFF) .
+                       chr($length & 0xFF);
+        }
+        return $retval . $value;
     }
 }

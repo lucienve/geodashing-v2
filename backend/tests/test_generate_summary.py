@@ -26,6 +26,16 @@ def test_parse_photos_json() -> None:
         "url": "http://example.com/1.jpg",
         "thumb_url": "http://example.com/1_thumb.jpg"
     }]
+    res4 = backend.scripts.generate_summary._parse_photos_json(
+        '[{"url": "http://example.com/1.jpg", '
+        '"thumb_url": "http://example.com/1_thumb.jpg", '
+        '"caption": "Beautiful sunset"}]'
+    )
+    assert res4 == [{
+        "url": "http://example.com/1.jpg",
+        "thumb_url": "http://example.com/1_thumb.jpg",
+        "caption": "Beautiful sunset"
+    }]
     assert not backend.scripts.generate_summary._parse_photos_json('')
     assert not backend.scripts.generate_summary._parse_photos_json('invalid json')
 
@@ -40,7 +50,8 @@ def test_construct_new_data(mock_urlopen: unittest.mock.MagicMock) -> None:
         'city': 'TestCity',
         'photos': [{
             'url': 'http://example.com/1.jpg',
-            'thumb_url': 'http://example.com/1_thumb.jpg'
+            'thumb_url': 'http://example.com/1_thumb.jpg',
+            'caption': 'Sunset caption'
         }],
         'notes': 'Log notes'
     }]
@@ -77,6 +88,7 @@ def test_construct_new_data(mock_urlopen: unittest.mock.MagicMock) -> None:
     assert "Log: 123.txt" in text_result
     assert "Log notes" in text_result
     assert "Full: http://example.com/1.jpg" in text_result
+    assert "Caption: Sunset caption" in text_result
 
     # Assert local files and remote uploads were tracked
     assert len(upload_context["local_temp_files"]) == 1

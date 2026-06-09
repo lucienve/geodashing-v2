@@ -170,4 +170,45 @@ class EditServiceTest extends TestCase
         $this->assertEquals(403, $result['code']);
         $this->assertEquals('Modification rejected. Historical game logs cannot be edited.', $result['message']);
     }
+
+    /**
+     * Asserts that editing captions for kept photos is correctly updated and stored.
+     */
+    #[Test]
+    public function processEditUpdatesKeptPhotoCaptions()
+    {
+        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock->method('fetch')->willReturn([
+            'id' => 10,
+            'is_active' => 1,
+            'photos' => json_encode([
+                ['url' => 'https://storage.googleapis.com/b/historic_1.jpg', 'caption' => 'Old Caption', 'lat' => null, 'lon' => null],
+            ])
+        ]);
+
+        $updateStmtMock = $this->createMock(PDOStatement::class);
+        $updateStmtMock->expects($this->once())->method('execute');
+
+        $this->pdoMock->method('prepare')->willReturnCallback(function ($sql) use ($stmtMock, $updateStmtMock) {
+            if (strpos($sql, 'SELECT v.id') !== false) {
+                return $stmtMock;
+            }
+            if (strpos($sql, 'UPDATE visits') !== false) {
+                return $updateStmtMock;
+            }
+            return $this->createMock(PDOStatement::class);
+        });
+
+        // We update the caption of historic_1.jpg
+        $keptRaw = json_encode([
+            ['url' => 'https://storage.googleapis.com/b/historic_1.jpg', 'caption' => 'Updated Caption']
+        ]);
+
+        $result = $this->editService->processEdit(1, 'GD001-AAAB', 'Notes updated', $keptRaw, null, false);
+
+        $this->assertEquals("success", $result['status']);
+        $this->assertCount(1, $result['data']['photos']);
+        $this->assertEquals('https://storage.googleapis.com/b/historic_1.jpg', $result['data']['photos'][0]['url']);
+        $this->assertEquals('Updated Caption', $result['data']['photos'][0]['caption']);
+    }
 }

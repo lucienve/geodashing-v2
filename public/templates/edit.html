@@ -33,14 +33,20 @@
                     style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:1rem; border:1px dashed var(--border-color);">
                     [ NO PHOTOS ]</p>
             </div>
-            <p style="color:var(--accent-amber); font-size:0.75rem; text-align:center; margin-top:0.5rem;">Click [X] to
-                remove photo.</p>
+            <p style="color:var(--accent-amber); font-size:0.75rem; text-align:center; margin-top:0.5rem;">Click [X] to remove photo, or tap to edit/add caption.</p>
         </div>
 
         <div class="dash-block" style="margin-bottom: 2rem;">
             <label>ATTACH NEW PHOTOS (Max 10 total)</label>
-            <input type="file" id="edit-photos" name="photos[]" multiple accept="image/*" class="data-input"
-                style="padding:10px; font-size:0.8rem; color: #fff;">
+            <input type="file" id="edit-photos" name="photos[]" multiple accept="image/*" style="display: none;">
+            <button type="button" class="btn btn-secondary btn-add-photos" id="btn-add-edit-photos">
+                ADD NEW PHOTOS
+            </button>
+            <small class="photo-caption-tip">
+                Tip: Tap any attached new photo thumbnail to add a custom caption.
+            </small>
+            <div id="edit-new-photo-preview-grid" class="photo-preview-grid">
+            </div>
         </div>
 
         <div id="edit-status" style="margin-bottom:1.5rem; text-align:center; font-size:0.85rem;"></div>

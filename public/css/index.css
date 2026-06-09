@@ -1372,3 +1372,126 @@ body, html {
 .tie-group-row.tie-group-start td.leaderboard-rank-cell.tie-rank {
   border-bottom: 1px solid #333 !important;
 }
+
+/* =========================================================================
+   Photo Captions & Modal styling
+   ========================================================================= */
+.photo-caption-badge {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.85);
+  color: var(--accent-amber);
+  font-size: 0.65rem;
+  text-align: center;
+  padding: 3px 0;
+  font-family: var(--font-mono);
+  pointer-events: none;
+  border-top: 1px solid rgba(255, 183, 3, 0.2);
+  transition: all 0.2s ease;
+}
+
+.photo-preview-wrapper:hover .photo-caption-badge {
+  background: rgba(0, 0, 0, 0.95);
+  color: #fff;
+}
+
+.photo-caption-badge.has-caption {
+  color: var(--accent-green);
+  border-top-color: rgba(16, 185, 129, 0.2);
+}
+
+.photo-caption-text {
+  font-family: var(--font-sans);
+  font-style: italic;
+  color: var(--text-main);
+  font-size: 0.85rem;
+  margin-top: 0.4rem;
+  margin-bottom: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 2px solid var(--accent-amber);
+  border-radius: 0 4px 4px 0;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.caption-textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.photo-caption-tip {
+  color: var(--text-muted);
+  display: block;
+  margin-top: 0.4rem;
+  text-align: center;
+  font-size: 0.75rem;
+}
+
+/* =========================================================================
+   Caption Modal Styling
+   ========================================================================= */
+.caption-modal-content {
+  max-width: 500px !important;
+}
+
+.caption-modal-title {
+  color: var(--accent-amber);
+  margin-bottom: 1rem;
+  border-bottom: 1px dashed var(--accent-amber);
+  padding-bottom: 0.5rem;
+  text-transform: uppercase;
+  font-size: 1.1rem;
+  letter-spacing: 1px;
+}
+
+.caption-modal-img-wrap {
+  text-align: center;
+  margin-bottom: 1.25rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid #333;
+  padding: 0.5rem;
+  border-radius: 4px;
+  max-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.caption-modal-img {
+  max-width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+  border-radius: 3px;
+}
+
+.caption-modal-group {
+  margin-bottom: 1.5rem;
+}
+
+.caption-modal-label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.caption-modal-counter {
+  text-align: right;
+  font-size: 0.75rem;
+  color: var(--accent-amber);
+  margin-top: 0.3rem;
+  transition: color 0.15s ease;
+}
+
+.caption-modal-counter.warning {
+  color: var(--accent-red) !important;
+}
+
+.caption-modal-save-btn {
+  width: 100%;
+}

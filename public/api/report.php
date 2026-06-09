@@ -65,7 +65,11 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         try {
             // Instantiate securely with user's explicitly provided Geodashing GCP identifiers
             $mediaService = new MediaService('geodashing-v2', 'geodashing-v2-blobs', $isTesting ? null : $keyPath);
-            $urls = $mediaService->uploadPhotos($_FILES['photos'], $dashpoint_id, $_SESSION['user_id']);
+            $captions = $_POST['captions'] ?? [];
+            if (!is_array($captions)) {
+                $captions = [];
+            }
+            $urls = $mediaService->uploadPhotos($_FILES['photos'], $dashpoint_id, $_SESSION['user_id'], $captions);
             if (!empty($urls)) {
                 $photosJson = json_encode($urls);
             }

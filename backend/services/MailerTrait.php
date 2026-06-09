@@ -152,6 +152,9 @@ trait MailerTrait
                         $message .= "<a href='" . htmlspecialchars($fullUrl, ENT_QUOTES, 'UTF-8') . "' target='_blank'>";
                         $message .= "<img src='" . htmlspecialchars($thumbUrl, ENT_QUOTES, 'UTF-8') . "' alt='Dashpoint Photo' style='max-width: 100%; height: auto;' />";
                         $message .= "</a>";
+                        if (!empty($photoObj['caption'])) {
+                            $message .= "<div style='font-style: italic; color: #555; font-size: 0.9em; margin-top: 5px;'>" . htmlspecialchars($photoObj['caption']) . "</div>";
+                        }
                         $message .= "</div>";
                     }
                 }

@@ -100,4 +100,95 @@ test.describe('Photo Upload Integration', () => {
         const srcAttr = await loadedImage.first().getAttribute('src');
         expect(srcAttr).toContain('http://127.0.0.1:4443/');
     });
+
+    test('Photo Upload with Captions and Verification', async ({ page }, testInfo) => {
+        test.setTimeout(60000);
+        
+        const dynamicUser = `Captioneer_${Date.now()}_${testInfo.workerIndex}`;
+        const dynamicPass = `SecurePass123!`;
+
+        // Inject Default GPS
+        const mockFn = () => {
+            window.mockGeolocation = {
+                getCurrentPosition: (success) => {
+                    success({ coords: { latitude: 40.7128, longitude: -74.0060, accuracy: 10 } });
+                }
+            };
+        };
+        await page.addInitScript(mockFn);
+        await page.evaluate(mockFn);
+
+        // Signup & Verification
+        await page.goto('/#login');
+        await page.click('#toggle-signup');
+        await page.fill('#signup-username', dynamicUser);
+        await page.fill('#signup-email', `${dynamicUser}@example.com`);
+        await page.fill('#signup-password', dynamicPass);
+        await page.fill('#signup-password-verify', dynamicPass);
+        
+        const [response] = await Promise.all([
+            page.waitForResponse(res => res.url().includes('auth.php?action=signup')),
+            page.click('#btn-submit-signup')
+        ]);
+        const responseBody = await response.json();
+        expect(responseBody.status).toBe('success');
+
+        const { execSync } = require('child_process');
+        execSync(`mysql -h 127.0.0.1 -u geodashing_test -pgeodashing_test_secure_pass geodashing_test -e "UPDATE users SET is_verified = 1 WHERE username = '${dynamicUser}';"`);
+
+        await page.waitForURL('**/#login', { timeout: 5000 });
+        await page.goto('/#home');
+        await page.waitForURL('**/#home', { timeout: 5000 });
+
+        // Go to report
+        await page.goto('/#report?id=GD001-AAAA');
+        await page.click('#btn-geolocation');
+        await expect(page.locator('#input-lat')).not.toHaveValue('', { timeout: 10000 });
+        await page.fill('#log-textarea', 'Logging a photo with a caption!');
+
+        // Upload a photo
+        const imagePath = path.resolve(__dirname, '../public/images/android-chrome-192x192.png');
+        await page.setInputFiles('#input-photos', imagePath);
+
+        // Click the photo preview element to trigger the caption modal
+        const previewWrapper = page.locator('.photo-preview-wrapper').first();
+        await expect(previewWrapper).toBeVisible();
+        await previewWrapper.click();
+
+        // Modal should display
+        const modal = page.locator('#caption-modal-overlay');
+        await expect(modal).toBeVisible();
+
+        // Write a caption
+        const captionText = 'A stunning view of the sunset from the dashpoint.';
+        await page.fill('#modal-caption-text', captionText);
+        await page.click('#btn-save-caption');
+
+        // Modal should close
+        await expect(modal).not.toBeVisible();
+
+        // Badge should say CAPTIONED
+        const badge = previewWrapper.locator('.photo-caption-badge');
+        await expect(badge).toContainText('CAPTIONED');
+
+        // Submit the report
+        await page.click('#btn-submit-report');
+
+        // Validate success response
+        const feedback = page.locator('#report-feedback');
+        await expect(feedback).toContainText('Success!', { timeout: 30000 });
+
+        // Verify ledger renders caption
+        await page.goto('/#dashpoint?id=GD001-AAAA');
+        const visitsContainer = page.locator('#dp-visits-container');
+        const userVisit = visitsContainer.locator('> div').filter({ hasText: dynamicUser });
+        await expect(userVisit).toBeVisible({ timeout: 10000 });
+
+        await userVisit.locator('button', { hasText: 'VIEW DETAILS' }).click();
+
+        // Assert the caption text is rendered
+        const captionContainer = userVisit.locator('.photo-caption-text');
+        await expect(captionContainer).toBeVisible();
+        await expect(captionContainer).toContainText(captionText);
+    });
 });

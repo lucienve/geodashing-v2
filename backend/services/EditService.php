@@ -41,11 +41,13 @@ class EditService
      * @param int $userId The authenticated user ID.
      * @param string $dashpointId The target dashpoint ID.
      * @param string $notes The new text narrative.
-     * @param string $keptPhotosRaw JSON string array of image URLs to keep.
+     * @param string $keptPhotosRaw JSON string array/objects of image URLs/captions to keep.
      * @param array|null $newFiles The new `$_FILES` structurally mapped image uploads.
+     * @param bool $sendEmail Whether to dispatch list updates.
+     * @param array $newCaptions Array of captions for newly uploaded images.
      * @return array Status array ready for JSON response encoding.
      */
-    public function processEdit(int $userId, string $dashpointId, string $notes, string $keptPhotosRaw, ?array $newFiles = null, bool $sendEmail = true): array
+    public function processEdit(int $userId, string $dashpointId, string $notes, string $keptPhotosRaw, ?array $newFiles = null, bool $sendEmail = true, array $newCaptions = []): array
     {
         $keptPhotos = json_decode($keptPhotosRaw, true);
         if (!is_array($keptPhotos)) {
@@ -85,10 +87,33 @@ class EditService
 
         foreach ($dbPhotos as $dbPhotoObj) {
             $urlStr = is_array($dbPhotoObj) ? ($dbPhotoObj['url'] ?? '') : $dbPhotoObj;
-            if (!in_array($urlStr, $keptPhotos, true)) {
+
+            $keptItem = null;
+            foreach ($keptPhotos as $kPhoto) {
+                $kUrl = is_array($kPhoto) ? ($kPhoto['url'] ?? '') : $kPhoto;
+                if ($kUrl === $urlStr) {
+                    $keptItem = $kPhoto;
+                    break;
+                }
+            }
+
+            if ($keptItem === null) {
                 $urlsToDelete[] = $urlStr;
             } else {
-                $finalPhotoObjects[] = $dbPhotoObj; // Safely retain the structurally mapped metadata
+                $caption = is_array($keptItem) ? ($keptItem['caption'] ?? null) : null;
+                if (is_array($dbPhotoObj)) {
+                    $updatedObj = $dbPhotoObj;
+                    $updatedObj['caption'] = $caption !== null && trim($caption) !== '' ? trim($caption) : null;
+                    $finalPhotoObjects[] = $updatedObj;
+                } else {
+                    $finalPhotoObjects[] = [
+                        'url' => $urlStr,
+                        'thumb_url' => $urlStr,
+                        'lat' => null,
+                        'lon' => null,
+                        'caption' => $caption !== null && trim($caption) !== '' ? trim($caption) : null
+                    ];
+                }
             }
         }
 
@@ -110,7 +135,7 @@ class EditService
         // 3b. Upload new GCS objects
         if ($hasNewUploads && $this->mediaService !== null) {
             try {
-                $newUploadObjects = $this->mediaService->uploadPhotos($newFiles, $dashpointId, $userId);
+                $newUploadObjects = $this->mediaService->uploadPhotos($newFiles, $dashpointId, $userId, $newCaptions);
                 foreach ($newUploadObjects as $newObj) {
                     $finalPhotoObjects[] = $newObj;
                 }

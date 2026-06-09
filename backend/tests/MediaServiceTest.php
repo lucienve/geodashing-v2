@@ -219,4 +219,35 @@ class MediaServiceTest extends TestCase
         $this->assertEquals(20, $thumbWidth, "Thumbnail width should be 20 after rotation");
         $this->assertEquals(10, $thumbHeight, "Thumbnail height should be 10 after rotation");
     }
+
+    /**
+     * Asserts that when a caption is provided, it is successfully processed and
+     * returned in the uploaded photo object mapping.
+     */
+    #[Test]
+    public function processUploadEmbedsIptcCaption()
+    {
+        $service = new MediaService('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock);
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'fktst');
+        file_put_contents($tempFile, "\xFF\xD8\xFF\xE0\x00\x10\x4A\x46\x49\x46\x00\x01\x01\x01");
+
+        $fakeFiles = [
+            'name' => ['valid_pic.jpg'],
+            'type' => ['image/jpeg'],
+            'tmp_name' => [$tempFile],
+            'error' => [UPLOAD_ERR_OK],
+            'size' => [filesize($tempFile)]
+        ];
+
+        $this->bucketMock->expects($this->once())->method('upload');
+
+        $result = $service->uploadPhotos($fakeFiles, 'GD-TEST', 1, ['Test Caption text']);
+
+        $this->assertIsArray($result);
+        $this->assertCount(1, $result);
+        $this->assertEquals('Test Caption text', $result[0]['caption']);
+
+        unlink($tempFile);
+    }
 }

@@ -283,3 +283,14 @@ The application allows users to participate in global geographic games where the
   - `[.github/workflows/ci-python.yml](../.github/workflows/ci-python.yml)`
   - `[.github/workflows/typecheck.yml](../.github/workflows/typecheck.yml)`
 - Verified that all workflows retain their exact functionality and pass all local test, linting, and type checking pipelines.
+
+### 44. User Photo Captions
+- Extended the database JSON schema for visits photos to support an optional `caption` field.
+- Implemented photo captions in both Log Visit and Edit Log UI. Tapping a photo thumbnail opens a glassmorphic modal overlay to add/edit a caption up to 200 characters.
+- Modified [MediaService.php](backend/services/MediaService.php) to embed the caption into the physical JPEG image metadata (IPTC Tag `2#120` Caption/Abstract) using PHP's native `iptcembed()` function to keep the pipeline dependency-free.
+- Updated [EditService.php](backend/services/EditService.php), [report.php](public/api/report.php), and [edit.php](public/api/edit.php) to process and store updated captions in the database.
+- Integrated captions underneath photo thumbnails in visit report notification emails ([MailerTrait.php](backend/services/MailerTrait.php)).
+- Updated the Gemini AI game summary generation pipeline ([generate_summary.py](backend/scripts/generate_summary.py)) to parse photo captions and include them in the prompt context.
+- Added comprehensive unit testing coverage for caption handling in [MediaServiceTest.php](backend/tests/MediaServiceTest.php), [EditServiceTest.php](backend/tests/EditServiceTest.php), and [test_generate_summary.py](backend/tests/test_generate_summary.py).
+- Created a new Playwright E2E integration test case inside [upload.spec.js](e2e/upload.spec.js) to automate the full user flow (attaching a photo, opening the glassmorphic modal, typing/saving a caption, verifying preview badges, submitting the report, and verifying the ledger details render the saved caption correctly).
+- Verified that all E2E tests, PHPUnit tests, and Python tests pass cleanly with zero linting or type-checking issues.
