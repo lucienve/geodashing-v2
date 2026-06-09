@@ -273,3 +273,13 @@ The application allows users to participate in global geographic games where the
 - Created a standard [phpunit.xml](phpunit.xml) configuration file at the project root to target the PHPUnit test suite located in `backend/tests/` and bootstrap the composer autoloader.
 - Configured `.vscode/settings.json` with PHPUnit binary path (`vendor/bin/phpunit`) and configuration file mappings (`phpunit.xml`) to allow popular PHPUnit test explorer extensions to automatically discover and display unit tests in the IDE's Testing tab.
 - Verified that all unit tests and linters execute successfully with 0 errors.
+
+### 43. GitHub Actions Workflow Permissions Hardening
+- Hardened all GitHub Actions workflow files to adhere to the principle of least privilege.
+- Added explicit root-level `permissions: { contents: read }` configurations to all workflow files:
+  - `[.github/workflows/ci-e2e.yml](../.github/workflows/ci-e2e.yml)`
+  - `[.github/workflows/ci-js-lint.yml](../.github/workflows/ci-js-lint.yml)`
+  - `[.github/workflows/ci-php.yml](../.github/workflows/ci-php.yml)`
+  - `[.github/workflows/ci-python.yml](../.github/workflows/ci-python.yml)`
+  - `[.github/workflows/typecheck.yml](../.github/workflows/typecheck.yml)`
+- Verified that all workflows retain their exact functionality and pass all local test, linting, and type checking pipelines.

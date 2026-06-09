@@ -1,5 +1,8 @@
 name: E2E Playwright Tests
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [ "master", "main" ]
