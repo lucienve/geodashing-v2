@@ -268,3 +268,8 @@ The application allows users to participate in global geographic games where the
 - Created [test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py) containing a static log parser, a custom rule-based HTML validator (checking tags whitelist, XHTML self-closing void tags, absolute SPA links, and image thumbnail hierarchies), and an LLM-as-a-Judge API grader with a strict score threshold of $\ge 4/5$.
 - Created developer documentation [gemini_model_evaluation.md](gemini_model_evaluation.md) detailing configuration setup and manual run commands.
 - Verified 100% test success (including skipped status by default) and a perfect 10.00/10 pylint code rating across the entire test suite.
+
+### 42. PHPUnit IDE Test Discovery Configuration
+- Created a standard [phpunit.xml](phpunit.xml) configuration file at the project root to target the PHPUnit test suite located in `backend/tests/` and bootstrap the composer autoloader.
+- Configured `.vscode/settings.json` with PHPUnit binary path (`vendor/bin/phpunit`) and configuration file mappings (`phpunit.xml`) to allow popular PHPUnit test explorer extensions to automatically discover and display unit tests in the IDE's Testing tab.
+- Verified that all unit tests and linters execute successfully with 0 errors.
