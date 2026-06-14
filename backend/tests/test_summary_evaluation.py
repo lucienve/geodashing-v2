@@ -1,6 +1,6 @@
 """End-to-end evaluation tests for Gemini models and system instructions."""
 # pylint: disable=protected-access
-# Architecturally, accessing the internal _generate_summary helper function is necessary
+# Accessing the internal _generate_summary helper function is necessary
 # in this test to evaluate the system instruction prompt pipeline in isolation.
 
 import configparser
