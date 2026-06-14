@@ -5,6 +5,8 @@ import http.client
 import unittest.mock
 import typing
 
+import google.oauth2.service_account
+import google.genai
 import google.genai.types
 
 import backend.scripts.generate_summary
@@ -65,8 +67,8 @@ def test_construct_new_data(mock_urlopen: unittest.mock.MagicMock) -> None:
     mock_urlopen.return_value.__enter__.return_value = mock_response
 
     # Mock client and File API as required
-    mock_client = unittest.mock.MagicMock()
-    mock_uploaded_file = unittest.mock.MagicMock()
+    mock_client = unittest.mock.MagicMock(spec=google.genai.Client)
+    mock_uploaded_file = unittest.mock.MagicMock(spec=google.genai.types.File)
     mock_client.files.upload.return_value = mock_uploaded_file
 
     upload_context: backend.scripts.generate_summary.UploadContext = {
@@ -113,7 +115,7 @@ def test_construct_new_data_tied_scores() -> None:
         'photos': [],
         'notes': 'Log notes'
     }]
-    mock_client = unittest.mock.MagicMock()
+    mock_client = unittest.mock.MagicMock(spec=google.genai.Client)
     upload_context: backend.scripts.generate_summary.UploadContext = {
         "client": mock_client,
         "local_temp_files": [],
@@ -183,7 +185,7 @@ def test_get_gemini_client(
     mock_client_class: unittest.mock.MagicMock
 ) -> None:
     """Verify get_gemini_client builds client with project-level billing credentials."""
-    mock_creds = unittest.mock.MagicMock()
+    mock_creds = unittest.mock.MagicMock(spec=google.oauth2.service_account.Credentials)
     mock_auth_default.return_value = (mock_creds, "default-project")
 
     ai_config: dict[str, str | None] = {"project_id": "test-project-123"}
@@ -210,7 +212,7 @@ def test_generate_summary(
     mock_load_sys: unittest.mock.MagicMock
 ) -> None:
     """Test AI Studio API call structure via Client."""
-    mock_client = unittest.mock.MagicMock()
+    mock_client = unittest.mock.MagicMock(spec=google.genai.Client)
     mock_chat_instance = mock_client.chats.create.return_value
     mock_response = mock_chat_instance.send_message.return_value
     mock_response.text = "generated HTML"

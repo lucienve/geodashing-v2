@@ -1,22 +1,18 @@
 """End-to-end evaluation tests for Gemini models and system instructions."""
+# pylint: disable=protected-access
+# Architecturally, accessing the internal _generate_summary helper function is necessary
+# in this test to evaluate the system instruction prompt pipeline in isolation.
 
 import configparser
 import os
 import re
-from html.parser import HTMLParser
+import html.parser
 import pytest
-from pydantic import BaseModel, Field
+import pydantic
 import google.genai
 import google.genai.types
 
-from backend.scripts.generate_summary import (
-    configure_environment,
-    get_gemini_client,
-    construct_new_data,
-    _generate_summary,
-    LogEntry,
-    UploadContext
-)
+import backend.scripts.generate_summary
 
 # Skip all tests in this module unless RUN_LIVE_API_EVAL=1 is set in the environment
 pytestmark = pytest.mark.skipif(
@@ -26,35 +22,35 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-class EvaluationResult(BaseModel):
+class EvaluationResult(pydantic.BaseModel):
     """Pydantic schema for structured evaluation from the LLM judge."""
-    tone_score: int = Field(
+    tone_score: int = pydantic.Field(
         ...,
         description="Score from 1 to 5 indicating if the tone is enthusiastic, "
                     "observational, and community-focused."
     )
-    accuracy_score: int = Field(
+    accuracy_score: int = pydantic.Field(
         ...,
         description="Score from 1 to 5 indicating if the summary accurately "
                     "reflects the stats (winners, runners up) without fabrication."
     )
-    narrative_quality: int = Field(
+    narrative_quality: int = pydantic.Field(
         ...,
         description="Score from 1 to 5 indicating if quotes and waypoints "
                     "are formatted correctly and are engaging."
     )
-    justification: str = Field(
+    justification: str = pydantic.Field(
         ...,
         description="Detailed review of the summary, explaining the scores, "
                     "noting any specific shortcomings or praise."
     )
-    passed: bool = Field(
+    passed: bool = pydantic.Field(
         ...,
         description="True if the output meets all qualitative standards (scores >= 4)."
     )
 
 
-class SummaryHTMLValidator(HTMLParser):
+class SummaryHTMLValidator(html.parser.HTMLParser):
     """Custom parser to validate strict HTML restrictions in generated summaries."""
 
     def __init__(self) -> None:
@@ -185,7 +181,7 @@ def _parse_scores(score_text: str) -> list[tuple[str, int]]:
     return scores
 
 
-def _parse_single_log(dp_id: str, block_content: str) -> LogEntry:
+def _parse_single_log(dp_id: str, block_content: str) -> backend.scripts.generate_summary.LogEntry:
     """Parses a single player log content block to extract notes and photos."""
     player_match = re.search(r'^Player:\s*([^\n]+)', block_content, re.MULTILINE)
     player = player_match.group(1).strip() if player_match else "Unknown"
@@ -229,9 +225,9 @@ def _parse_single_log(dp_id: str, block_content: str) -> LogEntry:
     }
 
 
-def _parse_logs(file_content: str) -> list[LogEntry]:
+def _parse_logs(file_content: str) -> list[backend.scripts.generate_summary.LogEntry]:
     """Helper to parse player logs and metadata from raw text logs."""
-    logs: list[LogEntry] = []
+    logs: list[backend.scripts.generate_summary.LogEntry] = []
     log_blocks = re.split(r'-{21,}\nLog:\s*([^\n]+)\.txt\n-{21,}', file_content)
     if len(log_blocks) <= 1:
         return logs
@@ -241,7 +237,13 @@ def _parse_logs(file_content: str) -> list[LogEntry]:
     return logs
 
 
-def parse_benchmark_input(file_content: str) -> tuple[str, list[tuple[str, int]], list[LogEntry]]:
+def parse_benchmark_input(
+    file_content: str
+) -> tuple[
+    str,
+    list[tuple[str, int]],
+    list[backend.scripts.generate_summary.LogEntry]
+]:
     """Parses static text representation of game logs back into structured data."""
     game_title = "Game"
     title_match = re.search(r'--- GAME TITLE ---\n([^\n]+)', file_content)
@@ -341,8 +343,8 @@ Evaluate the summary and return the scores, justification, and a final verdict. 
 
 def _get_eval_config(cfg_p: str) -> tuple[dict, google.genai.Client, str]:
     """Extracts candidate and judge configurations and OAuth clients."""
-    ai_config = configure_environment(cfg_p)
-    client = get_gemini_client(ai_config)
+    ai_config = backend.scripts.generate_summary.configure_environment(cfg_p)
+    client = backend.scripts.generate_summary.get_gemini_client(ai_config)
 
     config = configparser.ConfigParser()
     config.read(cfg_p)
@@ -358,7 +360,10 @@ def _get_eval_config(cfg_p: str) -> tuple[dict, google.genai.Client, str]:
 # This duplicate code block is architecturally necessary because the test suite
 # replicates the local temp file and remote GenAI file cleanup logic from
 # generate_summary.py to ensure identical resource hygiene under test conditions.
-def _cleanup_context(client: google.genai.Client, upload_context: UploadContext) -> None:
+def _cleanup_context(
+    client: google.genai.Client,
+    upload_context: backend.scripts.generate_summary.UploadContext
+) -> None:
     """Closes and deletes all local temporary files and uploaded remote assets."""
     for local_file in upload_context["local_temp_files"]:
         try:
@@ -392,19 +397,21 @@ def test_evaluate_benchmark_summary(prefix: str) -> None:
 
     raw_input_text = _load_benchmark_input(exs_d, prefix)
     parsed = parse_benchmark_input(raw_input_text)
-    upload_context: UploadContext = {
+    upload_context: backend.scripts.generate_summary.UploadContext = {
         "client": client,
         "local_temp_files": [],
         "uploaded_ai_files": []
     }
 
     try:
-        prompt = construct_new_data(parsed[0], parsed[1], parsed[2], upload_context)
+        prompt = backend.scripts.generate_summary.construct_new_data(
+            parsed[0], parsed[1], parsed[2], upload_context
+        )
 
         candidate_model = ai_config['model_name']
         assert candidate_model is not None
         inst_p = os.path.join(c_dir, '../../data/summary_system_instructions.txt')
-        generated_html = _generate_summary(
+        generated_html = backend.scripts.generate_summary._generate_summary(
             client, candidate_model, inst_p, exs_d, prompt
         )
 

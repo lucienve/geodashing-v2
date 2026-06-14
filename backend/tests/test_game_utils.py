@@ -2,8 +2,10 @@
 # pylint: disable=protected-access
 
 import datetime
+import http.client
 import unittest
 import unittest.mock
+import google.oauth2.service_account
 import mysql.connector
 import mysql.connector.cursor
 
@@ -222,12 +224,12 @@ class TestEmailSummaryCLI(unittest.TestCase):
         )
 
         # Mock Credentials
-        mock_creds = unittest.mock.MagicMock()
+        mock_creds = unittest.mock.MagicMock(spec=google.oauth2.service_account.Credentials)
         mock_creds.token = "fake_access_token"
         mock_creds.with_subject.return_value = mock_creds
 
         # Mock API Response
-        mock_response = unittest.mock.MagicMock()
+        mock_response = unittest.mock.MagicMock(spec=http.client.HTTPResponse)
         mock_response.read.return_value = b'{"id": "msg123"}'
         mock_response.__enter__.return_value = mock_response
 
@@ -239,9 +241,9 @@ class TestEmailSummaryCLI(unittest.TestCase):
 
         with unittest.mock.patch("builtins.open", unittest.mock.mock_open(read_data=config_data)), \
              unittest.mock.patch("google.oauth2.service_account.Credentials"
-                        ".from_service_account_file") as mock_creds_file, \
-             unittest.mock.patch("google.auth.transport.requests.Request"), \
-             unittest.mock.patch("urllib.request.urlopen") as mock_urlopen, \
+                        ".from_service_account_file", autospec=True) as mock_creds_file, \
+             unittest.mock.patch("google.auth.transport.requests.Request", autospec=True), \
+             unittest.mock.patch("urllib.request.urlopen", autospec=True) as mock_urlopen, \
              unittest.mock.patch.dict("os.environ", {"APP_ENV": ""}):
 
             mock_creds_file.return_value = mock_creds
