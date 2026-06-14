@@ -30,7 +30,7 @@
     "@playwright/test": "^1.60.0",
     "eslint": "^10.4.1",
     "globals": "^17.6.0",
-    "lighthouse": "^13.3.0",
+    "lighthouse": "^13.4.0",
     "playwright-lighthouse": "^4.0.0"
   }
 }
