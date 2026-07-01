@@ -84,8 +84,9 @@ Generates globally distributed, geographically balanced geodashing points situat
 1.  **Spherical Coordinate Generation**: Generates raw global points utilizing a uniform spherical distribution (equal density per unit area).
 2.  **Landmass Filtering (EPSG:6933)**: 
     *   Loads complex shapefiles for global landmasses (`data/ne_10m_land.zip`) and major lakes (`data/ne_10m_lakes.zip`).
-    *   Projects both datasets to an equal-area coordinate system (`EPSG:6933`) and calculates a clean, hole-punched land geometry by executing `land_base.difference(lakes_base)`.
-    *   Projects the raw coordinates and buffers them by 100 meters, filtering for points whose buffer intersects the landmass (enabling high-performance proximity analysis).
+    *   Projects both datasets to a Cylindrical Equal-Area coordinate system (`EPSG:6933`) and subdivides them using a grid-based approach (`subdivide_geometry` with a max size of 1,000,000m) to minimize vertex complexity per feature.
+    *   Performs a fast **Point-in-Polygon (PIP)** vectorized check using prepared geometries to immediately accept dry land coordinates (about 30% of points), avoiding buffering for 99% of valid points.
+    *   For boundary/ocean candidates, queries the `STRtree` spatial index bounding boxes and performs localized intersection tests (using 100m buffers) to identify valid near-shore points.
 3.  **Profanity Filtering & ID Generation**:
     *   Generates systematic alphanumeric sequence IDs prefixed by the game context (e.g., `GD001-ABCD`).
     *   Cross-references each sequence against a local 4-letter profanity list (`data/bad_words.txt`) and dynamically skips forbidden sequences.

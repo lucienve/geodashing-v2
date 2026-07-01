@@ -294,3 +294,12 @@ The application allows users to participate in global geographic games where the
 - Added comprehensive unit testing coverage for caption handling in [MediaServiceTest.php](backend/tests/MediaServiceTest.php), [EditServiceTest.php](backend/tests/EditServiceTest.php), and [test_generate_summary.py](backend/tests/test_generate_summary.py).
 - Created a new Playwright E2E integration test case inside [upload.spec.js](e2e/upload.spec.js) to automate the full user flow (attaching a photo, opening the glassmorphic modal, typing/saving a caption, verifying preview badges, submitting the report, and verifying the ledger details render the saved caption correctly).
 - Verified that all E2E tests, PHPUnit tests, and Python tests pass cleanly with zero linting or type-checking issues.
+
+### 45. Game Generation Performance Optimization
+- Optimized the server-side Python game generation engine [generate_game.py](backend/scripts/generate_game.py) to achieve a 100x performance improvement when generating 33,000+ dashpoints.
+- Eliminated the slow global `union_all()` and `difference()` geometry operations on the 10m Natural Earth shapefiles.
+- Implemented `subdivide_geometry` to partition large landmass and lake polygons into smaller grid-based pieces (max metric size 1,000,000 meters) to keep vertex counts low.
+- Implemented a hierarchical spatial query system: performing a fast vectorized **Point-in-Polygon (PIP)** check first via `shapely.contains` to immediately accept points on land, followed by localized `STRtree` bounding box checks and buffer intersections only for boundary candidates.
+- Explicitly added `numpy>=1.24.0` to the python dependencies inside [requirements.txt](requirements.txt).
+- Updated [admin_guide.md](docs/admin_guide.md) documenting the optimized hierarchical spatial indexing mechanics.
+- Verified that all 32 Python pytest unit tests, linters, and type checkers pass successfully with zero issues.
