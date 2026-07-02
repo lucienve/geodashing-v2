@@ -1,0 +1,51 @@
+repos:
+  - repo: local
+    hooks:
+      - id: pylint
+        name: PyLint
+        entry: .venv/bin/pylint backend/
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.py$
+
+      - id: mypy
+        name: Mypy
+        entry: .venv/bin/mypy backend/
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.py$
+
+      - id: pyright
+        name: Pyright
+        entry: .venv/bin/pyright backend/
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.py$
+
+      - id: pytest
+        name: Pytest
+        entry: .venv/bin/pytest backend/
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.py$
+
+      - id: eslint
+        name: ESLint
+        entry: npm run lint
+        language: system
+        pass_filenames: false
+        files: ^(public/js/.*\.js|e2e/.*\.js)$
+
+      - id: phpcs
+        name: PHP CodeSniffer
+        entry: composer run lint
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.php$
+
+      - id: phpunit
+        name: PHPUnit
+        entry: composer run test
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.php$

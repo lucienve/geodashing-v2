@@ -20,6 +20,7 @@ The application allows users to participate in global geographic games where the
   - PHPUnit test files must exclusively live in `backend/tests/` and mirror the structure of the classes they test, rather than in the project root.
   - Playwright E2E tests are used for automated layout testing and verify the UI constraints across devices without hanging.
   - Lighthouse tests are integrated to enforce SEO, accessibility, and performance best practices.
+  - Code verification checkers (linters, type checkers, and unit tests) are unified using the **`pre-commit`** framework, ensuring identical verification pipelines locally and in the GitHub Actions CI environment. E2E Playwright tests run separately due to heavy infrastructure requirements.
 
 ## Detailed Milestones & Implementation History
 
@@ -303,3 +304,11 @@ The application allows users to participate in global geographic games where the
 - Explicitly added `numpy>=1.24.0` to the python dependencies inside [requirements.txt](requirements.txt).
 - Updated [admin_guide.md](docs/admin_guide.md) documenting the optimized hierarchical spatial indexing mechanics.
 - Verified that all 32 Python pytest unit tests, linters, and type checkers pass successfully with zero issues.
+
+### 46. Pre-Commit Hook & Unified CI Verification Integration
+- Integrated the `pre-commit` framework to unify the local and remote code verification pipelines.
+- Added `pre-commit` to development dependencies inside [requirements-dev.txt](requirements-dev.txt).
+- Configured a root-level [.pre-commit-config.yaml](.pre-commit-config.yaml) containing local system-level hooks for Python linting (`pylint`), type checking (`mypy`, `pyright`), unit testing (`pytest`), JavaScript linting (`eslint`), and PHP linting and testing (`phpcs`, `phpunit`).
+- Implemented `pass_filenames: false` across all local hooks to force full-codebase verification on every run and prevent partial-check drift.
+- Consolidated four legacy GitHub Actions workflows (`ci-python.yml`, `typecheck.yml`, `ci-php.yml`, `ci-js-lint.yml`) into a single, unified [.github/workflows/ci-verification.yml](.github/workflows/ci-verification.yml) file.
+- Verified that all local pre-commit hooks execute and pass successfully with zero errors.
