@@ -79,4 +79,64 @@ class SearchService
         // Return an empty PHP array over 'false' for clean mapping APIs
         return $results !== false ? $results : [];
     }
+
+    /**
+     * Retrieves all approved visits/attempts within the specified geographic rectangle.
+     * Supports anti-meridian wrapping seamlessly for Pacific maps.
+     *
+     * @param float $north Maximum Latitude
+     * @param float $south Minimum Latitude
+     * @param float $east  Maximum Longitude
+     * @param float $west  Minimum Longitude
+     * @param int $gameId  Game ID
+     * @return array Array of visits.
+     * @throws \PDOException
+     */
+    public function searchVisitsRegion(float $north, float $south, float $east, float $west, int $gameId): array
+    {
+        $baseQuery = "
+            SELECT v.id, v.dashpoint_id, u.username, 
+                   ST_Latitude(v.reported_location) AS lat, 
+                   ST_Longitude(v.reported_location) AS lon, 
+                   v.is_attempt, v.score_awarded, v.reported_time
+            FROM visits v
+            JOIN users u ON v.user_id = u.id
+            JOIN dashpoints d ON v.dashpoint_id = d.id
+            WHERE ST_Latitude(v.reported_location) BETWEEN :south AND :north
+              AND d.game_id = :game_id
+              AND v.status = 'approved'
+        ";
+
+        if ($east < $west) {
+            $sql = $baseQuery . " AND (ST_Longitude(v.reported_location) BETWEEN :west AND 180.0 OR ST_Longitude(v.reported_location) BETWEEN -180.0 AND :east)";
+        } else {
+            $sql = $baseQuery . " AND ST_Longitude(v.reported_location) BETWEEN :west AND :east";
+        }
+
+        $stmt = $this->db->prepare($sql);
+
+        $params = [
+            ':south' => $south,
+            ':north' => $north,
+            ':west' => $west,
+            ':east' => $east,
+            ':game_id' => $gameId
+        ];
+
+        $stmt->execute($params);
+
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if ($results !== false) {
+            foreach ($results as &$row) {
+                $row['is_attempt'] = (bool)$row['is_attempt'];
+                $row['score_awarded'] = (int)$row['score_awarded'];
+                $row['lat'] = (float)$row['lat'];
+                $row['lon'] = (float)$row['lon'];
+            }
+            return $results;
+        }
+
+        return [];
+    }
 }

@@ -323,3 +323,13 @@ The application allows users to participate in global geographic games where the
 - Appended a neon polyline overlay on the Google Map linking the player to the nearest locked dashpoint.
 - Created a robust E2E test suite in `e2e/radar.spec.js` asserting all 9 tracking, hysteresis, UI collapsing, routing sleep, visibility sleep, and battery accuracy gating behaviors using coordinate-flushing helpers and `expect.poll` async assertions.
 - Verified that all linters (`npm run lint`), pre-commit hooks, and Playwright tests pass successfully on Chrome, iPhone, and Pixel layouts.
+
+### 48. Actual Log Locations on Map (Zoom >= 15)
+- Implemented frontend and backend components to display the actual physical locations of user logs/visits on the map when zoomed in sufficiently (Zoom >= 15).
+- Created a new method `searchVisitsRegion` in [SearchService.php](backend/services/SearchService.php) utilizing MySQL spatial coordinates to retrieve approved visits in the bounding box, with full support for anti-meridian Date Line query bifurcation.
+- Exposed the new backend query through a dedicated public API endpoint [search_visits.php](public/api/search_visits.php).
+- Modified the frontend map controller [map.js](public/js/map.js) to track `activeVisitMarkers`. Added logic in `idle` and `zoom_changed` map event listeners to trigger dynamic visit log refreshes when zoom level is >= 15, and clear them below zoom 15.
+- Styled map markers elegantly in [index.css](public/css/index.css) using glassmorphism styling tokens. Added green glowing dots for successful visits, yellow glowing dots for attempts, and small badges showing player usernames next to the dots. Added CSS transitions to animate hover states.
+- Bound click handlers to visit markers that navigate directly to the respective dashpoint hash route (`#dashpoint?id=...`).
+- Wrote extensive unit tests in [SearchServiceTest.php](backend/tests/SearchServiceTest.php) and designed a Playwright integration test suite in [visit_markers.spec.js](e2e/visit_markers.spec.js) verifying rendering, zoom visibility toggles, color differentiation, and redirection paths.
+- Verified that all unit tests, linters, type checkers, and Playwright tests pass successfully with 0 errors.

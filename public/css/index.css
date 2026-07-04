@@ -1723,3 +1723,75 @@ body, html {
   font-size: 0.5rem;
 }
 
+/* =========================================================================
+   LAYER 0.5: Actual User Log (Visit) Map Markers
+   Aesthetic: Glowing dots and glassmorphic badges with hover animations
+   ========================================================================= */
+
+.visit-marker-container {
+  display: flex;
+  align-items: center;
+  position: relative;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.visit-marker-dot {
+  width: 10px;
+  height: 10px;
+  background-color: var(--accent-green);
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 6px var(--accent-green-glow);
+  flex-shrink: 0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.visit-marker-container.attempt .visit-marker-dot {
+  background-color: var(--accent-amber);
+  box-shadow: 0 0 6px var(--accent-amber-glow);
+}
+
+.visit-marker-label {
+  margin-left: 6px;
+  background-color: var(--bg-glass);
+  color: var(--text-main);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-family: var(--font-sans);
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  opacity: 0.85;
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+}
+
+.visit-marker-container.attempt .visit-marker-label {
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+/* Hover effects for premium interactive feel */
+.visit-marker-container:hover .visit-marker-dot {
+  transform: scale(1.25);
+  box-shadow: 0 0 10px var(--accent-green);
+}
+
+.visit-marker-container.attempt:hover .visit-marker-dot {
+  box-shadow: 0 0 10px var(--accent-amber);
+}
+
+.visit-marker-container:hover .visit-marker-label {
+  opacity: 1;
+  transform: scale(1.05);
+  background-color: var(--bg-glass-heavy);
+  border-color: var(--accent-green);
+}
+
+.visit-marker-container.attempt:hover .visit-marker-label {
+  border-color: var(--accent-amber);
+}
+
+

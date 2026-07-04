@@ -96,6 +96,10 @@ mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "
     -- Mock historical visit for TestUser on Game 1 dashpoint
     INSERT INTO visits (id, dashpoint_id, user_id, team_id, reported_location, distance_meters, reported_time, score_awarded, status)
     VALUES (1, 'GD000-AAAA', 1, NULL, ST_GeomFromText('POINT(51.5074 -0.1278)', 4326), 0, DATE_SUB(NOW(), INTERVAL 10 DAY), 3, 'approved');
+
+    -- Mock historical attempt for TestUser on Game 1 dashpoint
+    INSERT INTO visits (id, dashpoint_id, user_id, team_id, reported_location, distance_meters, reported_time, score_awarded, status, is_attempt)
+    VALUES (2, 'GD000-AAAA', 1, NULL, ST_GeomFromText('POINT(51.5076 -0.1280)', 4326), 20, DATE_SUB(NOW(), INTERVAL 9 DAY), 0, 'approved', TRUE);
 "
 
 echo "Test database initialized successfully!"

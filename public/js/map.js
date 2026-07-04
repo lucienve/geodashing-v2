@@ -9,6 +9,7 @@ let map;
 let activeMarkers = [];
 let appClusterer = null;
 let activeCircles = [];
+let activeVisitMarkers = [];
 
 // Custom Algorithm for mapping Visited State priorities to Grouped Containers
 const customClusterRenderer = {
@@ -92,6 +93,12 @@ window.initMap = function () {
         };
 
         refreshDashpoints(searchMatrix);
+
+        if (map.getZoom() >= 15) {
+            refreshVisitLogs(searchMatrix);
+        } else {
+            clearVisitLogs();
+        }
     });
 
     // 2b. Listen for zoom changes to toggle 100m dashpoint radius visibility
@@ -104,6 +111,11 @@ window.initMap = function () {
                 c.setMap(null);
             }
         });
+
+        const showVisits = map.getZoom() >= 15;
+        if (!showVisits) {
+            clearVisitLogs();
+        }
     });
 
     // 3. Optional Geographic Snapping Routine
@@ -563,4 +575,76 @@ function plotVectors(pointsArray) {
     if (window.currentUserPosition && typeof window.processProximityRadar === 'function') {
         window.processProximityRadar(window.currentUserPosition);
     }
+}
+
+/**
+ * Fetches actual user log/visit locations for the given bounding box
+ */
+function refreshVisitLogs(bounds) {
+    if (window.currentGameContext && window.currentGameContext.id) {
+        bounds.game_id = window.currentGameContext.id;
+    } else {
+        return;
+    }
+    const query = new URLSearchParams(bounds).toString();
+
+    fetch(`api/search_visits.php?${query}`)
+        .then(response => response.json())
+        .then(json => {
+            if (json.status === 'success') {
+                plotVisitMarkers(json.data);
+            }
+        })
+        .catch(err => console.error("Visits Loading Failed:", err));
+}
+
+/**
+ * Clears all active user log/visit markers from the map
+ */
+function clearVisitLogs() {
+    activeVisitMarkers.forEach(m => m.setMap(null));
+    activeVisitMarkers = [];
+}
+
+/**
+ * Plots actual user log/visit markers on the map
+ */
+function plotVisitMarkers(visitsArray) {
+    clearVisitLogs();
+
+    (visitsArray || []).forEach(visit => {
+        const container = document.createElement('div');
+        container.className = 'visit-marker-container';
+        if (visit.is_attempt) {
+            container.classList.add('attempt');
+        }
+
+        const dot = document.createElement('div');
+        dot.className = 'visit-marker-dot';
+
+        const label = document.createElement('div');
+        label.className = 'visit-marker-label';
+        label.textContent = visit.username;
+
+        container.appendChild(dot);
+        container.appendChild(label);
+
+        container.addEventListener('click', () => {
+            window.location.hash = `#dashpoint?id=${visit.dashpoint_id}`;
+        });
+
+        const marker = new google.maps.marker.AdvancedMarkerElement({
+            map: map,
+            position: { lat: parseFloat(visit.lat), lng: parseFloat(visit.lon) },
+            title: `${visit.username}'s ${visit.is_attempt ? 'Attempt' : 'Visit'}`,
+            content: container,
+            zIndex: 9999 // Ensure visits render on top of default markers but below user location (99999)
+        });
+
+        marker.addListener('gmp-click', () => {
+            window.location.hash = `#dashpoint?id=${visit.dashpoint_id}`;
+        });
+
+        activeVisitMarkers.push(marker);
+    });
 }
