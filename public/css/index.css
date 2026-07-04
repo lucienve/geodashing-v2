@@ -1495,3 +1495,231 @@ body, html {
 .caption-modal-save-btn {
   width: 100%;
 }
+
+/* =========================================================================
+   LAYER 1.5: Proximity Radar HUD (Option 3)
+   ========================================================================= */
+#radar-hud {
+  position: absolute;
+  top: 75px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 360px;
+  z-index: 100;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: auto;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  background: var(--bg-glass-heavy);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+#radar-hud.out-of-range {
+  border: 1.5px solid rgba(245, 158, 11, 0.5);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6), 0 0 8px rgba(245, 158, 11, 0.1);
+}
+
+#radar-hud.in-range {
+  border: 1.5px solid var(--accent-green);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6), 0 0 15px rgba(16, 185, 129, 0.25);
+  animation: pulseGreenBorder 3s infinite ease-in-out;
+}
+
+@keyframes pulseGreenBorder {
+  0% {
+    border-color: rgba(16, 185, 129, 0.5);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6), 0 0 5px rgba(16, 185, 129, 0.1);
+  }
+  50% {
+    border-color: rgba(16, 185, 129, 1);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6), 0 0 18px rgba(16, 185, 129, 0.35);
+  }
+  100% {
+    border-color: rgba(16, 185, 129, 0.5);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6), 0 0 5px rgba(16, 185, 129, 0.1);
+  }
+}
+
+.hud-content-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.hud-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.radar-ping {
+  display: flex;
+  position: relative;
+  width: 14px;
+  height: 14px;
+}
+
+.ping-core {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  z-index: 2;
+  transition: background-color 0.3s ease;
+}
+
+#radar-hud.out-of-range .ping-core {
+  background-color: var(--accent-amber);
+}
+
+#radar-hud.in-range .ping-core {
+  background-color: var(--accent-green);
+}
+
+.ping-wave {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  opacity: 0.4;
+  animation: pingExpand 1.5s infinite linear;
+}
+
+#radar-hud.out-of-range .ping-wave {
+  background-color: var(--accent-amber);
+}
+
+#radar-hud.in-range .ping-wave {
+  background-color: var(--accent-green);
+}
+
+@keyframes pingExpand {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.hud-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.hud-title {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.hud-sub {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  transition: color 0.3s ease;
+}
+
+#radar-hud.out-of-range .hud-sub {
+  color: var(--accent-amber);
+}
+
+#radar-hud.in-range .hud-sub {
+  color: var(--accent-green);
+}
+
+.hud-action-btn {
+  background: var(--accent-green);
+  border: none;
+  color: #000;
+  font-family: var(--font-sans);
+  font-weight: bold;
+  font-size: 0.75rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--accent-green-glow);
+  transition: transform 0.1s ease, opacity 0.3s ease;
+}
+
+.hud-action-btn:active {
+  transform: scale(0.95);
+}
+
+.hud-toggle-btn {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  cursor: pointer;
+  padding: 0.2rem;
+  transition: transform 0.3s ease, color 0.15s ease;
+  z-index: 11;
+}
+
+.hud-toggle-btn:hover {
+  color: var(--text-main);
+}
+
+/* Collapsed Panel Styles */
+#radar-hud.collapsed {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#radar-hud.collapsed .hud-content-wrapper {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+#radar-hud.collapsed .radar-ping {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+}
+
+#radar-hud.collapsed .hud-toggle-btn {
+  top: auto;
+  bottom: -6px;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%) rotate(180deg);
+  background: var(--bg-dark);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 0.5rem;
+}
+

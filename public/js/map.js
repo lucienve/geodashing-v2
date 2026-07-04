@@ -129,13 +129,50 @@ window.initMap = function () {
             }
         });
 
-        // Continuously update user marker when visible
+        // Continuously update user marker and check proximity radar when visible
         let watchId = null;
+        let currentTrackingMode = null; // 'high', 'low', or null
+        let gpsBuffer = []; // array of {lat, lng} of size max 3. Covers ~3s in high accuracy (1Hz ticks) or ~30-60s in low accuracy.
+        let inRangeLockId = null; // id of the dashpoint currently locked "in range"
+        let lastVibratedId = null; // to ensure haptic vibration fires only once per entry
+        let radarLine = null;
 
-        const startLocationWatch = () => {
-            if (watchId !== null) return;
+        const startLocationWatch = (mode = 'high') => {
+            // Check if map route is active (hash is empty or #home)
+            const hash = window.location.hash.split('?')[0];
+            if (hash !== '' && hash !== '#home') {
+                return;
+            }
+
+            if (watchId !== null) {
+                if (currentTrackingMode === mode) return; // already in this mode
+                geoProvider.clearWatch(watchId);
+                watchId = null;
+            }
+
+            currentTrackingMode = mode;
+            const options = mode === 'high' 
+                ? { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                : { enableHighAccuracy: false, timeout: 20000, maximumAge: 10000 };
+
             watchId = geoProvider.watchPosition((position) => {
-                const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
+                const rawLat = position.coords.latitude;
+                const rawLon = position.coords.longitude;
+
+                // 1. Coordinate averaging/smoothing (rolling buffer of size 3) - Only in high accuracy
+                let pos;
+                if (currentTrackingMode === 'high') {
+                    gpsBuffer.push({ lat: rawLat, lng: rawLon });
+                    if (gpsBuffer.length > 3) {
+                        gpsBuffer.shift();
+                    }
+                    const avgLat = gpsBuffer.reduce((sum, p) => sum + p.lat, 0) / gpsBuffer.length;
+                    const avgLon = gpsBuffer.reduce((sum, p) => sum + p.lng, 0) / gpsBuffer.length;
+                    pos = { lat: avgLat, lng: avgLon };
+                } else {
+                    gpsBuffer = [];
+                    pos = { lat: rawLat, lng: rawLon };
+                }
                 
                 // Hide GPS error banner if visible on success
                 const banner = document.getElementById('gps-error-banner');
@@ -152,12 +189,23 @@ window.initMap = function () {
                 } else {
                     userLocationMarker.position = pos;
                 }
+
+                // If template overlay is active, hide HUD and clear radar line
+                const currentHash = window.location.hash.split('?')[0];
+                if (currentHash !== '' && currentHash !== '#home') {
+                    hideRadarHUD();
+                    return;
+                }
+
+                // Run proximity radar processing
+                processProximityRadar(pos);
+
             }, (error) => {
                 console.error("GPS Watch error:", error);
                 // Show GPS error banner on failure
                 const banner = document.getElementById('gps-error-banner');
                 if (banner) banner.classList.remove('d-none');
-            }, { enableHighAccuracy: true });
+            }, options);
         };
 
         const stopLocationWatch = () => {
@@ -165,16 +213,192 @@ window.initMap = function () {
                 geoProvider.clearWatch(watchId);
                 watchId = null;
             }
+            currentTrackingMode = null;
+            gpsBuffer = [];
+            hideRadarHUD();
             // Ensure error banner is hidden when watch is stopped
             const banner = document.getElementById('gps-error-banner');
             if (banner) banner.classList.add('d-none');
         };
 
+        function processProximityRadar(pos) {
+            if (!window.loadedDashpoints || window.loadedDashpoints.length === 0) {
+                hideRadarHUD();
+                return;
+            }
+
+            // Calculate distance to all loaded dashpoints
+            let points = window.loadedDashpoints.map(dp => {
+                const dist = window.calculateDistance(pos.lat, pos.lng, parseFloat(dp.lat), parseFloat(dp.lon));
+                return { dp, dist };
+            });
+
+            // Multi-point focus lock
+            let targetPoint = null;
+            if (inRangeLockId) {
+                const currentLock = points.find(p => p.dp.id === inRangeLockId);
+                if (currentLock && currentLock.dist <= 110) {
+                    targetPoint = currentLock;
+                } else {
+                    inRangeLockId = null; // broke range lock
+                }
+            }
+
+            // If no locked point, pick the closest one
+            if (!targetPoint) {
+                points.sort((a, b) => a.dist - b.dist);
+                const closest = points[0];
+                if (closest) {
+                    targetPoint = closest;
+                }
+            }
+
+            if (!targetPoint) {
+                hideRadarHUD();
+                return;
+            }
+
+            const distance = targetPoint.dist;
+            const dp = targetPoint.dp;
+
+            // Dynamic GPS Accuracy Gating (Battery Save)
+            if (distance > 500) {
+                hideRadarHUD();
+                startLocationWatch('low');
+                return;
+            } else {
+                startLocationWatch('high');
+            }
+
+            // Proximity State & Hysteresis logic (enter <=100m, exit >110m)
+            let inRange = false;
+            if (distance <= 100) {
+                inRange = true;
+                inRangeLockId = dp.id; // Lock focus
+            } else if (inRangeLockId === dp.id && distance <= 110) {
+                inRange = true;
+            }
+
+            // Update HUD elements
+            const hud = document.getElementById('radar-hud');
+            const targetIdSpan = document.getElementById('radar-target-id');
+            const distanceText = document.getElementById('radar-distance-text');
+            const logBtn = document.getElementById('radar-btn-log');
+
+            if (hud) {
+                hud.classList.remove('d-none');
+                if (inRange) {
+                    hud.classList.remove('out-of-range');
+                    hud.classList.add('in-range');
+                    if (distanceText) distanceText.innerHTML = `IN RANGE &mdash; ${distance.toFixed(1)}m away`;
+                    if (logBtn) {
+                        logBtn.style.display = 'block';
+                        logBtn.disabled = false;
+                        logBtn.onclick = () => {
+                            window.location.hash = `#report?id=${dp.id}`;
+                        };
+                    }
+                    
+                    // Trigger single vibration on entry
+                    if (lastVibratedId !== dp.id && navigator.vibrate) {
+                        navigator.vibrate([100, 50, 100]);
+                        lastVibratedId = dp.id;
+                    }
+                } else {
+                    hud.classList.remove('in-range');
+                    hud.classList.add('out-of-range');
+                    if (distanceText) distanceText.innerHTML = `${distance.toFixed(1)}m away`;
+                    if (logBtn) {
+                        logBtn.style.display = 'none';
+                        logBtn.disabled = true;
+                    }
+                    // Reset vibration when out of range
+                    if (lastVibratedId === dp.id) {
+                        lastVibratedId = null;
+                    }
+                }
+                if (targetIdSpan) targetIdSpan.innerText = dp.id;
+            }
+
+            // Draw or update neon Polyline on map
+            const lineCoords = [
+                pos,
+                { lat: parseFloat(dp.lat), lng: parseFloat(dp.lon) }
+            ];
+
+            const lineSymbol = {
+                path: 'M 0,-1 0,1',
+                strokeOpacity: 1,
+                scale: 2
+            };
+
+            const strokeColor = inRange ? '#10b981' : '#f59e0b';
+
+            if (!radarLine) {
+                radarLine = new google.maps.Polyline({
+                    path: lineCoords,
+                    strokeColor: strokeColor,
+                    strokeOpacity: 0,
+                    icons: [
+                        {
+                            icon: lineSymbol,
+                            offset: '0',
+                            repeat: '20px'
+                        }
+                    ],
+                    map: map
+                });
+            } else {
+                radarLine.setPath(lineCoords);
+                radarLine.setOptions({
+                    strokeColor: strokeColor,
+                    map: map
+                });
+            }
+        }
+
+        function hideRadarHUD() {
+            const hud = document.getElementById('radar-hud');
+            if (hud) hud.classList.add('d-none');
+            if (radarLine) {
+                radarLine.setMap(null);
+                radarLine = null;
+            }
+            inRangeLockId = null;
+            lastVibratedId = null;
+        }
+
         const locationVisibility = new window.VisibilityManager(
-            startLocationWatch,
+            () => startLocationWatch('high'),
             stopLocationWatch
         );
         locationVisibility.start();
+
+        // Collapsible HUD toggle bindings
+        const toggleBtn = document.getElementById('radar-hud-toggle');
+        const hudElement = document.getElementById('radar-hud');
+        if (toggleBtn && hudElement) {
+            toggleBtn.onclick = (e) => {
+                e.stopPropagation();
+                const isCollapsed = hudElement.classList.toggle('collapsed');
+                toggleBtn.innerHTML = isCollapsed ? '▼' : '▲';
+                toggleBtn.setAttribute('aria-label', isCollapsed ? 'Expand panel' : 'Collapse panel');
+            };
+        }
+
+        // Router-aware sleep/wake controller
+        document.addEventListener('routeLoaded', (event) => {
+            const route = event.detail.route;
+            const hash = route.split('?')[0];
+            
+            if (hash === '' || hash === '#home') {
+                if (document.visibilityState === 'visible') {
+                    startLocationWatch('high');
+                }
+            } else {
+                stopLocationWatch();
+            }
+        });
 
         // Add Custom "My Location" Button mapped securely to the Google Control Position array
         const locationButton = document.createElement("button");
@@ -248,6 +472,9 @@ function refreshDashpoints(bounds) {
  * Purges the DOM rendering structure allocating entirely fresh Google Map Marker objects
  */
 function plotVectors(pointsArray) {
+    // Save loaded dashpoints globally for the proximity radar HUD check
+    window.loadedDashpoints = pointsArray || [];
+
     // Flush old markers and circles
     if (appClusterer) {
         appClusterer.clearMarkers();

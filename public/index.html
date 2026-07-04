@@ -74,6 +74,25 @@
         <!-- Mobile Navigation Backdrop -->
         <div id="mobile-nav-backdrop"></div>
 
+        <!-- Proximity Radar HUD (Initially hidden/d-none) -->
+        <div id="radar-hud" class="d-none">
+            <!-- Collapsible panel toggle button -->
+            <button id="radar-hud-toggle" class="hud-toggle-btn" aria-label="Collapse panel">▲</button>
+            <div class="hud-content-wrapper">
+                <div class="hud-left">
+                    <div class="radar-ping">
+                        <span class="ping-core"></span>
+                        <span class="ping-wave"></span>
+                    </div>
+                    <div class="hud-details">
+                        <div class="hud-title">TARGET: <span id="radar-target-id">GD-XXX</span></div>
+                        <div class="hud-sub" id="radar-distance-text">IN RANGE &mdash; 0m away</div>
+                    </div>
+                </div>
+                <button class="hud-action-btn" id="radar-btn-log">LOG VISIT</button>
+            </div>
+        </div>
+
         <!-- Layer 2: The Router Content Injector.
              When the URL hash changes (e.g., `#report`), app.js dynamically fetches 
              the template and places the HTML into this container. -->

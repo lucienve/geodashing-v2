@@ -312,3 +312,14 @@ The application allows users to participate in global geographic games where the
 - Implemented `pass_filenames: false` across all local hooks to force full-codebase verification on every run and prevent partial-check drift.
 - Consolidated four legacy GitHub Actions workflows (`ci-python.yml`, `typecheck.yml`, `ci-php.yml`, `ci-js-lint.yml`) into a single, unified [.github/workflows/ci-verification.yml](.github/workflows/ci-verification.yml) file.
 - Verified that all local pre-commit hooks execute and pass successfully with zero errors.
+
+### 47. Map-Screen Proximity Radar HUD (Option 3)
+- Implemented a mobile-HUD proximity radar panel directly on the main map interface (`public/index.html` and `public/css/index.css`), leveraging glassmorphism and pulsing keyframe animations for high visual quality.
+- Updated user marker location tracking inside `public/js/map.js` to calculate a rolling coordinate average over the last 3 GPS ticks, mitigating mobile GPS coordinate jitter.
+- Designed client-side mathematical tracking calculations using the Haversine equation to check the user's distance to active game dashpoints.
+- Implemented a multi-point lock prioritizing the closest dashpoint, but locking focus onto the target once inside the 100m threshold.
+- Integrated a proximity warning hysteresis buffer (unlocking/exiting range state only at $> 110$m while entering at $\le 100$m) to prevent layout flashing.
+- Developed battery-saving dynamic geolocation gating: clearing tracking watchers when navigating to other SPA screens (`routeLoaded` listener) or when the tab is hidden (`visibilitychange`), and downgrading GPS accuracy (`enableHighAccuracy: false`) when distance is $> 500$m.
+- Appended a neon polyline overlay on the Google Map linking the player to the nearest locked dashpoint.
+- Created a robust E2E test suite in `e2e/radar.spec.js` asserting all 9 tracking, hysteresis, UI collapsing, routing sleep, visibility sleep, and battery accuracy gating behaviors using coordinate-flushing helpers and `expect.poll` async assertions.
+- Verified that all linters (`npm run lint`), pre-commit hooks, and Playwright tests pass successfully on Chrome, iPhone, and Pixel layouts.
