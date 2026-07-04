@@ -173,6 +173,9 @@ window.initMap = function () {
                     gpsBuffer = [];
                     pos = { lat: rawLat, lng: rawLon };
                 }
+
+                // Store current smoothed position globally
+                window.currentUserPosition = pos;
                 
                 // Hide GPS error banner if visible on success
                 const banner = document.getElementById('gps-error-banner');
@@ -356,6 +359,8 @@ window.initMap = function () {
                 });
             }
         }
+
+        window.processProximityRadar = processProximityRadar;
 
         function hideRadarHUD() {
             const hud = document.getElementById('radar-hud');
@@ -552,5 +557,10 @@ function plotVectors(pointsArray) {
         });
     } else {
         appClusterer.addMarkers(activeMarkers);
+    }
+
+    // If we already have the user's position, run the proximity radar immediately
+    if (window.currentUserPosition && typeof window.processProximityRadar === 'function') {
+        window.processProximityRadar(window.currentUserPosition);
     }
 }
