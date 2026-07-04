@@ -94,8 +94,8 @@ test.describe('Actual Log Locations Map Markers', () => {
 
         await page.waitForFunction(() => document.querySelectorAll('.visit-marker-container').length === 2, { timeout: 10000 });
 
-        const successMarker = page.locator('.visit-marker-container:not(.attempt)');
-        await successMarker.click({ force: true });
+        const successMarker = page.locator('.visit-marker-container:not(.attempt) .visit-marker-label');
+        await successMarker.click();
 
         // Should update hash route and load the dashpoint page details
         await page.waitForURL(/#dashpoint\?id=GD000-AAAA/);

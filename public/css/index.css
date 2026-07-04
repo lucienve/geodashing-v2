@@ -1729,22 +1729,24 @@ body, html {
    ========================================================================= */
 
 .visit-marker-container {
-  display: flex;
-  align-items: center;
   position: relative;
-  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  transform: translate(-12px, -12px);
   pointer-events: auto;
   cursor: pointer;
 }
 
 .visit-marker-dot {
+  position: absolute;
+  top: 7px;
+  left: 7px;
   width: 10px;
   height: 10px;
   background-color: var(--accent-green);
   border: 2px solid #ffffff;
   border-radius: 50%;
   box-shadow: 0 0 6px var(--accent-green-glow);
-  flex-shrink: 0;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -1754,7 +1756,10 @@ body, html {
 }
 
 .visit-marker-label {
-  margin-left: 6px;
+  position: absolute;
+  left: 25px;
+  top: 12px;
+  transform: translateY(-50%);
   background-color: var(--bg-glass);
   color: var(--text-main);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -1763,7 +1768,7 @@ body, html {
   font-size: 11px;
   font-family: var(--font-sans);
   white-space: nowrap;
-  pointer-events: none;
+  pointer-events: auto;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   opacity: 0.85;
   transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
@@ -1785,7 +1790,7 @@ body, html {
 
 .visit-marker-container:hover .visit-marker-label {
   opacity: 1;
-  transform: scale(1.05);
+  transform: translateY(-50%) scale(1.05);
   background-color: var(--bg-glass-heavy);
   border-color: var(--accent-green);
 }
