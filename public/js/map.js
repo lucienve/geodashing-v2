@@ -638,7 +638,9 @@ function plotVisitMarkers(visitsArray) {
             position: { lat: parseFloat(visit.lat), lng: parseFloat(visit.lon) },
             title: `${visit.username}'s ${visit.is_attempt ? 'Attempt' : 'Visit'}`,
             content: container,
-            zIndex: 9999 // Ensure visits render on top of default markers but below user location (99999)
+            zIndex: 9999, // Ensure visits render on top of default markers but below user location (99999)
+            anchorLeft: "-50%",
+            anchorTop: "-50%"
         });
 
         marker.addListener('gmp-click', () => {
