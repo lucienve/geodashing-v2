@@ -7,7 +7,7 @@
         "google/cloud-storage": "^2.3",
         "ext-gd": "*",
         "google/apiclient": "^2.15",
-        "symfony/mime": "^7.4.12",
+        "symfony/mime": "^8.1.0",
         "egulias/email-validator": "^4.0"
     },
     "autoload": {
