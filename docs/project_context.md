@@ -301,7 +301,7 @@ The application allows users to participate in global geographic games where the
 - Eliminated the slow global `union_all()` and `difference()` geometry operations on the 10m Natural Earth shapefiles.
 - Implemented `subdivide_geometry` to partition large landmass and lake polygons into smaller grid-based pieces (max metric size 1,000,000 meters) to keep vertex counts low.
 - Implemented a hierarchical spatial query system: performing a fast vectorized **Point-in-Polygon (PIP)** check first via `shapely.contains` to immediately accept points on land, followed by localized `STRtree` bounding box checks and buffer intersections only for boundary candidates.
-- Explicitly added `numpy>=1.24.0` to the python dependencies inside [requirements.txt](requirements.txt).
+- Explicitly added `numpy>=2.4.6` to the python dependencies inside [requirements.txt](requirements.txt).
 - Updated [admin_guide.md](docs/admin_guide.md) documenting the optimized hierarchical spatial indexing mechanics.
 - Verified that all 32 Python pytest unit tests, linters, and type checkers pass successfully with zero issues.
 
