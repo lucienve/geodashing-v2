@@ -6,7 +6,7 @@ The application allows users to participate in global geographic games where the
 
 ## Architectural Decisions
 - **Core Stack**: 
-  - **Frontend**: Vanilla JS (ES6+), Semantic HTML5, Vanilla CSS3. **No Heavy Frameworks** (React/Vue/etc. are strictly prohibited). Logic is decoupled into separate files (`api.js`, `app.js`, `controllers.js`, `map.js`).
+  - **Frontend**: Vanilla JS (ES6+), Semantic HTML5, Vanilla CSS3. **No Heavy Frameworks** (React/Vue/etc. are strictly prohibited). Logic is decoupled into separate files (`api.js`, `app.js`, `controllers.js`, `map.js`). Node.js **24.16.0** is enforced via `.nvmrc` for local tooling, linting, and E2E testing.
   - **Backend**: Primary API layer written in **PHP 8.3.6** (`public/api`) supplemented with **Python 3.11+** for server-side scripts / game generation algorithms (`generate_game.py`), remaining backward compatible with Debian 12.
   - **Database**: **MySQL 8.4.8** using native drivers (PDO for PHP, `mysql-connector-python` for Python). **No ORM is used**. All queries are securely handled via explicit parameterized statements.
   - **Media Storage**: Google Cloud Storage buckets handle user-uploaded photos natively via PHP APIs.
@@ -333,3 +333,8 @@ The application allows users to participate in global geographic games where the
 - Bound click handlers to visit markers that navigate directly to the respective dashpoint hash route (`#dashpoint?id=...`).
 - Wrote extensive unit tests in [SearchServiceTest.php](backend/tests/SearchServiceTest.php) and designed a Playwright integration test suite in [visit_markers.spec.js](e2e/visit_markers.spec.js) verifying rendering, zoom visibility toggles, color differentiation, and redirection paths.
 - Verified that all unit tests, linters, type checkers, and Playwright tests pass successfully with 0 errors.
+
+### 49. Node.js 24 Synchronization & Environment Alignment
+- Standardized the project runtime environment to Node.js `24.16.0` (Node 24 LTS) across development, GitHub Actions CI, and production.
+- Added a repository root [.nvmrc](.nvmrc) file pinned to `24.16.0` to enable automatic version switching via `nvm use`.
+- Updated NVM local terminal defaults to Node 24 (`nvm alias default 24`) and confirmed zero `EBADENGINE` warnings during `npm ci`.
