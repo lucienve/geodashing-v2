@@ -336,5 +336,9 @@ The application allows users to participate in global geographic games where the
 
 ### 49. Node.js 24 Synchronization & Environment Alignment
 - Standardized the project runtime environment to Node.js `24.16.0` (Node 24 LTS) across development, GitHub Actions CI, and production.
-- Added a repository root [.nvmrc](.nvmrc) file pinned to `24.16.0` to enable automatic version switching via `nvm use`.
+- Added a repository root [.nvmrc](../.nvmrc) file pinned to `24.16.0` to enable automatic version switching via `nvm use`.
 - Updated NVM local terminal defaults to Node 24 (`nvm alias default 24`) and confirmed zero `EBADENGINE` warnings during `npm ci`.
+
+### 50. Feature Summary Email Tracking (Git Tags)
+- Established Git tag tracking pattern (`email-summary/YYYY-MM-DD`) to mark commits corresponding to sent feature summary emails.
+- Initialized baseline tag `email-summary/2026-07-22` at commit `1c0aaf0` so that Antigravity can dynamically inspect `git log <latest-email-tag>..HEAD` when drafting future emails.
