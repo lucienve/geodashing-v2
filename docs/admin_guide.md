@@ -9,7 +9,7 @@ This document provides a comprehensive operational guide for the Geodashing V2 p
 All administrative utilities are located in the `backend/scripts/` directory and must be executed in an environment matching the core production specifications.
 
 ### Technical Target Versions
-*   **Python**: `3.11+`
+*   **Python**: `3.12.3` (Pinned via `.python-version`)
 *   **PHP**: `8.3.6`
 *   **MySQL**: `8.4.8`
 

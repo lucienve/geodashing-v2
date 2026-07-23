@@ -7,7 +7,7 @@ The application allows users to participate in global geographic games where the
 ## Architectural Decisions
 - **Core Stack**: 
   - **Frontend**: Vanilla JS (ES6+), Semantic HTML5, Vanilla CSS3. **No Heavy Frameworks** (React/Vue/etc. are strictly prohibited). Logic is decoupled into separate files (`api.js`, `app.js`, `controllers.js`, `map.js`). Node.js **24.16.0** is enforced via `.nvmrc` for local tooling, linting, and E2E testing.
-  - **Backend**: Primary API layer written in **PHP 8.3.6** (`public/api`) supplemented with **Python 3.11+** for server-side scripts / game generation algorithms (`generate_game.py`), remaining backward compatible with Debian 12.
+  - **Backend**: Primary API layer written in **PHP 8.3.6** (`public/api`) supplemented with **Python 3.12.3** (pinned via `.python-version`) for server-side scripts / game generation algorithms (`generate_game.py`). On Debian 12 development environments, `uv` (Astral) is mandated to provision and manage the Python 3.12.3 runtime inside `.venv`.
   - **Database**: **MySQL 8.4.8** using native drivers (PDO for PHP, `mysql-connector-python` for Python). **No ORM is used**. All queries are securely handled via explicit parameterized statements.
   - **Media Storage**: Google Cloud Storage buckets handle user-uploaded photos natively via PHP APIs.
 - **Security Posture**: 
@@ -342,3 +342,10 @@ The application allows users to participate in global geographic games where the
 ### 50. Feature Summary Email Tracking (Git Tags)
 - Established Git tag tracking pattern (`email-summary/YYYY-MM-DD`) to mark commits corresponding to sent feature summary emails.
 - Initialized baseline tag `email-summary/2026-07-22` at commit `1c0aaf0` so that Antigravity can dynamically inspect `git log <latest-email-tag>..HEAD` when drafting future emails.
+
+### 51. Debian 12 Python Development Environment & `uv` Integration
+- Standardized local Python environment setup on Debian 12 developer workstations using `uv` (Astral) to provision and manage Python 3.12 (`CPython 3.12.3`) pinned via a root `.python-version` file inside `.venv`.
+- Required installation via `curl -LsSf https://astral.sh/uv/install.sh | sh` (`-L` flag mandatory for URL redirects).
+- Mandated virtual environment creation via `uv venv` (reading `.python-version`) and package synchronization via `uv pip install -r requirements.txt -r requirements-dev.txt`.
+- Configured GitHub Actions CI (`ci-verification.yml`) to consume `python-version-file: '.python-version'`, ensuring 100% version lock parity across dev, CI, and production.
+- Verified that all Python tests (`pytest backend/`), linters (`pylint backend/`), and type checkers (`.venv/bin/mypy backend/`) run cleanly with zero errors under Python 3.12.3.
