@@ -329,8 +329,7 @@ Evaluate the summary and return the scores, justification, and a final verdict. 
         contents=prompt,
         config=google.genai.types.GenerateContentConfig(
             response_mime_type="application/json",
-            response_schema=EvaluationResult,
-            temperature=0.0
+            response_schema=EvaluationResult
         )
     )
 
@@ -348,7 +347,7 @@ def _get_eval_config(cfg_p: str) -> tuple[dict, google.genai.Client, str]:
 
     config = configparser.ConfigParser()
     config.read(cfg_p)
-    judge_model = "gemini-3.5-flash"
+    judge_model = "gemini-3.6-flash"
     if 'gemini' in config and 'GEMINI_EVAL_MODEL' in config['gemini']:
         val = config['gemini']['GEMINI_EVAL_MODEL']
         if val:

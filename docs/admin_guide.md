@@ -52,7 +52,7 @@ GOOGLE_MAPS_API_KEY = "AIzaSy..."
 
 [gemini]
 GEMINI_API_KEY = "AIzaSy..."
-GEMINI_MODEL = "gemini-3.5-flash"
+GEMINI_MODEL = "gemini-3.6-flash"
 GEMINI_PROJECT_ID = "your-gcp-project-id"
 ```
 
@@ -147,7 +147,7 @@ Harnesses the Gemini Developer API via the Google GenAI SDK to synthesize a stru
 4.  **Prompt Synthesis & Generation**:
     *   Loads system-level instructions (`data/summary_system_instructions.txt`) detailing the expected HTML output structure (subheadings restricted to `<h2>`/`<h3>` for accessibility, absolute hyperlinks, and thumbnail-to-image layouts).
     *   Injects few-shot historical templates from `data/summary_examples/` as chat history.
-    *   Dispatches the structured dataset and uploaded image components to `gemini-3.5-flash` (or `gemini-3.1-pro-preview`).
+    *   Dispatches the structured dataset and uploaded image components to `gemini-3.6-flash` (or `gemini-3.1-pro-preview`).
 5.  **Output Export**: Saves a plain-text prompt dump to `game_<id>_input.txt` and the final sanitized HTML fragment to `game_<id>_output.html`.
 6.  **Hermetic Resource Clean-up**: Automatically purges all local temporary downloaded files and issues API requests to permanently delete uploaded files from remote Gemini servers before exiting.
 

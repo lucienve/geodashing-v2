@@ -81,7 +81,7 @@ The application allows users to participate in global geographic games where the
 ### 11. AI Game Summaries & Reporting
 - Migrated to the modern `google-genai` Python SDK to automatically synthesize monthly game summaries.
 - Upgraded the summary generation engine from GCP Vertex AI to the Google AI Studio (Gemini Developer API) platform to simplify developer setups and facilitate seamless local testing.
-- Upgraded the default AI summary model to the next-generation series (**`gemini-3.5-flash`** or **`gemini-3.1-pro-preview`**), fully parameterized alongside `GEMINI_API_KEY` under the new `[gemini]` section of `config.ini` (with a complete template supplied in `config.ini.example`).
+- Upgraded the default AI summary model to the next-generation series (**`gemini-3.6-flash`** or **`gemini-3.1-pro-preview`**), fully parameterized alongside `GEMINI_API_KEY` under the new `[gemini]` section of `config.ini` (with a complete template supplied in `config.ini.example`).
 - Streamlined image input processing by bypassing Vertex-specific GCS `gs://` URIs and instead downloading photos via standard HTTPS URLs to feed raw image bytes inline via `types.Part.from_bytes()`, ensuring absolute environment portability.
 - The summary engine processes historical logs and selectively curates the best user-submitted photos (rendering them via optimized precomputed thumbnails) to build comprehensive HTML recaps.
 - Implemented data serialization to save inputs and outputs from the GenAI workflows to facilitate future model fine-tuning and few-shot example generation.
@@ -349,3 +349,9 @@ The application allows users to participate in global geographic games where the
 - Mandated virtual environment creation via `uv venv` (reading `.python-version`) and package synchronization via `uv pip install -r requirements.txt -r requirements-dev.txt`.
 - Configured GitHub Actions CI (`ci-verification.yml`) to consume `python-version-file: '.python-version'`, ensuring 100% version lock parity across dev, CI, and production.
 - Verified that all Python tests (`pytest backend/`), linters (`pylint backend/`), and type checkers (`.venv/bin/mypy backend/`) run cleanly with zero errors under Python 3.12.3.
+
+### 52. Gemini API Upgrade & Sampling Parameter Deprecation Compliance
+- Audited all Gemini API calls and project configurations against the latest Google GenAI specification updates ([Sampling Parameter Deprecation](https://ai.google.dev/gemini-api/docs/latest-model#sampling-parameter-deprecation)).
+- Removed deprecated `temperature=0.0` parameter from `GenerateContentConfig` in [test_summary_evaluation.py](backend/tests/test_summary_evaluation.py).
+- Upgraded default model references from `gemini-3.5-flash` to `gemini-3.6-flash` across configurations ([config.ini.example](backend/config.ini.example)) and documentation ([admin_guide.md](docs/admin_guide.md), [gemini_model_evaluation.md](docs/gemini_model_evaluation.md)).
+- Updated repository Gemini rules ([gemini_api.md](.agents/rules/gemini_api.md)) to mandate stripping deprecated sampling parameters (`temperature`, `top_p`, `top_k`) and prohibiting prefilled `model` turns.
