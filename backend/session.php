@@ -26,9 +26,12 @@ header("Content-Security-Policy: frame-ancestors 'self';");
 
 // 3. Configure custom session storage (Bypass Ubuntu cron job)
 if ((getenv('APP_ENV') ?: ($_ENV['APP_ENV'] ?? '')) !== 'testing') {
-    session_save_path('/var/lib/geodashing_sessions');
-    ini_set('session.gc_probability', '1');
-    ini_set('session.gc_divisor', '100');
+    $customSessionPath = '/var/lib/geodashing_sessions';
+    if (is_dir($customSessionPath) && is_writable($customSessionPath)) {
+        session_save_path($customSessionPath);
+        ini_set('session.gc_probability', '1');
+        ini_set('session.gc_divisor', '100');
+    }
 }
 
 // 4. Boot session

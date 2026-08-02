@@ -121,3 +121,22 @@ CREATE TABLE regional_extremes (
     UNIQUE KEY (country_code, state_province, year, extreme_type),
     FOREIGN KEY (dashpoint_id) REFERENCES dashpoints(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 9. Dashpoint Rerolls (Audit tracking for relocated points during preview)
+CREATE TABLE dashpoint_rerolls (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    dashpoint_id VARCHAR(20) NOT NULL,
+    game_id INT NOT NULL,
+    user_id INT NOT NULL,
+    old_location POINT SRID 4326 NOT NULL,
+    new_location POINT SRID 4326 NOT NULL,
+    reason VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (dashpoint_id) REFERENCES dashpoints(id) ON DELETE CASCADE,
+    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_reroll_dashpoint (dashpoint_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_rerolls_user_game ON dashpoint_rerolls (user_id, game_id);
+

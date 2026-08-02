@@ -43,6 +43,7 @@ services:
     environment:
       APP_ENV: testing
       DB_HOST: mysql
+      DB_PORT: "3306"
       GCS_EMULATOR_HOST: http://127.0.0.1:4443
     depends_on:
       mysql:

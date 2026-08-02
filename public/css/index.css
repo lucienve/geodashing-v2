@@ -346,6 +346,13 @@ body, html {
   transition: all 0.2s ease;
 }
 
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+  box-shadow: none;
+}
+
 .btn-primary {
   background: var(--accent-amber);
   color: #000;
@@ -1797,5 +1804,45 @@ body, html {
 .visit-marker-container.attempt:hover .visit-marker-label {
   border-color: var(--accent-amber);
 }
+
+/* =========================================================================
+   Dashpoint Reroll UI styling
+   ========================================================================= */
+.reroll-container {
+  margin-bottom: 2rem;
+  width: 100%;
+}
+
+.reroll-btn {
+  width: 100%;
+  margin-bottom: 0.5rem;
+  background: var(--accent-amber);
+  color: #000;
+  border: none;
+  font-weight: bold;
+}
+
+.reroll-btn:hover {
+  background: #e0a203;
+}
+
+.reroll-quota-badge {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  font-family: var(--font-mono);
+  letter-spacing: 0.5px;
+}
+
+.reroll-notice-badge {
+  font-size: 0.8rem;
+  color: var(--accent-amber);
+  border: 1px dashed var(--accent-amber);
+  padding: 0.5rem 1rem;
+  text-align: center;
+  border-radius: 4px;
+  background: rgba(255, 183, 3, 0.05);
+}
+
 
 

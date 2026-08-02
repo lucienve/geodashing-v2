@@ -35,7 +35,14 @@ class DashpointService
     public function getDashpointDetails(string $dashpointId): ?array
     {
         // 1. Fetch exact Dashpoint metadata utilizing SRID 4326 correctly mapping Lat/Lon
-        $stmt = $this->db->prepare("SELECT id, ST_Latitude(location) AS lat, ST_Longitude(location) AS lon, game_id FROM dashpoints WHERE id = :id LIMIT 1");
+        $stmt = $this->db->prepare("
+            SELECT d.id, ST_Latitude(d.location) AS lat, ST_Longitude(d.location) AS lon, d.game_id,
+                   g.is_active, g.start_time,
+                   (SELECT COUNT(*) FROM dashpoint_rerolls r WHERE r.dashpoint_id = d.id) AS reroll_count
+            FROM dashpoints d
+            JOIN games g ON d.game_id = g.id
+            WHERE d.id = :id LIMIT 1
+        ");
         $stmt->execute(['id' => $dashpointId]);
         $dashpoint = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -60,11 +67,20 @@ class DashpointService
             $v['photos'] = json_decode($v['photos'] ?? '[]', true) ?: [];
         }
 
+        $startTime = isset($dashpoint['start_time']) ? strtotime((string) $dashpoint['start_time']) : 0;
+        $isGameActive = (bool) ($dashpoint['is_active'] ?? false);
+        $isGamePreview = (!$isGameActive && $startTime > time());
+        $isRerolled = ((int) ($dashpoint['reroll_count'] ?? 0)) > 0;
+
+
         return [
             "id" => $dashpoint['id'],
-            "lat" => (float)$dashpoint['lat'],
-            "lon" => (float)$dashpoint['lon'],
-            "game_id" => (int)$dashpoint['game_id'],
+            "lat" => (float) $dashpoint['lat'],
+            "lon" => (float) $dashpoint['lon'],
+            "game_id" => (int) $dashpoint['game_id'],
+            "is_game_active" => $isGameActive,
+            "is_game_preview" => $isGamePreview,
+            "is_rerolled" => $isRerolled,
             "visits" => $visits
         ];
     }

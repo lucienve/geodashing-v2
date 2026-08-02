@@ -75,9 +75,13 @@ mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "
     VALUES (3, 'Preview Test Game', DATE_ADD(NOW(), INTERVAL 31 DAY), DATE_ADD(NOW(), INTERVAL 60 DAY), FALSE);
 
     
-    -- Test User
+    -- Test User 1 (Has 1 find)
     INSERT INTO users (id, username, email, password_hash, is_verified, subscribe_group)
     VALUES (1, 'TestUser', 'testuser@example.com', '${PASSWORD_HASH}', TRUE, FALSE);
+
+    -- Test User 2 (New user with 0 finds)
+    INSERT INTO users (id, username, email, password_hash, is_verified, subscribe_group)
+    VALUES (2, 'NewUser', 'newuser@example.com', '${PASSWORD_HASH}', TRUE, FALSE);
     
     -- Test Dashpoints
     -- Game 1 dashpoint (London)
@@ -88,9 +92,15 @@ mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "
     INSERT INTO dashpoints (id, game_id, location, country_code, state_province)
     VALUES ('GD001-AAAA', 2, ST_GeomFromText('POINT(40.7128 -74.0060)', 4326), 'US', 'NY');
 
-    -- Game 3 dashpoint (Paris)
+    -- Game 3 dashpoints (Paris)
     INSERT INTO dashpoints (id, game_id, location, country_code, state_province)
     VALUES ('GD002-AAAA', 3, ST_GeomFromText('POINT(48.8566 2.3522)', 4326), 'FR', 'IDF');
+
+    INSERT INTO dashpoints (id, game_id, location, country_code, state_province)
+    VALUES ('GD002-AAAB', 3, ST_GeomFromText('POINT(48.8600 2.3400)', 4326), 'FR', 'IDF');
+
+    INSERT INTO dashpoints (id, game_id, location, country_code, state_province)
+    VALUES ('GD002-AAAC', 3, ST_GeomFromText('POINT(48.8620 2.3420)', 4326), 'FR', 'IDF');
 
 
     -- Mock historical visit for TestUser on Game 1 dashpoint
@@ -103,3 +113,4 @@ mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "
 "
 
 echo "Test database initialized successfully!"
+
