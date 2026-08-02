@@ -165,4 +165,69 @@ trait MailerTrait
 
         $this->executeMail($toList, $subject, $message);
     }
+
+    /**
+     * Constructs and dispatches an HTML email detailing a preview dashpoint reroll.
+     *
+     * @param string $username
+     * @param string $dashpointId
+     * @param float $oldLat
+     * @param float $oldLon
+     * @param float $newLat
+     * @param float $newLon
+     * @param int $rerollsLeft
+     * @param int $maxRerolls
+     * @param string|null $reason
+     * @return void
+     */
+    protected function sendRerollNotificationEmail(
+        string $username,
+        string $dashpointId,
+        float $oldLat,
+        float $oldLon,
+        float $newLat,
+        float $newLon,
+        int $rerollsLeft,
+        int $maxRerolls,
+        ?string $reason = null,
+        ?string $oldGeoContext = null
+    ): void {
+        $configPath = __DIR__ . '/../config.ini';
+        $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
+        $toList = getenv('REROLL_NOTIFICATION_EMAIL')
+            ?: (($_ENV['REROLL_NOTIFICATION_EMAIL'] ?? null)
+            ?: ($config['REROLL_NOTIFICATION_EMAIL'] ?? ($config['MAILING_LIST_ADDRESS'] ?? '')));
+
+        if (empty($toList)) {
+            return;
+        }
+
+        $subject = "[Geodashing Preview] Dashpoint {$dashpointId} Rerolled by {$username}";
+        $profileUrl = "https://www.geodashing.org/#profile?username=" . urlencode($username);
+        $dashpointUrl = "https://www.geodashing.org/#dashpoint?id=" . urlencode($dashpointId);
+        $oldMapUrl = "https://www.google.com/maps?q={$oldLat},{$oldLon}";
+        $newMapUrl = "https://www.geodashing.org/#dashpoint?id=" . urlencode($dashpointId);
+        $newGoogleMapUrl = "https://www.google.com/maps?q={$newLat},{$newLon}";
+
+        $message = "<html><body>";
+        $message .= "<h2>Dashpoint Rerolled During Preview</h2>";
+        $message .= "<p><strong>User:</strong> <a href='" . htmlspecialchars($profileUrl, ENT_QUOTES, 'UTF-8') . "'>" . htmlspecialchars($username) . "</a></p>";
+        $message .= "<p><strong>Dashpoint:</strong> <a href='" . htmlspecialchars($dashpointUrl, ENT_QUOTES, 'UTF-8') . "'>" . htmlspecialchars($dashpointId) . "</a></p>";
+        $message .= "<p><strong>Original Location:</strong> <a href='" . htmlspecialchars($oldMapUrl, ENT_QUOTES, 'UTF-8') . "' target='_blank'>{$oldLat}, {$oldLon}</a></p>";
+        if (!empty($oldGeoContext)) {
+            $message .= "<p style='margin-left: 20px; font-style: italic; color: #555;'>" . htmlspecialchars($oldGeoContext, ENT_QUOTES, 'UTF-8') . "</p>";
+        }
+        $message .= "<p><strong>New Location:</strong> <a href='" . htmlspecialchars($newMapUrl, ENT_QUOTES, 'UTF-8') . "'>{$newLat}, {$newLon} (Geodashing Map)</a> [<a href='" . htmlspecialchars($newGoogleMapUrl, ENT_QUOTES, 'UTF-8') . "' target='_blank'>Google Maps</a>]</p>";
+        $message .= "<p><strong>Rerolls Remaining for Player:</strong> {$rerollsLeft} / {$maxRerolls}</p>";
+
+
+        if (!empty($reason)) {
+            $message .= "<h3>Reason for Reroll</h3>";
+            $message .= "<p>" . nl2br(htmlspecialchars($reason)) . "</p>";
+        }
+
+        $message .= "</body></html>";
+
+        $this->executeMail($toList, $subject, $message);
+    }
 }

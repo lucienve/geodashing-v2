@@ -60,7 +60,7 @@ GEMINI_PROJECT_ID = "your-gcp-project-id"
 
 ## 2. Deep Dive: Administrative Command Line Utilities
 
-The system relies on five primary backend utilities to manage the lifecycle of games, validate generated resources, and distribute notifications.
+The system relies on six primary backend utilities to manage the lifecycle of games, validate generated resources, and distribute notifications.
 
 ### A. `generate_game.py` (Game Generator Engine)
 Generates globally distributed, geographically balanced geodashing points situated on land (or up to 100 meters offshore) and initializes new games in the database.
@@ -172,7 +172,28 @@ Populates the system's spatial `major_cities` database table to enable near-inst
 
 ---
 
-### E. `catchup_emails.php` (Manual Email Notification Dispatcher)
+### E. `reroll_dashpoint.py` (Dashpoint Rerolling Utility)
+Relocates a single preview game dashpoint on dry land within a specified maximum radius.
+
+*   **Location**: `backend/scripts/reroll_dashpoint.py`
+*   **Execution Command**:
+    ```bash
+    python -m backend.scripts.reroll_dashpoint --lat LAT --lon LON [options]
+    ```
+
+#### Command Line Arguments
+| Flag | Long Form | Type | Description |
+| :--- | :--- | :---: | :--- |
+| | `--lat` | `float` | **Required.** The latitude coordinate of the original location. |
+| | `--lon` | `float` | **Required.** The longitude coordinate of the original location. |
+| | `--max-radius-km` | `float` | The maximum distance (in kilometers) to relocate the point. Defaults to `10.0`. |
+| | `--land-zip` | `str` | Path to the Natural Earth land zip shapefile. Defaults to `data/ne_10m_land.zip`. |
+| | `--lakes-zip` | `str` | Path to the Natural Earth lakes zip shapefile. Defaults to `data/ne_10m_lakes.zip`. |
+| | `--verbose` | `flag` | Enables verbose console logs and progress status messages during execution. Defaults to `False` (silent). |
+
+---
+
+### F. `catchup_emails.php` (Manual Email Notification Dispatcher)
 A PHP helper tool to manually dispatch structured HTML report emails to the game mailing list for claims logged before the automated reporting framework was initialized.
 
 *   **Location**: `backend/scripts/catchup_emails.php`

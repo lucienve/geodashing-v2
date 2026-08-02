@@ -60,7 +60,7 @@ The application allows users to participate in global geographic games where the
 - Modernized and unified the Geodashing Playwright E2E test suite to ensure architectural consistency between the local development environment and the GitHub Actions CI pipeline.
 - Established a hermetic testing environment by isolating E2E execution exclusively to a dedicated `geodashing_test` database, completely preventing accidental pollution of the live development schema.
 - Built a unified database bootstrapping script (`e2e/setup-test-db.sh`) which is directly consumed by the CI workflow and automatically evaluated by a Playwright global setup hook (`e2e/global-setup.js`) locally.
-- Implemented secure environment interception within `backend/Database.php` routing securely to test credentials dynamically via `APP_ENV=testing` without altering any configuration states. 
+- Implemented secure environment interception within `backend/Database.php` routing securely to test credentials dynamically via `APP_ENV=testing` without altering any configuration states, supporting environment-level `DB_PORT` overrides to avoid conflicts with host-level development database ports. 
 - Integrated `fsouza/fake-gcs-server` functionally bypassing all real-world Google Cloud Storage APIs ensuring hermetic E2E tests for photo uploads.
 
 ### 8. Geographical Contextualization
@@ -355,3 +355,23 @@ The application allows users to participate in global geographic games where the
 - Removed deprecated `temperature=0.0` parameter from `GenerateContentConfig` in [test_summary_evaluation.py](backend/tests/test_summary_evaluation.py).
 - Upgraded default model references from `gemini-3.5-flash` to `gemini-3.6-flash` across configurations ([config.ini.example](backend/config.ini.example)) and documentation ([admin_guide.md](docs/admin_guide.md), [gemini_model_evaluation.md](docs/gemini_model_evaluation.md)).
 - Updated repository Gemini rules ([gemini_api.md](.agents/rules/gemini_api.md)) to mandate stripping deprecated sampling parameters (`temperature`, `top_p`, `top_k`) and prohibiting prefilled `model` turns.
+
+### 53. Dashpoint Reroll during Game Preview (#67)
+- Created git branch `feature/reroll` to implement community dashpoint rerolling during the game preview window.
+- Added `dashpoint_rerolls` table DDL to [schema.sql](schema.sql) and updated [e2e/setup-test-db.sh](e2e/setup-test-db.sh) to record audit history.
+- Added a `[reroll]` configuration section to [config.ini.example](backend/config.ini.example) with `REROLL_ENABLED`, `REROLL_MAX_RADIUS_KM`, `REROLL_MAX_PER_PLAYER`, and `REROLL_NOTIFICATION_EMAIL`.
+- Built [reroll_dashpoint.py](backend/scripts/reroll_dashpoint.py) with derived mathematical constants (`EARTH_RADIUS_KM`, `KM_PER_DEGREE_LAT`, `MIN_COS_LAT_FLOOR`, `MIN_REROLL_RADIUS_KM`), enforcing sequential candidate evaluation and a minimum 100m relocation distance.
+- Removed legacy alias `_build_spatial_filter` from [generate_game.py](backend/scripts/generate_game.py) in favor of direct `build_spatial_filter` calls.
+- Implemented [RerollService.php](backend/services/RerollService.php) enforcing preview lifecycle status, player find history ($\ge 1$), per-player quota ($< 3$), and single-reroll per dashpoint constraint.
+- Resolved coordinate axis swap bug by using explicit geographic functions `ST_Latitude()` and `ST_Longitude()` instead of Cartesian functions `ST_Y()` and `ST_X()` in `RerollService.php`.
+- Added a `--verbose` flag to `reroll_dashpoint.py` and a `verbose` argument to `generate_game.py`'s spatial filter initialization, suppressing progress logging on standard output to prevent PHP `json_decode()` parsing failures unless explicitly enabled by a human user.
+- Extended session authentication endpoint [auth.php](public/api/auth.php) and frontend client [api.js](public/js/api.js) to accept a `game_id` parameter and return the logged-in user's used reroll count.
+- Designed and built an inline expandable form (`#dp-reroll-form`) in [dashpoint.html](public/templates/dashpoint.html) and [controllers.js](public/js/controllers.js) to collect, validate (non-empty, < 100 characters), and transmit the reroll reason, showing remaining quotas dynamically and disabling the button once the user's quota is exhausted.
+- Added general disabled button styling (`.btn:disabled`) in [index.css](public/css/index.css) to gray out disabled elements and set the cursor to `not-allowed`.
+- Isolated parallel Playwright E2E browser workers in [reroll.spec.js](e2e/reroll.spec.js) by routing each project to its own distinct preview dashpoint (`GD002-AAAA`, `GD002-AAAB`, `GD002-AAAC` seeded in [setup-test-db.sh](e2e/setup-test-db.sh)) and enforcing serial execution within each browser suite.
+- Added `sendRerollNotificationEmail` to [MailerTrait.php](backend/services/MailerTrait.php) linking new coordinates to the Geodashing SPA map page (`#dashpoint?id=...`), and enhanced it to query [GeoContextService.php](backend/services/GeoContextService.php) to output geographic context (e.g. "30 miles northeast of Town, State") for the original location.
+- Exposed reroll configuration in [auth.php](public/api/auth.php) and implemented public REST endpoint [reroll.php](public/api/reroll.php) with CSRF header protection.
+- Updated UI templates [dashpoint.html](public/templates/dashpoint.html), frontend controllers [controllers.js](public/js/controllers.js) & [api.js](public/js/api.js), and CSS styles [index.css](public/css/index.css).
+- Created Python test suite [test_reroll_dashpoint.py](backend/tests/test_reroll_dashpoint.py), PHPUnit test suite [RerollServiceTest.php](backend/tests/RerollServiceTest.php), and Playwright E2E test suite [reroll.spec.js](e2e/reroll.spec.js).
+- Verified that all unit tests, linters (10.00/10 PyLint, 0 MyPy/Pyright errors, 0 ESLint errors, 0 PHPCS errors), PHPUnit tests, Playwright E2E tests, and the unified `pre-commit` suite pass cleanly.
+

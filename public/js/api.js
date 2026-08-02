@@ -235,9 +235,13 @@ window.API = {
     /**
      * Poll the current session to ensure the user is authorized.
      */
-    checkSession: async function () {
+    checkSession: async function (gameId = null) {
         try {
-            const res = await fetch('api/auth.php?action=session', {
+            let url = 'api/auth.php?action=session';
+            if (gameId !== null) {
+                url += `&game_id=${gameId}`;
+            }
+            const res = await fetch(url, {
                 method: 'POST', // Auth endpoint enforces POST mapped strictly
                 headers: this.getHeaders()
             });
@@ -248,8 +252,27 @@ window.API = {
     },
 
     /**
+     * Reroll a preview dashpoint
+     * @param {FormData} formData Includes dashpoint_id and optional reason
+     */
+    rerollDashpoint: async function (formData) {
+        try {
+            const res = await fetch('api/reroll.php', {
+                method: 'POST',
+                headers: this.getHeaders(),
+                body: formData
+            });
+            return await res.json();
+        } catch (e) {
+            console.error(e);
+            return { status: 'error', message: 'API Network Timeout!' };
+        }
+    },
+
+    /**
      * Re-trigger the verification email.
      */
+
     resendVerification: async function () {
         try {
             const res = await fetch('api/auth.php?action=resend_verification', {

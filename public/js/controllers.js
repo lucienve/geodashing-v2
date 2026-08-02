@@ -178,6 +178,125 @@ document.addEventListener('routeLoaded', (e) => {
                         }
                     }
 
+                    // Evaluate Preview Reroll Actions
+                    const rerollContainer = document.getElementById('dp-reroll-container');
+                    const btnReroll = document.getElementById('btn-reroll-dp');
+                    const rerollQuota = document.getElementById('dp-reroll-quota');
+                    const rerollNotice = document.getElementById('dp-reroll-notice');
+                    const rerollForm = document.getElementById('dp-reroll-form');
+                    const btnConfirm = document.getElementById('btn-confirm-reroll');
+                    const btnCancel = document.getElementById('btn-cancel-reroll');
+                    const reasonInput = document.getElementById('reroll-reason-input');
+
+                    if (rerollContainer) {
+                        API.checkSession(dp.game_id).then(res => {
+                            if (res.status === 'success' && res.reroll_enabled && dp.is_game_preview) {
+                                rerollContainer.classList.remove('d-none');
+
+                                if (dp.is_rerolled) {
+                                    if (btnReroll) btnReroll.style.display = 'none';
+                                    if (rerollQuota) rerollQuota.style.display = 'none';
+                                    if (rerollNotice) rerollNotice.classList.remove('d-none');
+                                    if (rerollForm) rerollForm.classList.add('d-none');
+                                } else {
+                                    if (rerollNotice) rerollNotice.classList.add('d-none');
+                                    if (rerollForm) rerollForm.classList.add('d-none');
+
+                                    const max = res.reroll_max_per_player || 3;
+                                    const used = res.rerolls_used || 0;
+                                    const remaining = Math.max(0, max - used);
+
+                                    if (remaining > 0) {
+                                        if (btnReroll) {
+                                            btnReroll.style.display = 'block';
+                                            btnReroll.disabled = false;
+                                        }
+                                        if (rerollQuota) {
+                                            rerollQuota.style.display = 'block';
+                                            rerollQuota.innerText = `Preview Reroll Available (${remaining} of ${max} left)`;
+                                        }
+
+                                        if (btnReroll && rerollForm) {
+                                            btnReroll.onclick = () => {
+                                                btnReroll.style.display = 'none';
+                                                rerollForm.classList.remove('d-none');
+                                                if (reasonInput) {
+                                                    reasonInput.value = '';
+                                                    reasonInput.focus();
+                                                }
+                                            };
+                                        }
+
+                                        if (btnCancel && btnReroll && rerollForm) {
+                                            btnCancel.onclick = () => {
+                                                rerollForm.classList.add('d-none');
+                                                btnReroll.style.display = 'block';
+                                            };
+                                        }
+
+                                        if (btnConfirm && btnReroll && rerollForm && reasonInput) {
+                                            btnConfirm.onclick = () => {
+                                                const reason = reasonInput.value.trim();
+                                                if (reason === "") {
+                                                    alert("A reason is required to reroll.");
+                                                    return;
+                                                }
+                                                if (reason.length >= 100) {
+                                                    alert("Reroll reason must be less than 100 characters.");
+                                                    return;
+                                                }
+
+                                                const maxRad = res.reroll_max_radius_km || 10;
+                                                const confirmMsg = `Are you sure you want to reroll ${dp.id}?\n\nIt will be relocated within ${maxRad} km on dry land, and a notification email will be sent to the community with your reason: "${reason}"`;
+                                                if (window.confirm(confirmMsg)) {
+                                                    btnConfirm.disabled = true;
+                                                    btnConfirm.innerText = "REROLLING...";
+                                                    btnCancel.disabled = true;
+
+                                                    const formData = new FormData();
+                                                    formData.append('dashpoint_id', dp.id);
+                                                    formData.append('reason', reason);
+
+                                                    API.rerollDashpoint(formData)
+                                                        .then(rerollRes => {
+                                                            btnConfirm.disabled = false;
+                                                            btnConfirm.innerText = "CONFIRM";
+                                                            btnCancel.disabled = false;
+                                                            if (rerollRes.status === 'success') {
+                                                                alert(`Dashpoint ${dp.id} successfully rerolled!\nNew coordinates: LAT ${rerollRes.new_lat.toFixed(5)} | LON ${rerollRes.new_lon.toFixed(5)}`);
+                                                                window.location.reload();
+                                                            } else {
+                                                                alert(rerollRes.message || "Failed to reroll dashpoint.");
+                                                            }
+                                                        })
+                                                        .catch(err => {
+                                                            btnConfirm.disabled = false;
+                                                            btnConfirm.innerText = "CONFIRM";
+                                                            btnCancel.disabled = false;
+                                                            alert("Error rerolling dashpoint: " + err.message);
+                                                        });
+                                                }
+                                            };
+                                        }
+                                    } else {
+                                        if (btnReroll) {
+                                            btnReroll.style.display = 'block';
+                                            btnReroll.disabled = true;
+                                            btnReroll.onclick = null;
+                                        }
+                                        if (rerollQuota) {
+                                            rerollQuota.style.display = 'block';
+                                            rerollQuota.innerText = `No Rerolls Remaining (Max ${max} per player used)`;
+                                        }
+                                    }
+                                }
+                            } else {
+                                rerollContainer.classList.add('d-none');
+                            }
+                        });
+                    }
+
+
                     // Generate the beautiful HTML5 Ledgers directly from MySQL bounds
                     if (dp.visits.length === 0) {
                         visitsContainer.innerHTML = `<div style="text-align:center; padding:1.5rem; color:var(--text-muted); border:1px solid #333; margin-top:1rem;">ZERO VISITS. <br><br>Dashpoint is unvisited.</div>`;

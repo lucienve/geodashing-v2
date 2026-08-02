@@ -16,3 +16,10 @@ GOOGLE_MAPS_API_KEY = "AIzaSy..."
 GEMINI_API_KEY = "AIzaSy..."
 GEMINI_MODEL = "gemini-3.6-flash"
 GEMINI_PROJECT_ID = "your-gcp-project-id"
+
+[reroll]
+REROLL_ENABLED = true
+REROLL_MAX_RADIUS_KM = 10.0
+REROLL_MAX_PER_PLAYER = 3
+REROLL_NOTIFICATION_EMAIL = "tracker@geodashing.org"
+

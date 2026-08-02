@@ -212,7 +212,8 @@ def subdivide_geometry(
 
 def _load_and_project_geometries(
     land_zip_path: str,
-    lakes_zip_path: str
+    lakes_zip_path: str,
+    verbose: bool = True
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """Loads and projects the land and lake shapefiles to EPSG:6933."""
     try:
@@ -221,7 +222,8 @@ def _load_and_project_geometries(
     except Exception as e:
         raise FileNotFoundError(f"Failed to read shapefiles: {e}") from e
 
-    print("Projecting land and lakes geometries to EPSG:6933...")
+    if verbose:
+        print("Projecting land and lakes geometries to EPSG:6933...")
     return land_gdf.to_crs(epsg=6933), lakes_gdf.to_crs(epsg=6933)
 
 
@@ -309,11 +311,16 @@ class SpatialFilter:
         return valid
 
 
-def _build_spatial_filter(land_zip_path: str, lakes_zip_path: str) -> SpatialFilter:
+def build_spatial_filter(
+    land_zip_path: str,
+    lakes_zip_path: str,
+    verbose: bool = True
+) -> SpatialFilter:
     """Loads shapefiles, projects them, subdivides them, and builds the SpatialFilter."""
-    land_proj, lakes_proj = _load_and_project_geometries(land_zip_path, lakes_zip_path)
+    land_proj, lakes_proj = _load_and_project_geometries(land_zip_path, lakes_zip_path, verbose)
 
-    print("Subdividing land and lakes geometries to optimize spatial query performance...")
+    if verbose:
+        print("Subdividing land and lakes geometries to optimize spatial query performance...")
     land_sub: list[shapely.geometry.base.BaseGeometry] = []
     for geom in land_proj.geometry:
         if geom is not None and not geom.is_empty:
@@ -324,11 +331,13 @@ def _build_spatial_filter(land_zip_path: str, lakes_zip_path: str) -> SpatialFil
         if geom is not None and not geom.is_empty:
             lakes_sub.extend(subdivide_geometry(geom, max_size=1000000.0))
 
-    print("Building spatial indexes...")
+    if verbose:
+        print("Building spatial indexes...")
     tree_land = shapely.strtree.STRtree(land_sub)
     tree_lakes = shapely.strtree.STRtree(lakes_sub)
 
-    print("Preparing geometries...")
+    if verbose:
+        print("Preparing geometries...")
     shapely.prepare(land_sub)
     shapely.prepare(lakes_sub)
 
@@ -362,7 +371,8 @@ def generate_valid_dashpoints(
     Raises:
         FileNotFoundError: If the land or lake shapefiles cannot be found or read.
     """
-    spatial_filter = _build_spatial_filter(land_zip_path, lakes_zip_path)
+    spatial_filter = build_spatial_filter(land_zip_path, lakes_zip_path)
+
 
     valid_points: list[shapely.geometry.Point] = []
     batch_size = 50000 if target_count > 10000 else 10000

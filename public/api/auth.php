@@ -118,20 +118,43 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             }
             echo json_encode($result);
         } elseif ($action === 'session') {
+            $configPath = __DIR__ . '/../../backend/config.ini';
+            $config = file_exists($configPath) ? parse_ini_file($configPath, true) : [];
+            $rerollSection = $config['reroll'] ?? [];
+            $rerollEnabled = filter_var($rerollSection['REROLL_ENABLED'] ?? true, FILTER_VALIDATE_BOOLEAN);
+            $rerollMaxRadius = (float) ($rerollSection['REROLL_MAX_RADIUS_KM'] ?? 10.0);
+            $rerollMaxPerPlayer = (int) ($rerollSection['REROLL_MAX_PER_PLAYER'] ?? 3);
+
+            $rerollsUsed = 0;
+            $gameId = isset($_GET['game_id']) ? (int) $_GET['game_id'] : null;
+
             // Native session state retrieval explicitly mapping memory back to the SPA
             if (isset($_SESSION['user_id']) && isset($_SESSION['username'])) {
+                if ($gameId !== null) {
+                    $stmtRerolls = $db->prepare(
+                        "SELECT COUNT(*) AS user_reroll_count FROM dashpoint_rerolls WHERE user_id = :user_id AND game_id = :game_id"
+                    );
+                    $stmtRerolls->execute(['user_id' => $_SESSION['user_id'], 'game_id' => $gameId]);
+                    $rerollsUsed = (int) ($stmtRerolls->fetch()['user_reroll_count'] ?? 0);
+                }
+
                 echo json_encode([
                     "status" => "success",
                     "user_id" => $_SESSION['user_id'],
                     "username" => $_SESSION['username'],
                     "is_verified" => $_SESSION['is_verified'] ?? 0,
                     "post_max_size" => ini_get('post_max_size'),
-                    "post_max_size_bytes" => getPostMaxSizeInBytes()
+                    "post_max_size_bytes" => getPostMaxSizeInBytes(),
+                    "reroll_enabled" => $rerollEnabled,
+                    "reroll_max_radius_km" => $rerollMaxRadius,
+                    "reroll_max_per_player" => $rerollMaxPerPlayer,
+                    "rerolls_used" => $rerollsUsed
                 ]);
             } else {
                 http_response_code(401);
                 echo json_encode(["status" => "error", "message" => "No active session"]);
             }
+
         } else {
             http_response_code(400);
             echo json_encode(["status" => "error", "message" => "Invalid action specified."]);
