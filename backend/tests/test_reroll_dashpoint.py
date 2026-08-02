@@ -1,9 +1,10 @@
 """Unit tests for the backend reroll_dashpoint spatial module."""
 
 import math
-import os
 
+import geopandas as gpd
 import pytest
+import shapely.geometry
 
 import backend.scripts.generate_game
 import backend.scripts.reroll_dashpoint
@@ -24,17 +25,26 @@ def test_haversine_distance_km() -> None:
     assert math.isclose(zero_dist, 0.0, abs_tol=1e-5)
 
 
-def test_is_valid_land_point() -> None:
+
+def test_is_valid_land_point(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verifies single coordinate evaluation against land spatial filter."""
-    land_zip = "data/ne_10m_land.zip"
-    lakes_zip = "data/ne_10m_lakes.zip"
+    land_polygon = shapely.geometry.box(-2.0, 50.0, 2.0, 53.0)
+    lake_polygon = shapely.geometry.box(0.5, 51.0, 1.0, 52.0)
 
-    if not os.path.exists(land_zip):
-        pytest.fail(f"Required land shapefile not found at {land_zip}")
-    if not os.path.exists(lakes_zip):
-        pytest.fail(f"Required lakes shapefile not found at {lakes_zip}")
+    def read_file_side_effect(path: str) -> gpd.GeoDataFrame:
+        if "land" in path:
+            return gpd.GeoDataFrame(geometry=[land_polygon], crs="EPSG:4326")
+        if "lakes" in path:
+            return gpd.GeoDataFrame(geometry=[lake_polygon], crs="EPSG:4326")
+        return gpd.GeoDataFrame()
 
-    spatial_filter = backend.scripts.generate_game.build_spatial_filter(land_zip, lakes_zip)
+    monkeypatch.setattr(
+        "backend.scripts.generate_game.gpd.read_file", read_file_side_effect
+    )
+
+    spatial_filter = backend.scripts.generate_game.build_spatial_filter(
+        "mock_land.zip", "mock_lakes.zip", verbose=False
+    )
     # London (51.5074, -0.1278) is dry land
     is_valid = backend.scripts.reroll_dashpoint.is_valid_land_point(
         51.5074, -0.1278, spatial_filter
@@ -42,26 +52,32 @@ def test_is_valid_land_point() -> None:
     assert is_valid is True
 
 
-def test_find_valid_reroll_point() -> None:
-    """Verifies valid reroll point selection on dry land using actual shapefiles."""
-    land_zip = "data/ne_10m_land.zip"
-    lakes_zip = "data/ne_10m_lakes.zip"
+def test_find_valid_reroll_point(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies valid reroll point selection on dry land using mock shapefiles."""
+    land_polygon = shapely.geometry.box(-2.0, 50.0, 2.0, 53.0)
+    lake_polygon = shapely.geometry.box(0.5, 51.0, 1.0, 52.0)
 
-    if not os.path.exists(land_zip):
-        pytest.fail(f"Required land shapefile not found at {land_zip}")
-    if not os.path.exists(lakes_zip):
-        pytest.fail(f"Required lakes shapefile not found at {lakes_zip}")
+    def read_file_side_effect(path: str) -> gpd.GeoDataFrame:
+        if "land" in path:
+            return gpd.GeoDataFrame(geometry=[land_polygon], crs="EPSG:4326")
+        if "lakes" in path:
+            return gpd.GeoDataFrame(geometry=[lake_polygon], crs="EPSG:4326")
+        return gpd.GeoDataFrame()
+
+    monkeypatch.setattr(
+        "backend.scripts.generate_game.gpd.read_file", read_file_side_effect
+    )
 
     # London origin (51.5074, -0.1278)
     origin = (51.5074, -0.1278)
     max_radius_km = 10.0
 
-    spatial_filter = backend.scripts.generate_game.build_spatial_filter(land_zip, lakes_zip)
+    spatial_filter = backend.scripts.generate_game.build_spatial_filter(
+        "mock_land.zip", "mock_lakes.zip", verbose=False
+    )
     new_lat, new_lon = backend.scripts.reroll_dashpoint.find_valid_reroll_point(
         origin, max_radius_km, spatial_filter
     )
-
-
     # Verify distance constraint
     dist = backend.scripts.reroll_dashpoint.haversine_distance_km(
         origin[0], origin[1], new_lat, new_lon
