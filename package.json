@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@playwright/test": "^1.62.0",
+    "@playwright/test": "^1.62.1",
     "eslint": "^10.8.0",
     "globals": "^17.8.0",
     "lighthouse": "^13.4.0",
