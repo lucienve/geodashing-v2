@@ -1,5 +1,5 @@
 geopandas>=1.1.4
-google-genai>=2.15.0
+google-genai>=2.16.0
 mysql-connector-python>=26.7.0
 numpy>=2.5.1
 shapely>=2.1.2
