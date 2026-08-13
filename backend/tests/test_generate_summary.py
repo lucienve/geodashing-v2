@@ -211,7 +211,7 @@ def test_generate_summary(
     mock_load_chat: unittest.mock.MagicMock,
     mock_load_sys: unittest.mock.MagicMock
 ) -> None:
-    """Test AI Studio API call structure via Client."""
+    """Test AI Studio API call structure via Client without thinking_level."""
     mock_client = unittest.mock.MagicMock(spec=google.genai.Client)
     mock_chat_instance = mock_client.chats.create.return_value
     mock_response = mock_chat_instance.send_message.return_value
@@ -221,15 +221,104 @@ def test_generate_summary(
     mock_load_sys.return_value = "sys inst"
     mock_load_chat.return_value = []
 
+    ai_config: dict[str, str | None] = {"model_name": "m1"}
     result = backend.scripts.generate_summary._generate_summary(
-        mock_client, "m1", "sys.txt", "/fake/dir", ["my prompt"]
+        mock_client, ai_config, "sys.txt", "/fake/dir", ["my prompt"]
     )
 
     assert result == "generated HTML"
     mock_load_sys.assert_called_once_with("sys.txt")
     mock_load_chat.assert_called_once_with("/fake/dir")
-    mock_generate_content_config.assert_called_once_with(system_instruction="sys inst")
+    mock_generate_content_config.assert_called_once_with(
+        system_instruction="sys inst",
+        thinking_config=None
+    )
     mock_client.chats.create.assert_called_once_with(
         model="m1", config=mock_config_instance, history=[]
     )
     mock_chat_instance.send_message.assert_called_once_with(["my prompt"])
+
+
+@unittest.mock.patch("backend.scripts.generate_summary.load_system_instructions", autospec=True)
+@unittest.mock.patch("backend.scripts.generate_summary.load_chat_history", autospec=True)
+@unittest.mock.patch(
+    "backend.scripts.generate_summary.google.genai.types.ThinkingConfig",
+    autospec=True
+)
+@unittest.mock.patch(
+    "backend.scripts.generate_summary.google.genai.types.GenerateContentConfig",
+    autospec=True
+)
+def test_generate_summary_with_thinking_level(
+    mock_generate_content_config: unittest.mock.MagicMock,
+    mock_thinking_config: unittest.mock.MagicMock,
+    mock_load_chat: unittest.mock.MagicMock,
+    mock_load_sys: unittest.mock.MagicMock
+) -> None:
+    """Test AI Studio API call structure via Client with thinking_level."""
+    mock_client = unittest.mock.MagicMock(spec=google.genai.Client)
+    mock_chat_instance = mock_client.chats.create.return_value
+    mock_response = mock_chat_instance.send_message.return_value
+    mock_response.text = "generated HTML with thinking"
+
+    mock_config_instance = mock_generate_content_config.return_value
+    mock_thinking_instance = mock_thinking_config.return_value
+    mock_load_sys.return_value = "sys inst"
+    mock_load_chat.return_value = []
+
+    ai_config: dict[str, str | None] = {"model_name": "m1", "thinking_level": "medium"}
+    result = backend.scripts.generate_summary._generate_summary(
+        mock_client, ai_config, "sys.txt", "/fake/dir", ["my prompt"]
+    )
+
+    assert result == "generated HTML with thinking"
+    mock_thinking_config.assert_called_once_with(
+        thinking_level=google.genai.types.ThinkingLevel.MEDIUM
+    )
+    mock_generate_content_config.assert_called_once_with(
+        system_instruction="sys inst",
+        thinking_config=mock_thinking_instance
+    )
+    mock_client.chats.create.assert_called_once_with(
+        model="m1", config=mock_config_instance, history=[]
+    )
+    mock_chat_instance.send_message.assert_called_once_with(["my prompt"])
+
+
+@unittest.mock.patch("backend.scripts.generate_summary.os.path.exists", autospec=True)
+@unittest.mock.patch("builtins.open", new_callable=unittest.mock.mock_open, read_data="""
+[gemini]
+GEMINI_API_KEY = "test-key"
+GEMINI_MODEL = "gemini-3.7-flash"
+GEMINI_THINKING_LEVEL = "medium"
+GEMINI_PROJECT_ID = "test-proj"
+[mail]
+GOOGLE_APPLICATION_CREDENTIALS = "/path/to/creds.json"
+""")
+def test_configure_environment_full(
+    _mock_open: unittest.mock.MagicMock,
+    mock_exists: unittest.mock.MagicMock
+) -> None:
+    """Verify configure_environment loads all parameters including thinking level."""
+    mock_exists.return_value = True
+    ai_config = backend.scripts.generate_summary.configure_environment("/fake/config.ini")
+
+    assert ai_config["model_name"] == "gemini-3.7-flash"
+    assert ai_config["project_id"] == "test-proj"
+    assert ai_config["thinking_level"] == "medium"
+
+
+@unittest.mock.patch("backend.scripts.generate_summary.os.path.exists", autospec=True)
+@unittest.mock.patch("builtins.open", new_callable=unittest.mock.mock_open, read_data="""
+[gemini]
+GEMINI_API_KEY = "test-key"
+""")
+def test_configure_environment_missing_model(
+    _mock_open: unittest.mock.MagicMock,
+    mock_exists: unittest.mock.MagicMock
+) -> None:
+    """Verify configure_environment raises ValueError when GEMINI_MODEL is absent."""
+    mock_exists.return_value = True
+    import pytest  # pylint: disable=import-outside-toplevel
+    with pytest.raises(ValueError, match="GEMINI_MODEL must be explicitly defined"):
+        backend.scripts.generate_summary.configure_environment("/fake/config.ini")

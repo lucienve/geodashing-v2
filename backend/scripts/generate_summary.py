@@ -50,8 +50,9 @@ def configure_environment(config_path: str) -> dict[str, str | None]:
 
     model_name = None
     project_id = None
+    thinking_level = None
 
-    # Support loading API key, model, and project ID from config.ini
+    # Support loading API key, model, project ID, and thinking level from config.ini
     if 'gemini' in config:
         model_name = config['gemini'].get('GEMINI_MODEL')
         if model_name:
@@ -62,6 +63,9 @@ def configure_environment(config_path: str) -> dict[str, str | None]:
         project_id = config['gemini'].get('GEMINI_PROJECT_ID')
         if project_id:
             project_id = project_id.strip('"\'')
+        thinking_level = config['gemini'].get('GEMINI_THINKING_LEVEL')
+        if thinking_level:
+            thinking_level = thinking_level.strip('"\'')
 
     if not model_name:
         raise ValueError(
@@ -69,7 +73,11 @@ def configure_environment(config_path: str) -> dict[str, str | None]:
             "of config.ini."
         )
 
-    return {"model_name": model_name, "project_id": project_id}
+    return {
+        "model_name": model_name,
+        "project_id": project_id,
+        "thinking_level": thinking_level
+    }
 
 
 def get_gemini_client(ai_config: dict[str, str | None]) -> google.genai.Client:
@@ -369,13 +377,32 @@ def construct_new_data(
     return parts
 
 
-def _generate_summary(client: google.genai.Client, model_name: str, instructions_path: str,
-                      examples_dir: str, prompt: list[str | google.genai.types.File]) -> str:
+def _generate_summary(
+    client: google.genai.Client,
+    ai_config: dict[str, str | None],
+    instructions_path: str,
+    examples_dir: str,
+    prompt: list[str | google.genai.types.File]
+) -> str:
     """Generates the summary using the initialized client and prompt."""
+    model_name = ai_config.get('model_name')
+    if not model_name:
+        raise ValueError("model_name must be defined in ai_config")
     sys_inst = load_system_instructions(instructions_path)
     history = load_chat_history(examples_dir)
+    thinking_config = None
+    thinking_level = ai_config.get('thinking_level')
+    if thinking_level:
+        try:
+            level_enum = google.genai.types.ThinkingLevel(thinking_level.upper())
+        except ValueError:
+            level_enum = google.genai.types.ThinkingLevel.MEDIUM
+        thinking_config = google.genai.types.ThinkingConfig(
+            thinking_level=level_enum
+        )
     config = google.genai.types.GenerateContentConfig(
         system_instruction=sys_inst,
+        thinking_config=thinking_config
     )
     chat = client.chats.create(model=model_name, config=config, history=history)
     response = chat.send_message(prompt)
@@ -441,10 +468,12 @@ def run_summary_generation(args: argparse.Namespace, config_path: str,
         prompt = construct_new_data(
             game_data[0], game_data[1], game_data[2], upload_context
         )
-        model_name = ai_config['model_name']
-        assert model_name is not None
         summary_html = _generate_summary(
-            client, model_name, instructions_path, examples_dir, prompt
+            client,
+            ai_config,
+            instructions_path,
+            examples_dir,
+            prompt
         )
         write_summary_files(args.output_dir, args.game_id, prompt, summary_html)
 

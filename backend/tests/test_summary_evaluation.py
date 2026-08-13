@@ -303,7 +303,8 @@ def evaluate_summary_quality(
     client: google.genai.Client,
     judge_model: str,
     input_text: str,
-    generated_html: str
+    generated_html: str,
+    thinking_level: str | None = None
 ) -> EvaluationResult:
     """Invokes the judge LLM with a Pydantic response schema to score the summary quality."""
     prompt = f"""
@@ -324,12 +325,23 @@ Evaluation Criteria:
 Evaluate the summary and return the scores, justification, and a final verdict. The final verdict 'passed' should be True only if all scores are 4 or 5.
 """
 
+    thinking_config = None
+    if thinking_level:
+        try:
+            level_enum = google.genai.types.ThinkingLevel(thinking_level.upper())
+        except ValueError:
+            level_enum = google.genai.types.ThinkingLevel.MEDIUM
+        thinking_config = google.genai.types.ThinkingConfig(
+            thinking_level=level_enum
+        )
+
     response = client.models.generate_content(
         model=judge_model,
         contents=prompt,
         config=google.genai.types.GenerateContentConfig(
             response_mime_type="application/json",
-            response_schema=EvaluationResult
+            response_schema=EvaluationResult,
+            thinking_config=thinking_config
         )
     )
 
@@ -347,7 +359,7 @@ def _get_eval_config(cfg_p: str) -> tuple[dict, google.genai.Client, str]:
 
     config = configparser.ConfigParser()
     config.read(cfg_p)
-    judge_model = "gemini-3.6-flash"
+    judge_model = "gemini-3.7-flash"
     if 'gemini' in config and 'GEMINI_EVAL_MODEL' in config['gemini']:
         val = config['gemini']['GEMINI_EVAL_MODEL']
         if val:
@@ -407,11 +419,9 @@ def test_evaluate_benchmark_summary(prefix: str) -> None:
             parsed[0], parsed[1], parsed[2], upload_context
         )
 
-        candidate_model = ai_config['model_name']
-        assert candidate_model is not None
         inst_p = os.path.join(c_dir, '../../data/summary_system_instructions.txt')
         generated_html = backend.scripts.generate_summary._generate_summary(
-            client, candidate_model, inst_p, exs_d, prompt
+            client, ai_config, inst_p, exs_d, prompt
         )
 
         assert generated_html, "Candidate model returned an empty summary"
@@ -424,12 +434,13 @@ def test_evaluate_benchmark_summary(prefix: str) -> None:
 
         # Tier 2: Qualitative Evaluation (LLM-as-a-Judge)
         eval_result = evaluate_summary_quality(
-            client, judge_model, raw_input_text, generated_html
+            client, judge_model, raw_input_text, generated_html,
+            thinking_level=ai_config.get('thinking_level')
         )
 
         # Print detailed diagnostic report
         print(f"\n--- Evaluation Report for {prefix} ---")
-        print(f"Candidate Model: {candidate_model}")
+        print(f"Candidate Model: {ai_config.get('model_name')}")
         print(f"Judge Model: {judge_model}")
         print(f"Scores -> Tone: {eval_result.tone_score}/5 | "
               f"Accuracy: {eval_result.accuracy_score}/5 | "
