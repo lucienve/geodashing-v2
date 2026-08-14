@@ -112,6 +112,17 @@ Maintains game activation status and provides strict schema validation for admin
 | `--upload-summary` | `str` | `FILE_PATH` | Parses, validates, and uploads a local HTML summary file. Requires `--game_id`. |
 | `--email-summary` | `flag` | — | Emails the HTML summary for the specified game_id to the mailing list. Requires `--game_id`. |
 | `--game_id` | `int` | `GAME_ID` | Specifies the target game ID when uploading or emailing an HTML summary. |
+| `--rollover` | `flag` | — | Executes complete automated end-of-month turnover: promotes preview to active, seeds next preview game, and emails announcement to players. |
+| `--dry-run` | `flag` | — | Simulates the turnover execution without making database changes or sending emails. |
+| `--year` | `int` | `YYYY` | Optional override for the target activation year (used with `--rollover`). |
+| `--month` | `int` | `1-12` | Optional override for the target activation month (used with `--rollover`). |
+| `--count` | `int` | `N` | Optional dashpoint count override for preview generation (defaults to `DEFAULT_DASHPOINT_COUNT` in `config.ini`). |
+
+#### Automated Monthly Rollover (`--rollover`)
+The `--rollover` command automates the end-of-month game transition at `00:00:00 America/New_York` on the 1st of each month:
+1. **Current Month Activation**: Inspects games for the current month. If exactly one preview game exists, it promotes it to active (`is_active = TRUE`) and deactivates all others. If no preview game exists or multiple conflicting games exist, it fails fast with a non-zero exit code to alert administrators.
+2. **Next Month Preview Generation**: Checks if a preview game exists for the upcoming month. If not, it looks up the pre-planned title from `data/game_titles.json` (or uses a fallback pattern), generates ~35,000 dashpoints, and inserts the new preview game (`is_active = FALSE`).
+3. **Turnover Announcement Email**: Constructs and dispatches a multipart HTML/plain-text announcement email to the player mailing list (`MAILING_LIST_ADDRESS`) via the Gmail REST API.
 
 #### HTML Fragment Safety & Validation rules
 To prevent cross-site scripting (Stored XSS) and layout breakages in user browsers and sitemaps, the parser enforces these rules:
@@ -258,13 +269,13 @@ sudo systemctl status google-cloud-ops-agent
 ```
 
 ### Step 3: Configure the Ops Agent Logging Pipeline
-The Ops Agent must be configured to monitor the Geodashing Apache logs, which are rotated daily in `/var/log/apache2/`.
+The Ops Agent monitors the Geodashing Apache logs as well as the monthly turnover cron logs.
 
 1.  Open the configuration file using a text editor (e.g. `nano`):
     ```bash
     sudo nano /etc/google-cloud-ops-agent/config.yaml
     ```
-2.  Overwrite or append the following configuration:
+2.  Configure the receivers and pipeline:
     ```yaml
     logging:
       receivers:
@@ -276,21 +287,57 @@ The Ops Agent must be configured to monitor the Geodashing Apache logs, which ar
           type: apache_access
           include_paths:
             - /var/log/apache2/geodashing_access.log
+        geodashing_turnover:
+          type: files
+          include_paths:
+            - /var/log/geodashing/turnover.log
       service:
         pipelines:
           geodashing_pipeline:
             receivers:
               - geodashing_error
               - geodashing_access
+              - geodashing_turnover
     ```
-    *(Note: The built-in `apache_error` and `apache_access` receiver types automatically parse the timestamps, severities, and messages. The agent tracks rotated files like `*.log.1` and `*.log.2.gz` automatically via active file descriptors/inodes).*
-3.  Save the file and restart the agent to apply changes:
+    *(Note: The built-in `apache_error` and `apache_access` receiver types automatically parse timestamps, severities, and messages. The `geodashing_turnover` file receiver monitors cron job execution logs).*
+3.  Ensure the log directory exists with appropriate permissions:
+    ```bash
+    sudo mkdir -p /var/log/geodashing
+    sudo chown -R lucien:www-data /var/log/geodashing
+    sudo chmod 775 /var/log/geodashing
+    ```
+4.  Save the file and restart the agent to apply changes:
     ```bash
     sudo systemctl restart google-cloud-ops-agent
     ```
 
-### Step 4: Accessing Error Reports & Alerts
-Once configured, all errors captured in `geodashing_error.log` (such as uncaught PHP Exceptions, PHP Fatal Errors, or Database Connection Failures) are streamed to Cloud Logging.
-*   **Console Access**: Open the GCP Console and navigate to **Error Reporting** to see aggregated, grouped error groups with frequency counts and stack trace details.
-*   **Email Notifications**: In the **Error Reporting** dashboard, you can toggle notifications to immediately receive emails when a new error signature is detected by Google Cloud.
+### Step 4: Setting Up the Monthly Turnover Cron Job
+On the production VM (`vm2019-vpc`), configure a cron job to trigger the automated rollover at midnight America/New_York on the 1st of every month.
+
+1.  Edit the user crontab:
+    ```bash
+    crontab -e
+    ```
+2.  Add the scheduled turnover entry:
+    ```cron
+    CRON_TZ=America/New_York
+    0 0 1 * * /home/lucien/src/geodashing-v2/.venv/bin/python -m backend.scripts.game_utils --rollover >> /var/log/geodashing/turnover.log 2>&1
+    ```
+
+### Step 5: Setting Up Google Cloud Alerting for Turnover Failures
+Whenever the monthly turnover fails (e.g. missing preview game, database disconnection, or email dispatch failure), the script outputs an error trace to `stderr` and exits with a non-zero exit code (`1`).
+
+To configure an automated Google Cloud email alert:
+1.  Navigate to **Google Cloud Console > Monitoring > Alerting**.
+2.  Click **Create Policy**.
+3.  Click **Select a metric** and switch to query mode, or choose **Logs-based Metric** with the filter:
+    ```text
+    resource.type="gce_instance"
+    log_name=~"projects/.*/logs/geodashing_turnover"
+    textPayload=~"(ERROR|Traceback|Turnover Aborted|RuntimeError)"
+    ```
+4.  Set the trigger condition to `Condition is met if any time series violates threshold (Count > 0 in 5 minutes)`.
+5.  Under **Notification Channels**, select or create an email channel (e.g. administrator email `lucienve@gmail.com`).
+6.  Set the policy name to `Geodashing Monthly Turnover Failure Alert` and save.
+7.  *(Optional)* In **Error Reporting**, ensure notification emails are enabled for new exception groups detected from the Ops Agent log streams.
 

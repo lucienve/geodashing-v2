@@ -4,6 +4,7 @@
 # _bulk_insert_dashpoints) is required to verify the correctness of individual database
 # operations without executing the entire orchestrator.
 
+import datetime
 import unittest.mock
 import geopandas as gpd
 import mysql.connector.cursor
@@ -103,21 +104,35 @@ def test_initialize_new_game() -> None:
     """Verify that starting a new game successfully updates the DB state."""
     mock_cursor = unittest.mock.MagicMock(spec=mysql.connector.cursor.MySQLCursor)
     mock_cursor.lastrowid = 42
+    mock_cursor.fetchone.return_value = None
 
-    game_id = backend.scripts.generate_game._initialize_new_game(mock_cursor, "Global Dash")
+    game_id = backend.scripts.generate_game.initialize_new_game(mock_cursor, "Global Dash")
 
     assert game_id == 42
-    # Verify the initial retirement of old games ran
+    # Verify the initial duplicate check and retirement of old games ran
+    mock_cursor.execute.assert_any_call(
+        "SELECT id, title FROM games WHERE YEAR(start_time) = %s AND MONTH(start_time) = %s",
+        (datetime.datetime.now().year, datetime.datetime.now().month)
+    )
     mock_cursor.execute.assert_any_call("UPDATE games SET is_active = FALSE")
 
     # Verify the parameter-bound database insert
-    assert mock_cursor.execute.call_count == 2
-    args = mock_cursor.execute.call_args_list[1][0]
+    assert mock_cursor.execute.call_count == 3
+    args = mock_cursor.execute.call_args_list[2][0]
     query = args[0]
     payload = args[1]
 
     assert "INSERT INTO games" in query
     assert payload[0] == "Global Dash"
+
+
+def test_initialize_new_game_duplicate_blocked() -> None:
+    """Verify that creating a duplicate game for the same month raises ValueError."""
+    mock_cursor = unittest.mock.MagicMock(spec=mysql.connector.cursor.MySQLCursor)
+    mock_cursor.fetchone.return_value = (10, "Existing Game")
+
+    with pytest.raises(ValueError, match="already exists"):
+        backend.scripts.generate_game.initialize_new_game(mock_cursor, "Duplicate Dash")
 
 
 def test_bulk_insert_dashpoints(monkeypatch: pytest.MonkeyPatch) -> None:

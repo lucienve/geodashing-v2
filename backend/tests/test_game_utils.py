@@ -1,13 +1,16 @@
 """Unit tests for game_utils.py administrative and validation scripts."""
 # pylint: disable=protected-access
 
+import argparse
 import datetime
 import http.client
+import json
 import unittest
 import unittest.mock
 import google.oauth2.service_account
 import mysql.connector
 import mysql.connector.cursor
+import shapely.geometry
 
 import backend.scripts.game_utils
 
@@ -270,3 +273,240 @@ class TestEmailSummaryCLI(unittest.TestCase):
             self.assertEqual(req.get_header("Authorization"), "Bearer fake_access_token")
             self.assertEqual(req.get_header("Content-type"), "application/json")
             self.assertEqual(req.get_method(), "POST")
+
+
+class TestRolloverCLI(unittest.TestCase):
+    """Test cases validating the automated monthly rollover functions and CLI workflow."""
+
+    def setUp(self) -> None:
+        self.mock_cursor = unittest.mock.MagicMock(spec=mysql.connector.cursor.MySQLCursor)
+        self.mock_conn = unittest.mock.MagicMock(spec=mysql.connector.connection.MySQLConnection)
+
+    def test_load_game_config_defaults(self) -> None:
+        """Loading config from non-existent path should return default configurations."""
+        with unittest.mock.patch("backend.scripts.game_utils.os.path.exists", return_value=False):
+            config = backend.scripts.game_utils.load_game_config("nonexistent.ini")
+            self.assertEqual(config['default_dashpoint_count'], 35000)
+            self.assertEqual(config['timezone'], "America/New_York")
+            self.assertTrue(config['send_turnover_announcement'])
+
+    def test_load_game_config_parsed(self) -> None:
+        """Loading config with explicit [game] section should parse values properly."""
+        config_text = (
+            "[game]\n"
+            "DEFAULT_DASHPOINT_COUNT = 40000\n"
+            "TIMEZONE = America/Chicago\n"
+            "SEND_TURNOVER_ANNOUNCEMENT = false\n"
+        )
+        with unittest.mock.patch("backend.scripts.game_utils.os.path.exists", return_value=True), \
+             unittest.mock.patch("builtins.open", unittest.mock.mock_open(read_data=config_text)):
+            config = backend.scripts.game_utils.load_game_config("dummy.ini")
+            self.assertEqual(config['default_dashpoint_count'], 40000)
+            self.assertEqual(config['timezone'], "America/Chicago")
+            self.assertFalse(config['send_turnover_announcement'])
+
+    def test_get_game_title_from_json(self) -> None:
+        """A valid match in game_titles.json should return the custom title."""
+        titles_data = json.dumps({"2026-08": "Briars, Bogs, and Other Minor Inconveniences"})
+        with unittest.mock.patch("backend.scripts.game_utils.os.path.exists", return_value=True), \
+             unittest.mock.patch("builtins.open", unittest.mock.mock_open(read_data=titles_data)):
+            title = backend.scripts.game_utils.get_game_title(2026, 8, "data/game_titles.json")
+            self.assertEqual(title, "Briars, Bogs, and Other Minor Inconveniences")
+
+    def test_get_game_title_fallback(self) -> None:
+        """Missing title in json or missing file should fall back to standard template."""
+        with unittest.mock.patch("backend.scripts.game_utils.os.path.exists", return_value=False):
+            title = backend.scripts.game_utils.get_game_title(2026, 9, "data/game_titles.json")
+            self.assertEqual(title, "September 2026 Dashing Classic")
+
+    def test_get_games_for_month(self) -> None:
+        """Querying games for month should return typed tuple list."""
+        self.mock_cursor.fetchall.return_value = [
+            (14, "June 2026", False, datetime.datetime(2026, 6, 1, 0, 0),
+             datetime.datetime(2026, 6, 30, 23, 59))
+        ]
+        games = backend.scripts.game_utils.get_games_for_month(self.mock_cursor, 2026, 6)
+        self.assertEqual(len(games), 1)
+        self.assertEqual(games[0][0], 14)
+        self.mock_cursor.execute.assert_called_once_with(
+            "SELECT id, title, is_active, start_time, end_time FROM games "
+            "WHERE YEAR(start_time) = %s AND MONTH(start_time) = %s "
+            "ORDER BY id ASC",
+            (2026, 6)
+        )
+
+    def test_build_turnover_announcement_email(self) -> None:
+        """Verifies subject and HTML body structure for player announcements."""
+        active_date = datetime.datetime(2026, 8, 1)
+        preview_date = datetime.datetime(2026, 9, 1)
+        subject, body = backend.scripts.game_utils.build_turnover_announcement_email(
+            active_game=(15, "August 2026 Sprint"),
+            active_date=active_date,
+            preview_game=(16, "September 2026 Classic"),
+            preview_date=preview_date
+        )
+        self.assertEqual(subject, "Geodashing Game 15 August 2026 Sprint (August 2026) has begun!")
+        self.assertIn("Game 15: August 2026 Sprint is Now Live!", body)
+        self.assertIn("Previous Month Concluded", body)
+        self.assertIn("Game 16 (<em>September 2026 Classic</em>) for "
+                      "<strong>September 2026</strong>", body)
+
+    def test_activate_current_month_missing_fails_fast(self) -> None:
+        """If no game exists for current month, _activate_current_month_game raises RuntimeError."""
+        self.mock_cursor.fetchall.return_value = []
+        with self.assertRaises(RuntimeError) as ctx:
+            backend.scripts.game_utils._activate_current_month_game(
+                self.mock_cursor, self.mock_conn, (2026, 8), dry_run=False
+            )
+        self.assertIn("No preview game exists for 2026-08", str(ctx.exception))
+
+    def test_activate_current_month_multiple_fails_fast(self) -> None:
+        """If multiple conflicting games exist for current month, raise RuntimeError."""
+        self.mock_cursor.fetchall.return_value = [
+            (14, "Game A", False, None, None),
+            (15, "Game B", False, None, None)
+        ]
+        with self.assertRaises(RuntimeError) as ctx:
+            backend.scripts.game_utils._activate_current_month_game(
+                self.mock_cursor, self.mock_conn, (2026, 8), dry_run=False
+            )
+        self.assertIn("Multiple conflicting games found", str(ctx.exception))
+
+    def test_activate_current_month_success(self) -> None:
+        """Activating an existing preview game updates DB state and commits."""
+        self.mock_cursor.fetchall.return_value = [
+            (14, "August 2026", False, None, None)
+        ]
+        active_id, active_title = backend.scripts.game_utils._activate_current_month_game(
+            self.mock_cursor, self.mock_conn, (2026, 8), dry_run=False
+        )
+        self.assertEqual(active_id, 14)
+        self.assertEqual(active_title, "August 2026")
+        self.mock_cursor.execute.assert_any_call("UPDATE games SET is_active = FALSE")
+        self.mock_cursor.execute.assert_any_call(
+            "UPDATE games SET is_active = TRUE WHERE id = %s", (14,)
+        )
+        self.mock_conn.commit.assert_called_once()
+
+    def test_generate_next_preview_game_already_exists(self) -> None:
+        """If next preview game is already in DB, skip point generation."""
+        self.mock_cursor.fetchall.return_value = [
+            (16, "September 2026", False, None, None)
+        ]
+        preview_id, preview_title = backend.scripts.game_utils._generate_next_preview_game(
+            self.mock_cursor, self.mock_conn, (2026, 9), 35000, dry_run=False
+        )
+        self.assertEqual(preview_id, 16)
+        self.assertEqual(preview_title, "September 2026")
+
+    @unittest.mock.patch("backend.scripts.generate_game.generate_valid_dashpoints")
+    @unittest.mock.patch("backend.scripts.generate_game.initialize_new_game")
+    @unittest.mock.patch("backend.scripts.generate_game.bulk_insert_dashpoints")
+    def test_generate_next_preview_game_generates(
+        self,
+        mock_bulk_insert: unittest.mock.MagicMock,
+        mock_init_game: unittest.mock.MagicMock,
+        mock_gen_points: unittest.mock.MagicMock
+    ) -> None:
+        """If next preview is missing, generate points and seed DB."""
+        self.mock_cursor.fetchall.return_value = []
+        mock_gen_points.return_value = [shapely.geometry.Point(0, 0)]
+        mock_init_game.return_value = 17
+
+        preview_id, preview_title = backend.scripts.game_utils._generate_next_preview_game(
+            self.mock_cursor, self.mock_conn, (2026, 9), 35000, dry_run=False
+        )
+        self.assertEqual(preview_id, 17)
+        self.assertEqual(preview_title, "Random Destinations of Unwarranted Grandeur")
+        mock_gen_points.assert_called_once()
+        mock_init_game.assert_called_once()
+        mock_bulk_insert.assert_called_once()
+        self.mock_conn.commit.assert_called_once()
+
+    @unittest.mock.patch("backend.scripts.game_utils.load_game_config")
+    @unittest.mock.patch("backend.scripts.game_utils._activate_current_month_game")
+    @unittest.mock.patch("backend.scripts.game_utils._generate_next_preview_game")
+    @unittest.mock.patch("backend.scripts.game_utils._dispatch_announcement_email")
+    def test_execute_rollover_full_flow(
+        self,
+        mock_dispatch: unittest.mock.MagicMock,
+        mock_gen_preview: unittest.mock.MagicMock,
+        mock_activate: unittest.mock.MagicMock,
+        mock_load_cfg: unittest.mock.MagicMock
+    ) -> None:
+        """Full rollover execution orchestrates activation, generation, and announcement."""
+        mock_load_cfg.return_value = {
+            'default_dashpoint_count': 35000,
+            'timezone': 'America/New_York',
+            'send_turnover_announcement': True
+        }
+        mock_activate.return_value = (14, "August 2026")
+        mock_gen_preview.return_value = (15, "September 2026")
+
+        backend.scripts.game_utils.execute_rollover(
+            self.mock_cursor, self.mock_conn, "dummy.ini",
+            dry_run=False,
+            overrides={"year": 2026, "month": 8, "count": 35000}
+        )
+
+        mock_activate.assert_called_once_with(self.mock_cursor, self.mock_conn, (2026, 8), False)
+        mock_gen_preview.assert_called_once_with(
+            self.mock_cursor, self.mock_conn, (2026, 9), 35000, False
+        )
+        mock_dispatch.assert_called_once()
+
+    @unittest.mock.patch("backend.scripts.game_utils.load_game_config")
+    @unittest.mock.patch("backend.scripts.game_utils._activate_current_month_game")
+    @unittest.mock.patch("backend.scripts.game_utils._generate_next_preview_game")
+    @unittest.mock.patch("backend.scripts.game_utils._dispatch_announcement_email")
+    def test_execute_rollover_email_failure_raises(
+        self,
+        mock_dispatch: unittest.mock.MagicMock,
+        mock_gen_preview: unittest.mock.MagicMock,
+        mock_activate: unittest.mock.MagicMock,
+        mock_load_cfg: unittest.mock.MagicMock
+    ) -> None:
+        """If email dispatch fails, execute_rollover must re-raise the exception."""
+        mock_load_cfg.return_value = {
+            'default_dashpoint_count': 35000,
+            'timezone': 'America/New_York',
+            'send_turnover_announcement': True
+        }
+        mock_activate.return_value = (14, "August 2026")
+        mock_gen_preview.return_value = (15, "September 2026")
+        mock_dispatch.side_effect = RuntimeError("SMTP connection timeout")
+
+        with self.assertRaises(RuntimeError) as ctx:
+            backend.scripts.game_utils.execute_rollover(
+                self.mock_cursor, self.mock_conn, "dummy.ini",
+                dry_run=False,
+                overrides={"year": 2026, "month": 8, "count": 35000}
+            )
+        self.assertIn("SMTP connection timeout", str(ctx.exception))
+
+    @unittest.mock.patch("backend.scripts.game_utils.execute_rollover")
+    def test_execute_cli_actions_rollover(
+        self,
+        mock_exec_rollover: unittest.mock.MagicMock
+    ) -> None:
+        """CLI action dispatcher invokes execute_rollover when --rollover is set."""
+        args = argparse.Namespace(
+            list=False,
+            activate=None,
+            upload_summary=None,
+            email_summary=False,
+            game_id=None,
+            rollover=True,
+            dry_run=True,
+            year=2026,
+            month=8,
+            count=35000
+        )
+        backend.scripts.game_utils.execute_cli_actions(
+            self.mock_cursor, self.mock_conn, args, "dummy.ini"
+        )
+        mock_exec_rollover.assert_called_once_with(
+            self.mock_cursor, self.mock_conn, "dummy.ini",
+            dry_run=True,
+            overrides={"year": 2026, "month": 8, "count": 35000}
+        )

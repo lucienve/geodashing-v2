@@ -1,34 +1,42 @@
 # Geodashing V2 - Game Rollover & Summary Generation Guide
 
-This guide details the step-by-step production procedure for executing the monthly game rollover and synthesizing game summaries on the production machine. 
+This guide details the architecture and operational procedures for the monthly game rollover, automated turnover execution, and AI game summary generation.
 
 ## Rollover Lifecycle Model
 
-Geodashing V2 operates on a systematic chronological sequence designed to ensure players can always preview the upcoming month's dashpoints while active gameplay and log submissions remain locked to the current calendar month.
+Geodashing V2 operates on a continuous monthly lifecycle ensuring players can always preview upcoming dashpoints while active gameplay and log submissions remain strictly locked to the current calendar month.
 
-The entire rollover process takes place at the **transition boundary** (the 1st day of the new month at 00:00:00). For example, on **June 1st**, the administrator executes the following sequence:
-1.  **Summarize & Close the Completed Month (May)**: Synthesizes the AI-generated HTML summary of the finished May game and saves it to the database.
-2.  **Activate the Current Month (June)**: Promotes the existing June game (which has been sitting in inactive preview status) to active.
-3.  **Seed the Next Month's Preview (July)**: Generates and seeds the July game in an inactive preview state, making its upcoming checkpoints visible to the community for planning throughout the month of June.
+### Transition Timeline (e.g. June 1st Transition)
+1.  **Automated Turnover (00:00:00 America/New_York via Cron)**:
+    *   **Promote Current Game**: Activates the existing June game (previously in preview mode) and retires the May game.
+    *   **Seed Next Preview Game**: Generates ~35,000 dashpoints for July using pre-planned titles from `data/game_titles.json` and seeds it in preview mode (`is_active = FALSE`).
+    *   **Player Announcement Email**: Dispatches a notification to the player mailing list announcing that June is live and July is available for preview.
+    *   **Alerting**: Failures automatically trigger Google Cloud Error Reporting / Ops Agent alerting (email is never sent to players on failure).
+2.  **Post-Turnover Editorial Summary (June 1st, Daylight Hours)**:
+    *   **Synthesize Summary**: Administrator generates the AI summary for the completed May game using `generate_summary.py`.
+    *   **Review & Publish**: Admin reviews/edits the HTML summary, validates and uploads it to the database with `game_utils.py --upload-summary`, and sends the final results email with `game_utils.py --email-summary`.
 
 ---
 
-## Rollover Process Map
+## Rollover Architecture Map
 
 ```mermaid
 graph TD
-    A[June 1st: May Game Concludes] --> B[Step 1: Generate, Upload & Email May Summary]
-    B -->|generate_summary.py & game_utils.py| C[Step 2: Activate June Game]
-    C -->|game_utils.py --activate| D[Step 3: Seed July Game as Preview]
-    D -->|generate_game.py --preview| E[Step 4: Verify & Cleanup]
+    A[Midnight 00:00 NY: Cron Triggers game_utils --rollover] --> B[1. Activate Current Month Preview Game]
+    B --> C[2. Generate & Seed Next Month Preview Game]
+    C --> D[3. Send Turnover Announcement Email to Players]
+    D --> E[4. Stream Logs to Google Cloud Ops Agent]
+    E -->|If Failure Occurs| F[GCP Alerting Notifies Admin via Email]
+    E -->|On Success| G[Daylight: Admin Generates Completed Month Summary]
+    G --> H[generate_summary.py -> upload-summary -> email-summary]
 ```
 
 ### Administrative Prerequisites
-All commands on the production machine must be executed inside the project's virtual environment with active database credentials and Gemini API configurations loaded from `backend/config.ini`.
+All commands on the production machine are executed inside the project's virtual environment (`.venv`) with configurations loaded from `backend/config.ini`.
 
 ```bash
-# Navigate to the project root
-# (Example working directory: /home/lucien/src/geodashing-v2)
+# Navigate to the project root on production
+cd /home/lucien/src/geodashing-v2
 
 # Activate the virtual environment
 source .venv/bin/activate
@@ -36,7 +44,26 @@ source .venv/bin/activate
 
 ---
 
-## Step-by-Step Rollover Procedure (Example: June 1st Transition)
+## Automated Turnover Execution
+
+The production server runs the turnover command automatically at `00:00:00 America/New_York` on the 1st of every month via cron:
+```cron
+CRON_TZ=America/New_York
+0 0 1 * * /home/lucien/src/geodashing-v2/.venv/bin/python -m backend.scripts.game_utils --rollover >> /var/log/geodashing/turnover.log 2>&1
+```
+
+### Manual Turnover Execution or Simulation
+To manually trigger the turnover or test in dry-run mode:
+```bash
+# Dry run simulation (no database changes or emails sent)
+python -m backend.scripts.game_utils --rollover --dry-run
+
+# Live execution for current month
+python -m backend.scripts.game_utils --rollover
+
+# Target a specific month or dashpoint count
+python -m backend.scripts.game_utils --rollover --year 2026 --month 8 --count 35000
+```
 
 In this walkthrough, we assume the date is **June 1st**. We are closing the **May game (ID 13)**, activating the **June game (ID 14)**, and seeding the **July game (ID 15)** as the new preview.
 

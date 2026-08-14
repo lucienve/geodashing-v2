@@ -372,9 +372,20 @@ The application allows users to participate in global geographic games where the
 - Added `sendRerollNotificationEmail` to [MailerTrait.php](backend/services/MailerTrait.php) linking new coordinates to the Geodashing SPA map page (`#dashpoint?id=...`), and enhanced it to query [GeoContextService.php](backend/services/GeoContextService.php) to output geographic context (e.g. "30 miles northeast of Town, State") for the original location.
 - Exposed reroll configuration in [auth.php](public/api/auth.php) and implemented public REST endpoint [reroll.php](public/api/reroll.php) with CSRF header protection.
 - Updated UI templates [dashpoint.html](public/templates/dashpoint.html), frontend controllers [controllers.js](public/js/controllers.js) & [api.js](public/js/api.js), and CSS styles [index.css](public/css/index.css).
+
 ### 54. Gemini 3.7 Flash Upgrade & Configurable Thinking Level
-- Upgraded default model references from `gemini-3.6-flash` to `gemini-3.7-flash` across configurations ([config.ini.example](../backend/config.ini.example)), evaluation suites ([test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py)), and documentation ([admin_guide.md](admin_guide.md), [gemini_model_evaluation.md](gemini_model_evaluation.md)).
-- Added configurable reasoning support via `GEMINI_THINKING_LEVEL` (defaulting to `"medium"` in examples) across `configure_environment()` and `_generate_summary()` in [generate_summary.py](../backend/scripts/generate_summary.py), instantiating `google.genai.types.ThinkingConfig(thinking_level=...)`.
+- Upgraded default model references from `gemini-3.6-flash` to `gemini-3.7-flash` across configurations ([config.ini.example](backend/config.ini.example)), evaluation suites ([test_summary_evaluation.py](backend/tests/test_summary_evaluation.py)), and documentation ([admin_guide.md](docs/admin_guide.md), [gemini_model_evaluation.md](docs/gemini_model_evaluation.md)).
+- Added configurable reasoning support via `GEMINI_THINKING_LEVEL` (defaulting to `"medium"` in examples) across `configure_environment()` and `_generate_summary()` in [generate_summary.py](backend/scripts/generate_summary.py), instantiating `google.genai.types.ThinkingConfig(thinking_level=...)`.
 - Audited API compliance against Gemini 3.x specifications: confirmed absence of deprecated sampling parameters (`temperature`, `top_p`, `top_k`), absence of `candidate_count`, adherence to turn validation rules without prefilled model turns, and updated dependencies to `google-genai>=2.16.0`.
-- Expanded unit tests in [test_generate_summary.py](../backend/tests/test_generate_summary.py) to cover thinking level parsing and configuration loading.
+- Expanded unit tests in [test_generate_summary.py](backend/tests/test_generate_summary.py) to cover thinking level parsing and configuration loading.
+
+### 55. Automated End-of-Month Game Turnover & Ops Agent Alerting
+- Implemented full end-of-month game lifecycle automation triggered via `python -m backend.scripts.game_utils --rollover [--dry-run]`.
+- Enforced strict duplicate prevention in [generate_game.py](backend/scripts/generate_game.py) and [game_utils.py](backend/scripts/game_utils.py) checking `YEAR(start_time)` and `MONTH(start_time)`.
+- Added pre-planned game titles catalog in [data/game_titles.json](data/game_titles.json) covering 2026-08 through 2027-05, with automatic fallback formatting for unlisted dates.
+- Added `[game]` configuration block in [config.ini.example](backend/config.ini.example) and [config.ini](backend/config.ini) supporting `DEFAULT_DASHPOINT_COUNT`, `TIMEZONE` (`America/New_York`), and `SEND_TURNOVER_ANNOUNCEMENT`.
+- Built automated announcement email pipeline in `game_utils.py` formatting multipart HTML and text fallbacks announcing the new active game and upcoming preview game to players (`MAILING_LIST_ADDRESS`) via Gmail REST API.
+- Implemented fail-fast error handling (exit code 1) for missing/duplicate preview games and email dispatch failures to trigger Google Cloud Ops Agent and Cloud Alerting (suppressing player emails on failure).
+- Added comprehensive unit tests in [test_game_utils.py](backend/tests/test_game_utils.py) and [test_generate_game.py](backend/tests/test_generate_game.py).
+- Documented operational cron schedules, manual execution flags, Ops Agent receiver pipelines, and Cloud Monitoring alert policies in [admin_guide.md](docs/admin_guide.md) and [game_rollover.md](docs/game_rollover.md).
 

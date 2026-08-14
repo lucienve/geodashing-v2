@@ -3,6 +3,7 @@
 import argparse
 import calendar
 import os
+import sys
 import datetime
 import typing
 
@@ -45,7 +46,7 @@ def generate_valid_sequence_id(start_index: int, blocklist: set[str]) -> tuple[s
 
 
 
-def _initialize_new_game(
+def initialize_new_game(
     cursor: mysql.connector.cursor.MySQLCursor,
     game_title: str,
     year: int | None = None,
@@ -68,6 +69,17 @@ def _initialize_new_game(
                            second=59,
                            microsecond=0)
 
+    cursor.execute(
+        "SELECT id, title FROM games WHERE YEAR(start_time) = %s AND MONTH(start_time) = %s",
+        (year, month)
+    )
+    existing = cursor.fetchone()
+    if existing:
+        raise ValueError(
+            f"A game for {year}-{month:02d} already exists (Game {existing[0]}: '{existing[1]}'). "
+            "Duplicate creation blocked."
+        )
+
     if not is_preview:
         print("Marking previous games as inactive...")
         cursor.execute("UPDATE games SET is_active = FALSE")
@@ -88,7 +100,11 @@ def _initialize_new_game(
     return cursor.lastrowid
 
 
-def _bulk_insert_dashpoints(
+# Alias for backward compatibility
+_initialize_new_game = initialize_new_game
+
+
+def bulk_insert_dashpoints(
     cursor: mysql.connector.cursor.MySQLCursor,
     points: list[shapely.geometry.Point],
     game_id: int,
@@ -115,6 +131,10 @@ def _bulk_insert_dashpoints(
             batch_data.append((dashpoint_id, game_id, wkt_string))
 
         cursor.executemany(insert_dp_sql, batch_data)
+
+
+# Alias for backward compatibility
+_bulk_insert_dashpoints = bulk_insert_dashpoints
 
 
 def seed_database(points: list[shapely.geometry.Point], config_path: str, game_title: str,
@@ -422,9 +442,9 @@ def main() -> None:
         '-c',
         '--count',
         type=int,
-        default=31000,
+        default=35000,
         help=
-        "The total number of dashpoints to randomly distribute on Earth (default: 31000)"
+        "The total number of dashpoints to randomly distribute on Earth (default: 35000)"
     )
     parser.add_argument(
         '-t',
@@ -468,8 +488,9 @@ def main() -> None:
             year=args.year, month=args.month, is_preview=args.preview
         )
 
-    except (FileNotFoundError, RuntimeError) as e:
+    except (FileNotFoundError, RuntimeError, ValueError) as e:
         print(f"\nExecution Error: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
