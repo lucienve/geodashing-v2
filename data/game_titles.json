@@ -1,5 +1,9 @@
 {
   "_prompt": "You are generating monthly game titles for Geodashing, a GPS-based outdoor game where players travel to randomly generated global coordinates (dashpoints) each month regardless of whether the point lands in a swamp, thicket, mountainside, or middle of nowhere.\n\nTone & Style Guidelines:\n- Tone: Dry, deadpan, witty British understatement (in the spirit of Douglas Adams or P.G. Wodehouse meets cartography).\n- Core Themes:\n  * Cartography & GPS: Satellites, coordinates, contour lines, triangulation, map errors, bearing, precision vs. accuracy.\n  * Physical Reality: Bushwhacking, mud, briars, barbed wire, elevation, steep terrain, swamps, dubious footwear.\n  * Human Delusion: Stubbornness, misplaced confidence, recalculations, wishful thinking, mild regret.\n- Length: 4 to 8 words per title. Title Case.\n- Avoid: Generic hype, exclamation marks, or overt gamer tropes. Titles should feel like dry literary chapter titles or wry navigational observations.\n\nTask: Generate [N] new game titles starting from [YYYY-MM]. Output the result as a valid JSON object mapping 'YYYY-MM' to 'Title'.",
+  "2026-04": "A New Day for Llamas",
+  "2026-05": "The Herd Finds its Legs",
+  "2026-06": "The Herd Questions Its Navigation Choices",
+  "2026-07": "The Ocean is Inconveniently Large",
   "2026-08": "Briars, Bogs, and Other Minor Inconveniences",
   "2026-09": "Random Destinations of Unwarranted Grandeur",
   "2026-10": "A Series of Mild Recalculations",
