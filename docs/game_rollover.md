@@ -49,7 +49,7 @@ source .venv/bin/activate
 The production server runs the turnover command automatically at `00:00:00 America/New_York` on the 1st of every month via cron:
 ```cron
 CRON_TZ=America/New_York
-0 0 1 * * /home/lucien/src/geodashing-v2/.venv/bin/python -m backend.scripts.game_utils --rollover >> /var/log/geodashing/turnover.log 2>&1
+0 0 1 * * cd /home/lucien/src/geodashing-v2 && .venv/bin/python -m backend.scripts.game_utils --rollover >> /var/log/geodashing/turnover.log 2>&1
 ```
 
 ### Manual Turnover Execution or Simulation

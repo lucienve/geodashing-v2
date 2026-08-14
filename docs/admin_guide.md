@@ -321,7 +321,7 @@ On the production VM (`vm2019-vpc`), configure a cron job to trigger the automat
 2.  Add the scheduled turnover entry:
     ```cron
     CRON_TZ=America/New_York
-    0 0 1 * * /home/lucien/src/geodashing-v2/.venv/bin/python -m backend.scripts.game_utils --rollover >> /var/log/geodashing/turnover.log 2>&1
+    0 0 1 * * cd /home/lucien/src/geodashing-v2 && .venv/bin/python -m backend.scripts.game_utils --rollover >> /var/log/geodashing/turnover.log 2>&1
     ```
 
 ### Step 5: Setting Up Google Cloud Alerting for Turnover Failures
