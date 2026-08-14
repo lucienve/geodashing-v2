@@ -307,7 +307,10 @@ class TestRolloverCLI(unittest.TestCase):
 
     def test_get_game_title_from_json(self) -> None:
         """A valid match in game_titles.json should return the custom title."""
-        titles_data = json.dumps({"2026-08": "Briars, Bogs, and Other Minor Inconveniences"})
+        titles_data = json.dumps({
+            "_prompt": "Sample generation prompt...",
+            "2026-08": "Briars, Bogs, and Other Minor Inconveniences"
+        })
         with unittest.mock.patch("backend.scripts.game_utils.os.path.exists", return_value=True), \
              unittest.mock.patch("builtins.open", unittest.mock.mock_open(read_data=titles_data)):
             title = backend.scripts.game_utils.get_game_title(2026, 8, "data/game_titles.json")

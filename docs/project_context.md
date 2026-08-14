@@ -382,7 +382,7 @@ The application allows users to participate in global geographic games where the
 ### 55. Automated End-of-Month Game Turnover & Ops Agent Alerting
 - Implemented full end-of-month game lifecycle automation triggered via `python -m backend.scripts.game_utils --rollover [--dry-run]`.
 - Enforced strict duplicate prevention in [generate_game.py](backend/scripts/generate_game.py) and [game_utils.py](backend/scripts/game_utils.py) checking `YEAR(start_time)` and `MONTH(start_time)`.
-- Added pre-planned game titles catalog in [data/game_titles.json](data/game_titles.json) covering 2026-08 through 2027-05, with automatic fallback formatting for unlisted dates.
+- Added pre-planned game titles catalog in [data/game_titles.json](data/game_titles.json) covering 2026-08 through 2028-05 (including reusable `_prompt` metadata template for LLM title generation), with automatic fallback formatting for unlisted dates.
 - Added `[game]` configuration block in [config.ini.example](backend/config.ini.example) and [config.ini](backend/config.ini) supporting `DEFAULT_DASHPOINT_COUNT`, `TIMEZONE` (`America/New_York`), and `SEND_TURNOVER_ANNOUNCEMENT`.
 - Built automated announcement email pipeline in `game_utils.py` formatting multipart HTML and text fallbacks announcing the new active game and upcoming preview game to players (`MAILING_LIST_ADDRESS`) via Gmail REST API.
 - Implemented fail-fast error handling (exit code 1) for missing/duplicate preview games and email dispatch failures to trigger Google Cloud Ops Agent and Cloud Alerting (suppressing player emails on failure).
