@@ -54,6 +54,7 @@ test-results/
 # Agent Rules
 .agents/rules/*
 !.agents/rules/geodashing_rules.md
+.agents/skills/*
 
 # Symlinked to global files
 .prettierrc
