@@ -3,7 +3,6 @@
 # Accessing the internal _generate_summary helper function is necessary
 # in this test to evaluate the system instruction prompt pipeline in isolation.
 
-import typing
 import configparser
 import os
 import re
@@ -342,12 +341,11 @@ Evaluate the summary and return the scores, justification, and a final verdict. 
         generation_config=generation_config or None
     )
 
-    if hasattr(interaction, "output_text") and interaction.output_text:
-        result_text = typing.cast(str, interaction.output_text)
-    else:
+    output_text = getattr(interaction, "output_text", None)
+    if not output_text:
         raise ValueError("Judge model returned an empty or invalid response")
 
-    return EvaluationResult.model_validate_json(result_text)
+    return EvaluationResult.model_validate_json(str(output_text))
 
 
 def _get_eval_config(cfg_p: str) -> tuple[dict, google.genai.Client, str]:
