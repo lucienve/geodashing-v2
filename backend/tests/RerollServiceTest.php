@@ -17,12 +17,36 @@ use Exception;
 class RerollServiceTest extends TestCase
 {
     private $pdoMock;
+    private array $testConfig = [
+        'reroll' => [
+            'REROLL_ENABLED' => true,
+            'REROLL_MAX_RADIUS_KM' => 10.0,
+            'REROLL_MAX_PER_PLAYER' => 3,
+            'REROLL_NOTIFICATION_EMAIL' => 'test@example.com',
+        ],
+    ];
 
     protected function setUp(): void
     {
         putenv('APP_ENV=testing');
         $_ENV['APP_ENV'] = 'testing';
         $this->pdoMock = $this->createMock(PDO::class);
+    }
+
+    #[Test]
+    public function rerollFailsWhenFeatureDisabled(): void
+    {
+        $disabledConfig = [
+            'reroll' => [
+                'REROLL_ENABLED' => false,
+            ],
+        ];
+        $service = new RerollService($this->pdoMock, null, $disabledConfig);
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Dashpoint rerolling is currently disabled.');
+
+        $service->rerollDashpoint(1, 'GD002-AAAA', 'Inaccessible location');
     }
 
     #[Test]
@@ -44,7 +68,7 @@ class RerollServiceTest extends TestCase
             return $this->createMock(PDOStatement::class);
         });
 
-        $service = new RerollService($this->pdoMock);
+        $service = new RerollService($this->pdoMock, null, $this->testConfig);
 
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('You must have logged at least 1 verified find');
@@ -85,7 +109,7 @@ class RerollServiceTest extends TestCase
             return $this->createMock(PDOStatement::class);
         });
 
-        $service = new RerollService($this->pdoMock);
+        $service = new RerollService($this->pdoMock, null, $this->testConfig);
 
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('Dashpoints can only be rerolled while the game is in preview.');
@@ -134,7 +158,7 @@ class RerollServiceTest extends TestCase
             }
         );
 
-        $service = new RerollService($this->pdoMock);
+        $service = new RerollService($this->pdoMock, null, $this->testConfig);
 
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('This dashpoint has already been rerolled during preview.');
@@ -195,7 +219,7 @@ class RerollServiceTest extends TestCase
         $geoMock = $this->createMock(GeoContextService::class);
         $geoMock->method('getDashpointContext')->willReturn('Mocked GeoContext');
 
-        $service = new class ($this->pdoMock, $geoMock) extends RerollService {
+        $service = new class ($this->pdoMock, $geoMock, $this->testConfig) extends RerollService {
             protected function executePythonRerollScript(float $origLat, float $origLon, float $maxRadiusKm): array
             {
                 return [
@@ -219,7 +243,7 @@ class RerollServiceTest extends TestCase
     #[Test]
     public function rerollFailsWhenReasonIsEmpty(): void
     {
-        $service = new RerollService($this->pdoMock);
+        $service = new RerollService($this->pdoMock, null, $this->testConfig);
 
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('Reroll reason is required.');
@@ -230,11 +254,10 @@ class RerollServiceTest extends TestCase
     #[Test]
     public function rerollFailsWhenReasonTooLong(): void
     {
-        $service = new RerollService($this->pdoMock);
+        $service = new RerollService($this->pdoMock, null, $this->testConfig);
 
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('Reroll reason must be less than 100 characters.');
-
         $longReason = str_repeat('a', 100);
         $service->rerollDashpoint(1, 'GD002-AAAA', $longReason);
     }

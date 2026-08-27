@@ -16,16 +16,24 @@ class RerollService
 
     private PDO $db;
     private GeoContextService $geoService;
+    private array $config;
 
-    public function __construct(PDO $db, ?GeoContextService $geoService = null)
+    public function __construct(PDO $db, ?GeoContextService $geoService = null, ?array $config = null)
     {
         $this->db = $db;
-        if ($geoService === null) {
+        if ($config === null) {
             $configPath = __DIR__ . '/../config.ini';
-            $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
-            $apiKey = $config['GOOGLE_MAPS_API_KEY'] ?? '';
-            $apiBaseUrl = $config['GOOGLE_MAPS_API_BASE_URL']
-                ?? ((getenv('APP_ENV') === 'testing') ? 'http://127.0.0.1:8081/api/mock_maps.php?' : 'https://maps.googleapis.com');
+            $this->config = file_exists($configPath) ? (parse_ini_file($configPath, true) ?: []) : [];
+        } else {
+            $this->config = $config;
+        }
+
+        if ($geoService === null) {
+            $apiKey = $this->config['google']['GOOGLE_MAPS_API_KEY']
+                ?? ($this->config['GOOGLE_MAPS_API_KEY'] ?? '');
+            $apiBaseUrl = $this->config['google']['GOOGLE_MAPS_API_BASE_URL']
+                ?? ($this->config['GOOGLE_MAPS_API_BASE_URL']
+                ?? ((getenv('APP_ENV') === 'testing') ? 'http://127.0.0.1:8081/api/mock_maps.php?' : 'https://maps.googleapis.com'));
             $this->geoService = new GeoContextService($this->db, $apiKey, $apiBaseUrl);
         } else {
             $this->geoService = $geoService;
@@ -51,9 +59,7 @@ class RerollService
             throw new Exception("Reroll reason must be less than 100 characters.");
         }
 
-        $configPath = __DIR__ . '/../config.ini';
-        $config = file_exists($configPath) ? parse_ini_file($configPath, true) : [];
-        $rerollSection = $config['reroll'] ?? [];
+        $rerollSection = $this->config['reroll'] ?? $this->config;
 
         $rerollEnabled = filter_var($rerollSection['REROLL_ENABLED'] ?? true, FILTER_VALIDATE_BOOLEAN);
         $maxRadiusKm = (float) ($rerollSection['REROLL_MAX_RADIUS_KM'] ?? 10.0);
