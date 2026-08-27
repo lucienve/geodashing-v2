@@ -3,7 +3,6 @@
 
 import http.client
 import unittest.mock
-import typing
 
 import google.oauth2.service_account
 import google.genai
@@ -69,6 +68,8 @@ def test_construct_new_data(mock_urlopen: unittest.mock.MagicMock) -> None:
     # Mock client and File API as required
     mock_client = unittest.mock.MagicMock(spec=google.genai.Client)
     mock_uploaded_file = unittest.mock.MagicMock(spec=google.genai.types.File)
+    mock_uploaded_file.uri = "https://generativelanguage.googleapis.com/v1beta/files/fake123"
+    mock_uploaded_file.mime_type = "image/jpeg"
     mock_client.files.upload.return_value = mock_uploaded_file
 
     upload_context: backend.scripts.generate_summary.UploadContext = {
@@ -82,7 +83,8 @@ def test_construct_new_data(mock_urlopen: unittest.mock.MagicMock) -> None:
         game_title, scores, logs, upload_context
     )
 
-    text_result = "".join([p for p in result if isinstance(p, str)])
+    text_result = "".join([p["text"] for p in result if p["type"] == "text"])
+    image_parts = [p for p in result if p["type"] == "image"]
 
     assert "Test Game Title" in text_result
     assert "Winner: player1 with 100 points" in text_result
@@ -91,6 +93,10 @@ def test_construct_new_data(mock_urlopen: unittest.mock.MagicMock) -> None:
     assert "Log notes" in text_result
     assert "Full: http://example.com/1.jpg" in text_result
     assert "Caption: Sunset caption" in text_result
+
+    assert len(image_parts) == 1
+    assert image_parts[0]["uri"] == "https://generativelanguage.googleapis.com/v1beta/files/fake123"
+    assert image_parts[0]["mime_type"] == "image/jpeg"
 
     # Assert local files and remote uploads were tracked
     assert len(upload_context["local_temp_files"]) == 1
@@ -101,7 +107,7 @@ def test_construct_new_data(mock_urlopen: unittest.mock.MagicMock) -> None:
     result_empty = backend.scripts.generate_summary.construct_new_data(
         game_title, [], logs, upload_context
     )
-    text_empty = "".join([p for p in result_empty if isinstance(p, str)])
+    text_empty = "".join([p["text"] for p in result_empty if p["type"] == "text"])
     assert "No players scored in this game." in text_empty
 
 
@@ -124,7 +130,7 @@ def test_construct_new_data_tied_scores() -> None:
     result = backend.scripts.generate_summary.construct_new_data(
         "Test Game Title", scores, logs, upload_context
     )
-    text_result = "".join([p for p in result if isinstance(p, str)])
+    text_result = "".join([p["text"] for p in result if p["type"] == "text"])
     assert "Winners (tied): player1, player2 with 100 points" in text_result
     assert "- player3: 50 points" in text_result
     assert "- player2: 100 points" not in text_result
@@ -145,26 +151,31 @@ def test_load_chat_history(
     mock_listdir.return_value = ['example_1_input.txt', 'example_2_input.txt', 'other.txt']
     mock_exists.return_value = True
 
-    history = typing.cast(
-        list[google.genai.types.Content],
-        backend.scripts.generate_summary.load_chat_history("/fake/dir")
-    )
+    history = backend.scripts.generate_summary.load_chat_history("/fake/dir")
 
     assert len(history) == 4
-    assert isinstance(history[0], google.genai.types.Content)
-    assert history[0].role == "user"
-    assert history[1].role == "model"
-    assert history[2].role == "user"
-    assert history[3].role == "model"
+    assert history[0]["type"] == "user_input"
+    item0 = history[0]["content"][0]
+    assert item0["type"] == "text" and item0["text"] == "mock data"
+    assert history[1]["type"] == "model_output"
+    assert history[1]["content"][0]["text"] == "mock data"
+    assert history[2]["type"] == "user_input"
+    item2 = history[2]["content"][0]
+    assert item2["type"] == "text" and item2["text"] == "mock data"
+    assert history[3]["type"] == "model_output"
+    assert history[3]["content"][0]["text"] == "mock data"
 
 
 @unittest.mock.patch("builtins.open", new_callable=unittest.mock.mock_open)
 def test_write_summary_files(mock_file: unittest.mock.MagicMock) -> None:
     """Test writing the prompt and html to files."""
-    fake_part = unittest.mock.MagicMock(spec=google.genai.types.Part)
+    prompt_items: list[backend.scripts.generate_summary.ContentItem] = [
+        {"type": "text", "text": "my prompt"},
+        {"type": "image", "uri": "https://fake/img.jpg", "mime_type": "image/jpeg"}
+    ]
 
     backend.scripts.generate_summary.write_summary_files(
-        "/out", 123, ["my prompt", fake_part], "my html"
+        "/out", 123, prompt_items, "my html"
     )
 
     # Open should be called twice
@@ -202,87 +213,68 @@ def test_get_gemini_client(
 
 @unittest.mock.patch("backend.scripts.generate_summary.load_system_instructions", autospec=True)
 @unittest.mock.patch("backend.scripts.generate_summary.load_chat_history", autospec=True)
-@unittest.mock.patch(
-    "backend.scripts.generate_summary.google.genai.types.GenerateContentConfig",
-    autospec=True
-)
 def test_generate_summary(
-    mock_generate_content_config: unittest.mock.MagicMock,
     mock_load_chat: unittest.mock.MagicMock,
     mock_load_sys: unittest.mock.MagicMock
 ) -> None:
     """Test AI Studio API call structure via Client without thinking_level."""
     mock_client = unittest.mock.MagicMock(spec=google.genai.Client)
-    mock_chat_instance = mock_client.chats.create.return_value
-    mock_response = mock_chat_instance.send_message.return_value
-    mock_response.text = "generated HTML"
+    mock_interaction = mock_client.interactions.create.return_value
+    mock_interaction.output_text = "generated HTML"
 
-    mock_config_instance = mock_generate_content_config.return_value
     mock_load_sys.return_value = "sys inst"
     mock_load_chat.return_value = []
 
+    prompt_items: list[backend.scripts.generate_summary.ContentItem] = [
+        {"type": "text", "text": "my prompt"}
+    ]
     ai_config: dict[str, str | None] = {"model_name": "m1"}
     result = backend.scripts.generate_summary._generate_summary(
-        mock_client, ai_config, "sys.txt", "/fake/dir", ["my prompt"]
+        mock_client, ai_config, "sys.txt", "/fake/dir", prompt_items
     )
 
     assert result == "generated HTML"
     mock_load_sys.assert_called_once_with("sys.txt")
     mock_load_chat.assert_called_once_with("/fake/dir")
-    mock_generate_content_config.assert_called_once_with(
+    mock_client.interactions.create.assert_called_once_with(
+        model="m1",
         system_instruction="sys inst",
-        thinking_config=None
+        input=[{"type": "user_input", "content": prompt_items}],
+        generation_config=None
     )
-    mock_client.chats.create.assert_called_once_with(
-        model="m1", config=mock_config_instance, history=[]
-    )
-    mock_chat_instance.send_message.assert_called_once_with(["my prompt"])
 
 
 @unittest.mock.patch("backend.scripts.generate_summary.load_system_instructions", autospec=True)
 @unittest.mock.patch("backend.scripts.generate_summary.load_chat_history", autospec=True)
-@unittest.mock.patch(
-    "backend.scripts.generate_summary.google.genai.types.ThinkingConfig",
-    autospec=True
-)
-@unittest.mock.patch(
-    "backend.scripts.generate_summary.google.genai.types.GenerateContentConfig",
-    autospec=True
-)
 def test_generate_summary_with_thinking_level(
-    mock_generate_content_config: unittest.mock.MagicMock,
-    mock_thinking_config: unittest.mock.MagicMock,
     mock_load_chat: unittest.mock.MagicMock,
     mock_load_sys: unittest.mock.MagicMock
 ) -> None:
     """Test AI Studio API call structure via Client with thinking_level."""
     mock_client = unittest.mock.MagicMock(spec=google.genai.Client)
-    mock_chat_instance = mock_client.chats.create.return_value
-    mock_response = mock_chat_instance.send_message.return_value
-    mock_response.text = "generated HTML with thinking"
+    mock_interaction = mock_client.interactions.create.return_value
+    mock_interaction.output_text = "generated HTML with thinking"
 
-    mock_config_instance = mock_generate_content_config.return_value
-    mock_thinking_instance = mock_thinking_config.return_value
     mock_load_sys.return_value = "sys inst"
     mock_load_chat.return_value = []
 
+    prompt_items: list[backend.scripts.generate_summary.ContentItem] = [
+        {"type": "text", "text": "my prompt"}
+    ]
     ai_config: dict[str, str | None] = {"model_name": "m1", "thinking_level": "medium"}
     result = backend.scripts.generate_summary._generate_summary(
-        mock_client, ai_config, "sys.txt", "/fake/dir", ["my prompt"]
+        mock_client, ai_config, "sys.txt", "/fake/dir", prompt_items
     )
 
     assert result == "generated HTML with thinking"
-    mock_thinking_config.assert_called_once_with(
-        thinking_level=google.genai.types.ThinkingLevel.MEDIUM
-    )
-    mock_generate_content_config.assert_called_once_with(
+    mock_load_sys.assert_called_once_with("sys.txt")
+    mock_load_chat.assert_called_once_with("/fake/dir")
+    mock_client.interactions.create.assert_called_once_with(
+        model="m1",
         system_instruction="sys inst",
-        thinking_config=mock_thinking_instance
+        input=[{"type": "user_input", "content": prompt_items}],
+        generation_config={"thinking_level": "medium"}
     )
-    mock_client.chats.create.assert_called_once_with(
-        model="m1", config=mock_config_instance, history=[]
-    )
-    mock_chat_instance.send_message.assert_called_once_with(["my prompt"])
 
 
 @unittest.mock.patch("backend.scripts.generate_summary.os.path.exists", autospec=True)

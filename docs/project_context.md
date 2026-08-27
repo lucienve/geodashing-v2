@@ -389,3 +389,12 @@ The application allows users to participate in global geographic games where the
 - Added comprehensive unit tests in [test_game_utils.py](backend/tests/test_game_utils.py) and [test_generate_game.py](backend/tests/test_generate_game.py).
 - Documented operational cron schedules, manual execution flags, Ops Agent receiver pipelines, and Cloud Monitoring alert policies in [admin_guide.md](docs/admin_guide.md) and [game_rollover.md](docs/game_rollover.md).
 
+### 56. Migration to Gemini Interactions API
+- Migrated summary generation in [generate_summary.py](backend/scripts/generate_summary.py) and evaluation in [test_summary_evaluation.py](backend/tests/test_summary_evaluation.py) to Google GenAI's **Interactions API** (`client.interactions.create()`).
+- Replaced all legacy `google.genai.types` wrapper objects (`GenerateContentConfig`, `ThinkingConfig`, `ThinkingLevel`, `Content`, `Part`) with strict, granular `TypedDict` and `Literal` structures (`TextContentDict`, `ImageContentDict`, `UserInputStepDict`, `ModelOutputStepDict`, `GenerationConfigDict`).
+- Maintained strict typing without `typing.Any` overuse across prompt construction, few-shot step history loading, and model configuration.
+- Formatted multimodal inputs using Gemini Files API URI references (`ImageContentDict`) and structured timeline steps (`InteractionStep`).
+- Updated structured output LLM-as-a-Judge evaluation in `test_summary_evaluation.py` to use top-level `response_format` schemas via `EvaluationResult.model_json_schema()`.
+- Updated unit tests in [test_generate_summary.py](backend/tests/test_generate_summary.py) to validate `interactions.create` calls and Content/Step data structures.
+
+

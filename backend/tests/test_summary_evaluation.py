@@ -3,6 +3,7 @@
 # Accessing the internal _generate_summary helper function is necessary
 # in this test to evaluate the system instruction prompt pipeline in isolation.
 
+import typing
 import configparser
 import os
 import re
@@ -10,7 +11,6 @@ import html.parser
 import pytest
 import pydantic
 import google.genai
-import google.genai.types
 
 import backend.scripts.generate_summary
 
@@ -325,29 +325,27 @@ Evaluation Criteria:
 Evaluate the summary and return the scores, justification, and a final verdict. The final verdict 'passed' should be True only if all scores are 4 or 5.
 """
 
-    thinking_config = None
+    generation_config: backend.scripts.generate_summary.GenerationConfigDict = {}
     if thinking_level:
-        try:
-            level_enum = google.genai.types.ThinkingLevel(thinking_level.upper())
-        except ValueError:
-            level_enum = google.genai.types.ThinkingLevel.MEDIUM
-        thinking_config = google.genai.types.ThinkingConfig(
-            thinking_level=level_enum
-        )
+        generation_config["thinking_level"] = thinking_level.lower()
 
-    response = client.models.generate_content(
+    interaction = client.interactions.create(
         model=judge_model,
-        contents=prompt,
-        config=google.genai.types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=EvaluationResult,
-            thinking_config=thinking_config
-        )
+        input=prompt,
+        response_format=[
+            {
+                "type": "text",
+                "mime_type": "application/json",
+                "schema": EvaluationResult.model_json_schema()
+            }
+        ],
+        generation_config=generation_config or None
     )
 
-    result_text = response.text
-    if not result_text:
-        raise ValueError("Judge model returned an empty response")
+    if hasattr(interaction, "output_text") and interaction.output_text:
+        result_text = typing.cast(str, interaction.output_text)
+    else:
+        raise ValueError("Judge model returned an empty or invalid response")
 
     return EvaluationResult.model_validate_json(result_text)
 

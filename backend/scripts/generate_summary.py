@@ -29,6 +29,45 @@ class LogEntry(typing.TypedDict):
     notes: str | None
 
 
+class TextContentDict(typing.TypedDict):
+    """Represents a text content block in an Interaction step."""
+    type: typing.Literal["text"]
+    text: str
+
+
+class ImageContentDict(typing.TypedDict):
+    """Represents an image content block with a URI reference in an Interaction step."""
+    type: typing.Literal["image"]
+    uri: str
+    mime_type: str
+
+
+ContentItem = TextContentDict | ImageContentDict
+
+
+class UserInputStepDict(typing.TypedDict):
+    """Represents a user input step in the interaction timeline."""
+    type: typing.Literal["user_input"]
+    content: list[ContentItem]
+
+
+class ModelOutputStepDict(typing.TypedDict):
+    """Represents a model output step in the interaction timeline."""
+    type: typing.Literal["model_output"]
+    content: list[TextContentDict]
+
+
+InteractionStep = UserInputStepDict | ModelOutputStepDict
+
+
+class GenerationConfigDict(typing.TypedDict, total=False):
+    """Configuration options for model generation in Interactions API."""
+    thinking_level: str
+    max_output_tokens: int
+    seed: int
+    stop_sequences: list[str]
+
+
 class UploadContext(typing.TypedDict):
     """Context container for local and uploaded GenAI files."""
     client: google.genai.Client
@@ -237,11 +276,11 @@ def load_system_instructions(instructions_path: str) -> str:
 
 def load_chat_history(
     examples_dir: str
-) -> list[google.genai.types.Content | google.genai.types.ContentDict]:
-    """Loads few-shot examples into AI Studio Chat History."""
-    history: list[google.genai.types.Content | google.genai.types.ContentDict] = []
+) -> list[InteractionStep]:
+    """Loads few-shot examples into Step dictionaries for Interactions API."""
+    steps: list[InteractionStep] = []
     if not os.path.isdir(examples_dir):
-        return history
+        return steps
 
     example_prefixes = []
     for filename in os.listdir(examples_dir):
@@ -258,44 +297,50 @@ def load_chat_history(
                 in_text = f.read().strip()
             with open(out_path, 'r', encoding='utf-8') as f:
                 out_text = f.read().strip()
-            history.append(google.genai.types.Content(
-                role="user",
-                parts=[google.genai.types.Part.from_text(text=in_text)]
-            ))
-            history.append(google.genai.types.Content(
-                role="model",
-                parts=[google.genai.types.Part.from_text(text=out_text)]
-            ))
-    return history
+            steps.append({
+                "type": "user_input",
+                "content": [{"type": "text", "text": in_text}]
+            })
+            steps.append({
+                "type": "model_output",
+                "content": [{"type": "text", "text": out_text}]
+            })
+    return steps
 
 
 def _append_photo_parts(
-    parts: list[str | google.genai.types.File],
+    parts: list[ContentItem],
     photos: list[dict[str, str]],
     upload_context: UploadContext
 ) -> None:
     """Appends photo text and uploaded AI files to the prompt parts list."""
     if not photos:
-        parts.append("Photos: None\n\n")
+        parts.append({"type": "text", "text": "Photos: None\n\n"})
         return
 
     client = upload_context["client"]
-    parts.append("Photos:\n")
+    parts.append({"type": "text", "text": "Photos:\n"})
     for photo in photos:
         full_url = photo['url']
         thumb_url = photo['thumb_url']
         caption = photo.get('caption')
         if caption:
-            parts.append(
-                f"Thumb: {thumb_url} | Full: {full_url}\n"
-                f"Caption: {caption}\n"
-                "Image Content:\n"
-            )
+            parts.append({
+                "type": "text",
+                "text": (
+                    f"Thumb: {thumb_url} | Full: {full_url}\n"
+                    f"Caption: {caption}\n"
+                    "Image Content:\n"
+                )
+            })
         else:
-            parts.append(
-                f"Thumb: {thumb_url} | Full: {full_url}\n"
-                "Image Content:\n"
-            )
+            parts.append({
+                "type": "text",
+                "text": (
+                    f"Thumb: {thumb_url} | Full: {full_url}\n"
+                    "Image Content:\n"
+                )
+            })
 
         local_path = download_file_to_temp(full_url)
         if local_path:
@@ -303,27 +348,31 @@ def _append_photo_parts(
             try:
                 uploaded_file = client.files.upload(file=local_path)
                 upload_context["uploaded_ai_files"].append(uploaded_file)
-                parts.append(uploaded_file)
-                parts.append("\n")
+                parts.append({
+                    "type": "image",
+                    "uri": uploaded_file.uri or "",
+                    "mime_type": uploaded_file.mime_type or "image/jpeg"
+                })
+                parts.append({"type": "text", "text": "\n"})
             except Exception as err:  # pylint: disable=broad-exception-caught
                 print(f"Failed to upload image {full_url} to AI Studio: {err}", file=sys.stderr)
-                parts.append("(Image could not be processed)\n")
+                parts.append({"type": "text", "text": "(Image could not be processed)\n"})
         else:
-            parts.append("(Image could not be downloaded)\n")
-    parts.append("\n")
+            parts.append({"type": "text", "text": "(Image could not be downloaded)\n"})
+    parts.append({"type": "text", "text": "\n"})
 
 
 def _format_log_entry(
     log: LogEntry,
     upload_context: UploadContext
-) -> list[str | google.genai.types.File]:
+) -> list[ContentItem]:
     """Formats a single player log entry list of prompt parts."""
     dp_id = log['dp_id']
     username = log['username']
     city = log['city']
     notes = log['notes'] or ''
 
-    entry_parts: list[str | google.genai.types.File] = []
+    entry_parts: list[ContentItem] = []
     log_header = (
         "---------------------\n"
         f"Log: {dp_id}.txt\n"
@@ -331,9 +380,9 @@ def _format_log_entry(
         f"Player: {username}\n\n"
         f"{dp_id} is near {city}.\n\n"
     )
-    entry_parts.append(log_header)
+    entry_parts.append({"type": "text", "text": log_header})
     _append_photo_parts(entry_parts, log['photos'], upload_context)
-    entry_parts.append(f"{notes}\n\n")
+    entry_parts.append({"type": "text", "text": f"{notes}\n\n"})
     return entry_parts
 
 
@@ -342,7 +391,7 @@ def construct_new_data(
     scores: list[tuple[str, int]],
     formatted_logs: list[LogEntry],
     upload_context: UploadContext
-) -> list[str | google.genai.types.File]:
+) -> list[ContentItem]:
     """Constructs the final input prompt parts with game title, scores, and logs."""
     if not scores:
         score_text = "No players scored in this game."
@@ -362,14 +411,14 @@ def construct_new_data(
             for user, points in other_players:
                 score_text += f"- {user}: {points} points\n"
 
-    parts: list[str | google.genai.types.File] = []
+    parts: list[ContentItem] = []
     initial_text = (
         "[NEW INPUT DATA SET]\n\n"
         f"--- GAME TITLE ---\n{game_title}\n\n"
         f"--- SCORE RANKINGS ---\n{score_text}\n\n"
         "--- PLAYER LOGS ---\n"
     )
-    parts.append(initial_text)
+    parts.append({"type": "text", "text": initial_text})
 
     for log in formatted_logs:
         parts.extend(_format_log_entry(log, upload_context))
@@ -382,37 +431,39 @@ def _generate_summary(
     ai_config: dict[str, str | None],
     instructions_path: str,
     examples_dir: str,
-    prompt: list[str | google.genai.types.File]
+    prompt: list[ContentItem]
 ) -> str:
     """Generates the summary using the initialized client and prompt."""
     model_name = ai_config.get('model_name')
     if not model_name:
         raise ValueError("model_name must be defined in ai_config")
     sys_inst = load_system_instructions(instructions_path)
-    history = load_chat_history(examples_dir)
-    thinking_config = None
+    steps: list[InteractionStep] = load_chat_history(examples_dir)
+    steps.append({
+        "type": "user_input",
+        "content": prompt
+    })
+
+    generation_config: GenerationConfigDict = {}
     thinking_level = ai_config.get('thinking_level')
     if thinking_level:
-        try:
-            level_enum = google.genai.types.ThinkingLevel(thinking_level.upper())
-        except ValueError:
-            level_enum = google.genai.types.ThinkingLevel.MEDIUM
-        thinking_config = google.genai.types.ThinkingConfig(
-            thinking_level=level_enum
-        )
-    config = google.genai.types.GenerateContentConfig(
+        generation_config["thinking_level"] = thinking_level.lower()
+
+    interaction = client.interactions.create(
+        model=model_name,
         system_instruction=sys_inst,
-        thinking_config=thinking_config
+        input=steps,
+        generation_config=generation_config or None
     )
-    chat = client.chats.create(model=model_name, config=config, history=history)
-    response = chat.send_message(prompt)
-    return response.text or ""
+    if hasattr(interaction, "output_text"):
+        return typing.cast(str, interaction.output_text or "")
+    raise TypeError("Expected interaction response with output_text attribute")
 
 
 def write_summary_files(
     output_dir: str,
     game_id: int,
-    prompt: list[str | google.genai.types.File],
+    prompt: list[ContentItem],
     summary_html: str
 ) -> None:
     """Writes the generated summary and input prompt to files."""
@@ -422,9 +473,9 @@ def write_summary_files(
     with open(in_path, 'w', encoding='utf-8') as f:
         text_prompt = ""
         for p in prompt:
-            if isinstance(p, str):
-                text_prompt += p
-            else:
+            if p["type"] == "text":
+                text_prompt += p["text"]
+            elif p["type"] == "image":
                 text_prompt += "[IMAGE DATA DETACHED]\n"
         f.write(text_prompt)
 
