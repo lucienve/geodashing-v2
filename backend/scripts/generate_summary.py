@@ -90,6 +90,7 @@ def configure_environment(config_path: str) -> dict[str, str | None]:
     model_name = None
     project_id = None
     thinking_level = None
+    api_key = None
 
     # Support loading API key, model, project ID, and thinking level from config.ini
     if 'gemini' in config:
@@ -98,7 +99,8 @@ def configure_environment(config_path: str) -> dict[str, str | None]:
             model_name = model_name.strip('"\'')
         api_key = config['gemini'].get('GEMINI_API_KEY')
         if api_key:
-            os.environ['GEMINI_API_KEY'] = api_key.strip('"\'')
+            api_key = api_key.strip('"\'')
+            os.environ['GEMINI_API_KEY'] = api_key
         project_id = config['gemini'].get('GEMINI_PROJECT_ID')
         if project_id:
             project_id = project_id.strip('"\'')
@@ -115,12 +117,20 @@ def configure_environment(config_path: str) -> dict[str, str | None]:
     return {
         "model_name": model_name,
         "project_id": project_id,
-        "thinking_level": thinking_level
+        "thinking_level": thinking_level,
+        "api_key": api_key
     }
 
 
 def get_gemini_client(ai_config: dict[str, str | None]) -> google.genai.Client:
-    """Builds a GenAI client using project billing credentials."""
+    """Builds a GenAI client using API key or project billing credentials."""
+    api_key = ai_config.get('api_key') or os.environ.get('GEMINI_API_KEY')
+    if api_key:
+        return google.genai.Client(
+            vertexai=False,
+            api_key=api_key
+        )
+
     project_id = ai_config.get('project_id')
     try:
         creds, default_project = google.auth.default()
@@ -129,11 +139,9 @@ def get_gemini_client(ai_config: dict[str, str | None]) -> google.genai.Client:
             creds = creds.with_quota_project(target_project)
     except google.auth.exceptions.DefaultCredentialsError:
         creds = None
-        target_project = project_id
 
     return google.genai.Client(
         vertexai=False,
-        project=target_project,
         credentials=creds
     )
 
@@ -455,8 +463,9 @@ def _generate_summary(
         input=steps,
         generation_config=generation_config or None
     )
-    if hasattr(interaction, "output_text"):
-        return typing.cast(str, interaction.output_text or "")
+    output_text = getattr(interaction, "output_text", None)
+    if output_text is not None:
+        return str(output_text)
     raise TypeError("Expected interaction response with output_text attribute")
 
 

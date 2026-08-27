@@ -190,12 +190,28 @@ def test_write_summary_files(mock_file: unittest.mock.MagicMock) -> None:
 
 
 @unittest.mock.patch("backend.scripts.generate_summary.google.genai.Client", autospec=True)
+def test_get_gemini_client_with_api_key(
+    mock_client_class: unittest.mock.MagicMock
+) -> None:
+    """Verify get_gemini_client uses API key when present."""
+    ai_config: dict[str, str | None] = {"api_key": "test-api-key"}
+    client = backend.scripts.generate_summary.get_gemini_client(ai_config)
+
+    assert client == mock_client_class.return_value
+    mock_client_class.assert_called_once_with(
+        vertexai=False,
+        api_key="test-api-key"
+    )
+
+
+@unittest.mock.patch.dict("os.environ", {}, clear=True)
+@unittest.mock.patch("backend.scripts.generate_summary.google.genai.Client", autospec=True)
 @unittest.mock.patch("google.auth.default", autospec=True)
 def test_get_gemini_client(
     mock_auth_default: unittest.mock.MagicMock,
     mock_client_class: unittest.mock.MagicMock
 ) -> None:
-    """Verify get_gemini_client builds client with project-level billing credentials."""
+    """Verify get_gemini_client falls back to project credentials when API key absent."""
     mock_creds = unittest.mock.MagicMock(spec=google.oauth2.service_account.Credentials)
     mock_auth_default.return_value = (mock_creds, "default-project")
 
@@ -206,7 +222,6 @@ def test_get_gemini_client(
     mock_creds.with_quota_project.assert_called_once_with("test-project-123")
     mock_client_class.assert_called_once_with(
         vertexai=False,
-        project="test-project-123",
         credentials=mock_creds.with_quota_project.return_value
     )
 
