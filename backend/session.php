@@ -6,6 +6,9 @@
 
 declare(strict_types=1);
 
+// Set default timezone to UTC for consistent date evaluations across environments
+date_default_timezone_set('UTC');
+
 // 1. Enforce strict session cookie parameters
 ini_set('session.gc_maxlifetime', (string)(86400 * 30)); // 30 days garbage collection
 session_set_cookie_params([

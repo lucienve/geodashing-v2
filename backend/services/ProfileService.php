@@ -116,7 +116,7 @@ class ProfileService
      */
     public function getPlayerMailStats(int $userId, int $gameId, ?string $beforeTime = null): array
     {
-        $scoreQuery = "SELECT SUM(score_awarded) AS total FROM visits WHERE user_id = :uid";
+        $scoreQuery = "SELECT SUM(score_awarded) AS total FROM visits WHERE user_id = :uid AND status = 'approved'";
         $stmtScore = $this->db->prepare($scoreQuery);
         $stmtScore->execute([':uid' => $userId]);
         $rowScore = $stmtScore->fetch(PDO::FETCH_ASSOC);
@@ -126,7 +126,7 @@ class ProfileService
             SELECT SUM(v.score_awarded) AS total 
             FROM visits v 
             JOIN dashpoints d ON v.dashpoint_id = d.id 
-            WHERE v.user_id = :uid AND d.game_id = :game_id
+            WHERE v.user_id = :uid AND d.game_id = :game_id AND v.status = 'approved'
         ";
         $stmtScoreGame = $this->db->prepare($scoreGameQuery);
         $stmtScoreGame->execute([':uid' => $userId, ':game_id' => $gameId]);
@@ -134,7 +134,7 @@ class ProfileService
         $totalPointsGame = $rowScoreGame ? (int) $rowScoreGame['total'] : 0;
 
         $huntsParams = [':uid' => $userId];
-        $huntsQuery = "SELECT COUNT(id) AS previous_hunts FROM visits WHERE user_id = :uid";
+        $huntsQuery = "SELECT COUNT(id) AS previous_hunts FROM visits WHERE user_id = :uid AND status = 'approved'";
         if ($beforeTime !== null) {
             $huntsQuery .= " AND reported_time < :before_time";
             $huntsParams[':before_time'] = $beforeTime;
@@ -149,7 +149,7 @@ class ProfileService
             SELECT COUNT(v.id) AS previous_hunts 
             FROM visits v 
             JOIN dashpoints d ON v.dashpoint_id = d.id 
-            WHERE v.user_id = :uid AND d.game_id = :game_id
+            WHERE v.user_id = :uid AND d.game_id = :game_id AND v.status = 'approved'
         ";
         if ($beforeTime !== null) {
             $huntsGameQuery .= " AND v.reported_time < :before_time";

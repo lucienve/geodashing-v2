@@ -83,7 +83,7 @@ class SitemapService
     private function addUrl(\XMLWriter $xml, string $loc, string $changefreq, string $priority): void
     {
         $xml->startElement('url');
-        $xml->writeElement('loc', htmlspecialchars($loc, ENT_XML1, 'UTF-8'));
+        $xml->writeElement('loc', $loc);
         $xml->writeElement('changefreq', $changefreq);
         $xml->writeElement('priority', $priority);
         $xml->endElement();

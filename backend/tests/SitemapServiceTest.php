@@ -102,4 +102,24 @@ class SitemapServiceTest extends TestCase
         $this->assertEquals(15, $result[0]);
         $this->assertEquals(12, $result[1]);
     }
+
+    #[Test]
+    public function testGenerateSitemapXmlDoesNotDoubleEscapeUrls(): void
+    {
+        $stmtMock1 = $this->createMock(PDOStatement::class);
+        $stmtMock1->method('fetchAll')->willReturn([]);
+
+        $stmtMock2 = $this->createMock(PDOStatement::class);
+        $stmtMock2->method('fetchAll')->willReturn([]);
+
+        $this->pdoMock->method('prepare')
+            ->willReturnOnConsecutiveCalls($stmtMock1, $stmtMock2);
+
+        $customSitemapService = new SitemapService($this->pdoMock, "http://test.local?page=main&version=2");
+        $xml = $customSitemapService->generateSitemapXml();
+
+        // Valid XML encoding produces &amp; and must not produce &amp;amp;
+        $this->assertStringContainsString('<loc>http://test.local?page=main&amp;version=2/</loc>', $xml);
+        $this->assertStringNotContainsString('&amp;amp;', $xml);
+    }
 }

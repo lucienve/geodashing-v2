@@ -154,6 +154,10 @@ class ReportService
         // Do not count attempts when determining the sequence of claims.
         // We shift the database UTC timestamps by the local offset to determine the true "day" boundary.
         // We only count claims that occurred strictly before the current local day.
+        // This ensures all users visiting on the same calendar day share the same score determined at midnight:
+        // - 0 previous claims before today: 3 points (first claim and any same-day finds)
+        // - 1 previous claim before today: 2 points (second claim)
+        // - 2+ previous claims before today: 1 point (subsequent claims)
         $scoreCheckStmt = $this->db->prepare("
             SELECT COUNT(id) AS previous_claims 
             FROM visits 
@@ -166,13 +170,13 @@ class ReportService
         ]);
         $previousClaims = (int) $scoreCheckStmt->fetch(PDO::FETCH_ASSOC)['previous_claims'];
 
-        $scoreAwarded = 1; // Default minimum score for latecomers
+        $scoreAwarded = 1; // Default minimum score for latecomers (2+ previous claims)
         if ($isAttempt) {
             $scoreAwarded = 0;
         } elseif ($previousClaims === 0) {
-            $scoreAwarded = 3; // First to secure the claim
+            $scoreAwarded = 3; // First claim (and all same-day finds)
         } elseif ($previousClaims === 1) {
-            $scoreAwarded = 2; // Second to claim
+            $scoreAwarded = 2; // Second claim
         }
 
         $gameId = $result['game_id'];

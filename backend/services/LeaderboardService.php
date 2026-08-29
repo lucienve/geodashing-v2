@@ -43,7 +43,7 @@ class LeaderboardService
                 u.id AS user_id,
                 u.username,
                 SUM(v.score_awarded) AS total_score,
-                COUNT(v.id) AS total_finds,
+                SUM(CASE WHEN v.is_attempt = 0 THEN 1 ELSE 0 END) AS total_finds,
                 MAX(v.reported_time) AS last_find_time
             FROM visits v
             JOIN users u ON v.user_id = u.id

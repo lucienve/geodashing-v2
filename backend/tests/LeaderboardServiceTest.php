@@ -109,4 +109,21 @@ class LeaderboardServiceTest extends TestCase
         $this->assertIsArray($rankings);
         $this->assertCount(0, $rankings);
     }
+
+    /**
+     * Asserts that the SQL query excludes attempts from the total_finds count.
+     */
+    #[Test]
+    public function getSoloRankingsPreparesQueryExcludingAttempts()
+    {
+        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock->method('fetchAll')->willReturn([]);
+
+        $this->pdoMock->expects($this->once())
+            ->method('prepare')
+            ->with($this->stringContains("SUM(CASE WHEN v.is_attempt = 0 THEN 1 ELSE 0 END) AS total_finds"))
+            ->willReturn($stmtMock);
+
+        $this->leaderboardService->getSoloRankings(1);
+    }
 }
