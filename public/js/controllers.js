@@ -438,9 +438,16 @@ document.addEventListener('routeLoaded', (e) => {
         let currentPhotoQueue = new DataTransfer();
 
         let photoCaptions = [];
+        let activeReportPreviewUrls = [];
+
+        const revokeReportPreviewUrls = () => {
+            activeReportPreviewUrls.forEach(url => URL.revokeObjectURL(url));
+            activeReportPreviewUrls = [];
+        };
 
         const renderPhotoGrid = () => {
             if (!previewGrid) return;
+            revokeReportPreviewUrls();
             previewGrid.innerHTML = '';
             Array.from(currentPhotoQueue.files).forEach((file, index) => {
                 const wrapper = document.createElement('div');
@@ -448,8 +455,11 @@ document.addEventListener('routeLoaded', (e) => {
                 wrapper.draggable = true;
                 wrapper.dataset.index = index;
 
+                const objectUrl = URL.createObjectURL(file);
+                activeReportPreviewUrls.push(objectUrl);
+
                 const img = document.createElement('img');
-                img.src = URL.createObjectURL(file);
+                img.src = objectUrl;
                 img.classList.add('photo-preview-item');
 
                 const deleteBtn = document.createElement('button');
@@ -476,8 +486,7 @@ document.addEventListener('routeLoaded', (e) => {
                 // Tap to add caption
                 wrapper.addEventListener('click', (e) => {
                     if (e.target === deleteBtn) return;
-                    const imgSrc = URL.createObjectURL(file);
-                    openCaptionModal(imgSrc, photoCaptions[index], (newCaption) => {
+                    openCaptionModal(objectUrl, photoCaptions[index], (newCaption) => {
                         photoCaptions[index] = newCaption;
                         renderPhotoGrid();
                     });
@@ -1152,7 +1161,7 @@ document.addEventListener('routeLoaded', (e) => {
                         const textOpacity = isAttempt ? '0.7' : '1';
 
                         html += `
-                            <a href="https://www.geodashing.org/#dashpoint?id=${encodeURIComponent(v.dashpoint_id)}" class="nav-link" style="display:block; padding:0.5rem; border:${borderStyle}; background:rgba(0,0,0,0.3); border-radius:3px; opacity:${textOpacity};">
+                            <a href="#dashpoint?id=${encodeURIComponent(v.dashpoint_id)}" class="nav-link" style="display:block; padding:0.5rem; border:${borderStyle}; background:rgba(0,0,0,0.3); border-radius:3px; opacity:${textOpacity};">
                                 <div style="display:flex; justify-content:space-between;">
                                     <span style="color:${isAttempt ? '#888' : 'inherit'}">${index + 1}. ${window.escapeHTML(v.dashpoint_id)}</span>
                                     <span style="color:${scoreColor};">${scoreLabel}</span>
@@ -1320,9 +1329,16 @@ document.addEventListener('routeLoaded', (e) => {
 
         let newPhotoQueue = new DataTransfer();
         let newPhotoCaptions = [];
+        let activeEditPreviewUrls = [];
+
+        const revokeEditPreviewUrls = () => {
+            activeEditPreviewUrls.forEach(url => URL.revokeObjectURL(url));
+            activeEditPreviewUrls = [];
+        };
 
         const renderEditNewPhotoGrid = () => {
             if (!editNewPhotoPreviewGrid) return;
+            revokeEditPreviewUrls();
             editNewPhotoPreviewGrid.innerHTML = '';
             Array.from(newPhotoQueue.files).forEach((file, index) => {
                 const wrapper = document.createElement('div');
@@ -1330,8 +1346,11 @@ document.addEventListener('routeLoaded', (e) => {
                 wrapper.draggable = true;
                 wrapper.dataset.index = index;
 
+                const objectUrl = URL.createObjectURL(file);
+                activeEditPreviewUrls.push(objectUrl);
+
                 const img = document.createElement('img');
-                img.src = URL.createObjectURL(file);
+                img.src = objectUrl;
                 img.classList.add('photo-preview-item');
 
                 const deleteBtn = document.createElement('button');
@@ -1358,8 +1377,7 @@ document.addEventListener('routeLoaded', (e) => {
                 // Tap to add caption
                 wrapper.addEventListener('click', (e) => {
                     if (e.target === deleteBtn) return;
-                    const imgSrc = URL.createObjectURL(file);
-                    openCaptionModal(imgSrc, newPhotoCaptions[index], (newCaption) => {
+                    openCaptionModal(objectUrl, newPhotoCaptions[index], (newCaption) => {
                         newPhotoCaptions[index] = newCaption;
                         renderEditNewPhotoGrid();
                     });
@@ -1569,7 +1587,7 @@ document.addEventListener('routeLoaded', (e) => {
                     ldParams = window.currentGameContext.id;
                     const cycleTitle = document.getElementById('leaderboard-cycle-title');
                     if (cycleTitle && window.currentGameContext.title) {
-                        cycleTitle.innerText = `${window.currentGameContext.monthYear} - Game ${window.currentGameContext.id}: ${window.escapeHTML(window.currentGameContext.title)}`;
+                        cycleTitle.innerText = `${window.currentGameContext.monthYear} - Game ${window.currentGameContext.id}: ${window.currentGameContext.title}`;
                     }
                 }
 

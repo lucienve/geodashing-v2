@@ -10,6 +10,8 @@ let activeMarkers = [];
 let appClusterer = null;
 let activeCircles = [];
 let activeVisitMarkers = [];
+let dashpointsAbortController = null;
+let visitsAbortController = null;
 
 // Custom Algorithm for mapping Visited State priorities to Grouped Containers
 const customClusterRenderer = {
@@ -472,17 +474,26 @@ function refreshDashpoints(bounds) {
         console.warn("Skipping dashpoint refresh: No active game context selected.");
         return;
     }
+
+    if (dashpointsAbortController) {
+        dashpointsAbortController.abort();
+    }
+    dashpointsAbortController = new AbortController();
+
     const query = new URLSearchParams(bounds).toString();
 
     // Dynamically pinging the backend routing through the Apache /api/ structure securely
-    fetch(`api/search.php?${query}`)
+    fetch(`api/search.php?${query}`, { signal: dashpointsAbortController.signal })
         .then(response => response.json())
         .then(json => {
             if (json.status === 'success') {
                 plotVectors(json.data);
             }
         })
-        .catch(err => console.error("SQL Vector Frame Loading Failed:", err));
+        .catch(err => {
+            if (err.name === 'AbortError') return;
+            console.error("SQL Vector Frame Loading Failed:", err);
+        });
 }
 
 /**
@@ -586,22 +597,35 @@ function refreshVisitLogs(bounds) {
     } else {
         return;
     }
+
+    if (visitsAbortController) {
+        visitsAbortController.abort();
+    }
+    visitsAbortController = new AbortController();
+
     const query = new URLSearchParams(bounds).toString();
 
-    fetch(`api/search_visits.php?${query}`)
+    fetch(`api/search_visits.php?${query}`, { signal: visitsAbortController.signal })
         .then(response => response.json())
         .then(json => {
             if (json.status === 'success') {
                 plotVisitMarkers(json.data);
             }
         })
-        .catch(err => console.error("Visits Loading Failed:", err));
+        .catch(err => {
+            if (err.name === 'AbortError') return;
+            console.error("Visits Loading Failed:", err);
+        });
 }
 
 /**
  * Clears all active user log/visit markers from the map
  */
 function clearVisitLogs() {
+    if (visitsAbortController) {
+        visitsAbortController.abort();
+        visitsAbortController = null;
+    }
     activeVisitMarkers.forEach(m => m.setMap(null));
     activeVisitMarkers = [];
 }

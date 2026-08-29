@@ -419,6 +419,13 @@ The application allows users to participate in global geographic games where the
 - Maintained Anti-Meridian Date Line crossing support using bifurcated polygon checks with `OR`.
 - Updated unit test expectations in [backend/tests/SearchServiceTest.php](backend/tests/SearchServiceTest.php).
 
+### 61. Quality Improvements Phase 5: Frontend UI/UX, Memory Management & Race Conditions
+- Replaced hardcoded production domain in [public/js/controllers.js](public/js/controllers.js) user profile activity links with relative SPA hash navigation (`#dashpoint?id=...`).
+- Fixed double HTML entity escaping on leaderboard game titles by removing redundant `escapeHTML()` call inside `.innerText` assignment.
+- Added `URL.revokeObjectURL()` memory lifecycle management to photo preview rendering loops in both `#report` and `#dashpoint` edit modals.
+- Integrated `AbortController` in [public/js/map.js](public/js/map.js) to cancel inflight bounding box requests on subsequent map movements, eliminating out-of-order race conditions.
+
+
 
 
 
