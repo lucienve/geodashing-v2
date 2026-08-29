@@ -60,14 +60,9 @@ def initialize_new_game(
     if month is None:
         month = now.month
 
-    start_time = now.replace(year=year, month=month, day=1,
-                             hour=0, minute=0, second=0, microsecond=0)
     _, last_day = calendar.monthrange(year, month)
-    end_time = now.replace(year=year, month=month, day=last_day,
-                           hour=23,
-                           minute=59,
-                           second=59,
-                           microsecond=0)
+    start_time = datetime.datetime(year, month, 1, 0, 0, 0)
+    end_time = datetime.datetime(year, month, last_day, 23, 59, 59)
 
     cursor.execute(
         "SELECT id, title FROM games WHERE YEAR(start_time) = %s AND MONTH(start_time) = %s",

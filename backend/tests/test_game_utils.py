@@ -104,6 +104,22 @@ class TestHTMLFragmentValidator(unittest.TestCase):
         errors4 = self.validator.validate(no_src)
         self.assertTrue(any("Image <img> tag is missing src attribute" in err for err in errors4))
 
+    def test_html5_void_tags_pass(self) -> None:
+        """Standard HTML5 void elements without self-closing slashes should pass validation."""
+        html_voids = (
+            "<p>Paragraph with a break<br>and an image:"
+            "<img src='https://storage.googleapis.com/geodashing/1.jpg'>"
+            "<hr>and more text after rule.</p>"
+        )
+        errors = self.validator.validate(html_voids)
+        self.assertEqual(len(errors), 0, f"Expected no errors, got: {errors}")
+
+    def test_standalone_image_passes(self) -> None:
+        """A valid standalone image tag is considered valid content."""
+        html_img = "<img src='https://storage.googleapis.com/geodashing/banner.jpg'>"
+        errors = self.validator.validate(html_img)
+        self.assertEqual(len(errors), 0, f"Expected no errors, got: {errors}")
+
 
 class TestUploadSummaryCLI(unittest.TestCase):
     """Test cases validating command line summary uploads and database commits."""

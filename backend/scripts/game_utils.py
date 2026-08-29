@@ -38,49 +38,70 @@ class HTMLFragmentValidator(html.parser.HTMLParser):
         'ul', 'ol', 'li', 'a', 'img'
     }
 
+    VOID_TAGS = {'br', 'hr', 'img'}
+
     def __init__(self):
         super().__init__()
         self.stack = []
         self.errors = []
         self.has_content = False
 
+    def _validate_anchor_attributes(self, attrs: list[tuple[str, str | None]]) -> None:
+        """Validates that anchor tags possess non-empty, safe URL href targets."""
+        has_href = False
+        for attr, val in attrs:
+            if attr.lower() == 'href':
+                has_href = True
+                is_valid = (val is not None and (
+                            val.startswith('http://') or
+                            val.startswith('https://') or
+                            val.startswith('#') or
+                            val.startswith('/')))
+                if not val or not is_valid:
+                    self.errors.append(f"Invalid or empty href in <a> tag: '{val}'")
+        if not has_href:
+            self.errors.append("Anchor <a> tag is missing href attribute")
+
+    def _validate_image_attributes(self, attrs: list[tuple[str, str | None]]) -> None:
+        """Validates that image tags possess non-empty src attributes."""
+        has_src = False
+        for attr, val in attrs:
+            if attr.lower() == 'src':
+                has_src = True
+                if not val:
+                    self.errors.append("Image <img> tag has an empty src attribute")
+                else:
+                    self.has_content = True
+        if not has_src:
+            self.errors.append("Image <img> tag is missing src attribute")
+
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         tag_lower = tag.lower()
-        self.stack.append(tag_lower)
+        if tag_lower not in self.VOID_TAGS:
+            self.stack.append(tag_lower)
 
         if tag_lower in self.FORBIDDEN_TAGS:
             self.errors.append(f"Forbidden tag detected: <{tag}>")
         elif tag_lower not in self.ALLOWED_TAGS:
             self.errors.append(f"Disallowed tag detected: <{tag}>")
 
-        # Anchors and images basic structural attributes validation
         if tag_lower == 'a':
-            has_href = False
-            for attr, val in attrs:
-                if attr.lower() == 'href':
-                    has_href = True
-                    is_valid = (val is not None and (
-                                val.startswith('http://') or
-                                val.startswith('https://') or
-                                val.startswith('#') or
-                                val.startswith('/')))
-                    if not val or not is_valid:
-                        self.errors.append(f"Invalid or empty href in <a> tag: '{val}'")
-            if not has_href:
-                self.errors.append("Anchor <a> tag is missing href attribute")
+            self._validate_anchor_attributes(attrs)
+        elif tag_lower == 'img':
+            self._validate_image_attributes(attrs)
 
-        if tag_lower == 'img':
-            has_src = False
-            for attr, val in attrs:
-                if attr.lower() == 'src':
-                    has_src = True
-                    if not val:
-                        self.errors.append("Image <img> tag has an empty src attribute")
-            if not has_src:
-                self.errors.append("Image <img> tag is missing src attribute")
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.handle_starttag(tag, attrs)
+        if tag.lower() not in self.VOID_TAGS:
+            self.handle_endtag(tag)
 
     def handle_endtag(self, tag: str) -> None:
         tag_lower = tag.lower()
+        if tag_lower in self.VOID_TAGS:
+            if self.stack and self.stack[-1] == tag_lower:
+                self.stack.pop()
+            return
+
         if not self.stack:
             self.errors.append(f"Unexpected closing tag: </{tag}> (no opening tag)")
             return

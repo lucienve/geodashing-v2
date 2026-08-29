@@ -393,6 +393,7 @@ The application allows users to participate in global geographic games where the
 - Migrated summary generation in [generate_summary.py](backend/scripts/generate_summary.py) and evaluation in [test_summary_evaluation.py](backend/tests/test_summary_evaluation.py) to Google GenAI's **Interactions API** (`client.interactions.create()`).
 - Replaced all legacy `google.genai.types` wrapper objects (`GenerateContentConfig`, `ThinkingConfig`, `ThinkingLevel`, `Content`, `Part`) with strict, granular `TypedDict` and `Literal` structures (`TextContentDict`, `ImageContentDict`, `UserInputStepDict`, `ModelOutputStepDict`, `GenerationConfigDict`).
 - Maintained strict typing without `typing.Any` overuse across prompt construction, few-shot step history loading, and model configuration.
+
 ### 57. Quality Improvements Phase 1: Core Logic, Scoring Documentation, Leaderboard & Sitemap
 - Clarified scoring documentation in [public/templates/how-to.html](public/templates/how-to.html) and code comments in [backend/services/ReportService.php](backend/services/ReportService.php) to document exact game rules (same-day finds share identical point values: 3 points if 0 previous claims, 2 points if 1 previous claim, and 1 point if 2+ previous claims).
 - Configured default PHP timezone to UTC via `date_default_timezone_set('UTC')` in [backend/session.php](backend/session.php) for consistent date parsing across environments.
@@ -400,5 +401,11 @@ The application allows users to participate in global geographic games where the
 - Updated [backend/services/ProfileService.php](backend/services/ProfileService.php) `getPlayerMailStats()` to filter visits with `status = 'approved'`.
 - Fixed double XML escaping in [backend/services/SitemapService.php](backend/services/SitemapService.php) by passing URLs directly to `\XMLWriter::writeElement()`.
 - Expanded unit test coverage in [backend/tests/LeaderboardServiceTest.php](backend/tests/LeaderboardServiceTest.php) and [backend/tests/SitemapServiceTest.php](backend/tests/SitemapServiceTest.php).
+
+### 58. Quality Improvements Phase 2: Python CLI Validator & Timestamp Generation Consistency
+- Updated `HTMLFragmentValidator` in [backend/scripts/game_utils.py](backend/scripts/game_utils.py) with `VOID_TAGS = {'br', 'hr', 'img'}` and extracted attribute helpers (`_validate_anchor_attributes`, `_validate_image_attributes`), allowing standard HTML5 void elements without self-closing XHTML tags.
+- Replaced `now.replace(...)` timestamp logic in [backend/scripts/generate_game.py](backend/scripts/generate_game.py) with explicit `datetime.datetime(year, month, ...)` construction for reliable start/end date calculation.
+- Expanded unit tests in [backend/tests/test_game_utils.py](backend/tests/test_game_utils.py) to cover HTML5 void tag parsing and standalone image validation.
+
 
 
