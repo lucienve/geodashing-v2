@@ -210,7 +210,7 @@ class MediaService
         $prefix = "{$publicDomain}/{$this->bucketName}/";
 
         foreach ($urls as $url) {
-            // Strip the public HTTP prefix to isolate the internal Object mapping (e.g. 'visits/GD01/1_pic')
+            // Strip the public HTTP prefix to isolate the internal Object mapping (e.g. 'visits/GD01/1_pic.jpg')
             if (strpos($url, $prefix) === 0) {
                 $objectName = substr($url, strlen($prefix));
 
@@ -218,6 +218,22 @@ class MediaService
                 $object = $bucket->object($objectName);
                 if ($object->exists()) {
                     $object->delete();
+                }
+
+                // If this is a primary image (not already a _thumb), derive and delete companion thumbnail
+                $ext = pathinfo($objectName, PATHINFO_EXTENSION);
+                $filename = pathinfo($objectName, PATHINFO_FILENAME);
+                $dirname = pathinfo($objectName, PATHINFO_DIRNAME);
+
+                if (!str_ends_with($filename, '_thumb')) {
+                    $thumbObjectName = ($dirname !== '.' && $dirname !== '')
+                        ? "{$dirname}/{$filename}_thumb.{$ext}"
+                        : "{$filename}_thumb.{$ext}";
+
+                    $thumbObject = $bucket->object($thumbObjectName);
+                    if ($thumbObject->exists()) {
+                        $thumbObject->delete();
+                    }
                 }
             }
         }

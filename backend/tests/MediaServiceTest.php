@@ -138,15 +138,26 @@ class MediaServiceTest extends TestCase
     {
         $service = new MediaService('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock);
 
-        $fakeObject = $this->createMock(\Google\Cloud\Storage\StorageObject::class);
-        $fakeObject->expects($this->once())->method('exists')->willReturn(true);
-        $fakeObject->expects($this->once())->method('delete');
+        $fakeMainObject = $this->createMock(\Google\Cloud\Storage\StorageObject::class);
+        $fakeMainObject->expects($this->once())->method('exists')->willReturn(true);
+        $fakeMainObject->expects($this->once())->method('delete');
 
-        // Assert that exactly 'visits/GD001/my_pic.jpg' is passed to the Google Bucket Object request
-        $this->bucketMock->expects($this->once())
-             ->method('object')
-             ->with('visits/GD001/my_pic.jpg')
-             ->willReturn($fakeObject);
+        $fakeThumbObject = $this->createMock(\Google\Cloud\Storage\StorageObject::class);
+        $fakeThumbObject->expects($this->once())->method('exists')->willReturn(true);
+        $fakeThumbObject->expects($this->once())->method('delete');
+
+        // Assert that both the main image and companion thumbnail are requested for deletion
+        $this->bucketMock->expects($this->exactly(2))
+            ->method('object')
+            ->willReturnCallback(function (string $name) use ($fakeMainObject, $fakeThumbObject) {
+                if ($name === 'visits/GD001/my_pic.jpg') {
+                    return $fakeMainObject;
+                }
+                if ($name === 'visits/GD001/my_pic_thumb.jpg') {
+                    return $fakeThumbObject;
+                }
+                $this->fail("Unexpected object requested: {$name}");
+            });
 
         $urlsToDelete = ['https://storage.googleapis.com/geodashing-test-blobs/visits/GD001/my_pic.jpg'];
         $service->deletePhotos($urlsToDelete);
@@ -249,5 +260,40 @@ class MediaServiceTest extends TestCase
         $this->assertEquals('Test Caption text', $result[0]['caption']);
 
         unlink($tempFile);
+    }
+
+    /**
+     * Asserts that deleting photos deletes both the master image and companion thumbnail.
+     */
+    #[Test]
+    public function testDeletePhotosDeletesMainAndThumbnailObjects()
+    {
+        $service = new MediaService('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock);
+
+        $mainObjectMock = $this->createMock(\Google\Cloud\Storage\StorageObject::class);
+        $mainObjectMock->expects($this->once())->method('exists')->willReturn(true);
+        $mainObjectMock->expects($this->once())->method('delete');
+
+        $thumbObjectMock = $this->createMock(\Google\Cloud\Storage\StorageObject::class);
+        $thumbObjectMock->expects($this->once())->method('exists')->willReturn(true);
+        $thumbObjectMock->expects($this->once())->method('delete');
+
+        $this->bucketMock->expects($this->exactly(2))
+            ->method('object')
+            ->willReturnCallback(function (string $name) use ($mainObjectMock, $thumbObjectMock) {
+                if ($name === 'visits/GD-TEST/1_20260401000000_0.jpg') {
+                    return $mainObjectMock;
+                }
+                if ($name === 'visits/GD-TEST/1_20260401000000_0_thumb.jpg') {
+                    return $thumbObjectMock;
+                }
+                $this->fail("Unexpected object requested: {$name}");
+            });
+
+        $urls = [
+            'https://storage.googleapis.com/geodashing-test-blobs/visits/GD-TEST/1_20260401000000_0.jpg'
+        ];
+
+        $service->deletePhotos($urls);
     }
 }

@@ -82,6 +82,10 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     }
 
     if (empty($dashpoint_id) || $lat === false || $lon === false) {
+        if (!empty($urls) && isset($mediaService)) {
+            $rawUrls = array_column($urls, 'url');
+            $mediaService->deletePhotos($rawUrls);
+        }
         http_response_code(400);
         echo json_encode(["status" => "error", "message" => "Invalid or missing required location data."]);
         exit;
@@ -95,10 +99,18 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         $result = $service->processVisit($_SESSION['user_id'], $dashpoint_id, $lat, $lon, $is_attempt, $notes, $photosJson, $suppress_email);
 
         if ($result['status'] === 'error') {
+            if (!empty($urls) && isset($mediaService)) {
+                $rawUrls = array_column($urls, 'url');
+                $mediaService->deletePhotos($rawUrls);
+            }
             http_response_code(400);
         }
         echo json_encode($result);
     } catch (Exception $e) {
+        if (!empty($urls) && isset($mediaService)) {
+            $rawUrls = array_column($urls, 'url');
+            $mediaService->deletePhotos($rawUrls);
+        }
         error_log("Report API Error: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(["status" => "error", "message" => "Failed to log visit due to internal server error."]);

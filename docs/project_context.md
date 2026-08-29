@@ -407,5 +407,12 @@ The application allows users to participate in global geographic games where the
 - Replaced `now.replace(...)` timestamp logic in [backend/scripts/generate_game.py](backend/scripts/generate_game.py) with explicit `datetime.datetime(year, month, ...)` construction for reliable start/end date calculation.
 - Expanded unit tests in [backend/tests/test_game_utils.py](backend/tests/test_game_utils.py) to cover HTML5 void tag parsing and standalone image validation.
 
+### 59. Quality Improvements Phase 3: Media Lifecycle & Storage Hygiene
+- Enhanced `MediaService::deletePhotos()` in [backend/services/MediaService.php](backend/services/MediaService.php) to automatically identify, derive, and delete companion `_thumb` thumbnail files in Google Cloud Storage when photos are removed.
+- Implemented transactional cleanup in [public/api/report.php](public/api/report.php) to immediately delete uploaded GCS images if `ReportService::processVisit()` rejects the visit or fails.
+- Supported `APP_ENV=testing` for `MediaService` initialization in [public/api/edit.php](public/api/edit.php).
+- Added unit tests in [backend/tests/MediaServiceTest.php](backend/tests/MediaServiceTest.php) verifying companion thumbnail deletion.
+
+
 
 
