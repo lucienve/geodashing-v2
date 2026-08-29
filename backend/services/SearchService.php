@@ -49,29 +49,32 @@ class SearchService
             FROM dashpoints d
             JOIN games g ON d.game_id = g.id
             LEFT JOIN visits v ON d.id = v.dashpoint_id AND v.status = 'approved'
-            WHERE ST_Latitude(d.location) BETWEEN :south AND :north
-            AND g.id = :game_id
+            WHERE g.id = :game_id
         ";
 
         // 2. International Date Line Router Algorithm
         if ($east < $west) {
-            // Box mathematically crossed the Anti-Meridian -> Break query into two global hemispheres safely
-            $sql = $baseQuery . " AND (ST_Longitude(d.location) BETWEEN :west AND 180.0 OR ST_Longitude(d.location) BETWEEN -180.0 AND :east) GROUP BY d.id";
+            // Box mathematically crossed the Anti-Meridian -> Break query into two global polygons
+            $polyWest = sprintf('POLYGON((%F %F, %F %F, %F 180.0, %F 180.0, %F %F))', $south, $west, $north, $west, $north, $south, $south, $west);
+            $polyEast = sprintf('POLYGON((%F -180.0, %F -180.0, %F %F, %F %F, %F -180.0))', $south, $north, $north, $east, $south, $east, $south);
+
+            $sql = $baseQuery . " AND (MBRContains(ST_GeomFromText(:poly_west, 4326), d.location) OR MBRContains(ST_GeomFromText(:poly_east, 4326), d.location)) GROUP BY d.id";
+            $params = [
+                ':poly_west' => $polyWest,
+                ':poly_east' => $polyEast,
+                ':game_id' => $gameId
+            ];
         } else {
-            // Standard Euclidean Bounding Box mapping
-            $sql = $baseQuery . " AND ST_Longitude(d.location) BETWEEN :west AND :east GROUP BY d.id";
+            // Standard Bounding Box mapping utilizing MySQL SPATIAL INDEX
+            $poly = sprintf('POLYGON((%F %F, %F %F, %F %F, %F %F, %F %F))', $south, $west, $north, $west, $north, $east, $south, $east, $south, $west);
+            $sql = $baseQuery . " AND MBRContains(ST_GeomFromText(:poly, 4326), d.location) GROUP BY d.id";
+            $params = [
+                ':poly' => $poly,
+                ':game_id' => $gameId
+            ];
         }
 
         $stmt = $this->db->prepare($sql);
-
-        $params = [
-            ':south' => $south,
-            ':north' => $north,
-            ':west' => $west,
-            ':east' => $east,
-            ':game_id' => $gameId
-        ];
-
         $stmt->execute($params);
 
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -90,7 +93,7 @@ class SearchService
      * @param float $west  Minimum Longitude
      * @param int $gameId  Game ID
      * @return array Array of visits.
-     * @throws \PDOException
+     * @throws PDOException
      */
     public function searchVisitsRegion(float $north, float $south, float $east, float $west, int $gameId): array
     {
@@ -102,27 +105,30 @@ class SearchService
             FROM visits v
             JOIN users u ON v.user_id = u.id
             JOIN dashpoints d ON v.dashpoint_id = d.id
-            WHERE ST_Latitude(v.reported_location) BETWEEN :south AND :north
-              AND d.game_id = :game_id
+            WHERE d.game_id = :game_id
               AND v.status = 'approved'
         ";
 
         if ($east < $west) {
-            $sql = $baseQuery . " AND (ST_Longitude(v.reported_location) BETWEEN :west AND 180.0 OR ST_Longitude(v.reported_location) BETWEEN -180.0 AND :east)";
+            $polyWest = sprintf('POLYGON((%F %F, %F %F, %F 180.0, %F 180.0, %F %F))', $south, $west, $north, $west, $north, $south, $south, $west);
+            $polyEast = sprintf('POLYGON((%F -180.0, %F -180.0, %F %F, %F %F, %F -180.0))', $south, $north, $north, $east, $south, $east, $south);
+
+            $sql = $baseQuery . " AND (MBRContains(ST_GeomFromText(:poly_west, 4326), v.reported_location) OR MBRContains(ST_GeomFromText(:poly_east, 4326), v.reported_location))";
+            $params = [
+                ':poly_west' => $polyWest,
+                ':poly_east' => $polyEast,
+                ':game_id' => $gameId
+            ];
         } else {
-            $sql = $baseQuery . " AND ST_Longitude(v.reported_location) BETWEEN :west AND :east";
+            $poly = sprintf('POLYGON((%F %F, %F %F, %F %F, %F %F, %F %F))', $south, $west, $north, $west, $north, $east, $south, $east, $south, $west);
+            $sql = $baseQuery . " AND MBRContains(ST_GeomFromText(:poly, 4326), v.reported_location)";
+            $params = [
+                ':poly' => $poly,
+                ':game_id' => $gameId
+            ];
         }
 
         $stmt = $this->db->prepare($sql);
-
-        $params = [
-            ':south' => $south,
-            ':north' => $north,
-            ':west' => $west,
-            ':east' => $east,
-            ':game_id' => $gameId
-        ];
-
         $stmt->execute($params);
 
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -94,6 +94,8 @@ CREATE INDEX idx_visits_dashpoint ON visits (dashpoint_id);
 -- Lookups by user/team frequently used for Scoreboards
 CREATE INDEX idx_visits_user ON visits (user_id);
 CREATE INDEX idx_visits_team ON visits (team_id);
+-- Spatial index for bounding box visit queries
+CREATE SPATIAL INDEX idx_visits_reported_location ON visits (reported_location);
 
 -- 7. Major Cities (For Geographic Contextualization)
 CREATE TABLE major_cities (

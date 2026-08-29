@@ -413,6 +413,13 @@ The application allows users to participate in global geographic games where the
 - Supported `APP_ENV=testing` for `MediaService` initialization in [public/api/edit.php](public/api/edit.php).
 - Added unit tests in [backend/tests/MediaServiceTest.php](backend/tests/MediaServiceTest.php) verifying companion thumbnail deletion.
 
+### 60. Quality Improvements Phase 4: Spatial Indexing & Query Optimization
+- Added `CREATE SPATIAL INDEX idx_visits_reported_location ON visits (reported_location);` to [schema.sql](schema.sql).
+- Refactored `searchRegion()` and `searchVisitsRegion()` in [backend/services/SearchService.php](backend/services/SearchService.php) to construct WKT bounding polygons and utilize MySQL's spatial relation operator `MBRContains(ST_GeomFromText(...), location)`, eliminating row-by-row function scans and leveraging MySQL's R-Tree spatial indexes.
+- Maintained Anti-Meridian Date Line crossing support using bifurcated polygon checks with `OR`.
+- Updated unit test expectations in [backend/tests/SearchServiceTest.php](backend/tests/SearchServiceTest.php).
+
+
 
 
 

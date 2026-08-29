@@ -47,7 +47,7 @@ class SearchServiceTest extends TestCase
         $this->pdoMock->expects($this->once())
             ->method('prepare')
             ->with($this->logicalAnd(
-                $this->stringContains('ST_Longitude(d.location) BETWEEN :west AND :east'),
+                $this->stringContains('MBRContains(ST_GeomFromText(:poly, 4326), d.location)'),
                 $this->stringContains('g.id = :game_id')
             ))
             ->willReturn($stmtMock);
@@ -75,7 +75,7 @@ class SearchServiceTest extends TestCase
         $this->pdoMock->expects($this->once())
             ->method('prepare')
             ->with($this->logicalAnd(
-                $this->stringContains('ST_Longitude(d.location) BETWEEN :west AND 180.0 OR ST_Longitude(d.location) BETWEEN -180.0 AND :east'),
+                $this->stringContains('MBRContains(ST_GeomFromText(:poly_west, 4326), d.location) OR MBRContains(ST_GeomFromText(:poly_east, 4326), d.location)'),
                 $this->stringContains('g.id = :game_id')
             ))
             ->willReturn($stmtMock);
@@ -93,7 +93,7 @@ class SearchServiceTest extends TestCase
 
     /**
      * Verifies that the service properly parses a standard bounding box payload
-     * directly into the default BETWEEN clauses for visits.
+     * directly into MBRContains clauses for visits.
      */
     #[Test]
     public function searchVisitsProcessesStandardBoundingBoxQuery()
@@ -106,7 +106,7 @@ class SearchServiceTest extends TestCase
         $this->pdoMock->expects($this->once())
             ->method('prepare')
             ->with($this->logicalAnd(
-                $this->stringContains('ST_Longitude(v.reported_location) BETWEEN :west AND :east'),
+                $this->stringContains('MBRContains(ST_GeomFromText(:poly, 4326), v.reported_location)'),
                 $this->stringContains('d.game_id = :game_id')
             ))
             ->willReturn($stmtMock);
@@ -136,7 +136,7 @@ class SearchServiceTest extends TestCase
         $this->pdoMock->expects($this->once())
             ->method('prepare')
             ->with($this->logicalAnd(
-                $this->stringContains('ST_Longitude(v.reported_location) BETWEEN :west AND 180.0 OR ST_Longitude(v.reported_location) BETWEEN -180.0 AND :east'),
+                $this->stringContains('MBRContains(ST_GeomFromText(:poly_west, 4326), v.reported_location) OR MBRContains(ST_GeomFromText(:poly_east, 4326), v.reported_location)'),
                 $this->stringContains('d.game_id = :game_id')
             ))
             ->willReturn($stmtMock);
