@@ -32,37 +32,39 @@ graph TD
 ```
 
 ### Administrative Prerequisites
-All commands on the production machine are executed inside the project's virtual environment (`.venv`) with configurations loaded from `backend/config.ini`.
+All commands on the production machine are executed using `uv run` with configurations loaded from `backend/config.ini`.
 
 ```bash
 # Navigate to the project root on production
-cd /home/lucien/src/geodashing-v2
+cd /home/lucienve/src/geodashing-v2
 
-# Activate the virtual environment
-source .venv/bin/activate
+# Synchronize all dependencies with uv
+uv sync
 ```
 
 ---
 
 ## Automated Turnover Execution
 
-The production server runs the turnover command automatically at `00:00:00 America/New_York` on the 1st of every month via cron:
+The production server runs the turnover command automatically at `00:00:00 America/New_York` on the 1st of every month via the system cron configuration `/etc/cron.d/geodashing-turnover`:
 ```cron
+# /etc/cron.d/geodashing-turnover
 CRON_TZ=America/New_York
-0 0 1 * * cd /home/lucien/src/geodashing-v2 && .venv/bin/python -m backend.scripts.game_utils --rollover >> /var/log/geodashing/turnover.log 2>&1
+PATH=/home/lucienve/.cargo/bin:/usr/local/bin:/usr/bin:/bin
+0 0 1 * * lucienve cd /home/lucienve/src/geodashing-v2 && uv run python -m backend.scripts.game_utils --rollover >> /var/log/geodashing/turnover.log 2>&1
 ```
 
 ### Manual Turnover Execution or Simulation
 To manually trigger the turnover or test in dry-run mode:
 ```bash
 # Dry run simulation (no database changes or emails sent)
-python -m backend.scripts.game_utils --rollover --dry-run
+uv run python -m backend.scripts.game_utils --rollover --dry-run
 
 # Live execution for current month
-python -m backend.scripts.game_utils --rollover
+uv run python -m backend.scripts.game_utils --rollover
 
 # Target a specific month or dashpoint count
-python -m backend.scripts.game_utils --rollover --year 2026 --month 8 --count 35000
+uv run python -m backend.scripts.game_utils --rollover --year 2026 --month 8 --count 35000
 ```
 
 In this walkthrough, we assume the date is **June 1st**. We are closing the **May game (ID 13)**, activating the **June game (ID 14)**, and seeding the **July game (ID 15)** as the new preview.
@@ -81,7 +83,7 @@ Extract all score rankings, spatial nearest-city context, and approved player ph
 mkdir -p /tmp/summary_work
 
 # Synthesize the raw summary files using the Gemini model
-python -m backend.scripts.generate_summary --game_id 13 --output_dir /tmp/summary_work
+uv run python -m backend.scripts.generate_summary --game_id 13 --output_dir /tmp/summary_work
 ```
 
 #### 2. Review and Polish the Generated Output
@@ -91,7 +93,7 @@ Open `/tmp/summary_work/game_13_output.html` in a text editor. Review the format
 Run the administrative validator to check the HTML fragment structure and upload it directly to the database:
 
 ```bash
-python -m backend.scripts.game_utils \
+uv run python -m backend.scripts.game_utils \
   --upload-summary /tmp/summary_work/game_13_output.html \
   --game_id 13
 ```
@@ -103,7 +105,7 @@ python -m backend.scripts.game_utils \
 Once the summary is successfully saved in the database, dispatch it to the registered geodashing player mailing list specified in the `config.ini` file using:
 
 ```bash
-python -m backend.scripts.game_utils \
+uv run python -m backend.scripts.game_utils \
   --email-summary \
   --game_id 13
 ```
@@ -121,14 +123,14 @@ Execute the `--activate` command to swap active states in a single database tran
 
 ```bash
 # Activating the June Game (ID 14) and archiving the May Game (ID 13)
-python -m backend.scripts.game_utils --activate 14
+uv run python -m backend.scripts.game_utils --activate 14
 ```
 
 #### 2. Perform Sanity Checks
 List the database games to confirm that the active status has correctly shifted:
 
 ```bash
-python -m backend.scripts.game_utils --list
+uv run python -m backend.scripts.game_utils --list
 ```
 
 The output must show that the target game is now active:
@@ -151,7 +153,7 @@ Run the game generator using the `--preview` flag. Explicitly set the title, tar
 
 ```bash
 # Seeding Game 15 for July 2026 in inactive preview mode
-python -m backend.scripts.generate_game \
+uv run python -m backend.scripts.generate_game \
   --title "July 2026 Dashing Classic" \
   --count 31000 \
   --year 2026 \
@@ -163,7 +165,7 @@ python -m backend.scripts.generate_game \
 Verify that the new preview game has successfully registered in an inactive state:
 
 ```bash
-python -m backend.scripts.game_utils --list
+uv run python -m backend.scripts.game_utils --list
 ```
 
 The output should resemble the following:

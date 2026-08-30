@@ -9,26 +9,23 @@ This document provides a comprehensive operational guide for the Geodashing V2 p
 All administrative utilities are located in the `backend/scripts/` directory and must be executed in an environment matching the core production specifications.
 
 ### Technical Target Versions
-*   **Python**: `3.12.3` (Pinned via `.python-version`)
+*   **Python**: `3.14` (Pinned via `.python-version`)
 *   **PHP**: `8.3.6`
 *   **MySQL**: `8.4.8`
 
 ### Installation & Virtual Environment Setup
 
-To ensure system dependencies are kept isolated and portable, establish a Python virtual environment at the project root:
+`uv` (Astral) is used to manage Python runtimes and isolate dependencies:
 
 ```bash
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
 # Navigate to the project root
 # (Example working directory: /home/lucien/src/geodashing-v2)
 
-# Create a virtual environment
-python3 -m venv .venv
-
-# Activate the virtual environment
-source .venv/bin/activate
-
-# Install required production dependencies
-pip install -r requirements.txt
+# Synchronize all dependencies and create/update the virtual environment
+uv sync
 ```
 
 ### Required Configuration (`backend/config.ini`)
@@ -69,7 +66,7 @@ Generates globally distributed, geographically balanced geodashing points situat
 *   **Location**: `backend/scripts/generate_game.py`
 *   **Execution Command**:
     ```bash
-    python -m backend.scripts.generate_game -t "Game Title" [options]
+    uv run python -m backend.scripts.generate_game -t "Game Title" [options]
     ```
 
 #### Command Line Arguments
@@ -101,7 +98,7 @@ Maintains game activation status and provides strict schema validation for admin
 *   **Location**: `backend/scripts/game_utils.py`
 *   **Execution Command**:
     ```bash
-    python -m backend.scripts.game_utils [commands]
+    uv run python -m backend.scripts.game_utils [commands]
     ```
 
 #### Command Line Arguments
@@ -140,7 +137,7 @@ Harnesses the Gemini Developer API via the Google GenAI SDK to synthesize a stru
 *   **Location**: `backend/scripts/generate_summary.py`
 *   **Execution Command**:
     ```bash
-    python -m backend.scripts.generate_summary --game_id GAME_ID --output_dir DIR_PATH
+    uv run python -m backend.scripts.generate_summary --game_id GAME_ID --output_dir DIR_PATH
     ```
 
 #### Command Line Arguments
@@ -171,7 +168,7 @@ Populates the system's spatial `major_cities` database table to enable near-inst
 *   **Location**: `backend/scripts/seed_major_cities.py`
 *   **Execution Command**:
     ```bash
-    python -m backend.scripts.seed_major_cities
+    uv run python -m backend.scripts.seed_major_cities
     ```
 
 #### Core Details
@@ -190,7 +187,7 @@ Relocates a single preview game dashpoint on dry land within a specified maximum
 *   **Location**: `backend/scripts/reroll_dashpoint.py`
 *   **Execution Command**:
     ```bash
-    python -m backend.scripts.reroll_dashpoint --lat LAT --lon LON [options]
+    uv run python -m backend.scripts.reroll_dashpoint --lat LAT --lon LON [options]
     ```
 
 #### Command Line Arguments
@@ -312,16 +309,22 @@ The Ops Agent monitors the Geodashing Apache logs as well as the monthly turnove
     ```
 
 ### Step 4: Setting Up the Monthly Turnover Cron Job
-On the production VM (`vm2019-vpc`), configure a cron job to trigger the automated rollover at midnight America/New_York on the 1st of every month.
+On the production VM (`vm2019-vpc`), the turnover cron job is configured via `/etc/cron.d/geodashing-turnover` to trigger the automated rollover at midnight America/New_York on the 1st of every month using `uv run`.
 
-1.  Edit the user crontab:
+1.  Edit or create the system cron file `/etc/cron.d/geodashing-turnover`:
     ```bash
-    crontab -e
+    sudo nano /etc/cron.d/geodashing-turnover
     ```
-2.  Add the scheduled turnover entry:
+2.  Add or update the scheduled turnover entry:
     ```cron
+    # Geodashing Monthly Turnover: Runs at 00:00:00 America/New_York on the 1st of every month
     CRON_TZ=America/New_York
-    0 0 1 * * cd /home/lucien/src/geodashing-v2 && .venv/bin/python -m backend.scripts.game_utils --rollover >> /var/log/geodashing/turnover.log 2>&1
+    PATH=/home/lucienve/.cargo/bin:/usr/local/bin:/usr/bin:/bin
+    0 0 1 * * lucienve cd /home/lucienve/src/geodashing-v2 && uv run python -m backend.scripts.game_utils --rollover >> /var/log/geodashing/turnover.log 2>&1
+    ```
+3.  Ensure the file has standard permissions:
+    ```bash
+    sudo chmod 644 /etc/cron.d/geodashing-turnover
     ```
 
 ### Step 5: Setting Up Google Cloud Alerting for Turnover Failures

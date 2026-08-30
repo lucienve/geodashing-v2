@@ -3,28 +3,28 @@ repos:
     hooks:
       - id: pylint
         name: PyLint
-        entry: .venv/bin/pylint backend/
+        entry: uv run pylint backend/
         language: system
         pass_filenames: false
         files: ^backend/.*\.py$
 
       - id: mypy
         name: Mypy
-        entry: .venv/bin/mypy backend/
+        entry: uv run mypy backend/
         language: system
         pass_filenames: false
         files: ^backend/.*\.py$
 
       - id: pyright
         name: Pyright
-        entry: .venv/bin/pyright backend/
+        entry: uv run pyright backend/
         language: system
         pass_filenames: false
         files: ^backend/.*\.py$
 
       - id: pytest
         name: Pytest
-        entry: .venv/bin/pytest backend/
+        entry: uv run pytest backend/
         language: system
         pass_filenames: false
         files: ^backend/.*\.py$

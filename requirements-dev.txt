@@ -1,7 +1,0 @@
--r requirements.txt
-pytest>=9.1.1
-pylint>=4.0.7
-yapf>=0.43.0
-mypy>=2.3.1
-pyright>=1.1.411
-pre-commit>=4.6.2

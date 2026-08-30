@@ -15,11 +15,11 @@ You are working on the Geodashing V2 project. You must strictly adhere to these 
 Ensure all code and syntax is explicitly compatible with the following versions:
 - **PHP:** `8.3.6`
 - **MySQL:** `8.4.8`
-- **Python:** `3.12.3` (Pinned via `.python-version`). On Debian 12 local development environments, `uv` MUST be used to manage Python 3.12 inside `.venv` (`uv venv` and `uv pip install -r requirements.txt -r requirements-dev.txt`). Note: when fetching the installer via curl, the `-L` flag (`curl -LsSf https://astral.sh/uv/install.sh | sh`) is required to follow redirects.
+- **Python:** `3.14` (Pinned via `.python-version`). `uv` (Astral) MUST be used to manage Python 3.14 runtimes, `pyproject.toml` dependencies, and the `.venv` virtual environment via `uv sync`. Note: when fetching the installer via curl, the `-L` flag (`curl -LsSf https://astral.sh/uv/install.sh | sh`) is required to follow redirects.
 
 ## 3. Backend Directives: Python Architecture
 - **Database Rules:** Connect using `mysql-connector-python`. **Do not use an ORM**. You must use strictly parameterized queries / prepared statements for all database interactions. String interpolation or concatenation for SQL queries is strictly forbidden to prevent SQL injections.
-- **Testing, Linting, & Type Checking Commands:** Run `pytest backend/` for testing, `pylint backend/` for linting, and `.venv/bin/mypy backend/` for type checking. Ensure virtual environment dependencies are populated using `uv pip install` into `.venv`.
+- **Testing, Linting, & Type Checking Commands:** Run `uv run pytest backend/` for testing, `uv run pylint backend/` for linting, and `uv run mypy backend/` / `uv run pyright backend/` for type checking. Ensure virtual environment dependencies are populated using `uv sync`.
 
 ## 4. Backend Directives: PHP
 - **Documentation:** Utilize clear PHPDoc-style block comments (`/** ... */`) for functions, classes, and properties.

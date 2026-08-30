@@ -7,7 +7,7 @@ The application allows users to participate in global geographic games where the
 ## Architectural Decisions
 - **Core Stack**: 
   - **Frontend**: Vanilla JS (ES6+), Semantic HTML5, Vanilla CSS3. **No Heavy Frameworks** (React/Vue/etc. are strictly prohibited). Logic is decoupled into separate files (`api.js`, `app.js`, `controllers.js`, `map.js`). Node.js **24.16.0** is enforced via `.nvmrc` for local tooling, linting, and E2E testing.
-  - **Backend**: Primary API layer written in **PHP 8.3.6** (`public/api`) supplemented with **Python 3.12.3** (pinned via `.python-version`) for server-side scripts / game generation algorithms (`generate_game.py`). On Debian 12 development environments, `uv` (Astral) is mandated to provision and manage the Python 3.12.3 runtime inside `.venv`.
+  - **Backend**: Primary API layer written in **PHP 8.3.6** (`public/api`) supplemented with **Python 3.14** (pinned via `.python-version`) for server-side scripts / game generation algorithms (`generate_game.py`). `uv` (Astral) is mandated to provision and manage the Python 3.14 runtime, `pyproject.toml` dependencies, and execution via `uv run`.
   - **Database**: **MySQL 8.4.8** using native drivers (PDO for PHP, `mysql-connector-python` for Python). **No ORM is used**. All queries are securely handled via explicit parameterized statements.
   - **Media Storage**: Google Cloud Storage buckets handle user-uploaded photos natively via PHP APIs.
 - **Security Posture**: 
@@ -424,6 +424,14 @@ The application allows users to participate in global geographic games where the
 - Fixed double HTML entity escaping on leaderboard game titles by removing redundant `escapeHTML()` call inside `.innerText` assignment.
 - Added `URL.revokeObjectURL()` memory lifecycle management to photo preview rendering loops in both `#report` and `#dashpoint` edit modals.
 - Integrated `AbortController` in [public/js/map.js](public/js/map.js) to cancel inflight bounding box requests on subsequent map movements, eliminating out-of-order race conditions.
+
+### 62. Python 3.14 Runtime & UV Packaging Migration, Dependabot & System Cron Integration
+- Migrated Python project dependency management from legacy `requirements.txt` and `requirements-dev.txt` to PEP 621 standard [pyproject.toml](pyproject.toml) configured with `[dependency-groups]` (`dev`) and `[tool.uv]`.
+- Updated the pinned Python runtime in [.python-version](.python-version) from `3.12.3` to `3.14`.
+- Updated GitHub Dependabot configuration in [.github/dependabot.yml](.github/dependabot.yml) to track Python dependencies via `package-ecosystem: "uv"`.
+- Updated [.pre-commit-config.yaml](.pre-commit-config.yaml) to invoke Python linters, type checkers, and test runners (`pylint`, `mypy`, `pyright`, `pytest`) using `uv run`.
+- Reconfigured GitHub Actions CI workflow in [.github/workflows/ci-verification.yml](.github/workflows/ci-verification.yml) to use `astral-sh/setup-uv@v5` with `enable-cache: true`, `uv sync --all-groups`, and `uv run pre-commit run --all-files`.
+- Updated production cron configuration in [docs/admin_guide.md](docs/admin_guide.md) and [docs/game_rollover.md](docs/game_rollover.md) to document `/etc/cron.d/geodashing-turnover` using `uv run python -m backend.scripts.game_utils --rollover`.
 
 
 
