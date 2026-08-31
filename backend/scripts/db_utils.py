@@ -1,5 +1,6 @@
 """Shared database utilities for backend scripts."""
 
+import collections.abc
 import configparser
 import contextlib
 import os
@@ -9,7 +10,9 @@ import mysql.connector
 import mysql.connector.connection
 import mysql.connector.cursor
 
-def get_db_connection(config_path: str) -> mysql.connector.connection.MySQLConnection:
+
+def get_db_connection(
+        config_path: str) -> mysql.connector.connection.MySQLConnection:
     """Establishes a connection to the MySQL database securely via config.ini.
 
     Args:
@@ -35,13 +38,11 @@ def get_db_connection(config_path: str) -> mysql.connector.connection.MySQLConne
     database = config['database'].get('DB_NAME', 'geodashing').strip('"\'')
 
     try:
-        conn = mysql.connector.connect(
-            host=host,
-            user=user,
-            password=password,
-            database=database,
-            port=port
-        )
+        conn = mysql.connector.connect(host=host,
+                                       user=user,
+                                       password=password,
+                                       database=database,
+                                       port=port)
         return typing.cast(mysql.connector.connection.MySQLConnection, conn)
     except mysql.connector.Error as e:
         raise RuntimeError(f"Database Connection Error: {e}") from e
@@ -50,19 +51,15 @@ def get_db_connection(config_path: str) -> mysql.connector.connection.MySQLConne
 @contextlib.contextmanager
 def db_session(
     config_path: str
-) -> typing.Iterator[
-    tuple[
-        mysql.connector.connection.MySQLConnection,
-        mysql.connector.cursor.MySQLCursor
-    ]
-]:
+) -> collections.abc.Iterator[tuple[mysql.connector.connection.MySQLConnection,
+                                    mysql.connector.cursor.MySQLCursor]]:
     """Context manager for establishing and closing a database session.
 
     Args:
         config_path (str): The absolute or relative path to backend/config.ini.
 
     Yields:
-        Tuple[MySQLConnection, MySQLCursor]: Active connection and cursor.
+        tuple[MySQLConnection, MySQLCursor]: Active connection and cursor.
     """
     conn = get_db_connection(config_path)
     cursor = conn.cursor()

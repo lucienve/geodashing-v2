@@ -21,9 +21,11 @@ import backend.scripts.db_utils
 def load_blocklist(bad_words_path: str) -> set[str]:
     """Loads a set of blocked 4-letter strings from a file."""
     if not os.path.exists(bad_words_path):
-        raise FileNotFoundError(f"Profanity blocklist not found at {bad_words_path}")
+        raise FileNotFoundError(
+            f"Profanity blocklist not found at {bad_words_path}")
     with open(bad_words_path, 'r', encoding='utf-8') as f:
-        return set(line.strip().upper() for line in f if len(line.strip()) == 4)
+        return set(line.strip().upper() for line in f
+                   if len(line.strip()) == 4)
 
 
 def int_to_letters(index: int) -> str:
@@ -35,7 +37,8 @@ def int_to_letters(index: int) -> str:
     return "".join(reversed(result))
 
 
-def generate_valid_sequence_id(start_index: int, blocklist: set[str]) -> tuple[str, int]:
+def generate_valid_sequence_id(start_index: int,
+                               blocklist: set[str]) -> tuple[str, int]:
     """Finds the next valid alphabetic sequence ID not present in the blocklist."""
     current = start_index
     while True:
@@ -45,14 +48,11 @@ def generate_valid_sequence_id(start_index: int, blocklist: set[str]) -> tuple[s
         current += 1
 
 
-
-def initialize_new_game(
-    cursor: mysql.connector.cursor.MySQLCursor,
-    game_title: str,
-    year: int | None = None,
-    month: int | None = None,
-    is_preview: bool = False
-) -> int:
+def initialize_new_game(cursor: mysql.connector.cursor.MySQLCursor,
+                        game_title: str,
+                        year: int | None = None,
+                        month: int | None = None,
+                        is_preview: bool = False) -> int:
     """Retires old games and creates a new game record."""
     now = datetime.datetime.now()
     if year is None:
@@ -66,14 +66,12 @@ def initialize_new_game(
 
     cursor.execute(
         "SELECT id, title FROM games WHERE YEAR(start_time) = %s AND MONTH(start_time) = %s",
-        (year, month)
-    )
+        (year, month))
     existing = cursor.fetchone()
     if existing:
         raise ValueError(
             f"A game for {year}-{month:02d} already exists (Game {existing[0]}: '{existing[1]}'). "
-            "Duplicate creation blocked."
-        )
+            "Duplicate creation blocked.")
 
     if not is_preview:
         print("Marking previous games as inactive...")
@@ -99,12 +97,9 @@ def initialize_new_game(
 _initialize_new_game = initialize_new_game
 
 
-def bulk_insert_dashpoints(
-    cursor: mysql.connector.cursor.MySQLCursor,
-    points: list[shapely.geometry.Point],
-    game_id: int,
-    bad_words_path: str
-) -> None:
+def bulk_insert_dashpoints(cursor: mysql.connector.cursor.MySQLCursor,
+                           points: list[shapely.geometry.Point], game_id: int,
+                           bad_words_path: str) -> None:
     """Inserts dashpoints systematically in chunks."""
     blocklist = load_blocklist(bad_words_path)
     current_seq_index = 0
@@ -132,12 +127,13 @@ def bulk_insert_dashpoints(
 _bulk_insert_dashpoints = bulk_insert_dashpoints
 
 
-def seed_database(points: list[shapely.geometry.Point], config_path: str, game_title: str,
-                  bad_words_path: str, **kwargs: typing.Any) -> None:
+def seed_database(points: list[shapely.geometry.Point], config_path: str,
+                  game_title: str, bad_words_path: str,
+                  **kwargs: typing.Any) -> None:
     """Seeds the newly generated Dashpoints into tracking tables along with a new active Game state.
 
     Args:
-        points (List[Point]): Mathematically verified Point geometries to insert.
+        points (list[shapely.geometry.Point]): Mathematically verified Point geometries to insert.
         config_path (str): The path to the PHP backend config.ini.
         game_title (str): Brief descriptive title of the game.
         bad_words_path (str): Path to the profanity filter blocklist.
@@ -149,18 +145,19 @@ def seed_database(points: list[shapely.geometry.Point], config_path: str, game_t
     """
     print("\nConnecting to the database to seed points...")
     try:
-        with backend.scripts.db_utils.db_session(config_path) as (conn, cursor):
+        with backend.scripts.db_utils.db_session(config_path) as (conn,
+                                                                  cursor):
             year = kwargs.get('year')
             month = kwargs.get('month')
             is_preview = kwargs.get('is_preview')
 
             year_val = int(year) if year is not None else None
             month_val = int(month) if month is not None else None
-            is_preview_val = bool(is_preview) if is_preview is not None else False
+            is_preview_val = bool(
+                is_preview) if is_preview is not None else False
 
-            game_id = _initialize_new_game(
-                cursor, game_title, year_val, month_val, is_preview_val
-            )
+            game_id = _initialize_new_game(cursor, game_title, year_val,
+                                           month_val, is_preview_val)
 
             print(
                 f"Bulk inserting {len(points)} Dashpoints for Game ID format GD{game_id:03d}..."
@@ -181,7 +178,7 @@ def generate_spherical_points(num_points: int) -> list[shapely.geometry.Point]:
         num_points (int): The number of raw points to generate.
 
     Returns:
-        List[Point]: A list of Shapely Point objects in WGS84 coordinates.
+        list[shapely.geometry.Point]: A list of Shapely Point objects in WGS84 coordinates.
     """
     lons = np.random.uniform(-180, 180, num_points)
     # asin expects value between -1 and 1
@@ -193,8 +190,8 @@ def generate_spherical_points(num_points: int) -> list[shapely.geometry.Point]:
 
 
 def subdivide_geometry(
-    geom: shapely.geometry.base.BaseGeometry,
-    max_size: float = 1000000.0
+        geom: shapely.geometry.base.BaseGeometry,
+        max_size: float = 1000000.0
 ) -> list[shapely.geometry.base.BaseGeometry]:
     """Subdivides a geometry into a grid of smaller geometries of a maximum metric size."""
     if geom is None or geom.is_empty:
@@ -208,8 +205,8 @@ def subdivide_geometry(
     for i in range(len(x_coords) - 1):
         for j in range(len(y_coords) - 1):
             grid_boxes.append(
-                shapely.geometry.box(x_coords[i], y_coords[j], x_coords[i + 1], y_coords[j + 1])
-            )
+                shapely.geometry.box(x_coords[i], y_coords[j], x_coords[i + 1],
+                                     y_coords[j + 1]))
 
     subdivided: list[shapely.geometry.base.BaseGeometry] = []
     for box in grid_boxes:
@@ -226,10 +223,9 @@ def subdivide_geometry(
 
 
 def _load_and_project_geometries(
-    land_zip_path: str,
-    lakes_zip_path: str,
-    verbose: bool = True
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+        land_zip_path: str,
+        lakes_zip_path: str,
+        verbose: bool = True) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """Loads and projects the land and lake shapefiles to EPSG:6933."""
     try:
         land_gdf = gpd.read_file(f"zip://{land_zip_path}")
@@ -245,44 +241,40 @@ def _load_and_project_geometries(
 class SpatialFilter:
     """Helper class to encapsulate spatial indexing and boundary filtering logic."""
 
-    def __init__(
-        self,
-        tree_land: shapely.strtree.STRtree,
-        tree_lakes: shapely.strtree.STRtree,
-        land_sub: list[shapely.geometry.base.BaseGeometry],
-        lakes_sub: list[shapely.geometry.base.BaseGeometry]
-    ) -> None:
+    def __init__(self, tree_land: shapely.strtree.STRtree,
+                 tree_lakes: shapely.strtree.STRtree,
+                 land_sub: list[shapely.geometry.base.BaseGeometry],
+                 lakes_sub: list[shapely.geometry.base.BaseGeometry]) -> None:
         self.tree_land = tree_land
         self.tree_lakes = tree_lakes
         self.land_sub = land_sub
         self.lakes_sub = lakes_sub
 
     def get_candidate_matches(
-        self,
-        buffers: typing.Any
-    ) -> tuple[dict[int, list[shapely.geometry.base.BaseGeometry]],
-               dict[int, list[shapely.geometry.base.BaseGeometry]]]:
+        self, buffers: typing.Any
+    ) -> tuple[dict[int, list[shapely.geometry.base.BaseGeometry]], dict[
+            int, list[shapely.geometry.base.BaseGeometry]]]:
         """Finds matching land and lake geometries for each buffered point."""
         land_matches = self.tree_land.query(buffers)
         land_map: dict[int, list[shapely.geometry.base.BaseGeometry]] = {}
         if land_matches.size > 0:
             for buf_idx, land_idx in zip(land_matches[0], land_matches[1]):
-                land_map.setdefault(buf_idx, []).append(self.land_sub[land_idx])
+                land_map.setdefault(buf_idx,
+                                    []).append(self.land_sub[land_idx])
 
         lake_matches = self.tree_lakes.query(buffers)
         lake_map: dict[int, list[shapely.geometry.base.BaseGeometry]] = {}
         if lake_matches.size > 0:
             for buf_idx, lake_idx in zip(lake_matches[0], lake_matches[1]):
-                lake_map.setdefault(buf_idx, []).append(self.lakes_sub[lake_idx])
+                lake_map.setdefault(buf_idx,
+                                    []).append(self.lakes_sub[lake_idx])
 
         return land_map, lake_map
 
     def eval_boundary_point(
-        self,
-        buffer_geom: shapely.geometry.base.BaseGeometry,
-        matching_lands: list[shapely.geometry.base.BaseGeometry],
-        matching_lakes: list[shapely.geometry.base.BaseGeometry]
-    ) -> bool:
+            self, buffer_geom: shapely.geometry.base.BaseGeometry,
+            matching_lands: list[shapely.geometry.base.BaseGeometry],
+            matching_lakes: list[shapely.geometry.base.BaseGeometry]) -> bool:
         """Determines if a single buffered point intersects dry land (land minus lakes)."""
         if len(matching_lands) == 1:
             land_geom = matching_lands[0]
@@ -301,11 +293,9 @@ class SpatialFilter:
         return buffer_geom.intersects(land_minus_lakes)
 
     def filter_boundary_candidates(
-        self,
-        raw_points: list[shapely.geometry.Point],
-        proj_geoms: list[shapely.geometry.base.BaseGeometry],
-        remaining_indices: list[int]
-    ) -> list[shapely.geometry.Point]:
+            self, raw_points: list[shapely.geometry.Point],
+            proj_geoms: list[shapely.geometry.base.BaseGeometry],
+            remaining_indices: list[int]) -> list[shapely.geometry.Point]:
         """Filters the remaining points using 100m buffers and local geometry intersections."""
         remaining_pts = [proj_geoms[i] for i in remaining_indices]
         remaining_buffers = shapely.buffer(remaining_pts, 100)
@@ -319,23 +309,25 @@ class SpatialFilter:
             buffer_geom = remaining_buffers[buf_idx]
             matching_lakes = lake_map.get(buf_idx, [])
 
-            if self.eval_boundary_point(buffer_geom, matching_lands, matching_lakes):
+            if self.eval_boundary_point(buffer_geom, matching_lands,
+                                        matching_lakes):
                 orig_idx = remaining_indices[buf_idx]
                 valid.append(raw_points[orig_idx])
 
         return valid
 
 
-def build_spatial_filter(
-    land_zip_path: str,
-    lakes_zip_path: str,
-    verbose: bool = True
-) -> SpatialFilter:
+def build_spatial_filter(land_zip_path: str,
+                         lakes_zip_path: str,
+                         verbose: bool = True) -> SpatialFilter:
     """Loads shapefiles, projects them, subdivides them, and builds the SpatialFilter."""
-    land_proj, lakes_proj = _load_and_project_geometries(land_zip_path, lakes_zip_path, verbose)
+    land_proj, lakes_proj = _load_and_project_geometries(
+        land_zip_path, lakes_zip_path, verbose)
 
     if verbose:
-        print("Subdividing land and lakes geometries to optimize spatial query performance...")
+        print(
+            "Subdividing land and lakes geometries to optimize spatial query performance..."
+        )
     land_sub: list[shapely.geometry.base.BaseGeometry] = []
     for geom in land_proj.geometry:
         if geom is not None and not geom.is_empty:
@@ -360,9 +352,10 @@ def build_spatial_filter(
 
 
 def generate_valid_dashpoints(
-        target_count: int = 2000,
-        land_zip_path: str = '../../data/ne_10m_land.zip',
-        lakes_zip_path: str = '../../data/ne_10m_lakes.zip') -> list[shapely.geometry.Point]:
+    target_count: int = 2000,
+    land_zip_path: str = '../../data/ne_10m_land.zip',
+    lakes_zip_path: str = '../../data/ne_10m_lakes.zip'
+) -> list[shapely.geometry.Point]:
     """Generates valid dashpoints ensuring they are on land or <= 100m offshore.
 
     Algorithm:
@@ -381,13 +374,12 @@ def generate_valid_dashpoints(
         lakes_zip_path (str): The path to the Natural Earth lakes zip file.
 
     Returns:
-        List[Point]: A list of valid Shapely Point objects.
+        list[shapely.geometry.Point]: A list of valid Shapely Point objects.
 
     Raises:
         FileNotFoundError: If the land or lake shapefiles cannot be found or read.
     """
     spatial_filter = build_spatial_filter(land_zip_path, lakes_zip_path)
-
 
     valid_points: list[shapely.geometry.Point] = []
     batch_size = 50000 if target_count > 10000 else 10000
@@ -396,14 +388,16 @@ def generate_valid_dashpoints(
     while len(valid_points) < target_count:
         raw_points = generate_spherical_points(batch_size)
         proj_geoms = gpd.GeoDataFrame(
-            geometry=raw_points, crs="EPSG:4326"
-        ).to_crs(epsg=6933).geometry.tolist()
+            geometry=raw_points,
+            crs="EPSG:4326").to_crs(epsg=6933).geometry.tolist()
 
         # Step 1: Fast Point-in-Polygon (PIP) check
-        land_contains = spatial_filter.tree_land.query(proj_geoms, predicate="contains")
+        land_contains = spatial_filter.tree_land.query(proj_geoms,
+                                                       predicate="contains")
         on_land_indices = set(land_contains[0])
 
-        lake_contains = spatial_filter.tree_lakes.query(proj_geoms, predicate="contains")
+        lake_contains = spatial_filter.tree_lakes.query(proj_geoms,
+                                                        predicate="contains")
         in_lake_indices = set(lake_contains[0])
 
         # Dry land points are directly on land and not in a lake
@@ -411,20 +405,18 @@ def generate_valid_dashpoints(
         valid_points.extend(raw_points[i] for i in immediate_valid)
 
         # Step 2: Buffer remaining points and do local checks
-        remaining_indices = [i for i in range(len(raw_points)) if i not in immediate_valid]
+        remaining_indices = [
+            i for i in range(len(raw_points)) if i not in immediate_valid
+        ]
         if remaining_indices:
             valid_points.extend(
                 spatial_filter.filter_boundary_candidates(
-                    raw_points, proj_geoms, remaining_indices
-                )
-            )
+                    raw_points, proj_geoms, remaining_indices))
 
         # Print progress
         if len(valid_points) % 1000 == 0 or len(valid_points) >= target_count:
-            print(
-                f"Generated {min(len(valid_points), target_count)} / "
-                f"{target_count} valid dashpoints..."
-            )
+            print(f"Generated {min(len(valid_points), target_count)} / "
+                  f"{target_count} valid dashpoints...")
 
     return valid_points[:target_count]
 
@@ -451,16 +443,21 @@ def main() -> None:
         '-m',
         '--month',
         type=int,
-        help="Optional month (1-12) to generate the game for (defaults to current month)")
+        help=
+        "Optional month (1-12) to generate the game for (defaults to current month)"
+    )
     parser.add_argument(
         '-y',
         '--year',
         type=int,
-        help="Optional year to generate the game for (defaults to current year)")
+        help="Optional year to generate the game for (defaults to current year)"
+    )
     parser.add_argument(
         '--preview',
         action='store_true',
-        help="Generate the game in an inactive preview state instead of immediately activating it")
+        help=
+        "Generate the game in an inactive preview state instead of immediately activating it"
+    )
     args = parser.parse_args()
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -478,10 +475,13 @@ def main() -> None:
                                            lakes_zip_path=lakes_zip)
 
         # 2. Upload to MySQL
-        seed_database(
-            points, config_path, args.title, bad_words_path,
-            year=args.year, month=args.month, is_preview=args.preview
-        )
+        seed_database(points,
+                      config_path,
+                      args.title,
+                      bad_words_path,
+                      year=args.year,
+                      month=args.month,
+                      is_preview=args.preview)
 
     except (FileNotFoundError, RuntimeError, ValueError) as e:
         print(f"\nExecution Error: {e}")

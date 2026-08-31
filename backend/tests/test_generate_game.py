@@ -30,7 +30,8 @@ def test_water_exclusion_logic() -> None:
     Uses an EPSG:6933 (Cylindrical Equal Area) mock polygon for testing.
     """
     # Create a simple 1km x 1km square 'island' at the equator
-    island_geom = shapely.geometry.Polygon([(-500, -500), (500, -500), (500, 500), (-500, 500)])
+    island_geom = shapely.geometry.Polygon([(-500, -500), (500, -500),
+                                            (500, 500), (-500, 500)])
 
     # Point 1: On the island
     p1 = shapely.geometry.Point(0, 0)
@@ -70,10 +71,13 @@ def test_inland_lake_avoidance(monkeypatch: pytest.MonkeyPatch) -> None:
 
     # 2. Inject target coordinates dynamically representing the random generator logic
     test_points = [
-        shapely.geometry.Point(0, 0),  # Target 1: Dead center of the Lake (Should be EXCLUDED)
-        shapely.geometry.Point(3, 3),  # Target 2: Dry Land away from water (Should be KEPT)
-        shapely.geometry.Point(10,
-              10)  # Target 3: Remote Ocean outside island (Should be EXCLUDED)
+        shapely.geometry.Point(
+            0, 0),  # Target 1: Dead center of the Lake (Should be EXCLUDED)
+        shapely.geometry.Point(
+            3, 3),  # Target 2: Dry Land away from water (Should be KEPT)
+        shapely.geometry.Point(
+            10,
+            10)  # Target 3: Remote Ocean outside island (Should be EXCLUDED)
     ]
 
     monkeypatch.setattr(
@@ -81,9 +85,10 @@ def test_inland_lake_avoidance(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda *args, **kwargs: test_points)
 
     # 3. Execute the Geopandas Mathematics constraint engine
-    valid_points = backend.scripts.generate_game.generate_valid_dashpoints(target_count=1,
-                                             land_zip_path="mock_land.zip",
-                                             lakes_zip_path="mock_lakes.zip")
+    valid_points = backend.scripts.generate_game.generate_valid_dashpoints(
+        target_count=1,
+        land_zip_path="mock_land.zip",
+        lakes_zip_path="mock_lakes.zip")
 
     # 4. Assert geometric success array.
     assert len(valid_points) == 1, "Exactly one Dashpoint should exist."
@@ -102,18 +107,19 @@ def test_int_to_letters() -> None:
 
 def test_initialize_new_game() -> None:
     """Verify that starting a new game successfully updates the DB state."""
-    mock_cursor = unittest.mock.MagicMock(spec=mysql.connector.cursor.MySQLCursor)
+    mock_cursor = unittest.mock.MagicMock(
+        spec=mysql.connector.cursor.MySQLCursor)
     mock_cursor.lastrowid = 42
     mock_cursor.fetchone.return_value = None
 
-    game_id = backend.scripts.generate_game.initialize_new_game(mock_cursor, "Global Dash")
+    game_id = backend.scripts.generate_game.initialize_new_game(
+        mock_cursor, "Global Dash")
 
     assert game_id == 42
     # Verify the initial duplicate check and retirement of old games ran
     mock_cursor.execute.assert_any_call(
         "SELECT id, title FROM games WHERE YEAR(start_time) = %s AND MONTH(start_time) = %s",
-        (datetime.datetime.now().year, datetime.datetime.now().month)
-    )
+        (datetime.datetime.now().year, datetime.datetime.now().month))
     mock_cursor.execute.assert_any_call("UPDATE games SET is_active = FALSE")
 
     # Verify the parameter-bound database insert
@@ -128,11 +134,13 @@ def test_initialize_new_game() -> None:
 
 def test_initialize_new_game_duplicate_blocked() -> None:
     """Verify that creating a duplicate game for the same month raises ValueError."""
-    mock_cursor = unittest.mock.MagicMock(spec=mysql.connector.cursor.MySQLCursor)
+    mock_cursor = unittest.mock.MagicMock(
+        spec=mysql.connector.cursor.MySQLCursor)
     mock_cursor.fetchone.return_value = (10, "Existing Game")
 
     with pytest.raises(ValueError, match="already exists"):
-        backend.scripts.generate_game.initialize_new_game(mock_cursor, "Duplicate Dash")
+        backend.scripts.generate_game.initialize_new_game(
+            mock_cursor, "Duplicate Dash")
 
 
 def test_bulk_insert_dashpoints(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -141,13 +149,12 @@ def test_bulk_insert_dashpoints(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr('backend.scripts.generate_game.load_blocklist',
                         lambda path: set())
 
-    mock_cursor = unittest.mock.MagicMock(spec=mysql.connector.cursor.MySQLCursor)
+    mock_cursor = unittest.mock.MagicMock(
+        spec=mysql.connector.cursor.MySQLCursor)
     points = [shapely.geometry.Point(10, 20), shapely.geometry.Point(-30, 40)]
 
-    backend.scripts.generate_game._bulk_insert_dashpoints(mock_cursor,
-                            points,
-                            game_id=7,
-                            bad_words_path="mock/path")
+    backend.scripts.generate_game._bulk_insert_dashpoints(
+        mock_cursor, points, game_id=7, bad_words_path="mock/path")
 
     assert mock_cursor.executemany.call_count == 1
     args = mock_cursor.executemany.call_args[0]

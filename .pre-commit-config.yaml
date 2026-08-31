@@ -1,6 +1,13 @@
 repos:
   - repo: local
     hooks:
+      - id: yapf
+        name: YAPF
+        entry: uv run yapf --diff --recursive backend/
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.py$
+
       - id: pylint
         name: PyLint
         entry: uv run pylint backend/

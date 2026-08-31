@@ -4,6 +4,7 @@ import os
 
 import backend.scripts.db_utils
 
+
 def load_admin1_codes(filepath: str) -> dict[str, str]:
     """Loads admin1 codes mapping to ascii names."""
     mapping: dict[str, str] = {}
@@ -19,6 +20,7 @@ def load_admin1_codes(filepath: str) -> dict[str, str]:
                 name = parts[2] if len(parts) > 2 and parts[2] else parts[1]
                 mapping[code] = name
     return mapping
+
 
 def load_country_info(filepath: str) -> dict[str, str]:
     """Loads country ISO to Country Name mapping."""
@@ -37,6 +39,7 @@ def load_country_info(filepath: str) -> dict[str, str]:
                 country_name = parts[4]
                 mapping[iso] = country_name
     return mapping
+
 
 def seed_database() -> None:
     """Main execution point to load city data into the database."""
@@ -79,7 +82,8 @@ def seed_database() -> None:
                     continue
 
                 geonameid = int(parts[0])
-                name = parts[2] if parts[2] else parts[1] # ascii name or local name
+                name = parts[2] if parts[2] else parts[
+                    1]  # ascii name or local name
                 lat = parts[4]
                 lon = parts[5]
                 country_code = parts[8]
@@ -94,9 +98,8 @@ def seed_database() -> None:
                 full_admin_code = f"{country_code}.{admin1_code}"
                 admin_name = admin1_mapping.get(full_admin_code, admin1_code)
 
-                batch_data.append((
-                    geonameid, name, admin_name, country_name, wkt_string, population
-                ))
+                batch_data.append((geonameid, name, admin_name, country_name,
+                                   wkt_string, population))
 
                 if len(batch_data) >= batch_size:
                     cursor.executemany(insert_sql, batch_data)
@@ -111,6 +114,7 @@ def seed_database() -> None:
             total_processed += len(batch_data)
 
         print(f"Successfully seeded {total_processed} cities.")
+
 
 if __name__ == "__main__":
     seed_database()
