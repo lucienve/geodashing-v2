@@ -261,4 +261,34 @@ class RerollServiceTest extends TestCase
         $longReason = str_repeat('a', 100);
         $service->rerollDashpoint(1, 'GD002-AAAA', $longReason);
     }
+
+    #[Test]
+    public function resolveUvBinaryFromConfigSection(): void
+    {
+        $configWithUv = [
+            'config' => [
+                'UV_BIN' => '/custom/path/to/uv',
+            ],
+        ];
+        $service = new RerollService($this->pdoMock, null, $configWithUv);
+        $this->assertEquals('/custom/path/to/uv', $service->resolveUvBinary());
+    }
+
+    #[Test]
+    public function buildRerollCommandUsesUvAndOutputFile(): void
+    {
+        $configWithUv = [
+            'config' => [
+                'UV_BIN' => '/custom/uv',
+            ],
+        ];
+        $service = new RerollService($this->pdoMock, null, $configWithUv);
+        $cmd = $service->buildRerollCommand(51.5074, -0.1278, 10.0, '/tmp/test_out.json');
+
+        $this->assertStringContainsString('/custom/uv', $cmd);
+        $this->assertStringContainsString('run --project', $cmd);
+        $this->assertStringContainsString('UV_CACHE_DIR=/tmp/uv-cache', $cmd);
+        $this->assertStringContainsString('--output-file', $cmd);
+        $this->assertStringContainsString('/tmp/test_out.json', $cmd);
+    }
 }

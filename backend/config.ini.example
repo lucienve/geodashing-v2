@@ -1,3 +1,7 @@
+[config]
+; Path to the uv binary if installed in a non-standard location
+UV_BIN = "/home/lucienve/.local/bin/uv"
+
 [database]
 DB_HOST = "127.0.0.1"
 DB_PORT = "3306"

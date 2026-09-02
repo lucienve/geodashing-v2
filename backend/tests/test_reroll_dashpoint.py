@@ -1,6 +1,9 @@
 """Unit tests for the backend reroll_dashpoint spatial module."""
 
+import json
 import math
+import pathlib
+import typing
 
 import geopandas as gpd
 import pytest
@@ -73,3 +76,42 @@ def test_find_valid_reroll_point(monkeypatch: pytest.MonkeyPatch) -> None:
     dist = backend.scripts.reroll_dashpoint.haversine_distance_km(
         origin[0], origin[1], new_lat, new_lon)
     assert 0.1 <= dist <= max_radius_km
+
+
+def test_main_with_output_file(monkeypatch: pytest.MonkeyPatch,
+                               tmp_path: pathlib.Path) -> None:
+    """Verifies CLI main function writes output to specified --output-file."""
+    output_file = tmp_path / "reroll_out.json"
+
+    def mock_build_spatial_filter(*_args: typing.Any,
+                                  **_kwargs: typing.Any) -> typing.Any:
+        return None
+
+    def mock_find_valid_reroll_point(
+            *_args: typing.Any, **_kwargs: typing.Any) -> tuple[float, float]:
+        return 51.51, -0.12
+
+    monkeypatch.setattr("backend.scripts.generate_game.build_spatial_filter",
+                        mock_build_spatial_filter)
+    monkeypatch.setattr(
+        "backend.scripts.reroll_dashpoint.find_valid_reroll_point",
+        mock_find_valid_reroll_point)
+
+    test_args = [
+        "reroll_dashpoint.py",
+        "--lat",
+        "51.5074",
+        "--lon",
+        "-0.1278",
+        "--output-file",
+        str(output_file),
+    ]
+    monkeypatch.setattr("sys.argv", test_args)
+
+    backend.scripts.reroll_dashpoint.main()
+
+    assert output_file.exists()
+    data = json.loads(output_file.read_text(encoding="utf-8"))
+    assert data["status"] == "success"
+    assert data["lat"] == 51.51
+    assert data["lon"] == -0.12

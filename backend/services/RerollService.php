@@ -205,6 +205,106 @@ class RerollService
     }
 
     /**
+     * Resolves the UV binary path from configuration, known system locations, or PATH.
+     *
+     * @return string|null
+     */
+    public function resolveUvBinary(): ?string
+    {
+        $configured = $this->config['config']['UV_BIN']
+            ?? ($this->config['system']['UV_BIN']
+            ?? ($this->config['reroll']['UV_BIN']
+            ?? null));
+
+        if ($configured !== null && $configured !== '') {
+            $configured = trim((string)$configured, "\"' ");
+            if ($configured !== '') {
+                return $configured;
+            }
+        }
+
+        $candidates = [
+            '/home/lucienve/.local/bin/uv',
+            '/usr/local/bin/uv',
+            '/usr/bin/uv',
+        ];
+        foreach ($candidates as $cand) {
+            if (file_exists($cand) && is_executable($cand)) {
+                return $cand;
+            }
+        }
+
+        $whichUv = trim((string)shell_exec('command -v uv 2>/dev/null || which uv 2>/dev/null'));
+        if ($whichUv !== '' && file_exists($whichUv) && is_executable($whichUv)) {
+            return $whichUv;
+        }
+
+        return null;
+    }
+
+    /**
+     * Builds the execution command for relocating a dashpoint.
+     *
+     * @param float $origLat
+     * @param float $origLon
+     * @param float $maxRadiusKm
+     * @param string $tempFile
+     * @return string
+     */
+    public function buildRerollCommand(
+        float $origLat,
+        float $origLon,
+        float $maxRadiusKm,
+        string $tempFile
+    ): string {
+        $projectRoot = dirname(__DIR__, 2);
+        $scriptPath = __DIR__ . '/../scripts/reroll_dashpoint.py';
+        $landZipPath = $projectRoot . '/data/ne_10m_land.zip';
+        $lakesZipPath = $projectRoot . '/data/ne_10m_lakes.zip';
+
+        $uvBin = $this->resolveUvBinary();
+        if ($uvBin !== null) {
+            return sprintf(
+                'UV_CACHE_DIR=/tmp/uv-cache PYTHONPATH=%s %s run --project %s python %s'
+                . ' --lat %F --lon %F --max-radius-km %F --land-zip %s --lakes-zip %s --output-file %s 2>&1',
+                escapeshellarg($projectRoot),
+                escapeshellarg($uvBin),
+                escapeshellarg($projectRoot),
+                escapeshellarg($scriptPath),
+                $origLat,
+                $origLon,
+                $maxRadiusKm,
+                escapeshellarg($landZipPath),
+                escapeshellarg($lakesZipPath),
+                escapeshellarg($tempFile)
+            );
+        }
+
+        $pythonBin = $projectRoot . '/.venv/bin/python';
+        if (!file_exists($pythonBin)) {
+            $pythonBinWin = $projectRoot . '/.venv/Scripts/python.exe';
+            if (file_exists($pythonBinWin)) {
+                $pythonBin = $pythonBinWin;
+            } else {
+                $pythonBin = 'python3';
+            }
+        }
+
+        return sprintf(
+            'PYTHONPATH=%s %s %s --lat %F --lon %F --max-radius-km %F --land-zip %s --lakes-zip %s --output-file %s 2>&1',
+            escapeshellarg($projectRoot),
+            escapeshellarg($pythonBin),
+            escapeshellarg($scriptPath),
+            $origLat,
+            $origLon,
+            $maxRadiusKm,
+            escapeshellarg($landZipPath),
+            escapeshellarg($lakesZipPath),
+            escapeshellarg($tempFile)
+        );
+    }
+
+    /**
      * Executes the Python reroll CLI script. Protected for unit test overriding.
      *
      * @param float $origLat
@@ -223,38 +323,45 @@ class RerollService
             ];
         }
 
-        $pythonBin = __DIR__ . '/../../.venv/bin/python';
-        if (!file_exists($pythonBin)) {
-            $pythonBin = 'python3';
-        }
         $projectRoot = dirname(__DIR__, 2);
-        $scriptPath = __DIR__ . '/../scripts/reroll_dashpoint.py';
         $landZipPath = $projectRoot . '/data/ne_10m_land.zip';
         $lakesZipPath = $projectRoot . '/data/ne_10m_lakes.zip';
-        $cmd = sprintf(
-            'PYTHONPATH=%s %s %s --lat %f --lon %f --max-radius-km %f --land-zip %s --lakes-zip %s 2>&1',
-            escapeshellarg($projectRoot),
-            escapeshellarg($pythonBin),
-            escapeshellarg($scriptPath),
-            $origLat,
-            $origLon,
-            $maxRadiusKm,
-            escapeshellarg($landZipPath),
-            escapeshellarg($lakesZipPath)
-        );
 
-        $output = [];
-        $returnCode = 0;
-        exec($cmd, $output, $returnCode);
-
-        $jsonStr = implode("\n", $output);
-        $result = json_decode($jsonStr, true);
-
-        if ($returnCode !== 0 || !is_array($result) || ($result['status'] ?? '') !== 'success') {
-            $errMsg = $result['message'] ?? ($jsonStr ?: 'Unknown Python script failure');
-            throw new Exception("Failed to relocate dashpoint on land: " . $errMsg);
+        if (!file_exists($landZipPath) || !is_readable($landZipPath)) {
+            throw new Exception("Land shapefile not found or unreadable at {$landZipPath}.");
+        }
+        if (!file_exists($lakesZipPath) || !is_readable($lakesZipPath)) {
+            throw new Exception("Lakes shapefile not found or unreadable at {$lakesZipPath}.");
         }
 
-        return $result;
+        $tempFile = tempnam(sys_get_temp_dir(), 'gd_reroll_');
+        if ($tempFile === false) {
+            throw new Exception("Failed to allocate temporary output file for dashpoint reroll.");
+        }
+
+        try {
+            $cmd = $this->buildRerollCommand($origLat, $origLon, $maxRadiusKm, $tempFile);
+
+            $output = [];
+            $returnCode = 0;
+            exec($cmd, $output, $returnCode);
+
+            $fileContent = file_exists($tempFile) ? (file_get_contents($tempFile) ?: '') : '';
+            $result = json_decode($fileContent, true);
+
+            if ($returnCode !== 0 || !is_array($result) || ($result['status'] ?? '') !== 'success') {
+                $outputLog = implode("\n", $output);
+                $errMsg = (is_array($result) && !empty($result['message']))
+                    ? $result['message']
+                    : ($outputLog ?: 'Unknown Python script failure');
+                throw new Exception("Failed to relocate dashpoint on land: " . $errMsg);
+            }
+
+            return $result;
+        } finally {
+            if (file_exists($tempFile)) {
+                @unlink($tempFile);
+            }
+        }
     }
 }

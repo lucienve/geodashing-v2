@@ -147,6 +147,10 @@ def main() -> None:
     parser.add_argument("--verbose",
                         action="store_true",
                         help="Print debug/progress messages to stdout")
+    parser.add_argument("--output-file",
+                        type=str,
+                        default=None,
+                        help="Optional file path to write output JSON to")
 
     args = parser.parse_args()
 
@@ -159,9 +163,18 @@ def main() -> None:
                                                    verbose=args.verbose)
 
         output = {"status": "success", "lat": new_lat, "lon": new_lon}
+        if args.output_file:
+            with open(args.output_file, "w", encoding="utf-8") as f:
+                json.dump(output, f)
         print(json.dumps(output))
     except (RuntimeError, ValueError, FileNotFoundError) as e:
         output = {"status": "error", "message": str(e)}
+        if args.output_file:
+            try:
+                with open(args.output_file, "w", encoding="utf-8") as f:
+                    json.dump(output, f)
+            except OSError:
+                pass
         print(json.dumps(output), file=sys.stderr)
         sys.exit(1)
 
