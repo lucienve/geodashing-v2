@@ -14,7 +14,7 @@ You are working on the Geodashing V2 project. You must strictly adhere to these 
 ## 2. Infrastructure Target Versions
 Ensure all code and syntax is explicitly compatible with the following versions:
 - **PHP:** `8.3.6`
-- **MySQL:** `8.4.8`
+- **MySQL:** `8.4`
 - **Python:** `3.14` (Pinned via `.python-version`). `uv` (Astral) MUST be used to manage Python 3.14 runtimes, `pyproject.toml` dependencies, and the `.venv` virtual environment via `uv sync`. Note: when fetching the installer via curl, the `-L` flag (`curl -LsSf https://astral.sh/uv/install.sh | sh`) is required to follow redirects.
 
 ## 3. Backend Directives: Python Architecture
@@ -45,4 +45,3 @@ Ensure all code and syntax is explicitly compatible with the following versions:
 - **Production Environment:** The live server is isolated and completely unreachable by the agent (this antigravity instance runs strictly on a local development machine with no access to production servers, databases, or live environment data).
   - **No Direct Operations:** The agent must never attempt to run shell commands on production, execute database queries against production, or request credentials/connections to production.
   - **Human Operator Orchestration:** If diagnostic data, schema changes, or database modifications from production are required, the agent must provide the precise reasoning, the exact SQL scripts, or the explicit CLI commands for the human operator to manually execute on the production environment and transfer the results/data back into this conversation.
-
