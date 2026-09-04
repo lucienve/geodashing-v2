@@ -352,7 +352,7 @@ def _get_eval_config(
 
     config = configparser.ConfigParser()
     config.read(cfg_p)
-    judge_model = "gemini-3.7-flash"
+    judge_model = "gemini-3.8-flash"
     if 'gemini' in config and 'GEMINI_EVAL_MODEL' in config['gemini']:
         val = config['gemini']['GEMINI_EVAL_MODEL']
         if val:

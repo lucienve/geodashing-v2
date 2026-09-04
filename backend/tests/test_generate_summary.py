@@ -329,7 +329,7 @@ def test_generate_summary_with_thinking_level(
                      read_data="""
 [gemini]
 GEMINI_API_KEY = "test-key"
-GEMINI_MODEL = "gemini-3.7-flash"
+GEMINI_MODEL = "gemini-3.8-flash"
 GEMINI_THINKING_LEVEL = "medium"
 GEMINI_PROJECT_ID = "test-proj"
 [mail]
@@ -343,7 +343,7 @@ def test_configure_environment_full(
     ai_config = backend.scripts.generate_summary.configure_environment(
         "/fake/config.ini")
 
-    assert ai_config["model_name"] == "gemini-3.7-flash"
+    assert ai_config["model_name"] == "gemini-3.8-flash"
     assert ai_config["project_id"] == "test-proj"
     assert ai_config["thinking_level"] == "medium"
 

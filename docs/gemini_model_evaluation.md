@@ -26,10 +26,10 @@ The test suite respects the standard config lookup logic. Ensure your [config.in
 ```ini
 [gemini]
 GEMINI_API_KEY = "your-api-key"
-GEMINI_MODEL = "gemini-3.7-flash"  # The candidate model being validated
+GEMINI_MODEL = "gemini-3.8-flash"  # The candidate model being validated
 GEMINI_THINKING_LEVEL = "medium"   # Configurable thinking level (low/medium/high)
 GEMINI_PROJECT_ID = "your-gcp-project-id"  # For project-level quota billing
-GEMINI_EVAL_MODEL = "gemini-3.7-flash"  # The locked judge model (optional)
+GEMINI_EVAL_MODEL = "gemini-3.8-flash"  # The locked judge model (optional)
 ```
 
 Alternatively, you can export `GEMINI_API_KEY` and `GOOGLE_APPLICATION_CREDENTIALS` into your shell environment variables.
@@ -62,7 +62,7 @@ A custom Python `HTMLParser` parses the generated HTML summary to enforce the fo
 *   **Negative Checks:** Asserts that placeholder tokens like `[Location]` or the system username `lucienve` do not appear in the generated content.
 
 ### Tier 2: LLM-as-a-Judge
-A separate judge model (defined by `GEMINI_EVAL_MODEL` or falling back to `gemini-3.7-flash`) evaluates the generated summary against the raw input text. The judge returns a structured JSON object scoring three criteria from 1 to 5:
+A separate judge model (defined by `GEMINI_EVAL_MODEL` or falling back to `gemini-3.8-flash`) evaluates the generated summary against the raw input text. The judge returns a structured JSON object scoring three criteria from 1 to 5:
 *   **Tone:** Observational, enthusiastic, and community-focused.
 *   **Accuracy:** Matches input score rankings and winner claims exactly.
 *   **Narrative Quality:** Checks if the featured quotes and waypoints sampling list are well-selected and flow naturally.

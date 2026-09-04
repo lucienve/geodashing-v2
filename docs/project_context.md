@@ -433,8 +433,7 @@ The application allows users to participate in global geographic games where the
 - Reconfigured GitHub Actions CI workflow in [.github/workflows/ci-verification.yml](.github/workflows/ci-verification.yml) to use `astral-sh/setup-uv@v5` with `enable-cache: true`, `uv sync --all-groups`, and `uv run pre-commit run --all-files`.
 - Updated production cron configuration in [docs/admin_guide.md](docs/admin_guide.md) and [docs/game_rollover.md](docs/game_rollover.md) to document `/etc/cron.d/geodashing-turnover` using `uv run python -m backend.scripts.game_utils --rollover`.
 
-
-
-
-
-
+### 63. Gemini 3.8 Flash Evaluation and Adoption
+- Evaluated Google GenAI's `gemini-3.8-flash` model on the end-to-end benchmark evaluation suite ([test_summary_evaluation.py](backend/tests/test_summary_evaluation.py)) across 4 historical game datasets ([summary_examples](data/summary_examples/)).
+- Confirmed 100% test pass rate with perfect 5/5 scores across all evaluation metrics (Tone, Accuracy, and Narrative Quality) as evaluated by LLM-as-a-Judge (`gemini-3.7-flash`), and full compliance with deterministic HTML rules (semantic tags, self-closing void tags, absolute SPA links, and thumbnail-wrapped photos).
+- Upgraded the default AI summarizer model reference to `gemini-3.8-flash` across configurations ([config.ini.example](backend/config.ini.example)), unit test configurations ([test_generate_summary.py](backend/tests/test_generate_summary.py)), fallback judge settings in the evaluation suite ([test_summary_evaluation.py](backend/tests/test_summary_evaluation.py)), and administrative documentation ([admin_guide.md](docs/admin_guide.md), [gemini_model_evaluation.md](docs/gemini_model_evaluation.md)).
