@@ -129,7 +129,7 @@ window.initMap = function () {
         // Google Maps style blue dot SVG for current location
         const userLocationWrapper = document.createElement("div");
         userLocationWrapper.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" style="filter: drop-shadow(0px 0px 4px rgba(0,0,0,0.4));">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="marker-pin-svg">
                 <circle cx="12" cy="12" r="10" fill="rgba(66, 133, 244, 0.3)" />
                 <circle cx="12" cy="12" r="6" fill="#4285F4" stroke="#ffffff" stroke-width="2"/>
             </svg>
@@ -397,12 +397,12 @@ window.initMap = function () {
         const toggleBtn = document.getElementById('radar-hud-toggle');
         const hudElement = document.getElementById('radar-hud');
         if (toggleBtn && hudElement) {
-            toggleBtn.onclick = (e) => {
+            toggleBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const isCollapsed = hudElement.classList.toggle('collapsed');
                 toggleBtn.innerHTML = isCollapsed ? '▼' : '▲';
                 toggleBtn.setAttribute('aria-label', isCollapsed ? 'Expand panel' : 'Collapse panel');
-            };
+            });
         }
 
         // Router-aware sleep/wake controller
@@ -421,37 +421,25 @@ window.initMap = function () {
 
         // Add Custom "My Location" Button mapped securely to the Google Control Position array
         const locationButton = document.createElement("button");
+        locationButton.className = "map-location-btn";
 
         // Material Design "My Location" SVG
-        const myLocationSvg = `<svg focusable="false" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 18px; height: 18px; fill: currentColor; display: block; margin: auto;"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"></path></svg>`;
+        const myLocationSvg = `<svg focusable="false" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="map-location-icon"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"></path></svg>`;
 
         locationButton.innerHTML = myLocationSvg;
-        locationButton.style.backgroundColor = "rgba(0,0,0,0.8)";
-        locationButton.style.border = "1px solid var(--accent-amber)";
-        locationButton.style.borderRadius = "4px";
-        locationButton.style.color = "var(--accent-amber)";
-        locationButton.style.cursor = "pointer";
-        locationButton.style.margin = "10px";
-        locationButton.style.padding = "10px";
-        locationButton.style.width = "40px";
-        locationButton.style.height = "40px";
-        locationButton.style.display = "flex";
-        locationButton.style.alignItems = "center";
-        locationButton.style.justifyContent = "center";
-        locationButton.style.transition = "background-color 0.2s, opacity 0.2s";
         locationButton.title = "Recenter Map on Current Location";
 
         map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(locationButton);
 
         locationButton.addEventListener("click", () => {
-            locationButton.style.opacity = "0.5";
+            locationButton.classList.add("locating");
             geoProvider.getCurrentPosition((position) => {
                 map.panTo({ lat: position.coords.latitude, lng: position.coords.longitude });
-                locationButton.style.opacity = "1";
+                locationButton.classList.remove("locating");
             }, () => {
-                locationButton.style.backgroundColor = "var(--accent-red)";
-                locationButton.style.opacity = "1";
-                setTimeout(() => locationButton.style.backgroundColor = "rgba(0,0,0,0.8)", 2000);
+                locationButton.classList.remove("locating");
+                locationButton.classList.add("error");
+                setTimeout(() => locationButton.classList.remove("error"), 2000);
             });
         });
     }

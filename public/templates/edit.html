@@ -2,11 +2,11 @@
     <a href="#home" class="close-btn" aria-label="Close View">&times;</a>
     <h2>EDIT LOG</h2>
 
-    <div class="dash-block" style="text-align:center; padding: 1.5rem; margin-bottom:1.5rem;">
-        <h3 style="color:var(--accent-green); font-size:1.4rem; margin-bottom:0.5rem; letter-spacing:2px;">
+    <div class="dash-hero">
+        <h3 class="dash-hero-title-sm">
             DASHPOINT LOGGED
         </h3>
-        <p style="color:var(--text-muted); font-size:0.8rem; letter-spacing:1px;" id="edit-dp-coord-label">
+        <p class="dash-hero-subtitle" id="edit-dp-coord-label">
             EDITING DASHPOINT LOG
         </p>
     </div>
@@ -15,30 +15,28 @@
         <input type="hidden" id="edit_dashpoint_id" name="dashpoint_id">
         <input type="hidden" id="edit_kept_photos" name="kept_photos" value="[]">
 
-        <div class="dash-block" style="margin-bottom: 2rem;">
+        <div class="dash-block edit-block">
             <label for="edit-notes">NOTES (Max 10k chars)</label>
-            <textarea id="edit-notes" name="notes" class="data-input" rows="5" placeholder="Enter visit notes..."
-                required style="resize:vertical;"></textarea>
+            <textarea id="edit-notes" name="notes" class="data-input textarea-resizable" rows="5" placeholder="Enter visit notes..."
+                required></textarea>
         </div>
 
-        <div class="dash-block" style="margin-bottom: 2rem;">
-            <label><input type="checkbox" id="edit_send_email" name="send_email" value="1" checked style="margin-right:0.5rem;"> EMAIL UPDATED LOG</label>
+        <div class="dash-block edit-block">
+            <label><input type="checkbox" id="edit_send_email" name="send_email" value="1" checked class="checkbox-inline"> EMAIL UPDATED LOG</label>
         </div>
 
-        <div class="dash-block" style="margin-bottom: 2rem;">
+        <div class="dash-block edit-block">
             <label>PHOTOS</label>
-            <div id="edit-existing-photos"
-                style="display:grid; grid-template-columns: 1fr; gap:1rem; margin-top:1rem; min-height:50px;">
-                <p
-                    style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:1rem; border:1px dashed var(--border-color);">
+            <div id="edit-existing-photos" class="edit-photos-grid">
+                <p class="edit-photos-empty">
                     [ NO PHOTOS ]</p>
             </div>
-            <p style="color:var(--accent-amber); font-size:0.75rem; text-align:center; margin-top:0.5rem;">Click [X] to remove photo, or tap to edit/add caption.</p>
+            <p class="edit-photos-tip">Click [X] to remove photo, or tap to edit/add caption.</p>
         </div>
 
-        <div class="dash-block" style="margin-bottom: 2rem;">
+        <div class="dash-block edit-block">
             <label>ATTACH NEW PHOTOS (Max 10 total)</label>
-            <input type="file" id="edit-photos" name="photos[]" multiple accept="image/*" style="display: none;">
+            <input type="file" id="edit-photos" name="photos[]" multiple accept="image/*" class="file-input-hidden">
             <button type="button" class="btn btn-secondary btn-add-photos" id="btn-add-edit-photos">
                 ADD NEW PHOTOS
             </button>
@@ -49,8 +47,8 @@
             </div>
         </div>
 
-        <div id="edit-status" style="margin-bottom:1.5rem; text-align:center; font-size:0.85rem;"></div>
+        <div id="edit-status" class="status-message"></div>
 
-        <button type="submit" class="btn btn-primary" id="btn-submit-edit" style="width:100%;">SAVE EDITS</button>
+        <button type="submit" class="btn btn-primary btn-full-width" id="btn-submit-edit">SAVE EDITS</button>
     </form>
 </div>

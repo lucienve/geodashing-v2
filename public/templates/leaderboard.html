@@ -1,11 +1,11 @@
 <div class="template-view" id="view-leaderboard">
     <a href="#home" class="close-btn" aria-label="Close View">&times;</a>
     <h2>GLOBAL RANKINGS</h2>
-    <div class="dash-block" style="text-align:center; padding: 1.5rem; margin-bottom:1.5rem;">
-        <h3 style="color:var(--accent-green); font-size:1.4rem; margin-bottom:0.5rem; letter-spacing:2px;">
+    <div class="dash-block dash-hero">
+        <h3 class="dash-hero-title-sm">
             TOP GEODASHERS
         </h3>
-        <p id="leaderboard-cycle-title" style="color:var(--text-muted); font-size:0.8rem; letter-spacing:1px; text-transform:uppercase;">
+        <p id="leaderboard-cycle-title" class="dash-hero-subtitle-caps">
             CURRENT GAME CYCLE
         </p>
     </div>
@@ -18,20 +18,20 @@
     </div>
 
     <!-- Leaderboard Table -->
-    <div class="dash-block" style="padding:0;">
-        <table class="data-table" style="width:100%; text-align:left; border-collapse: collapse; font-size: 0.85rem;">
+    <div class="dash-block table-dash-block">
+        <table class="data-table data-table-full">
             <thead>
-                <tr style="border-bottom:1px solid #333;">
-                    <th style="padding:10px; color:var(--text-muted); width: 15%;">#</th>
-                    <th style="padding:10px; color:var(--text-muted); width: 45%;">GEODASHER</th>
-                    <th style="padding:10px; color:var(--accent-amber); text-align:right; width: 20%;">PT</th>
-                    <th style="padding:10px; color:var(--text-muted); text-align:right; width: 20%;">LOGS</th>
+                <tr class="table-header-row">
+                    <th class="th-rank">#</th>
+                    <th class="th-user">GEODASHER</th>
+                    <th class="th-points">PT</th>
+                    <th class="th-logs">LOGS</th>
                 </tr>
             </thead>
             <!-- Rows injected by javascript -->
             <tbody id="leaderboard-tbody">
                 <tr>
-                    <td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);">
+                    <td colspan="4" class="td-loading">
                         Loading leaderboard...
                     </td>
                 </tr>
@@ -40,5 +40,5 @@
     </div>
 
     <!-- Bottom padding -->
-    <div style="height:20px;"></div>
+    <div class="content-spacer"></div>
 </div>

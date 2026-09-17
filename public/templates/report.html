@@ -12,15 +12,15 @@
                 readonly>
         </div>
 
-        <div class="form-group" style="margin-bottom: 1rem;">
-            <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; font-size: 0.9rem;">
+        <div class="form-group form-group-compact">
+            <label class="checkbox-label-flex">
                 <input type="checkbox" id="input-is-attempt" name="is_attempt" value="true">
                 Log as attempt only (for 0 pts)
             </label>
         </div>
 
-        <div class="form-group" style="margin-bottom: 1rem;">
-            <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; font-size: 0.9rem;">
+        <div class="form-group form-group-compact">
+            <label class="checkbox-label-flex">
                 <input type="checkbox" id="input-suppress-email" name="suppress_email" value="true">
                 Placeholder log (suppress email)
             </label>
@@ -51,7 +51,7 @@
             <label>Visit photos [OPTIONAL]</label>
             <small class="photo-limit-text">Limit 10 Photos</small>
 
-            <input type="file" id="input-photos" name="photos[]" accept="image/*" multiple style="display: none;">
+            <input type="file" id="input-photos" name="photos[]" accept="image/*" multiple class="file-input-hidden">
 
             <button type="button" class="btn btn-secondary btn-add-photos" id="btn-add-photos">
                 ADD PHOTOS

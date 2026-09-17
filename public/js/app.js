@@ -265,7 +265,7 @@ function initRouting() {
         });
 
         if (templatePath === undefined) {
-            contentDiv.innerHTML = '<div class="template-view"><h2>PAGE NOT FOUND</h2><p class="data-input" style="color:var(--accent-red)">Could not locate that page.</p></div>';
+            contentDiv.innerHTML = '<div class="template-view"><h2>PAGE NOT FOUND</h2><p class="data-input text-error">Could not locate that page.</p></div>';
             contentDiv.classList.add('overlay-active');
             return;
         }
@@ -303,7 +303,7 @@ function initRouting() {
 
         } catch (err) {
             console.error("Router Error: ", err);
-            contentDiv.innerHTML = '<div class="template-view"><h2>NETWORK ERROR</h2><p class="data-input" style="color:var(--accent-red)">Oops! Having trouble communicating with the server.</p></div>';
+            contentDiv.innerHTML = '<div class="template-view"><h2>NETWORK ERROR</h2><p class="data-input text-error">Oops! Having trouble communicating with the server.</p></div>';
             contentDiv.classList.add('overlay-active');
             contentDiv.style.opacity = '1';
         }

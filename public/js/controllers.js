@@ -104,7 +104,7 @@ document.addEventListener('routeLoaded', (e) => {
         }
 
         if (!dpId) {
-            document.getElementById('dp-visits-container').innerHTML = "<span style='color:var(--accent-red);'>[ ERROR: No dashpoint ID provided ]</span>";
+            document.getElementById('dp-visits-container').innerHTML = "<span class='text-error'>[ ERROR: No dashpoint ID provided ]</span>";
             return;
         }
 
@@ -299,7 +299,7 @@ document.addEventListener('routeLoaded', (e) => {
 
                     // Generate the beautiful HTML5 Ledgers directly from MySQL bounds
                     if (dp.visits.length === 0) {
-                        visitsContainer.innerHTML = `<div style="text-align:center; padding:1.5rem; color:var(--text-muted); border:1px solid #333; margin-top:1rem;">ZERO VISITS. <br><br>Dashpoint is unvisited.</div>`;
+                        visitsContainer.innerHTML = `<div class="visits-empty">ZERO VISITS. <br><br>Dashpoint is unvisited.</div>`;
                     } else {
                         visitsContainer.innerHTML = ''; // Purge "LOADING"
 
@@ -310,57 +310,54 @@ document.addEventListener('routeLoaded', (e) => {
 
                             // Generate a DOM block to separate the rows.
                             const visitDiv = document.createElement('div');
-                            visitDiv.style.border = '1px solid var(--text-muted)';
-                            visitDiv.style.marginBottom = '1rem';
-                            visitDiv.style.padding = '1rem';
-                            visitDiv.style.background = 'rgba(0, 0, 0, 0.4)';
+                            visitDiv.className = 'visit-card';
 
                             const isAttempt = visit.is_attempt == 1 || visit.is_attempt === true;
-                            const titleColor = isAttempt ? '#888' : 'var(--accent-amber)';
+                            const userColorClass = isAttempt ? 'other' : 'owner';
                             const scoreLabel = isAttempt ? 'ATTEMPT' : `+${visit.score_awarded} PT`;
-                            const scoreColor = isAttempt ? '#888' : 'var(--accent-green)';
-                            const scoreBorder = isAttempt ? '1px solid #888' : '1px solid var(--accent-green)';
+                            const scoreClass = isAttempt ? 'attempt' : 'claim';
+                            const attemptHeaderClass = isAttempt ? ' is-attempt' : '';
 
                             let html = `
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; opacity:${isAttempt ? '0.7' : '1'};">
-                                    <span style="font-size:0.9rem; color:${titleColor}; font-weight:bold;">${index + 1}. ${window.escapeHTML(visit.username)}</span>
-                                    <span style="font-size:0.8rem; color:${scoreColor}; border:${scoreBorder}; padding:2px 6px;">${scoreLabel}</span>
+                                <div class="visit-header${attemptHeaderClass}">
+                                    <span class="visit-user ${userColorClass}">${index + 1}. ${window.escapeHTML(visit.username)}</span>
+                                    <span class="visit-score-badge ${scoreClass}">${scoreLabel}</span>
                                 </div>
-                                <div style="color:#888; font-size:0.75rem; margin-bottom:1rem;">> LOG_TIME: ${tStr}</div>
+                                <div class="visit-meta-time">> LOG_TIME: ${tStr}</div>
                             `;
 
                             // Map the newly registered Spatial Temporal Edit constraint
                             if (visit.edited_at) {
                                 const ed = new Date(visit.edited_at);
                                 const edStr = `${ed.getFullYear()}.${(ed.getMonth() + 1).toString().padStart(2, '0')}.${ed.getDate().toString().padStart(2, '0')} @ ${ed.getHours().toString().padStart(2, '0')}:${ed.getMinutes().toString().padStart(2, '0')}`;
-                                html += `<div style="color:var(--accent-amber); font-size:0.75rem; margin-bottom:1rem;">> EDITED_AT: ${edStr}</div>`;
+                                html += `<div class="visit-meta-edited">> EDITED_AT: ${edStr}</div>`;
                             }
 
                             // We always show the VIEW DETAILS toggler to display the reported coordinates and distance
-                            html += `<button type="button" class="btn btn-secondary btn-toggle-details" style="width:100%; font-size:0.7rem;">VIEW DETAILS</button>`;
-                            html += `<div style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px dashed #444;">`;
+                            html += `<button type="button" class="btn btn-secondary btn-toggle-details btn-toggle-details-full">VIEW DETAILS</button>`;
+                            html += `<div class="visit-details-collapsible">`;
 
                             if (visit.reported_lat !== undefined && visit.reported_lon !== undefined && visit.distance_meters !== undefined) {
-                                html += `<div style="color:var(--text-main); font-size:0.8rem; margin-bottom:1rem;">> REPORTED LOCATION: ${parseFloat(visit.reported_lat).toFixed(5)}, ${parseFloat(visit.reported_lon).toFixed(5)}</div>`;
-                                html += `<div style="color:var(--text-main); font-size:0.8rem; margin-bottom:1rem;">> DISTANCE FROM DASHPOINT: ${visit.distance_meters}m</div>`;
+                                html += `<div class="visit-details-line">> REPORTED LOCATION: ${parseFloat(visit.reported_lat).toFixed(5)}, ${parseFloat(visit.reported_lon).toFixed(5)}</div>`;
+                                html += `<div class="visit-details-line">> DISTANCE FROM DASHPOINT: ${visit.distance_meters}m</div>`;
                             }
 
                             if (visit.notes && visit.notes.trim() !== '') {
-                                html += `<p style="color:#ddd; margin-bottom:1rem; font-style:italic;">"${window.escapeHTML(visit.notes)}"</p>`;
+                                html += `<p class="visit-notes-quote">"${window.escapeHTML(visit.notes)}"</p>`;
                             }
 
                             if (visit.photos && visit.photos.length > 0) {
-                                html += `<div style="display:grid; grid-template-columns: 1fr; gap:1rem;">`;
+                                html += `<div class="visit-photos-grid">`;
                                 visit.photos.forEach(photo => {
                                     let encodedUrl = encodeURI(photo.url);
                                     let thumbUrl = encodeURI(photo.thumb_url);
-                                    let imgHtml = `<img src="${thumbUrl}" class="log-photo" data-dpid="${window.escapeHTML(dp.id)}" data-url="${encodedUrl}" style="width:100%; height:auto; border:1px solid var(--accent-amber); cursor:pointer;" loading="lazy">`;
+                                    let imgHtml = `<img src="${thumbUrl}" class="log-photo visit-photo-img" data-dpid="${window.escapeHTML(dp.id)}" data-url="${encodedUrl}" loading="lazy">`;
 
                                     if (photo.lat !== null && photo.lon !== null && dp.lat !== undefined) {
                                         // Native JS Haversine Distance Mapper cleanly invoking the global SPA utility
                                         const distance = window.calculateDistance(photo.lat, photo.lon, dp.lat, dp.lon);
 
-                                        imgHtml += `<div style="text-align:center; font-size:0.75rem; color:var(--accent-green); margin-top:0.3rem;">[ EXIF GPS: ${photo.lat.toFixed(5)}, ${photo.lon.toFixed(5)} | DISTANCE FROM DASHPOINT: ${distance.toFixed(1)}m ]</div>`;
+                                        imgHtml += `<div class="visit-photo-exif">[ EXIF GPS: ${photo.lat.toFixed(5)}, ${photo.lon.toFixed(5)} | DISTANCE FROM DASHPOINT: ${distance.toFixed(1)}m ]</div>`;
                                     }
 
                                     let captionHtml = '';
@@ -368,7 +365,7 @@ document.addEventListener('routeLoaded', (e) => {
                                         captionHtml = `<div class="photo-caption-text">"${window.escapeHTML(photo.caption)}"</div>`;
                                     }
 
-                                    html += `<div style="margin-bottom: 0.5rem;">${imgHtml}${captionHtml}</div>`;
+                                    html += `<div class="visit-photo-card">${imgHtml}${captionHtml}</div>`;
                                 });
                                 html += `</div>`;
                             }
@@ -386,7 +383,7 @@ document.addEventListener('routeLoaded', (e) => {
                                             image_url: this.getAttribute('data-url')
                                         });
                                     }
-                                    window.open(this.getAttribute('data-url'), '_blank');
+                                    window.open(this.getAttribute('data-url'), '_blank', 'noopener,noreferrer');
                                 });
                             });
 
@@ -395,7 +392,7 @@ document.addEventListener('routeLoaded', (e) => {
                                 btn.addEventListener('click', function () {
                                     const nextEl = this.nextElementSibling;
                                     if (nextEl) {
-                                        const isHidden = nextEl.style.display === 'none';
+                                        const isHidden = window.getComputedStyle(nextEl).display === 'none';
                                         nextEl.style.display = isHidden ? 'block' : 'none';
                                         this.innerText = isHidden ? 'HIDE DETAILS' : 'VIEW DETAILS';
                                     }
@@ -406,12 +403,12 @@ document.addEventListener('routeLoaded', (e) => {
                         });
                     }
                 } else {
-                    if (visitsContainer) visitsContainer.innerHTML = `<span style='color:var(--accent-red);'>[-] Error: ${json.message}</span>`;
+                    if (visitsContainer) visitsContainer.innerHTML = `<span class='text-error'>[-] Error: ${json.message}</span>`;
                 }
             })
             .catch(err => {
                 console.error(err);
-                if (visitsContainer) visitsContainer.innerHTML = `<span style='color:var(--accent-red);'>[-] Network error.</span>`;
+                if (visitsContainer) visitsContainer.innerHTML = `<span class='text-error'>[-] Network error.</span>`;
             });
     }
 
@@ -686,16 +683,16 @@ document.addEventListener('routeLoaded', (e) => {
                 const logLength = logArea ? logArea.value.length : 0;
 
                 if (logLength === 0 || logLength > 10000) {
-                    feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Oops! Log text must be between 1 and 10,000 characters.</div>`;
+                    feedbackStatus.innerHTML = `<div class="alert alert-error">[-] Oops! Log text must be between 1 and 10,000 characters.</div>`;
                     return;
                 }
 
                 if (isNaN(userLat) || userLat < -90 || userLat > 90) {
-                    feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Oops! Latitude must be between -90 and 90 degrees.</div>`;
+                    feedbackStatus.innerHTML = `<div class="alert alert-error">[-] Oops! Latitude must be between -90 and 90 degrees.</div>`;
                     return;
                 }
                 if (isNaN(userLon) || userLon < -180 || userLon > 180) {
-                    feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Oops! Longitude must be between -180 and 180 degrees.</div>`;
+                    feedbackStatus.innerHTML = `<div class="alert alert-error">[-] Oops! Longitude must be between -180 and 180 degrees.</div>`;
                     return;
                 }
 
@@ -723,7 +720,7 @@ document.addEventListener('routeLoaded', (e) => {
 
                     // Reject log client-side before photo transfers if not an attempt
                     if (!isAttempt && distance > 100) {
-                        feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Too far away. You are <strong>${distance.toFixed(1)}m</strong> from the dashpoint. You must be within 100m.</div>`;
+                        feedbackStatus.innerHTML = `<div class="alert alert-error">[-] Too far away. You are <strong>${distance.toFixed(1)}m</strong> from the dashpoint. You must be within 100m.</div>`;
                         submitBtn.disabled = false;
                         submitBtn.innerText = "SUBMIT LOG";
                         return;
@@ -738,7 +735,7 @@ document.addEventListener('routeLoaded', (e) => {
                     }
                     const limitBytes = window.postSizeBytes || (25 * 1024 * 1024);
                     if (totalSize > limitBytes) {
-                        feedbackStatus.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Upload rejected: Total photo size (${(totalSize / 1024 / 1024).toFixed(1)}MB) exceeds the ${window.postMaxSize || '25M'} server limit. Please reduce image resolution or attach fewer photos.</div>`;
+                        feedbackStatus.innerHTML = `<div class="alert alert-error">[-] Upload rejected: Total photo size (${(totalSize / 1024 / 1024).toFixed(1)}MB) exceeds the ${window.postMaxSize || '25M'} server limit. Please reduce image resolution or attach fewer photos.</div>`;
                         submitBtn.disabled = false;
                         submitBtn.innerText = "SUBMIT LOG";
                         return;
@@ -755,9 +752,9 @@ document.addEventListener('routeLoaded', (e) => {
 
                     if (result.status === 'success') {
                         if (isAttempt) {
-                            feedbackStatus.innerHTML = `<div class="alert" style="color:var(--accent-amber); border:1px solid var(--accent-amber);">[+] Attempt logged. We saved your attempt at ${userLat.toFixed(5)}, ${userLon.toFixed(5)} (${result.distance.toFixed(1)}m away). You earned 0 points.</div>`;
+                            feedbackStatus.innerHTML = `<div class="alert alert-warning">[+] Attempt logged. We saved your attempt at ${userLat.toFixed(5)}, ${userLon.toFixed(5)} (${result.distance.toFixed(1)}m away). You earned 0 points.</div>`;
                         } else {
-                            feedbackStatus.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] Success! We logged your visit at ${userLat.toFixed(5)}, ${userLon.toFixed(5)} at a distance of ${result.distance.toFixed(1)}m from the point. You scored ${result.points} points!</div>`;
+                            feedbackStatus.innerHTML = `<div class="alert alert-success">[+] Success! We logged your visit at ${userLat.toFixed(5)}, ${userLon.toFixed(5)} at a distance of ${result.distance.toFixed(1)}m from the point. You scored ${result.points} points!</div>`;
                         }
 
                         // Capture the target before the form reset.
@@ -852,7 +849,7 @@ document.addEventListener('routeLoaded', (e) => {
                                 ✉ SEND SUBSCRIPTION EMAIL
                             </a>
                             <p class="verify-subscribe-fallback">
-                                <em>Trouble with the button?</em> Manually send a blank email to <strong style="color:var(--text-main);">dashers+subscribe@geodashing.org</strong> from your registered email address.
+                                <em>Trouble with the button?</em> Manually send a blank email to <strong class="text-primary-email">dashers+subscribe@geodashing.org</strong> from your registered email address.
                             </p>
                         </div>
                         `;
@@ -872,7 +869,7 @@ document.addEventListener('routeLoaded', (e) => {
             }
 
             if (urlArgs.includes('error=invalid_token') && loginFeedback) {
-                loginFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Error: Invalid or expired verification link.</div>`;
+                loginFeedback.innerHTML = `<div class="alert alert-error">[-] Error: Invalid or expired verification link.</div>`;
             }
 
             // Using double equals protects against weak-typed JSON coercion.
@@ -891,10 +888,10 @@ document.addEventListener('routeLoaded', (e) => {
                         resendBtn.disabled = true;
                         const resendRes = await API.resendVerification();
                         if (resendRes.status === 'success') {
-                            verifyFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] Success! Email sent successfully. Check your inbox.</div>`;
+                            verifyFeedback.innerHTML = `<div class="alert alert-success">[+] Success! Email sent successfully. Check your inbox.</div>`;
                             resendBtn.innerText = "Email Sent";
                         } else {
-                            verifyFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${resendRes.message}</div>`;
+                            verifyFeedback.innerHTML = `<div class="alert alert-error">[-] ERROR: ${resendRes.message}</div>`;
                             resendBtn.innerText = "Click here to resend validation email";
                             resendBtn.disabled = false;
                         }
@@ -949,7 +946,7 @@ document.addEventListener('routeLoaded', (e) => {
 
                 const res = await API.login(user, pass);
                 if (res.status === 'success') {
-                    loginFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] Login Successful.</div>`;
+                    loginFeedback.innerHTML = `<div class="alert alert-success">[+] Login Successful.</div>`;
                     if (typeof window.updateAuthState === 'function') window.updateAuthState();
 
                     // Route unverified users to the verify pane.
@@ -959,7 +956,7 @@ document.addEventListener('routeLoaded', (e) => {
                         setTimeout(() => window.location.hash = '#home', 800);
                     }
                 } else {
-                    loginFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${res.message}</div>`;
+                    loginFeedback.innerHTML = `<div class="alert alert-error">[-] ERROR: ${res.message}</div>`;
                     btn.disabled = false;
                     btn.innerText = "LOGIN";
                 }
@@ -1003,13 +1000,13 @@ document.addEventListener('routeLoaded', (e) => {
 
                 const res = await API.signup(user, email, pass, subscribe);
                 if (res.status === 'success') {
-                    signupFeedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] WELCOME: Account created.</div>`;
+                    signupFeedback.innerHTML = `<div class="alert alert-success">[+] WELCOME: Account created.</div>`;
                     if (typeof window.updateAuthState === 'function') window.updateAuthState();
 
                     // Route to the new verification pane.
                     setTimeout(() => window.location.reload(), 400);
                 } else {
-                    signupFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${res.message}</div>`;
+                    signupFeedback.innerHTML = `<div class="alert alert-error">[-] ERROR: ${res.message}</div>`;
                     signupBtn.disabled = false;
                     signupBtn.innerText = "CREATE ACCOUNT";
                 }
@@ -1030,10 +1027,10 @@ document.addEventListener('routeLoaded', (e) => {
                 const res = await API.requestPasswordReset(username);
 
                 if (res.status === 'success') {
-                    feedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] ${res.message}</div>`;
+                    feedback.innerHTML = `<div class="alert alert-success">[+] ${res.message}</div>`;
                     btn.innerText = "Email sent";
                 } else {
-                    feedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${res.message}</div>`;
+                    feedback.innerHTML = `<div class="alert alert-error">[-] ERROR: ${res.message}</div>`;
                     btn.disabled = false;
                     btn.innerText = "Send email";
                 }
@@ -1075,11 +1072,11 @@ document.addEventListener('routeLoaded', (e) => {
                 const res = await API.executePasswordReset(resetToken, newPass);
 
                 if (res.status === 'success') {
-                    feedback.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] SUCCESS: ${res.message}</div>`;
+                    feedback.innerHTML = `<div class="alert alert-success">[+] SUCCESS: ${res.message}</div>`;
                     resetBtn.innerText = "Password reset";
                     setTimeout(() => window.location.assign('#login'), 1500);
                 } else {
-                    feedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ERROR: ${res.message}</div>`;
+                    feedback.innerHTML = `<div class="alert alert-error">[-] ERROR: ${res.message}</div>`;
                     resetBtn.disabled = false;
                     resetBtn.innerText = "Reset password";
                 }
@@ -1121,52 +1118,50 @@ document.addEventListener('routeLoaded', (e) => {
             }
 
             let html = `
-                <div class="dash-block" style="margin-bottom: 2rem; border-top: 1px dashed var(--accent-green);">
-                    <h3 style="color:var(--accent-amber); font-size:1.8rem; margin-bottom:0.5rem; text-transform:uppercase;">${window.escapeHTML(u.username)}</h3>
-                    <div style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">
+                <div class="dash-block profile-card">
+                    <h3 class="profile-username">${window.escapeHTML(u.username)}</h3>
+                    <div class="profile-meta">
                         [ JOINED: ${new Date(u.created_at).toLocaleDateString()} ]
                     </div>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; border-top:1px dashed var(--text-muted); padding-top:1rem;">
-                        <div><strong style="color:var(--text-main);">TOTAL SCORE:</strong> ${u.lifetime_score} PT</div>
-                        <div><strong style="color:var(--text-main);">LIFETIME CLAIMS:</strong> ${totalFinds}</div>
+                    <div class="profile-stats-grid">
+                        <div><strong class="profile-stats-label">TOTAL SCORE:</strong> ${u.lifetime_score} PT</div>
+                        <div><strong class="profile-stats-label">LIFETIME CLAIMS:</strong> ${totalFinds}</div>
                     </div>
                 </div>
             `;
 
             if (data.games && data.games.length > 0) {
-                html += `<h4 style="color:var(--text-main); margin-bottom:1rem; text-transform:uppercase;">Historical Activity</h4>`;
+                html += `<h4 class="profile-section-title">Historical Activity</h4>`;
 
                 data.games.forEach(game => {
                     html += `
-                        <div class="dash-block" style="margin-bottom:1rem; border-left:3px solid var(--accent-amber);">
-                            <div style="display:flex; justify-content:space-between; margin-bottom:1rem;">
-                                <strong style="color:#ddd;">Game ${game.game_id} 
+                        <div class="dash-block profile-game-card">
+                            <div class="profile-game-header">
+                                <strong class="profile-game-title">Game ${game.game_id} 
                                     ${game.title ? `- ${window.escapeHTML(game.title)}` : ''} 
-                                    ${game.is_active ? `<span style="color:var(--accent-amber); font-size:0.8rem; margin-left:0.5rem;">[ACTIVE]</span>` : ''}
+                                    ${game.is_active ? `<span class="profile-badge-active">[ACTIVE]</span>` : ''}
                                 </strong>
-                                <span style="color:var(--accent-green);">${game.game_total_score} PT</span>
+                                <span class="profile-game-score">${game.game_total_score} PT</span>
                             </div>
-                            <div style="font-size:0.9rem; color:var(--text-muted); border-top:1px dashed #333; padding-top:0.5rem;">
+                            <div class="profile-game-meta">
                                 ${game.visits ? game.visits.length : 0} Recorded Logs
                             </div>
-                            <div style="margin-top:1rem; display:grid; gap:0.5rem;">
+                            <div class="profile-logs-grid">
                     `;
 
                     game.visits.forEach((v, index) => {
                         const logTime = new Date(v.reported_time).toLocaleDateString();
                         const isAttempt = v.is_attempt == 1 || v.is_attempt === true;
                         const scoreLabel = isAttempt ? 'ATTEMPT' : `+${v.score_awarded}`;
-                        const scoreColor = isAttempt ? '#888' : 'var(--accent-green)';
-                        const borderStyle = isAttempt ? '1px dashed #555' : '1px solid #333';
-                        const textOpacity = isAttempt ? '0.7' : '1';
+                        const attemptClass = isAttempt ? ' is-attempt' : '';
 
                         html += `
-                            <a href="#dashpoint?id=${encodeURIComponent(v.dashpoint_id)}" class="nav-link" style="display:block; padding:0.5rem; border:${borderStyle}; background:rgba(0,0,0,0.3); border-radius:3px; opacity:${textOpacity};">
-                                <div style="display:flex; justify-content:space-between;">
-                                    <span style="color:${isAttempt ? '#888' : 'inherit'}">${index + 1}. ${window.escapeHTML(v.dashpoint_id)}</span>
-                                    <span style="color:${scoreColor};">${scoreLabel}</span>
+                            <a href="#dashpoint?id=${encodeURIComponent(v.dashpoint_id)}" class="nav-link profile-log-item${attemptClass}">
+                                <div class="profile-log-row">
+                                    <span class="profile-log-name${attemptClass}">${index + 1}. ${window.escapeHTML(v.dashpoint_id)}</span>
+                                    <span class="profile-log-score${attemptClass}">${scoreLabel}</span>
                                 </div>
-                                <div style="font-size:0.75rem; color:#888; margin-top:0.3rem;">[ LOGGED: ${logTime} ]</div>
+                                <div class="profile-log-date">[ LOGGED: ${logTime} ]</div>
                             </a>
                         `;
                     });
@@ -1174,7 +1169,7 @@ document.addEventListener('routeLoaded', (e) => {
                     html += `</div></div>`;
                 });
             } else {
-                html += `<div style="text-align:center; padding:2rem; border:1px dashed #333; color:var(--text-muted);">[ NO GAME HISTORY FOUND ]</div>`;
+                html += `<div class="profile-empty-history">[ NO GAME HISTORY FOUND ]</div>`;
             }
 
             container.innerHTML = html;
@@ -1242,46 +1237,28 @@ document.addEventListener('routeLoaded', (e) => {
                             keptPhotosArray.push({ url: urlStr, caption: captionStr });
 
                             const wrap = document.createElement('div');
-                            wrap.style.position = 'relative';
-                            wrap.className = 'photo-preview-wrapper';
-                            wrap.style.width = '100%';
-                            wrap.style.height = '120px';
-                            wrap.style.cursor = 'pointer';
+                            wrap.className = 'photo-preview-wrapper edit-photo-wrapper';
 
                             const img = document.createElement('img');
                             img.src = urlStr;
-                            img.style.width = '100%';
-                            img.style.height = '100%';
-                            img.style.objectFit = 'cover';
-                            img.style.border = '1px solid var(--accent-amber)';
+                            img.className = 'photo-preview-item';
                             wrap.appendChild(img);
 
-                            const delBtn = document.createElement('div');
-                            delBtn.innerHTML = "&times;";
-                            delBtn.style.position = 'absolute';
-                            delBtn.style.top = '5px';
-                            delBtn.style.right = '5px';
-                            delBtn.style.background = 'var(--accent-red)';
-                            delBtn.style.color = '#fff';
-                            delBtn.style.width = '25px';
-                            delBtn.style.height = '25px';
-                            delBtn.style.textAlign = 'center';
-                            delBtn.style.lineHeight = '25px';
-                            delBtn.style.cursor = 'pointer';
-                            delBtn.style.fontWeight = 'bold';
-                            delBtn.style.borderRadius = '3px';
-                            delBtn.style.zIndex = '10';
+                            const delBtn = document.createElement('button');
+                            delBtn.type = 'button';
+                            delBtn.className = 'edit-photo-delete-btn';
+                            delBtn.innerHTML = '&times;';
 
-                            delBtn.onclick = (e) => {
+                            delBtn.addEventListener('click', (e) => {
                                 e.stopPropagation();
                                 keptPhotosArray = keptPhotosArray.filter(item => item.url !== urlStr);
                                 keptPhotosInput.value = JSON.stringify(keptPhotosArray);
                                 wrap.remove();
 
                                 if (keptPhotosArray.length === 0) {
-                                    existingPhotosContainer.innerHTML = `<p style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:1rem; border:1px dashed var(--border-color);">[ NO EXISTING MEDIA RETAINED ]</p>`;
+                                    existingPhotosContainer.innerHTML = `<p class="edit-photos-empty">[ NO EXISTING MEDIA RETAINED ]</p>`;
                                 }
-                            };
+                            });
 
                             const badge = document.createElement('div');
                             badge.className = 'photo-caption-badge';
@@ -1524,7 +1501,7 @@ document.addEventListener('routeLoaded', (e) => {
                     const result = await API.editVisit(formData);
 
                     if (result.status === 'success') {
-                        statusDiv.innerHTML = `<div class="alert" style="color:var(--accent-green); border:1px solid var(--accent-green);">[+] SYNCHRONIZED: ${result.message}</div>`;
+                        statusDiv.innerHTML = `<div class="alert alert-success">[+] SYNCHRONIZED: ${result.message}</div>`;
                         submitBtn.innerText = "EDITS SAVED";
                         
                         // Clear new photos queue since they are now uploaded & saved
@@ -1620,7 +1597,7 @@ document.addEventListener('routeLoaded', (e) => {
                                     const close = document.createElement('div');
                                     close.className = 'modal-close';
                                     close.innerHTML = '&times;';
-                                    close.onclick = () => overlay.remove();
+                                    close.addEventListener('click', () => overlay.remove());
 
                                     const title = document.createElement('h2');
                                     title.innerText = `${window.currentGameContext.monthYear} Game Summary`;
@@ -1637,11 +1614,11 @@ document.addEventListener('routeLoaded', (e) => {
                                     document.body.appendChild(overlay);
 
                                     // Close on click outside modal content
-                                    overlay.onclick = (e) => {
+                                    overlay.addEventListener('click', (e) => {
                                         if (e.target === overlay) {
                                             overlay.remove();
                                         }
-                                    };
+                                    });
                                 } else {
                                     alert("Failed to load summary: " + (data.message || "Unknown error"));
                                 }
@@ -1670,7 +1647,7 @@ document.addEventListener('routeLoaded', (e) => {
                         const data = json.data;
 
                         if (data.length === 0) {
-                            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);">[ NO LOGS YET ]</td></tr>`;
+                            tbody.innerHTML = `<tr><td colspan="4" class="td-loading">[ NO LOGS YET ]</td></tr>`;
                             return;
                         }
 
@@ -1756,10 +1733,10 @@ document.addEventListener('routeLoaded', (e) => {
 
                         tbody.innerHTML = html;
                     } else {
-                        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--accent-red);">[-] Global rankings currently unavailable.</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="4" class="td-error">[-] Global rankings currently unavailable.</td></tr>`;
                     }
                 }).catch(_err => {
-                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--accent-red);">[-] SYNC RUPTURED: Network Timeout.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="4" class="td-error">[-] SYNC RUPTURED: Network Timeout.</td></tr>`;
                 });
             }
         };
@@ -1804,7 +1781,7 @@ document.addEventListener('routeLoaded', (e) => {
                 if (btnGPX) btnGPX.disabled = true;
                 if (btnLOC) btnLOC.disabled = true;
                 if (btnKML) btnKML.disabled = true;
-                if (searchFeedback) searchFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Please log in to download Dashpoint coordinates.</div>`;
+                if (searchFeedback) searchFeedback.innerHTML = `<div class="alert alert-error">[-] Please log in to download Dashpoint coordinates.</div>`;
             };
 
             if (!window.currentUser || window.currentUser.status !== 'success') {
@@ -1867,7 +1844,7 @@ document.addEventListener('routeLoaded', (e) => {
             const b = getBounds();
             if (isNaN(b.n) || isNaN(b.s) || isNaN(b.e) || isNaN(b.w)) {
                 if (searchFeedback) {
-                    searchFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Error: Missing coordinates. Please specify the complete bounding region.</div>`;
+                    searchFeedback.innerHTML = `<div class="alert alert-error">[-] Error: Missing coordinates. Please specify the complete bounding region.</div>`;
                 }
                 return;
             }
@@ -1885,7 +1862,7 @@ document.addEventListener('routeLoaded', (e) => {
                     gameSuffix = `_game_${window.currentGameContext.id}`;
                 } else {
                     if (searchFeedback) {
-                        searchFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Error: Missing game context. Please select a game.</div>`;
+                        searchFeedback.innerHTML = `<div class="alert alert-error">[-] Error: Missing game context. Please select a game.</div>`;
                     }
                     btnTarget.disabled = false;
                     btnTarget.innerText = originalText;
@@ -1901,7 +1878,7 @@ document.addEventListener('routeLoaded', (e) => {
                         errMsg = "Invalid bounding box boundaries provided.";
                     }
                     if (searchFeedback) {
-                        searchFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] ${errMsg}</div>`;
+                        searchFeedback.innerHTML = `<div class="alert alert-error">[-] ${errMsg}</div>`;
                     }
                     btnTarget.disabled = false;
                     btnTarget.innerText = originalText;
@@ -1911,7 +1888,7 @@ document.addEventListener('routeLoaded', (e) => {
                 const blob = await response.blob();
                 const downloadUrl = URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.style.display = 'none';
+                a.className = 'file-input-hidden';
                 a.href = downloadUrl;
                 a.download = `geodashing_v2${gameSuffix}_export.${format}`;
                 document.body.appendChild(a);
@@ -1926,7 +1903,7 @@ document.addEventListener('routeLoaded', (e) => {
 
             } catch (_error) {
                 if (searchFeedback) {
-                    searchFeedback.innerHTML = `<div class="alert alert-error" style="background:#2a0000; border:1px solid var(--accent-red); color:var(--accent-red);">[-] Network Error: Unable to fetch export.</div>`;
+                    searchFeedback.innerHTML = `<div class="alert alert-error">[-] Network Error: Unable to fetch export.</div>`;
                 }
                 btnTarget.disabled = false;
             }
