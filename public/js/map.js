@@ -489,6 +489,10 @@ window.resetUserTags = function () {
     decorateActiveMarkersWithTags();
 };
 
+document.addEventListener('userTagsChanged', () => {
+    decorateActiveMarkersWithTags();
+});
+
 function decorateActiveMarkersWithTags() {
     if (!activeMarkers || !window.currentUserTags) return;
     activeMarkers.forEach(m => {

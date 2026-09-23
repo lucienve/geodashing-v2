@@ -290,28 +290,153 @@ window.API = {
     _userTagsCacheGameId: null,
     _userTagsPromise: null,
     _userTagsPromiseGameId: null,
+    _userTagsMeta: {},
+    _inFlightMutations: new Set(),
+    _tagBroadcastChannel: null,
+    _tagPollInterval: null,
+    _tagVisibilityManager: null,
+    TAG_TTL_MS: 60000,
+
+    /**
+     * Initializes multi-tab broadcast listening and background visibility polling.
+     */
+    initTagSync: function () {
+        if (typeof window === 'undefined') return;
+
+        if (!this._tagBroadcastChannel && typeof window.BroadcastChannel !== 'undefined') {
+            try {
+                this._tagBroadcastChannel = new window.BroadcastChannel('geodashing_tags');
+                this._tagBroadcastChannel.onmessage = (event) => {
+                    this._handleTagBroadcast(event.data);
+                };
+            } catch (e) {
+                console.warn("BroadcastChannel initialization skipped:", e);
+            }
+        }
+
+        if (!this._tagVisibilityManager && typeof window.VisibilityManager === 'function') {
+            this._tagVisibilityManager = new window.VisibilityManager(
+                () => this._onPageVisible(),
+                () => this._onPageHidden()
+            );
+            this._tagVisibilityManager.start();
+        }
+    },
+
+    /**
+     * Defensive handler for incoming peer-tab BroadcastChannel messages.
+     * @param {any} msg
+     */
+    _handleTagBroadcast: function (msg) {
+        if (!msg || typeof msg !== 'object') return;
+        const { action, gameId, dashpointId, tag } = msg;
+        if (!action || !dashpointId) return;
+        if (!['SET_TAG', 'DELETE_TAG'].includes(action)) return;
+        if (typeof dashpointId !== 'string') return;
+
+        const currentGameId = window.currentGameContext ? window.currentGameContext.id : null;
+        if (gameId && currentGameId && gameId !== currentGameId) return;
+
+        window.currentUserTags = window.currentUserTags || {};
+        if (action === 'SET_TAG' && tag && typeof tag === 'object') {
+            window.currentUserTags[dashpointId] = {
+                color: String(tag.color || ''),
+                shape: String(tag.shape || ''),
+                name: String(tag.name || '')
+            };
+            if (typeof window.updateMarkerTag === 'function') {
+                window.updateMarkerTag(dashpointId, window.currentUserTags[dashpointId]);
+            }
+        } else if (action === 'DELETE_TAG') {
+            delete window.currentUserTags[dashpointId];
+            if (typeof window.updateMarkerTag === 'function') {
+                window.updateMarkerTag(dashpointId, null);
+            }
+        }
+
+        document.dispatchEvent(new CustomEvent('userTagsChanged', {
+            detail: { action, gameId, dashpointId, tag: action === 'SET_TAG' ? tag : null }
+        }));
+    },
+
+    /**
+     * Broadcasts a local tag mutation to peer browser tabs.
+     */
+    _broadcastTagChange: function (action, gameId, dashpointId, tag = null) {
+        if (this._tagBroadcastChannel) {
+            try {
+                this._tagBroadcastChannel.postMessage({
+                    action,
+                    gameId,
+                    dashpointId,
+                    tag
+                });
+            } catch (e) {
+                console.warn("Broadcast postMessage error:", e);
+            }
+        }
+    },
+
+    _onPageVisible: function () {
+        this._startTagHeartbeat();
+        const gameId = window.currentGameContext ? window.currentGameContext.id : null;
+        if (gameId) {
+            const meta = this._userTagsMeta[gameId];
+            if (!meta || (Date.now() - meta.loadedAt > 30000)) {
+                this.syncUserTags(gameId);
+            }
+        }
+    },
+
+    _onPageHidden: function () {
+        this._stopTagHeartbeat();
+    },
+
+    _startTagHeartbeat: function () {
+        this._stopTagHeartbeat();
+        this._tagPollInterval = setInterval(() => {
+            if (typeof document !== 'undefined' && document.hidden) return;
+            const gameId = window.currentGameContext ? window.currentGameContext.id : null;
+            if (gameId) {
+                this.syncUserTags(gameId);
+            }
+        }, this.TAG_TTL_MS);
+    },
+
+    _stopTagHeartbeat: function () {
+        if (this._tagPollInterval) {
+            clearInterval(this._tagPollInterval);
+            this._tagPollInterval = null;
+        }
+    },
 
     resetUserTagsCache: function () {
         this._userTagsCacheGameId = null;
         this._userTagsPromise = null;
         this._userTagsPromiseGameId = null;
+        this._userTagsMeta = {};
+        this._stopTagHeartbeat();
         if (typeof window !== 'undefined') {
             window.currentUserTags = {};
         }
     },
 
     /**
-     * Deduplicated loader for user tags of a game.
-     * Prevents race conditions and in-flight overrides.
+     * Deduplicated loader for user tags of a game with TTL and ETag revalidation.
      * @param {number} gameId
+     * @param {boolean} forceRefresh
      */
-    loadUserTags: async function (gameId) {
+    loadUserTags: async function (gameId, forceRefresh = false) {
         if (!gameId) return {};
         if (typeof window === 'undefined') return {};
 
+        this.initTagSync();
         window.currentUserTags = window.currentUserTags || {};
 
-        if (this._userTagsCacheGameId === gameId) {
+        const meta = this._userTagsMeta[gameId] || { etag: null, loadedAt: 0 };
+        const isFresh = !forceRefresh && (this._userTagsCacheGameId === gameId) && (Date.now() - meta.loadedAt < this.TAG_TTL_MS);
+
+        if (isFresh) {
             return window.currentUserTags;
         }
 
@@ -322,10 +447,41 @@ window.API = {
         this._userTagsPromiseGameId = gameId;
         this._userTagsPromise = (async () => {
             try {
-                const res = await this.getUserTags(gameId);
-                if (res.status === 'success' && res.tags) {
-                    window.currentUserTags = Object.assign({}, res.tags, window.currentUserTags || {});
+                const res = await this.getUserTags(gameId, meta.etag);
+
+                if (res.status === 'not_modified') {
+                    this._userTagsMeta[gameId] = {
+                        etag: meta.etag,
+                        loadedAt: Date.now()
+                    };
                     this._userTagsCacheGameId = gameId;
+                    return window.currentUserTags;
+                }
+
+                if (res.status === 'success' && res.tags) {
+                    const serverTags = res.tags;
+
+                    for (const [dpId, tagData] of Object.entries(serverTags)) {
+                        if (!this._inFlightMutations.has(dpId)) {
+                            window.currentUserTags[dpId] = tagData;
+                        }
+                    }
+
+                    for (const dpId of Object.keys(window.currentUserTags)) {
+                        if (!serverTags[dpId] && !this._inFlightMutations.has(dpId)) {
+                            delete window.currentUserTags[dpId];
+                        }
+                    }
+
+                    this._userTagsMeta[gameId] = {
+                        etag: res.etag || null,
+                        loadedAt: Date.now()
+                    };
+                    this._userTagsCacheGameId = gameId;
+
+                    document.dispatchEvent(new CustomEvent('userTagsChanged', {
+                        detail: { gameId, tags: window.currentUserTags }
+                    }));
                 }
                 return window.currentUserTags;
             } catch (err) {
@@ -340,16 +496,39 @@ window.API = {
     },
 
     /**
-     * Fetch user tags dictionary for a specific game
+     * Forces revalidation of user tags for a game.
      * @param {number} gameId
      */
-    getUserTags: async function (gameId) {
+    syncUserTags: async function (gameId) {
+        return this.loadUserTags(gameId, true);
+    },
+
+    /**
+     * Fetch user tags dictionary for a specific game with optional ETag
+     * @param {number} gameId
+     * @param {string|null} etag
+     */
+    getUserTags: async function (gameId, etag = null) {
         try {
+            const headers = Object.assign({}, this.getHeaders());
+            if (etag) {
+                headers['If-None-Match'] = etag;
+            }
             const res = await fetch(`api/user_tags.php?game_id=${encodeURIComponent(gameId)}`, {
                 method: 'GET',
-                headers: this.getHeaders()
+                headers: headers
             });
-            return await res.json();
+
+            if (res.status === 304) {
+                return { status: 'not_modified' };
+            }
+
+            const json = await res.json();
+            const responseEtag = res.headers.get('ETag');
+            if (responseEtag) {
+                json.etag = responseEtag;
+            }
+            return json;
         } catch (e) {
             console.error(e);
             return { status: 'error', message: 'API Network Timeout!' };
@@ -357,12 +536,14 @@ window.API = {
     },
 
     /**
-     * Set a private user tag on a dashpoint
+     * Set a private user tag on a dashpoint and broadcast to peer tabs
      * @param {string} dashpointId
      * @param {string} color
      * @param {string} shape
      */
     setUserTag: async function (dashpointId, color, shape) {
+        this.initTagSync();
+        this._inFlightMutations.add(dashpointId);
         try {
             const headers = Object.assign({}, this.getHeaders(), { 'Content-Type': 'application/json' });
             const res = await fetch('api/user_tags.php', {
@@ -370,18 +551,30 @@ window.API = {
                 headers: headers,
                 body: JSON.stringify({ dashpoint_id: dashpointId, color: color, shape: shape })
             });
-            return await res.json();
+            const json = await res.json();
+            if (json.status === 'success') {
+                const currentGameId = window.currentGameContext ? window.currentGameContext.id : null;
+                this._broadcastTagChange('SET_TAG', currentGameId, dashpointId, { color, shape });
+                if (currentGameId && this._userTagsMeta[currentGameId]) {
+                    this._userTagsMeta[currentGameId].loadedAt = Date.now();
+                }
+            }
+            return json;
         } catch (e) {
             console.error(e);
             return { status: 'error', message: 'API Network Timeout!' };
+        } finally {
+            this._inFlightMutations.delete(dashpointId);
         }
     },
 
     /**
-     * Delete a private user tag from a dashpoint
+     * Delete a private user tag from a dashpoint and broadcast to peer tabs
      * @param {string} dashpointId
      */
     deleteUserTag: async function (dashpointId) {
+        this.initTagSync();
+        this._inFlightMutations.add(dashpointId);
         try {
             const headers = Object.assign({}, this.getHeaders(), { 'Content-Type': 'application/json' });
             const res = await fetch('api/user_tags.php', {
@@ -389,10 +582,20 @@ window.API = {
                 headers: headers,
                 body: JSON.stringify({ dashpoint_id: dashpointId })
             });
-            return await res.json();
+            const json = await res.json();
+            if (json.status === 'success') {
+                const currentGameId = window.currentGameContext ? window.currentGameContext.id : null;
+                this._broadcastTagChange('DELETE_TAG', currentGameId, dashpointId, null);
+                if (currentGameId && this._userTagsMeta[currentGameId]) {
+                    this._userTagsMeta[currentGameId].loadedAt = Date.now();
+                }
+            }
+            return json;
         } catch (e) {
             console.error(e);
             return { status: 'error', message: 'API Network Timeout!' };
+        } finally {
+            this._inFlightMutations.delete(dashpointId);
         }
     }
 };

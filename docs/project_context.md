@@ -462,3 +462,21 @@ The application allows users to participate in global geographic games where the
 - **Testing & Verification**:
   - Created [backend/tests/TagServiceTest.php](backend/tests/TagServiceTest.php) with 14 unit test scenarios covering configuration toggles, allowlists, game status rules, palette constraints, and reroll cleanup (all 90 PHPUnit tests pass).
   - Created [e2e/tagging.spec.js](e2e/tagging.spec.js) verifying guest invisibility, allowlist gating, active game tagging and clearing, preview game tagging, and historical game read-only constraints across Desktop Chrome, iPhone 12 (WebKit), and Pixel 7 (all 15 Playwright tests pass).
+
+### 66. Multi-Browser & Cross-Device Tag Synchronization
+- Implemented an eventual consistency synchronization mechanism ensuring private dashpoint tags synchronize across multiple open browser instances, mobile devices, and desktop tabs within 60–90 seconds, with immediate (<1s) refresh on tab focus and instant (0ms) same-device cross-tab synchronization.
+- **Backend ETag & Concurrency Optimization**:
+  - Added deterministic stable ETag generation via `TagService::generateETag()` (`ksort()` and SQL `ORDER BY udt.dashpoint_id ASC`).
+  - Added HTTP `ETag`, `Cache-Control: private, no-cache`, `Vary: Cookie`, and normalized `304 Not Modified` handling in [public/api/user_tags.php](public/api/user_tags.php) (stripping Apache `W/` prefixes).
+  - Released exclusive PHP session file locks on `GET` requests immediately via `session_write_close()` to prevent background polling from blocking concurrent operations.
+- **Frontend Three-Tier Synchronization Layer**:
+  - Implemented same-device multi-tab synchronization using HTML5 `BroadcastChannel('geodashing_tags')` in [public/js/api.js](public/js/api.js) with defensive envelope validation (`action`, `gameId`, `dashpointId`).
+  - Implemented 60-second TTL cache invalidation and per-game metadata tracking (`_userTagsMeta`).
+  - Added in-flight mutation protection (`_inFlightMutations`) in `api.js` to prevent background sync responses from clobbering active optimistic user updates.
+  - Linked background heartbeat and focus revalidation to `VisibilityManager` (revalidating on tab resume if older than 30s, pausing when hidden).
+  - Wired `userTagsChanged` events into [public/js/map.js](public/js/map.js) (updating pin badges) and [public/js/controllers.js](public/js/controllers.js) (updating open `#dashpoint` view swatches in real time).
+- **Testing & Quality**:
+  - Added unit test coverage in [backend/tests/TagServiceTest.php](backend/tests/TagServiceTest.php) verifying deterministic ETag stability (92/92 tests pass).
+  - Added multi-page cross-tab synchronization test case in [e2e/tagging.spec.js](e2e/tagging.spec.js).
+  - Confirmed 0 errors across ESLint, PHPCS, and PHPUnit.
+

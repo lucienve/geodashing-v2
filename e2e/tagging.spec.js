@@ -155,4 +155,46 @@ test.describe('Private Point Tagging Feature', () => {
         await purpleSwatch.click();
         await expect(purpleSwatch).toHaveClass(/selected/);
     });
+
+    test('Cross-tab synchronization updates marker badges and swatch selection in real-time', async ({ context, page }) => {
+        // Log in as TestUser in page 1
+        await page.goto('/#login');
+        await page.fill('#login-username', 'TestUser');
+        await page.fill('#login-password', 'testpass');
+        await Promise.all([
+            page.waitForResponse(resp => resp.url().includes('action=login') && resp.status() === 200),
+            page.click('#btn-submit-login')
+        ]);
+        await page.waitForURL('**/#home');
+
+        // Open page 2 in the same browser context (shares cookies / session)
+        const page2 = await context.newPage();
+        await page2.goto(`/#dashpoint?id=${activeDpId}`);
+        await page2.waitForSelector('#dp-id-label');
+
+        const page2TagContainer = page2.locator('#dp-tag-container');
+        await expect(page2TagContainer).toBeVisible();
+        const page2OrangeSwatch = page2TagContainer.locator('.swatch-google-orange');
+        await expect(page2OrangeSwatch).not.toHaveClass(/selected/);
+
+        // In page 1, navigate to the active dashpoint and select Google Deep Orange
+        await page.goto(`/#dashpoint?id=${activeDpId}`);
+        await page.waitForSelector('#dp-id-label');
+        const page1OrangeSwatch = page.locator('#dp-tag-container .swatch-google-orange');
+        await page1OrangeSwatch.click();
+        await expect(page1OrangeSwatch).toHaveClass(/selected/);
+
+        // Assert that page 2 automatically reflects the selected tag via BroadcastChannel
+        await expect(page2OrangeSwatch).toHaveClass(/selected/);
+
+        // In page 2, clear the tag
+        const page2ClearBtn = page2.locator('#btn-clear-tag');
+        await page2ClearBtn.click();
+        await expect(page2OrangeSwatch).not.toHaveClass(/selected/);
+
+        // Assert that page 1 automatically reflects the cleared tag
+        await expect(page1OrangeSwatch).not.toHaveClass(/selected/);
+
+        await page2.close();
+    });
 });

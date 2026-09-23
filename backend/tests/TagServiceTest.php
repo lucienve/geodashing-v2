@@ -281,4 +281,48 @@ class TagServiceTest extends TestCase
 
         $this->assertEquals(3, $count);
     }
+
+    #[Test]
+    public function generateETagIsDeterministicRegardlessOfKeyOrder(): void
+    {
+        $tagsA = [
+            'GD001-AAAB' => ['color' => '#8e24aa', 'shape' => 'diamond'],
+            'GD001-AAAA' => ['color' => '#1a73e8', 'shape' => 'star'],
+        ];
+
+        $tagsB = [
+            'GD001-AAAA' => ['color' => '#1a73e8', 'shape' => 'star'],
+            'GD001-AAAB' => ['color' => '#8e24aa', 'shape' => 'diamond'],
+        ];
+
+        $etagA = TagService::generateETag($tagsA);
+        $etagB = TagService::generateETag($tagsB);
+
+        $this->assertNotEmpty($etagA);
+        $this->assertStringStartsWith('"', $etagA);
+        $this->assertStringEndsWith('"', $etagA);
+        $this->assertEquals($etagA, $etagB);
+    }
+
+    #[Test]
+    public function generateETagDiffersWhenTagSetDiffers(): void
+    {
+        $tagsA = [
+            'GD001-AAAA' => ['color' => '#1a73e8', 'shape' => 'star'],
+        ];
+
+        $tagsB = [
+            'GD001-AAAA' => ['color' => '#8e24aa', 'shape' => 'diamond'],
+        ];
+
+        $tagsC = [];
+
+        $etagA = TagService::generateETag($tagsA);
+        $etagB = TagService::generateETag($tagsB);
+        $etagC = TagService::generateETag($tagsC);
+
+        $this->assertNotEquals($etagA, $etagB);
+        $this->assertNotEquals($etagA, $etagC);
+        $this->assertNotEquals($etagB, $etagC);
+    }
 }

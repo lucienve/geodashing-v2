@@ -90,7 +90,8 @@ class TagService
             "SELECT udt.dashpoint_id, udt.color_code, udt.shape
              FROM user_dashpoint_tags udt
              JOIN dashpoints d ON udt.dashpoint_id = d.id
-             WHERE udt.user_id = :user_id AND d.game_id = :game_id"
+             WHERE udt.user_id = :user_id AND d.game_id = :game_id
+             ORDER BY udt.dashpoint_id ASC"
         );
         $stmt->execute([
             'user_id' => $userId,
@@ -108,6 +109,18 @@ class TagService
         }
 
         return $tags;
+    }
+
+    /**
+     * Generates a deterministic, stable HTTP ETag for a set of tags.
+     *
+     * @param array<string, array{color: string, shape: string}> $tags Map of dashpoint_id => [color, shape].
+     * @return string Quoted MD5 checksum string suitable for the ETag header.
+     */
+    public static function generateETag(array $tags): string
+    {
+        ksort($tags);
+        return '"' . md5((string) json_encode($tags)) . '"';
     }
 
     /**

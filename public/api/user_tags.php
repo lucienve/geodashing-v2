@@ -39,6 +39,8 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         $userId = (int) $_SESSION['user_id'];
 
         if ($method === 'GET') {
+            session_write_close();
+
             $gameId = filter_var($_GET['game_id'] ?? null, FILTER_VALIDATE_INT);
             if ($gameId === false || $gameId === null) {
                 http_response_code(400);
@@ -47,6 +49,21 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             }
 
             $tags = $tagService->getTagsForUserAndGame($userId, $gameId);
+            $etag = TagService::generateETag($tags);
+
+            header('Cache-Control: private, no-cache');
+            header('Vary: Cookie');
+            header('ETag: ' . $etag);
+
+            $ifNoneMatch = trim($_SERVER['HTTP_IF_NONE_MATCH'] ?? '');
+            $clientHash = trim((string) preg_replace('/^W\//', '', $ifNoneMatch), '"');
+            $serverHash = trim($etag, '"');
+
+            if ($clientHash !== '' && $clientHash === $serverHash) {
+                http_response_code(304);
+                exit;
+            }
+
             echo json_encode([
                 "status" => "success",
                 "tags" => $tags

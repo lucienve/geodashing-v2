@@ -354,6 +354,17 @@ document.addEventListener('routeLoaded', (e) => {
 
                                 renderCurrentTagState();
 
+                                const onTagsChanged = (evt) => {
+                                    if (!document.getElementById('dp-tag-container')) {
+                                        document.removeEventListener('userTagsChanged', onTagsChanged);
+                                        return;
+                                    }
+                                    if (!evt.detail || !evt.detail.dashpointId || evt.detail.dashpointId === dp.id) {
+                                        renderCurrentTagState();
+                                    }
+                                };
+                                document.addEventListener('userTagsChanged', onTagsChanged);
+
                                 if (typeof API.loadUserTags === 'function') {
                                     API.loadUserTags(dp.game_id).then(() => {
                                         renderCurrentTagState();
