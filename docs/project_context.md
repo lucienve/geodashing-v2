@@ -515,6 +515,17 @@ The application allows users to participate in global geographic games where the
 - **Testing & Verification**:
   - Confirmed 0 errors across ESLint (`npm run lint`), PHPCS (`composer run lint`), and PHPUnit (`composer run test`, 93/93 passing).
   - Executed Playwright E2E suite (`npx playwright test --reporter=list`), passing 182 tests with zero `<gmp-pin>` or `<gmp-advanced-marker>` deprecation warnings in the browser console.
-
-
-
+### 71. Application Template Form Label Accessibility Modernization
+- Resolved accessibility issues ("No label associated with a form field") across all application templates without altering third-party Google Maps internal controls:
+  - **Explicit Label Associations**:
+    - [public/templates/login.html](public/templates/login.html): Added matching `for="..."` attributes across all login, registration, password recovery, and password reset form fields.
+    - [public/templates/report.html](public/templates/report.html): Added `for="dashpoint_id"`, `for="input-is-attempt"`, `for="input-suppress-email"`, `for="input-photos"`, and `for="log-textarea"`. Converted non-associable multi-input coordinate header `<label>` to `<span class="form-group-flex-label">` and added explicit `aria-label="Visit Latitude"` and `aria-label="Visit Longitude"` attributes to the coordinate inputs.
+    - [public/templates/search.html](public/templates/search.html): Added matching `for="..."` attributes across coordinate bounds inputs (`search-n`, `search-s`, `search-e`, `search-w`).
+    - [public/templates/edit.html](public/templates/edit.html): Added `for="edit_send_email"` and `for="edit-photos"`. Converted non-form section header `<label>PHOTOS</label>` to `<span class="edit-section-label">PHOTOS</span>`.
+    - [public/templates/dashpoint.html](public/templates/dashpoint.html): Converted `<div class="reroll-form-title">` to `<label for="reroll-reason-input" class="reroll-form-title">`. Converted non-form divider `<label class="dash-section-label">PREVIOUS VISITS</label>` to `<span class="dash-section-label">PREVIOUS VISITS</span>`.
+    - [public/index.html](public/index.html): Added `aria-label="Select Game Context"` to `<select id="game-selector">`.
+  - **CSS Layout Preservation**:
+    - [public/css/index.css](public/css/index.css): Added `display: block;` to `.reroll-form-title` to prevent user-agent inline margin collapse when rendering as an HTML `<label>`.
+- **Testing & Verification**:
+  - Confirmed 0 errors across pre-commit hooks (`uv run pre-commit run --all-files`), including ESLint, PHPCS, PHPUnit (93/93 passing), Pytest, PyLint, Mypy, and Pyright.
+  - Executed full Playwright E2E suite (`npx playwright test --reporter=list`), with all 185 tests passing cleanly across Chromium, iPhone 12, and Pixel 7 viewports.

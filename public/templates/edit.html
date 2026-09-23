@@ -22,11 +22,11 @@
         </div>
 
         <div class="dash-block edit-block">
-            <label><input type="checkbox" id="edit_send_email" name="send_email" value="1" checked class="checkbox-inline"> EMAIL UPDATED LOG</label>
+            <label for="edit_send_email"><input type="checkbox" id="edit_send_email" name="send_email" value="1" checked class="checkbox-inline"> EMAIL UPDATED LOG</label>
         </div>
 
         <div class="dash-block edit-block">
-            <label>PHOTOS</label>
+            <span class="edit-section-label">PHOTOS</span>
             <div id="edit-existing-photos" class="edit-photos-grid">
                 <p class="edit-photos-empty">
                     [ NO PHOTOS ]</p>
@@ -35,7 +35,7 @@
         </div>
 
         <div class="dash-block edit-block">
-            <label>ATTACH NEW PHOTOS (Max 10 total)</label>
+            <label for="edit-photos">ATTACH NEW PHOTOS (Max 10 total)</label>
             <input type="file" id="edit-photos" name="photos[]" multiple accept="image/*" class="file-input-hidden">
             <button type="button" class="btn btn-secondary btn-add-photos" id="btn-add-edit-photos">
                 ADD NEW PHOTOS
