@@ -421,6 +421,10 @@ function initGameContext() {
                     window.currentGameContext.monthYear = selOpt.dataset.monthYear;
                     window.currentGameContext.has_summary = selOpt.dataset.hasSummary == '1';
 
+                    if (typeof window.resetUserTags === 'function') {
+                        window.resetUserTags();
+                    }
+
                     if (window.location.hash.startsWith('#leaderboard')) {
                         const targetHash = (window.activeGameId && gameId === window.activeGameId) 
                             ? '#leaderboard' 

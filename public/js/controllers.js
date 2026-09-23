@@ -296,6 +296,159 @@ document.addEventListener('routeLoaded', (e) => {
                         });
                     }
 
+                    // Evaluate Private Tag Actions
+                    const tagContainer = document.getElementById('dp-tag-container');
+                    const tagReadonlyBadge = document.getElementById('dp-tag-readonly-badge');
+                    const tagLabel = document.getElementById('dp-tag-label');
+                    const tagToast = document.getElementById('dp-tag-toast');
+                    const btnClearTag = document.getElementById('btn-clear-tag');
+                    const swatches = tagContainer ? tagContainer.querySelectorAll('.dash-tag-swatch') : [];
+
+                    if (tagContainer) {
+                        API.checkSession(dp.game_id).then(res => {
+                            if (res.status === 'success' && res.tags_enabled) {
+                                tagContainer.classList.remove('d-none');
+
+                                const isPastGame = (!dp.is_game_active && !dp.is_game_preview);
+
+                                if (isPastGame) {
+                                    if (tagReadonlyBadge) tagReadonlyBadge.classList.remove('d-none');
+                                    swatches.forEach(s => { s.disabled = true; });
+                                    if (btnClearTag) btnClearTag.disabled = true;
+                                } else {
+                                    if (tagReadonlyBadge) tagReadonlyBadge.classList.add('d-none');
+                                    swatches.forEach(s => { s.disabled = false; });
+                                    if (btnClearTag) btnClearTag.disabled = false;
+                                }
+
+                                const updateTagUI = (tag) => {
+                                    swatches.forEach(s => {
+                                        const isMatch = tag && tag.color && tag.color.toLowerCase() === s.dataset.color.toLowerCase();
+                                        if (isMatch) {
+                                            s.classList.add('selected');
+                                            s.setAttribute('aria-pressed', 'true');
+                                        } else {
+                                            s.classList.remove('selected');
+                                            s.setAttribute('aria-pressed', 'false');
+                                        }
+                                    });
+                                    if (tagLabel) {
+                                        if (tag && tag.shape) {
+                                            const shapeTitle = tag.shape.charAt(0).toUpperCase() + tag.shape.slice(1);
+                                            tagLabel.textContent = `${tag.name || shapeTitle} (${shapeTitle})`;
+                                        } else {
+                                            tagLabel.textContent = 'None';
+                                        }
+                                    }
+                                };
+
+                                let toastTimeout = null;
+                                const showToast = (text, isError = false) => {
+                                    if (!tagToast) return;
+                                    tagToast.textContent = text;
+                                    tagToast.classList.toggle('error', isError);
+                                    tagToast.classList.add('visible');
+                                    if (toastTimeout) clearTimeout(toastTimeout);
+                                    toastTimeout = setTimeout(() => {
+                                        tagToast.classList.remove('visible');
+                                    }, 1500);
+                                };
+
+                                window.currentUserTags = window.currentUserTags || {};
+
+                                const renderCurrentTagState = () => {
+                                    const currentTag = window.currentUserTags[dp.id] || null;
+                                    updateTagUI(currentTag);
+                                };
+
+                                renderCurrentTagState();
+
+                                if (typeof API.loadUserTags === 'function') {
+                                    API.loadUserTags(dp.game_id).then(() => {
+                                        renderCurrentTagState();
+                                    }).catch(err => {
+                                        console.error("Failed to load user tags for dashpoint:", err);
+                                    });
+                                }
+
+                                if (!isPastGame) {
+                                    const clearCurrentTag = async () => {
+                                        const prevTag = window.currentUserTags[dp.id]
+                                            ? Object.assign({}, window.currentUserTags[dp.id])
+                                            : null;
+                                        if (!prevTag) return;
+
+                                        window.currentUserTags[dp.id] = null;
+                                        updateTagUI(null);
+                                        if (typeof window.updateMarkerTag === 'function') {
+                                            window.updateMarkerTag(dp.id, null);
+                                        }
+
+                                        const deleteRes = await API.deleteUserTag(dp.id);
+                                        if (deleteRes.status === 'success') {
+                                            showToast('Cleared');
+                                        } else {
+                                            // Rollback on failure
+                                            window.currentUserTags[dp.id] = prevTag;
+                                            updateTagUI(prevTag);
+                                            if (typeof window.updateMarkerTag === 'function') {
+                                                window.updateMarkerTag(dp.id, prevTag);
+                                            }
+                                            showToast(deleteRes.message || 'Action failed. Check connection.', true);
+                                        }
+                                    };
+
+                                    if (btnClearTag) {
+                                        btnClearTag.onclick = clearCurrentTag;
+                                    }
+
+                                    swatches.forEach(s => {
+                                        s.onclick = async () => {
+                                            const color = s.dataset.color;
+                                            const shape = s.dataset.shape;
+                                            const name = s.dataset.name;
+
+                                            const prevTag = window.currentUserTags[dp.id]
+                                                ? Object.assign({}, window.currentUserTags[dp.id])
+                                                : null;
+
+                                            // Toggle off if already selected
+                                            if (prevTag && prevTag.color && prevTag.color.toLowerCase() === color.toLowerCase()) {
+                                                clearCurrentTag();
+                                                return;
+                                            }
+
+                                            const newTag = { color: color, shape: shape, name: name };
+                                            window.currentUserTags[dp.id] = newTag;
+                                            updateTagUI(newTag);
+                                            if (typeof window.updateMarkerTag === 'function') {
+                                                window.updateMarkerTag(dp.id, newTag);
+                                            }
+
+                                            const saveRes = await API.setUserTag(dp.id, color, shape);
+                                            if (saveRes.status === 'success') {
+                                                showToast('Saved');
+                                            } else {
+                                                // Rollback on failure
+                                                if (prevTag) {
+                                                    window.currentUserTags[dp.id] = prevTag;
+                                                } else {
+                                                    window.currentUserTags[dp.id] = null;
+                                                }
+                                                updateTagUI(prevTag);
+                                                if (typeof window.updateMarkerTag === 'function') {
+                                                    window.updateMarkerTag(dp.id, prevTag);
+                                                }
+                                                showToast(saveRes.message || 'Save failed. Check connection.', true);
+                                            }
+                                        };
+                                    });
+                                }
+                            } else {
+                                tagContainer.classList.add('d-none');
+                            }
+                        });
+                    }
 
                     // Generate the beautiful HTML5 Ledgers directly from MySQL bounds
                     if (dp.visits.length === 0) {

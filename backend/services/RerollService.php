@@ -167,6 +167,12 @@ class RerollService
                 'reason' => $reason
             ]);
 
+            // Purge private tags associated with this relocated dashpoint
+            $stmtPurgeTags = $this->db->prepare(
+                "DELETE FROM user_dashpoint_tags WHERE dashpoint_id = :dashpoint_id"
+            );
+            $stmtPurgeTags->execute(['dashpoint_id' => $dashpointId]);
+
             $this->db->commit();
         } catch (Exception $e) {
             $this->db->rollBack();

@@ -452,12 +452,98 @@ window.refreshMapBounds = function () {
     }
 };
 
+// =========================================================================
+// Private Point Tagging Marker Integration
+// =========================================================================
+
+const tagShapeSvgs = {
+    star: '<svg class="tag-svg-icon" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>',
+    diamond: '<svg class="tag-svg-icon" viewBox="0 0 24 24"><path d="M12 2L2 12l10 10 10-10L12 2z"/></svg>',
+    triangle: '<svg class="tag-svg-icon" viewBox="0 0 24 24"><path d="M12 3L2 21h20L12 3z"/></svg>',
+    square: '<svg class="tag-svg-icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>'
+};
+
+const tagColorClasses = {
+    '#1a73e8': 'pin-badge-google-blue',
+    '#8e24aa': 'pin-badge-google-purple',
+    '#e64a19': 'pin-badge-google-orange',
+    '#d81b60': 'pin-badge-google-magenta'
+};
+
+function createTagBadge(tag) {
+    const badge = document.createElement('div');
+    const colorKey = (tag.color || '').toLowerCase();
+    const shapeKey = (tag.shape || '').toLowerCase();
+    const colorClass = tagColorClasses[colorKey] || 'pin-badge-google-blue';
+    badge.className = `pin-tag-badge ${colorClass}`;
+    badge.innerHTML = tagShapeSvgs[shapeKey] || '';
+    return badge;
+}
+
+window.resetUserTags = function () {
+    if (typeof API !== 'undefined' && API.resetUserTagsCache) {
+        API.resetUserTagsCache();
+    } else {
+        window.currentUserTags = {};
+    }
+    decorateActiveMarkersWithTags();
+};
+
+function decorateActiveMarkersWithTags() {
+    if (!activeMarkers || !window.currentUserTags) return;
+    activeMarkers.forEach(m => {
+        if (!m.dashpointId || !m.customContainer) return;
+        const tag = window.currentUserTags[m.dashpointId];
+        const existingBadge = m.customContainer.querySelector('.pin-tag-badge');
+        if (tag && !existingBadge) {
+            m.customContainer.appendChild(createTagBadge(tag));
+        } else if (!tag && existingBadge) {
+            existingBadge.remove();
+        } else if (tag && existingBadge) {
+            const colorKey = (tag.color || '').toLowerCase();
+            const shapeKey = (tag.shape || '').toLowerCase();
+            existingBadge.className = `pin-tag-badge ${tagColorClasses[colorKey] || 'pin-badge-google-blue'}`;
+            existingBadge.innerHTML = tagShapeSvgs[shapeKey] || '';
+        }
+    });
+}
+
+function loadUserTagsForGame(gameId) {
+    if (!gameId) return;
+
+    if (typeof API !== 'undefined' && API.checkSession && API.loadUserTags) {
+        API.checkSession(gameId).then(auth => {
+            if (auth.status === 'success' && auth.tags_enabled) {
+                API.loadUserTags(gameId).then(() => {
+                    decorateActiveMarkersWithTags();
+                }).catch(err => {
+                    console.error("Failed to load user tags:", err);
+                });
+            }
+        }).catch(_ => {});
+    }
+}
+
+window.updateMarkerTag = function (dashpointId, tagData) {
+    if (!activeMarkers) return;
+    const marker = activeMarkers.find(m => m.dashpointId === dashpointId);
+    if (!marker || !marker.customContainer) return;
+    const existingBadge = marker.customContainer.querySelector('.pin-tag-badge');
+    if (existingBadge) {
+        existingBadge.remove();
+    }
+    if (tagData) {
+        marker.customContainer.appendChild(createTagBadge(tagData));
+    }
+};
+
 /**
  * Fetches dashpoints for the given bounding box
  */
 function refreshDashpoints(bounds) {
     if (window.currentGameContext && window.currentGameContext.id) {
         bounds.game_id = window.currentGameContext.id;
+        loadUserTagsForGame(bounds.game_id);
     } else {
         console.warn("Skipping dashpoint refresh: No active game context selected.");
         return;
@@ -528,13 +614,25 @@ function plotVectors(pointsArray) {
             scale: 0.95
         });
 
+        const container = document.createElement('div');
+        container.className = 'custom-pin-container';
+        container.appendChild(pinView.element);
+
+        const userTag = window.currentUserTags ? window.currentUserTags[pt.id] : null;
+        if (userTag) {
+            container.appendChild(createTagBadge(userTag));
+        }
+
         const marker = new google.maps.marker.AdvancedMarkerElement({
             position: { lat: parseFloat(pt.lat), lng: parseFloat(pt.lon) },
             title: `Dashpoint ${pt.id}`,
-            content: pinView
+            content: container
         });
 
-        // Store state on the marker object for the Cluster Renderer
+        // Store state on marker for lookup and clustering
+        marker.dashpointId = pt.id;
+        marker.customContainer = container;
+        marker.pinView = pinView;
         marker.visitCount = vCount;
 
         // AdvancedMarkerElement uses `gmp-click` mapping to bypass DOM bubble overlaps.

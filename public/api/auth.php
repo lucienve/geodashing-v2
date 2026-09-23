@@ -11,6 +11,7 @@
 declare(strict_types=1);
 
 use App\Services\AuthService;
+use App\Services\TagService;
 
 // Bypass procedural logic during PHPUnit inclusion
 if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
@@ -125,6 +126,9 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             $rerollMaxRadius = (float) ($rerollSection['REROLL_MAX_RADIUS_KM'] ?? 10.0);
             $rerollMaxPerPlayer = (int) ($rerollSection['REROLL_MAX_PER_PLAYER'] ?? 3);
 
+            $tagService = new TagService($db, $config);
+            $tagsEnabled = $tagService->isFeatureEnabledForUser($_SESSION['username'] ?? null);
+
             $rerollsUsed = 0;
             $gameId = isset($_GET['game_id']) ? (int) $_GET['game_id'] : null;
 
@@ -148,7 +152,8 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
                     "reroll_enabled" => $rerollEnabled,
                     "reroll_max_radius_km" => $rerollMaxRadius,
                     "reroll_max_per_player" => $rerollMaxPerPlayer,
-                    "rerolls_used" => $rerollsUsed
+                    "rerolls_used" => $rerollsUsed,
+                    "tags_enabled" => $tagsEnabled
                 ]);
             } else {
                 http_response_code(401);

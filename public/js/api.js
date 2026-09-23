@@ -199,6 +199,7 @@ window.API = {
      */
     logout: async function () {
         try {
+            this.resetUserTagsCache();
             const res = await fetch('api/auth.php?action=logout', {
                 method: 'POST',
                 headers: this.getHeaders()
@@ -278,6 +279,115 @@ window.API = {
             const res = await fetch('api/auth.php?action=resend_verification', {
                 method: 'POST',
                 headers: this.getHeaders()
+            });
+            return await res.json();
+        } catch (e) {
+            console.error(e);
+            return { status: 'error', message: 'API Network Timeout!' };
+        }
+    },
+
+    _userTagsCacheGameId: null,
+    _userTagsPromise: null,
+    _userTagsPromiseGameId: null,
+
+    resetUserTagsCache: function () {
+        this._userTagsCacheGameId = null;
+        this._userTagsPromise = null;
+        this._userTagsPromiseGameId = null;
+        if (typeof window !== 'undefined') {
+            window.currentUserTags = {};
+        }
+    },
+
+    /**
+     * Deduplicated loader for user tags of a game.
+     * Prevents race conditions and in-flight overrides.
+     * @param {number} gameId
+     */
+    loadUserTags: async function (gameId) {
+        if (!gameId) return {};
+        if (typeof window === 'undefined') return {};
+
+        window.currentUserTags = window.currentUserTags || {};
+
+        if (this._userTagsCacheGameId === gameId) {
+            return window.currentUserTags;
+        }
+
+        if (this._userTagsPromise && this._userTagsPromiseGameId === gameId) {
+            return this._userTagsPromise;
+        }
+
+        this._userTagsPromiseGameId = gameId;
+        this._userTagsPromise = (async () => {
+            try {
+                const res = await this.getUserTags(gameId);
+                if (res.status === 'success' && res.tags) {
+                    window.currentUserTags = Object.assign({}, res.tags, window.currentUserTags || {});
+                    this._userTagsCacheGameId = gameId;
+                }
+                return window.currentUserTags;
+            } catch (err) {
+                console.error("Failed to load user tags:", err);
+                return window.currentUserTags || {};
+            } finally {
+                this._userTagsPromise = null;
+            }
+        })();
+
+        return this._userTagsPromise;
+    },
+
+    /**
+     * Fetch user tags dictionary for a specific game
+     * @param {number} gameId
+     */
+    getUserTags: async function (gameId) {
+        try {
+            const res = await fetch(`api/user_tags.php?game_id=${encodeURIComponent(gameId)}`, {
+                method: 'GET',
+                headers: this.getHeaders()
+            });
+            return await res.json();
+        } catch (e) {
+            console.error(e);
+            return { status: 'error', message: 'API Network Timeout!' };
+        }
+    },
+
+    /**
+     * Set a private user tag on a dashpoint
+     * @param {string} dashpointId
+     * @param {string} color
+     * @param {string} shape
+     */
+    setUserTag: async function (dashpointId, color, shape) {
+        try {
+            const headers = Object.assign({}, this.getHeaders(), { 'Content-Type': 'application/json' });
+            const res = await fetch('api/user_tags.php', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({ dashpoint_id: dashpointId, color: color, shape: shape })
+            });
+            return await res.json();
+        } catch (e) {
+            console.error(e);
+            return { status: 'error', message: 'API Network Timeout!' };
+        }
+    },
+
+    /**
+     * Delete a private user tag from a dashpoint
+     * @param {string} dashpointId
+     */
+    deleteUserTag: async function (dashpointId) {
+        try {
+            const headers = Object.assign({}, this.getHeaders(), { 'Content-Type': 'application/json' });
+            const res = await fetch('api/user_tags.php', {
+                method: 'DELETE',
+                headers: headers,
+                body: JSON.stringify({ dashpoint_id: dashpointId })
             });
             return await res.json();
         } catch (e) {

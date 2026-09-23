@@ -29,7 +29,7 @@ module.exports = defineConfig({
   globalSetup: require.resolve('./e2e/global-setup.js'),
 
   webServer: {
-    command: 'docker compose -f e2e/docker-compose.yml up --build',
+    command: 'docker compose -f e2e/docker-compose.yml up --build 2>/dev/null || docker-compose -f e2e/docker-compose.yml up --build',
     url: 'http://localhost:8081',
     reuseExistingServer: true,
   },

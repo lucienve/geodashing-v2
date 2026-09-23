@@ -88,9 +88,15 @@ mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "
     INSERT INTO dashpoints (id, game_id, location, country_code, state_province)
     VALUES ('GD000-AAAA', 1, ST_GeomFromText('POINT(51.5074 -0.1278)', 4326), 'UK', 'ENG');
 
-    -- Game 2 dashpoint (NYC)
+    -- Game 2 dashpoints (NYC)
     INSERT INTO dashpoints (id, game_id, location, country_code, state_province)
     VALUES ('GD001-AAAA', 2, ST_GeomFromText('POINT(40.7128 -74.0060)', 4326), 'US', 'NY');
+
+    INSERT INTO dashpoints (id, game_id, location, country_code, state_province)
+    VALUES ('GD001-AAAB', 2, ST_GeomFromText('POINT(40.7150 -74.0040)', 4326), 'US', 'NY');
+
+    INSERT INTO dashpoints (id, game_id, location, country_code, state_province)
+    VALUES ('GD001-AAAC', 2, ST_GeomFromText('POINT(40.7170 -74.0020)', 4326), 'US', 'NY');
 
     -- Game 3 dashpoints (Paris)
     INSERT INTO dashpoints (id, game_id, location, country_code, state_province)
@@ -110,6 +116,10 @@ mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "
     -- Mock historical attempt for TestUser on Game 1 dashpoint
     INSERT INTO visits (id, dashpoint_id, user_id, team_id, reported_location, distance_meters, reported_time, score_awarded, status, is_attempt)
     VALUES (2, 'GD000-AAAA', 1, NULL, ST_GeomFromText('POINT(51.5076 -0.1280)', 4326), 20, DATE_SUB(NOW(), INTERVAL 9 DAY), 0, 'approved', TRUE);
+
+    -- Mock historical tag for TestUser on Game 1 dashpoint (Read-only verification)
+    INSERT INTO user_dashpoint_tags (user_id, dashpoint_id, color_code, shape)
+    VALUES (1, 'GD000-AAAA', '#1a73e8', 'star');
 "
 
 echo "Test database initialized successfully!"

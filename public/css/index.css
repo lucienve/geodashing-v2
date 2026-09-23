@@ -2523,5 +2523,227 @@ body, html {
   background: rgba(255, 183, 3, 0.05);
 }
 
+/* =========================================================================
+   Private Point Tagging System
+   ========================================================================= */
 
+.dash-tag-container {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: rgba(18, 18, 23, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
 
+.dash-tag-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.dash-tag-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dash-tag-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--text-main);
+  text-transform: uppercase;
+}
+
+.dash-tag-subtitle {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.tag-readonly-badge {
+  font-size: 0.6875rem;
+  font-family: var(--font-mono);
+  color: var(--accent-amber);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+}
+
+.dash-tag-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.dash-tag-swatch {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  padding: 0;
+  background: transparent;
+}
+
+.dash-tag-swatch:hover:not(:disabled) {
+  transform: scale(1.08);
+}
+
+.dash-tag-swatch:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.dash-tag-swatch.selected {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px var(--accent-amber), 0 4px 12px rgba(0, 0, 0, 0.5);
+  transform: scale(1.1);
+}
+
+.dash-tag-swatch:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Palette Option 1 Swatch Colors */
+.swatch-google-blue {
+  background-color: #1a73e8;
+}
+
+.swatch-google-purple {
+  background-color: #8e24aa;
+}
+
+.swatch-google-orange {
+  background-color: #e64a19;
+}
+
+.swatch-google-magenta {
+  background-color: #d81b60;
+}
+
+.dash-tag-clear {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.dash-tag-clear:hover:not(:disabled) {
+  background: #334155;
+  color: #f8fafc;
+}
+
+.dash-tag-clear:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.dash-tag-clear:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.dash-tag-divider {
+  width: 1px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0 0.25rem;
+}
+
+.dash-tag-status-row {
+  margin-top: 0.625rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.6875rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.tag-status-label {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.tag-save-toast {
+  color: var(--accent-green);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.tag-save-toast.visible {
+  opacity: 1;
+}
+
+.tag-save-toast.error {
+  color: var(--accent-red);
+}
+
+/* Map Marker Corner Badges */
+.custom-pin-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pin-tag-badge {
+  position: absolute;
+  top: -5px;
+  right: -7px;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.pin-badge-google-blue {
+  background-color: #1a73e8;
+}
+
+.pin-badge-google-purple {
+  background-color: #8e24aa;
+}
+
+.pin-badge-google-orange {
+  background-color: #e64a19;
+}
+
+.pin-badge-google-magenta {
+  background-color: #d81b60;
+}
+
+.tag-svg-icon {
+  width: 11px;
+  height: 11px;
+  fill: #ffffff;
+  display: block;
+}

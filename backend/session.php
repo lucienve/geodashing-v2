@@ -68,7 +68,15 @@ setcookie('csrf_token', $_SESSION['csrf_token'], [
 ]);
 
 // 5. POST Request size limit validation
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST) && empty($_FILES) && isset($_SERVER['CONTENT_LENGTH']) && (int)$_SERVER['CONTENT_LENGTH'] > 0) {
+$contentLength = isset($_SERVER['CONTENT_LENGTH']) ? (int)$_SERVER['CONTENT_LENGTH'] : 0;
+$maxBytes = getPostMaxSizeInBytes();
+
+$exceeded = false;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $contentLength > 0 && $maxBytes > 0) {
+    $exceeded = ($contentLength > $maxBytes);
+}
+
+if ($exceeded) {
     header('Content-Type: application/json');
     http_response_code(413);
     echo json_encode([
@@ -79,9 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST) && empty($_FILES) && 
 }
 
 // 6. CSRF Token Validation
-// We only enforce CSRF checks if the user currently holds an active, authenticated Session Context.
-// This allows initial unauthenticated POST operations (like login, signup) to establish state seamlessly.
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SESSION['user_id'])) {
+// We enforce CSRF checks across all state-mutating requests (POST, PUT, DELETE, PATCH)
+// if the user currently holds an active, authenticated Session Context.
+// Initial unauthenticated POST operations (like login, signup) establish state seamlessly.
+if (in_array($_SERVER['REQUEST_METHOD'] ?? '', ['POST', 'PUT', 'DELETE', 'PATCH'], true) && !empty($_SESSION['user_id'])) {
     $providedToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
 
     if (empty($providedToken) || !hash_equals($_SESSION['csrf_token'], $providedToken)) {

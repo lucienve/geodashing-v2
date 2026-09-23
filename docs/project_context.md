@@ -445,5 +445,20 @@ The application allows users to participate in global geographic games where the
 - Converted inline event property assignments (`.onclick`) in modal overlays and HUD toggles to `addEventListener('click', ...)` for proper event lifecycle hygiene.
 - Hardened external links with `rel="noopener noreferrer"` across templates and updated `window.open` calls in [public/js/controllers.js](public/js/controllers.js) to prevent reverse tabnabbing.
 - Populated [public/site.webmanifest](public/site.webmanifest) with application metadata (`name`, `short_name`) and dark terminal theme colors (`#09090b`) to eliminate Lighthouse PWA warnings.
-- Verified visual parity and zero regressions across all responsive layouts and verified test suites.
-
+### 65. Private Dashpoint Tagging Feature
+- Implemented a private, player-specific dashpoint tagging system allowing users to mark dashpoints using 4 Google Maps POI palette color and shape combinations (Google Blue Star, Google Purple Diamond, Google Deep Orange Triangle, and Google Magenta Square).
+- **Database Schema**: Added `user_dashpoint_tags` table in [schema.sql](schema.sql) with compound primary key `(user_id, dashpoint_id)` and foreign keys referencing `users(id)` and `dashpoints(id)` with `ON DELETE CASCADE`.
+- **Feature Flag & Allowlist Rollout**: Added a `[tags]` section to [backend/config.ini](backend/config.ini) and [backend/config.ini.example](backend/config.ini.example) with `TAGS_ENABLED` (boolean) and `TAGS_ALLOWLIST` (comma-separated usernames), enabling safe dark deployment and testing before public game launch without code redeployment.
+- **Backend Service & REST API**:
+  - Implemented [backend/services/TagService.php](backend/services/TagService.php) handling palette verification, user permissions, dashpoint modifiability constraints, upserting, and deletion.
+  - Integrated tag purging in [backend/services/RerollService.php](backend/services/RerollService.php) so that preview dashpoint rerolls automatically purge any user tags across all players.
+  - Created RESTful endpoint [public/api/user_tags.php](public/api/user_tags.php) (`GET`, `POST`, `DELETE`) with CSRF protection and session authentication.
+  - Fixed a false-positive HTTP 413 ("Request Entity Too Large") check in [backend/session.php](backend/session.php) for JSON POST requests by checking `post_max_size` against raw content length rather than relying on form-data `$_POST` array population.
+- **Frontend UI & Performance Optimization (Approach B)**:
+  - Avoided database join overhead on rapid map panning by creating a dedicated game-level dictionary loader (`API.loadUserTags(gameId)`) in [public/js/api.js](public/js/api.js) with promise deduplication and client-side optimistic mutation preservation.
+  - Added accessible tag swatch controls with 44×44px touch targets and full ARIA states in [public/templates/dashpoint.html](public/templates/dashpoint.html) and styled in [public/css/index.css](public/css/index.css).
+  - Extended [public/js/map.js](public/js/map.js) to render subtle corner badges on map pins using SVG glyphs and non-blocking pointer events (`pointer-events: none`).
+  - Added automatic state invalidation on session logout in `api.js` and game context changes in [public/js/app.js](public/js/app.js).
+- **Testing & Verification**:
+  - Created [backend/tests/TagServiceTest.php](backend/tests/TagServiceTest.php) with 14 unit test scenarios covering configuration toggles, allowlists, game status rules, palette constraints, and reroll cleanup (all 90 PHPUnit tests pass).
+  - Created [e2e/tagging.spec.js](e2e/tagging.spec.js) verifying guest invisibility, allowlist gating, active game tagging and clearing, preview game tagging, and historical game read-only constraints across Desktop Chrome, iPhone 12 (WebKit), and Pixel 7 (all 15 Playwright tests pass).

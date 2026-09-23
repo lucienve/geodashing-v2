@@ -142,3 +142,17 @@ CREATE TABLE dashpoint_rerolls (
 
 CREATE INDEX idx_rerolls_user_game ON dashpoint_rerolls (user_id, game_id);
 
+-- 10. User Dashpoint Tags (Private player-specific dashpoint tags)
+CREATE TABLE user_dashpoint_tags (
+    user_id INT NOT NULL,
+    dashpoint_id VARCHAR(20) NOT NULL,
+    color_code VARCHAR(7) NOT NULL,
+    shape VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, dashpoint_id),
+    KEY idx_user_tags_user (user_id),
+    KEY idx_user_tags_dashpoint (dashpoint_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (dashpoint_id) REFERENCES dashpoints(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

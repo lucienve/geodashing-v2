@@ -11,6 +11,42 @@
         </p>
     </div>
 
+    <div id="dp-tag-container" class="dash-tag-container d-none">
+        <div class="dash-tag-header">
+            <div class="dash-tag-title-wrap">
+                <span class="dash-tag-title">PRIVATE TAG</span>
+                <span class="dash-tag-subtitle">(Visible only to you)</span>
+            </div>
+            <span id="dp-tag-readonly-badge" class="tag-readonly-badge d-none">Read-Only</span>
+        </div>
+
+        <div class="dash-tag-bar">
+            <button type="button" class="dash-tag-swatch swatch-google-blue" data-color="#1a73e8" data-shape="star" data-name="Google Blue" aria-label="Tag with Google Blue Star" aria-pressed="false">
+                <svg class="tag-svg-icon" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </button>
+            <button type="button" class="dash-tag-swatch swatch-google-purple" data-color="#8e24aa" data-shape="diamond" data-name="Google Purple" aria-label="Tag with Google Purple Diamond" aria-pressed="false">
+                <svg class="tag-svg-icon" viewBox="0 0 24 24"><path d="M12 2L2 12l10 10 10-10L12 2z"/></svg>
+            </button>
+            <button type="button" class="dash-tag-swatch swatch-google-orange" data-color="#e64a19" data-shape="triangle" data-name="Google Deep Orange" aria-label="Tag with Google Deep Orange Triangle" aria-pressed="false">
+                <svg class="tag-svg-icon" viewBox="0 0 24 24"><path d="M12 3L2 21h20L12 3z"/></svg>
+            </button>
+            <button type="button" class="dash-tag-swatch swatch-google-magenta" data-color="#d81b60" data-shape="square" data-name="Google Magenta" aria-label="Tag with Google Magenta Square" aria-pressed="false">
+                <svg class="tag-svg-icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+            </button>
+
+            <div class="dash-tag-divider"></div>
+
+            <button type="button" class="dash-tag-clear" id="btn-clear-tag" aria-label="Clear Tag" title="Clear Tag">
+                <svg class="tag-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M6 18L18 6"/></svg>
+            </button>
+        </div>
+
+        <div class="dash-tag-status-row">
+            <span>Tag: <span id="dp-tag-label" class="tag-status-label">None</span></span>
+            <span id="dp-tag-toast" class="tag-save-toast">Saved</span>
+        </div>
+    </div>
+
     <button type="button" class="btn btn-primary btn-full-width" id="btn-goto-report">
         LOG VISIT
     </button>

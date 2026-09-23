@@ -33,3 +33,9 @@ DEFAULT_DASHPOINT_COUNT = 35000
 TIMEZONE = "America/New_York"
 SEND_TURNOVER_ANNOUNCEMENT = true
 
+[tags]
+; Enable private dashpoint tagging globally
+TAGS_ENABLED = false
+; Comma-separated list of usernames allowed to access tagging when TAGS_ENABLED = false
+TAGS_ALLOWLIST = ""
+
