@@ -507,6 +507,14 @@ The application allows users to participate in global geographic games where the
   - Preserved existing behavior for external deep links (emails, shared URLs, profile page links), ensuring they continue to center on the target dashpoint and reset zoom to city-level (`10`).
 - **Testing & Verification**:
   - Expanded [e2e/map_navigation.spec.js](e2e/map_navigation.spec.js) with test coverage verifying both deep-link zoom level 10 and in-map marker click zoom preservation (at zoom 16 with gentle panning) across Chromium, iPhone 12, and Pixel 7 (9/9 tests pass).
-  - Verified with `uv run pre-commit run --all-files` (YAPF, PyLint, Mypy, Pyright, Pytest, ESLint, PHPCS, PHPUnit passing with exit code 0).
+### 70. Cluster Renderer Google Maps API Deprecation Resolution
+- Extended Google Maps API modernization in [public/js/map.js](public/js/map.js) to resolve console deprecation warnings during marker clustering:
+  - Migrated `glyph: String(count)` to modern `glyphText: String(count)` on `google.maps.marker.PinElement` in `customClusterRenderer`, eliminating the `<gmp-pin>` deprecation warning.
+  - Configured `gmpClickable: true` on the cluster `google.maps.marker.AdvancedMarkerElement` to ensure `gmp-click` events dispatch correctly when clusters are clicked.
+  - Implemented an instance `.addListener(eventName, handler)` method on cluster markers that delegates directly to `this.addEventListener(eventName, handler)`, satisfying the upstream `@googlemaps/markerclusterer` library's event registration without triggering Google Maps' deprecated bridge warning.
+- **Testing & Verification**:
+  - Confirmed 0 errors across ESLint (`npm run lint`), PHPCS (`composer run lint`), and PHPUnit (`composer run test`, 93/93 passing).
+  - Executed Playwright E2E suite (`npx playwright test --reporter=list`), passing 182 tests with zero `<gmp-pin>` or `<gmp-advanced-marker>` deprecation warnings in the browser console.
+
 
 

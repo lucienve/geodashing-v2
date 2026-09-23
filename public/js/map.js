@@ -38,15 +38,31 @@ const customClusterRenderer = {
         const pinView = new google.maps.marker.PinElement({
             background: bgColor,
             borderColor: rimColor,
-            glyph: String(count),
+            glyphText: String(count),
             glyphColor: "#ffffff",
             scale: 1.2
         });
 
-        return new google.maps.marker.AdvancedMarkerElement({
+        const marker = new google.maps.marker.AdvancedMarkerElement({
             position: position,
-            content: pinView
+            content: pinView,
+            gmpClickable: true
         });
+
+        // Intercept addListener on the cluster marker instance so markerclusterer
+        // delegates to standard addEventListener('gmp-click', ...) without triggering
+        // the Google Maps JS API deprecation console warning.
+        marker.addListener = function (eventName, handler) {
+            this.gmpClickable = true;
+            this.addEventListener(eventName, handler);
+            return {
+                remove: () => {
+                    this.removeEventListener(eventName, handler);
+                }
+            };
+        };
+
+        return marker;
     }
 };
 
