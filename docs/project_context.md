@@ -497,4 +497,16 @@ The application allows users to participate in global geographic games where the
   - Migrated marker click handlers on `AdvancedMarkerElement` instances to native DOM `addEventListener('gmp-click', ...)` instead of deprecated `marker.addListener(...)`.
 - Verified with ESLint (0 errors) and Playwright map tests (`map_navigation.spec.js`, `visit_markers.spec.js`) confirming zero deprecation warnings in the browser console.
 
+### 69. Zoom Level Preservation on In-Map Marker Clicks
+- Disentangled marker click interactions from external deep-link navigation in the SPA:
+  - Previously, clicking any map marker or visit pin routed to `#dashpoint?id=...`, which unconditionally reset `map.setZoom(10)` and `map.setCenter(...)` (originally introduced for direct URL navigation in commit `8074292`).
+  - Implemented in-memory marker tracking (`window._openedFromMapMarkerId`) and immediate smooth panning (`map.panTo`) in [public/js/map.js](public/js/map.js) on marker and container click events, preserving the user's current close-up zoom level (e.g. zoom 15/16).
+  - Aligned visit/attempt marker clicks to pan directly to parent dashpoint coordinates from `window.loadedDashpoints`.
+  - Added initialization focus queuing (`window.__pendingMapFocus`) in [public/js/controllers.js](public/js/controllers.js) and `map.js` for external deep links that resolve before Google Maps finishes initialization.
+  - Added route change validation in [public/js/controllers.js](public/js/controllers.js) (`window.location.hash !== '#dashpoint?id=' + dpId`) to discard stale asynchronous responses and clear stale marker tracking on route exit.
+  - Preserved existing behavior for external deep links (emails, shared URLs, profile page links), ensuring they continue to center on the target dashpoint and reset zoom to city-level (`10`).
+- **Testing & Verification**:
+  - Expanded [e2e/map_navigation.spec.js](e2e/map_navigation.spec.js) with test coverage verifying both deep-link zoom level 10 and in-map marker click zoom preservation (at zoom 16 with gentle panning) across Chromium, iPhone 12, and Pixel 7 (9/9 tests pass).
+  - Verified with `uv run pre-commit run --all-files` (YAPF, PyLint, Mypy, Pyright, Pytest, ESLint, PHPCS, PHPUnit passing with exit code 0).
+
 

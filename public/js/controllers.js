@@ -85,6 +85,11 @@ document.addEventListener('routeLoaded', (e) => {
     activeIntervals.forEach(clearInterval);
     activeIntervals = [];
 
+    // Clear any marker navigation tracking if navigating away from dashpoint views
+    if (!route.startsWith('#dashpoint')) {
+        window._openedFromMapMarkerId = null;
+    }
+
     // ==========================================================
     // Controller: HOME DASHBOARD (#home)
     // ==========================================================
@@ -119,6 +124,11 @@ document.addEventListener('routeLoaded', (e) => {
         fetch(`api/dashpoint.php?id=${dpId}`)
             .then(res => res.json())
             .then(json => {
+                // Discard stale response if route changed while fetch was in-flight
+                if (window.location.hash !== `#dashpoint?id=${dpId}`) {
+                    return;
+                }
+
                 if (json.status === 'success') {
                     const dp = json.data;
 
@@ -140,10 +150,19 @@ document.addEventListener('routeLoaded', (e) => {
                     if (dpIdLabel) dpIdLabel.innerText = `${dp.id}`;
                     if (dpCoordLabel) dpCoordLabel.innerText = `[ LAT: ${dp.lat.toFixed(5)} | LON: ${dp.lon.toFixed(5)} ]`;
 
-                    // Recenter the map on the loaded dashpoint and set zoom to city-level
+                    const fromMapMarker = (window._openedFromMapMarkerId === dp.id);
+                    window._openedFromMapMarkerId = null;
+
+                    // If opening from external deep link, email, or profile, center and reset zoom to 10.
+                    // If opening from an in-map marker click, preserve zoom level (map.panTo was triggered on click in map.js).
                     if (typeof map !== 'undefined' && map && typeof google !== 'undefined' && google.maps) {
-                        map.setCenter({ lat: parseFloat(dp.lat), lng: parseFloat(dp.lon) });
-                        map.setZoom(10);
+                        if (!fromMapMarker) {
+                            map.setCenter({ lat: parseFloat(dp.lat), lng: parseFloat(dp.lon) });
+                            map.setZoom(10);
+                        }
+                    } else if (!fromMapMarker) {
+                        // Map is still initializing on deep link: queue focus for initMap
+                        window.__pendingMapFocus = { lat: dp.lat, lng: dp.lon, zoom: 10 };
                     }
 
                     // Evaluate Ownership & Authentication dynamically wrapping the Primary Button State

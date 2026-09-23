@@ -78,6 +78,15 @@ window.initMap = function () {
     // Expose the native map instance globally specifically for E2E Testing evaluation
     window.__geodashingMap = map;
 
+    // Apply any pending focus queued before map initialization (e.g. initial deep links)
+    if (window.__pendingMapFocus) {
+        map.setCenter({ lat: parseFloat(window.__pendingMapFocus.lat), lng: parseFloat(window.__pendingMapFocus.lng) });
+        if (window.__pendingMapFocus.zoom !== undefined) {
+            map.setZoom(window.__pendingMapFocus.zoom);
+        }
+        window.__pendingMapFocus = null;
+    }
+
     // 2. Bind the primary map movement listener. 
     // 'idle' fires when a user finishes sliding/zooming their map
     google.maps.event.addListener(map, 'idle', function () {
@@ -639,10 +648,15 @@ function plotVectors(pointsArray) {
         marker.pinView = pinView;
         marker.visitCount = vCount;
 
-        // AdvancedMarkerElement uses `gmp-click` mapping to bypass DOM bubble overlaps.
-        marker.addEventListener('gmp-click', () => {
+        const onMarkerClick = () => {
+            window._openedFromMapMarkerId = pt.id;
+            map.panTo({ lat: parseFloat(pt.lat), lng: parseFloat(pt.lon) });
             window.location.hash = `#dashpoint?id=${pt.id}`;
-        });
+        };
+
+        // AdvancedMarkerElement uses `gmp-click` mapping to bypass DOM bubble overlaps.
+        marker.addEventListener('gmp-click', onMarkerClick);
+        container.addEventListener('click', onMarkerClick);
 
         activeMarkers.push(marker);
 
@@ -743,9 +757,17 @@ function plotVisitMarkers(visitsArray) {
         container.appendChild(dot);
         container.appendChild(label);
 
-        container.addEventListener('click', () => {
+        const openVisitDashpoint = () => {
+            window._openedFromMapMarkerId = visit.dashpoint_id;
+            const targetDp = (window.loadedDashpoints || []).find(d => d.id === visit.dashpoint_id);
+            const panTarget = targetDp
+                ? { lat: parseFloat(targetDp.lat), lng: parseFloat(targetDp.lon) }
+                : { lat: parseFloat(visit.lat), lng: parseFloat(visit.lon) };
+            map.panTo(panTarget);
             window.location.hash = `#dashpoint?id=${visit.dashpoint_id}`;
-        });
+        };
+
+        container.addEventListener('click', openVisitDashpoint);
 
         const marker = new google.maps.marker.AdvancedMarkerElement({
             map: map,
@@ -757,9 +779,7 @@ function plotVisitMarkers(visitsArray) {
             anchorTop: "-50%"
         });
 
-        marker.addEventListener('gmp-click', () => {
-            window.location.hash = `#dashpoint?id=${visit.dashpoint_id}`;
-        });
+        marker.addEventListener('gmp-click', openVisitDashpoint);
 
         activeVisitMarkers.push(marker);
     });
