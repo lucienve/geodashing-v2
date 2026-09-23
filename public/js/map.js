@@ -620,7 +620,7 @@ function plotVectors(pointsArray) {
 
         const container = document.createElement('div');
         container.className = 'custom-pin-container';
-        container.appendChild(pinView.element);
+        container.appendChild(pinView);
 
         const userTag = window.currentUserTags ? window.currentUserTags[pt.id] : null;
         if (userTag) {
@@ -640,7 +640,7 @@ function plotVectors(pointsArray) {
         marker.visitCount = vCount;
 
         // AdvancedMarkerElement uses `gmp-click` mapping to bypass DOM bubble overlaps.
-        marker.addListener('gmp-click', () => {
+        marker.addEventListener('gmp-click', () => {
             window.location.hash = `#dashpoint?id=${pt.id}`;
         });
 
@@ -757,7 +757,7 @@ function plotVisitMarkers(visitsArray) {
             anchorTop: "-50%"
         });
 
-        marker.addListener('gmp-click', () => {
+        marker.addEventListener('gmp-click', () => {
             window.location.hash = `#dashpoint?id=${visit.dashpoint_id}`;
         });
 

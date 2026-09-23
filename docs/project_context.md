@@ -491,4 +491,10 @@ The application allows users to participate in global geographic games where the
   - Added `TestUser` to local `backend/config.ini` for local testing parity.
   - Added unit test in [backend/tests/TagServiceTest.php](backend/tests/TagServiceTest.php) covering environment variable overrides (93/93 tests pass).
 
+### 68. Google Maps API Deprecation Cleanup
+- Updated [public/js/map.js](public/js/map.js) to resolve console deprecation warnings from the Google Maps JavaScript API (v3.53+):
+  - Appended `pinView` directly (`container.appendChild(pinView)`) instead of accessing the deprecated `pinView.element` property on `PinElement`.
+  - Migrated marker click handlers on `AdvancedMarkerElement` instances to native DOM `addEventListener('gmp-click', ...)` instead of deprecated `marker.addListener(...)`.
+- Verified with ESLint (0 errors) and Playwright map tests (`map_navigation.spec.js`, `visit_markers.spec.js`) confirming zero deprecation warnings in the browser console.
+
 
