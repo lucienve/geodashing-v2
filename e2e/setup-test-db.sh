@@ -93,10 +93,10 @@ mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "
     VALUES ('GD001-AAAA', 2, ST_GeomFromText('POINT(40.7128 -74.0060)', 4326), 'US', 'NY');
 
     INSERT INTO dashpoints (id, game_id, location, country_code, state_province)
-    VALUES ('GD001-AAAB', 2, ST_GeomFromText('POINT(40.7150 -74.0040)', 4326), 'US', 'NY');
+    VALUES ('GD001-AAAB', 2, ST_GeomFromText('POINT(40.6782 -73.9442)', 4326), 'US', 'NY');
 
     INSERT INTO dashpoints (id, game_id, location, country_code, state_province)
-    VALUES ('GD001-AAAC', 2, ST_GeomFromText('POINT(40.7170 -74.0020)', 4326), 'US', 'NY');
+    VALUES ('GD001-AAAC', 2, ST_GeomFromText('POINT(40.7282 -73.7949)', 4326), 'US', 'NY');
 
     -- Game 3 dashpoints (Paris)
     INSERT INTO dashpoints (id, game_id, location, country_code, state_province)

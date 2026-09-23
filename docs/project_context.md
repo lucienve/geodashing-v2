@@ -480,3 +480,15 @@ The application allows users to participate in global geographic games where the
   - Added multi-page cross-tab synchronization test case in [e2e/tagging.spec.js](e2e/tagging.spec.js).
   - Confirmed 0 errors across ESLint, PHPCS, and PHPUnit.
 
+### 67. CI Playwright E2E Stabilization & Radar Proximity Isolation
+- Resolved CI E2E test failures on GitHub Actions run #35898406345 across `e2e/radar.spec.js` and `e2e/tagging.spec.js`.
+- **Proximity Radar Collision Fix**:
+  - Relocated mock dashpoints `GD001-AAAB` (to Brooklyn `POINT(40.6782 -73.9442)`) and `GD001-AAAC` (to Queens `POINT(40.7282 -73.7949)`) in [e2e/setup-test-db.sh](e2e/setup-test-db.sh).
+  - Prevents proximity collision where `GD001-AAAB` was only 168.6m from the radar test approach coordinate `(40.7150, -74.0060)`, ensuring the HUD reliably isolates `GD001-AAAA` (244.6m) without stealing focus.
+- **CI Tagging Allowlist Parity**:
+  - Configured [.github/workflows/ci-e2e.yml](.github/workflows/ci-e2e.yml) to write `[tags]` with `TAGS_ENABLED = false` and `TAGS_ALLOWLIST = "TestUser"` into the generated `backend/config.ini`.
+  - Added constructor-level environment variable overrides for `TAGS_ENABLED` and `TAGS_ALLOWLIST` in [backend/services/TagService.php](backend/services/TagService.php) when config is loaded from file, while keeping unit-test-injected config arrays completely pure.
+  - Added `TestUser` to local `backend/config.ini` for local testing parity.
+  - Added unit test in [backend/tests/TagServiceTest.php](backend/tests/TagServiceTest.php) covering environment variable overrides (93/93 tests pass).
+
+

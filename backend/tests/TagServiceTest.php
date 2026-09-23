@@ -24,6 +24,13 @@ class TagServiceTest extends TestCase
         $this->pdoMock = $this->createMock(PDO::class);
     }
 
+    protected function tearDown(): void
+    {
+        putenv('TAGS_ENABLED');
+        putenv('TAGS_ALLOWLIST');
+        unset($_ENV['TAGS_ENABLED'], $_ENV['TAGS_ALLOWLIST']);
+    }
+
     #[Test]
     public function featureFlagReturnsTrueWhenGloballyEnabled(): void
     {
@@ -324,5 +331,18 @@ class TagServiceTest extends TestCase
         $this->assertNotEquals($etagA, $etagB);
         $this->assertNotEquals($etagA, $etagC);
         $this->assertNotEquals($etagB, $etagC);
+    }
+
+    #[Test]
+    public function constructorAppliesEnvironmentVariableOverridesWhenConfigIsNull(): void
+    {
+        putenv('TAGS_ENABLED=false');
+        putenv('TAGS_ALLOWLIST=CustomTester,EnvUser');
+
+        $service = new TagService($this->pdoMock);
+
+        $this->assertTrue($service->isFeatureEnabledForUser('CustomTester'));
+        $this->assertTrue($service->isFeatureEnabledForUser('envuser'));
+        $this->assertFalse($service->isFeatureEnabledForUser('Stranger'));
     }
 }

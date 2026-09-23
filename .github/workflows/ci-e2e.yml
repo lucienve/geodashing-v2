@@ -66,6 +66,10 @@ jobs:
           DB_NAME = geodashing
           DB_USER = root
           DB_PASS = default_root_pass
+
+          [tags]
+          TAGS_ENABLED = false
+          TAGS_ALLOWLIST = "TestUser"
           EOF
 
       - name: Initialize Database Schema & Inject Dummy Data

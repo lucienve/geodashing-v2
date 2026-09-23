@@ -40,6 +40,12 @@ class TagService
         if ($config === null) {
             $configPath = __DIR__ . '/../config.ini';
             $this->config = file_exists($configPath) ? (parse_ini_file($configPath, true) ?: []) : [];
+            if (getenv('TAGS_ENABLED') !== false) {
+                $this->config['tags']['TAGS_ENABLED'] = getenv('TAGS_ENABLED');
+            }
+            if (getenv('TAGS_ALLOWLIST') !== false) {
+                $this->config['tags']['TAGS_ALLOWLIST'] = getenv('TAGS_ALLOWLIST');
+            }
         } else {
             $this->config = $config;
         }
