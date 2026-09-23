@@ -82,8 +82,8 @@ test.describe('Private Point Tagging Feature', () => {
         await expect(blueSwatch).toHaveClass(/selected/);
         await expect(blueSwatch).toHaveAttribute('aria-pressed', 'true');
 
-        const tagLabel = page.locator('#dp-tag-label');
-        await expect(tagLabel).toContainText('Google Blue');
+        const tagToast = page.locator('#dp-tag-toast');
+        await expect(tagToast).toHaveText('Saved');
 
         // Clear the tag
         const clearBtn = page.locator('#btn-clear-tag');
@@ -91,7 +91,7 @@ test.describe('Private Point Tagging Feature', () => {
 
         await expect(blueSwatch).not.toHaveClass(/selected/);
         await expect(blueSwatch).toHaveAttribute('aria-pressed', 'false');
-        await expect(tagLabel).toHaveText('None');
+        await expect(tagToast).toHaveText('Cleared');
     });
 
     test('Tag UI is read-only for historical past games', async ({ page }) => {

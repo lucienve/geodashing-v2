@@ -2676,15 +2676,11 @@ body, html {
   margin-top: 0.625rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
+  min-height: 1rem;
   font-size: 0.6875rem;
   font-family: var(--font-mono);
   color: var(--text-muted);
-}
-
-.tag-status-label {
-  color: var(--text-main);
-  font-weight: 600;
 }
 
 .tag-save-toast {

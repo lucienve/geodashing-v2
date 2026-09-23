@@ -299,7 +299,6 @@ document.addEventListener('routeLoaded', (e) => {
                     // Evaluate Private Tag Actions
                     const tagContainer = document.getElementById('dp-tag-container');
                     const tagReadonlyBadge = document.getElementById('dp-tag-readonly-badge');
-                    const tagLabel = document.getElementById('dp-tag-label');
                     const tagToast = document.getElementById('dp-tag-toast');
                     const btnClearTag = document.getElementById('btn-clear-tag');
                     const swatches = tagContainer ? tagContainer.querySelectorAll('.dash-tag-swatch') : [];
@@ -332,14 +331,6 @@ document.addEventListener('routeLoaded', (e) => {
                                             s.setAttribute('aria-pressed', 'false');
                                         }
                                     });
-                                    if (tagLabel) {
-                                        if (tag && tag.shape) {
-                                            const shapeTitle = tag.shape.charAt(0).toUpperCase() + tag.shape.slice(1);
-                                            tagLabel.textContent = `${tag.name || shapeTitle} (${shapeTitle})`;
-                                        } else {
-                                            tagLabel.textContent = 'None';
-                                        }
-                                    }
                                 };
 
                                 let toastTimeout = null;
