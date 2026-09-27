@@ -286,7 +286,7 @@ class RerollServiceTest extends TestCase
         $cmd = $service->buildRerollCommand(51.5074, -0.1278, 10.0, '/tmp/test_out.json');
 
         $this->assertStringContainsString('/custom/uv', $cmd);
-        $this->assertStringContainsString('run --project', $cmd);
+        $this->assertStringContainsString('run --no-sync --no-dev --project', $cmd);
         $this->assertStringContainsString('UV_CACHE_DIR=/tmp/uv-cache', $cmd);
         $this->assertStringContainsString('--output-file', $cmd);
         $this->assertStringContainsString('/tmp/test_out.json', $cmd);

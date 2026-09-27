@@ -548,3 +548,15 @@ The application allows users to participate in global geographic games where the
 - **Testing & Verification**:
   - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across all linters, type checkers, and PHPUnit.
   - Playwright E2E suite: All 185 tests passed cleanly with 0 failures and 0 flaky retries.
+
+### 73. Dashpoint Reroll Runtime Flags & Server Logging
+- **Problem**: When triggering a dashpoint reroll on production, `RerollService.php` invoked `uv run` to execute `backend/scripts/reroll_dashpoint.py`. Because `uv run` by default synchronizes dependencies against `pyproject.toml` and its `default-groups = ["dev"]`, it detected that `mypy` was missing (as `uv sync --no-dev` was run during production deployment) and attempted to install it. Because the web server process user lacked write permissions to the `.venv` directory, the operation failed with `Permission denied (os error 13)`. Furthermore, the caught exception in `public/api/reroll.php` was omitted from server error logs.
+- **Reroll Execution Hardening**:
+  - Updated `buildRerollCommand()` in [backend/services/RerollService.php](backend/services/RerollService.php) to append `--no-sync --no-dev` to `uv run`. This instructs `uv run` to treat the environment as read-only at runtime and bypass synchronization checks across all environments.
+  - Updated [backend/tests/RerollServiceTest.php](backend/tests/RerollServiceTest.php) to assert `--no-sync --no-dev` presence in the generated CLI command.
+- **Server Error Logging**:
+  - Added `error_log("Reroll API Error: " . $e->getMessage());` in the `catch` block of [public/api/reroll.php](public/api/reroll.php).
+  - Added `error_log("Reroll script execution failed (exit code {$returnCode}): " . $errMsg);` in `executePythonRerollScript()` in [backend/services/RerollService.php](backend/services/RerollService.php).
+- **Production Turnover Cron & Rollover Documentation**:
+  - Updated [docs/admin_guide.md](docs/admin_guide.md) and [docs/game_rollover.md](docs/game_rollover.md) to document `uv run --no-sync --no-dev` for the `/etc/cron.d/geodashing-turnover` system cron and manual rollover execution.
+

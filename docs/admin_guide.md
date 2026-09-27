@@ -309,7 +309,7 @@ The Ops Agent monitors the Geodashing Apache logs as well as the monthly turnove
     ```
 
 ### Step 4: Setting Up the Monthly Turnover Cron Job
-On the production VM (`vm2019-vpc`), the turnover cron job is configured via `/etc/cron.d/geodashing-turnover` to trigger the automated rollover at midnight America/New_York on the 1st of every month using `uv run`.
+On the production VM (`vm2019-vpc`), the turnover cron job is configured via `/etc/cron.d/geodashing-turnover` to trigger the automated rollover at midnight America/New_York on the 1st of every month using `uv run --no-sync --no-dev`.
 
 1.  Edit or create the system cron file `/etc/cron.d/geodashing-turnover`:
     ```bash
@@ -320,7 +320,7 @@ On the production VM (`vm2019-vpc`), the turnover cron job is configured via `/e
     # Geodashing Monthly Turnover: Runs at 00:00:00 America/New_York on the 1st of every month
     CRON_TZ=America/New_York
     PATH=/home/lucienve/.cargo/bin:/usr/local/bin:/usr/bin:/bin
-    0 0 1 * * lucienve cd /home/lucienve/src/geodashing-v2 && uv run python -m backend.scripts.game_utils --rollover >> /var/log/geodashing/turnover.log 2>&1
+    0 0 1 * * lucienve cd /home/lucienve/src/geodashing-v2 && uv run --no-sync --no-dev python -m backend.scripts.game_utils --rollover >> /var/log/geodashing/turnover.log 2>&1
     ```
 3.  Ensure the file has standard permissions:
     ```bash

@@ -271,7 +271,7 @@ class RerollService
         $uvBin = $this->resolveUvBinary();
         if ($uvBin !== null) {
             return sprintf(
-                'UV_CACHE_DIR=/tmp/uv-cache PYTHONPATH=%s %s run --project %s python %s'
+                'UV_CACHE_DIR=/tmp/uv-cache PYTHONPATH=%s %s run --no-sync --no-dev --project %s python %s'
                 . ' --lat %F --lon %F --max-radius-km %F --land-zip %s --lakes-zip %s --output-file %s 2>&1',
                 escapeshellarg($projectRoot),
                 escapeshellarg($uvBin),
@@ -360,6 +360,7 @@ class RerollService
                 $errMsg = (is_array($result) && !empty($result['message']))
                     ? $result['message']
                     : ($outputLog ?: 'Unknown Python script failure');
+                error_log("Reroll script execution failed (exit code {$returnCode}): " . $errMsg);
                 throw new Exception("Failed to relocate dashpoint on land: " . $errMsg);
             }
 

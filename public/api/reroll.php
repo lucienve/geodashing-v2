@@ -46,6 +46,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         $result = $rerollService->rerollDashpoint((int) $_SESSION['user_id'], $dashpointId, $reason);
         echo json_encode($result);
     } catch (Exception $e) {
+        error_log("Reroll API Error: " . $e->getMessage());
         http_response_code(400);
         echo json_encode(["status" => "error", "message" => $e->getMessage()]);
     }

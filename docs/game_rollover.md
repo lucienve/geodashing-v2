@@ -38,8 +38,8 @@ All commands on the production machine are executed using `uv run` with configur
 # Navigate to the project root on production
 cd /home/lucienve/src/geodashing-v2
 
-# Synchronize all dependencies with uv
-uv sync
+# Synchronize production dependencies with uv (omitting dev packages)
+uv sync --no-dev
 ```
 
 ---
@@ -51,20 +51,20 @@ The production server runs the turnover command automatically at `00:00:00 Ameri
 # /etc/cron.d/geodashing-turnover
 CRON_TZ=America/New_York
 PATH=/home/lucienve/.cargo/bin:/usr/local/bin:/usr/bin:/bin
-0 0 1 * * lucienve cd /home/lucienve/src/geodashing-v2 && uv run python -m backend.scripts.game_utils --rollover >> /var/log/geodashing/turnover.log 2>&1
+0 0 1 * * lucienve cd /home/lucienve/src/geodashing-v2 && uv run --no-sync --no-dev python -m backend.scripts.game_utils --rollover >> /var/log/geodashing/turnover.log 2>&1
 ```
 
 ### Manual Turnover Execution or Simulation
-To manually trigger the turnover or test in dry-run mode:
+To manually trigger the turnover or test in dry-run mode (using `--no-sync --no-dev` to avoid re-installing dev dependencies in production):
 ```bash
 # Dry run simulation (no database changes or emails sent)
-uv run python -m backend.scripts.game_utils --rollover --dry-run
+uv run --no-sync --no-dev python -m backend.scripts.game_utils --rollover --dry-run
 
 # Live execution for current month
-uv run python -m backend.scripts.game_utils --rollover
+uv run --no-sync --no-dev python -m backend.scripts.game_utils --rollover
 
 # Target a specific month or dashpoint count
-uv run python -m backend.scripts.game_utils --rollover --year 2026 --month 8 --count 35000
+uv run --no-sync --no-dev python -m backend.scripts.game_utils --rollover --year 2026 --month 8 --count 35000
 ```
 
 In this walkthrough, we assume the date is **June 1st**. We are closing the **May game (ID 13)**, activating the **June game (ID 14)**, and seeding the **July game (ID 15)** as the new preview.
