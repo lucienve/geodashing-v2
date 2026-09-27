@@ -29,6 +29,7 @@ test.describe('Export Functionality', () => {
         // Navigate to the scanner/search interface
         await page.goto('/#search');
         await expect(page.locator('#btn-export-gpx')).toBeVisible();
+        await expect(page.locator('#export-game-info')).toContainText('Exporting: Game', { timeout: 10000 });
     });
 
     test('Successful GPX Export with Dashpoints', async ({ page }) => {

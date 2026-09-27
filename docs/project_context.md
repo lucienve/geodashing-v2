@@ -529,3 +529,22 @@ The application allows users to participate in global geographic games where the
 - **Testing & Verification**:
   - Confirmed 0 errors across pre-commit hooks (`uv run pre-commit run --all-files`), including ESLint, PHPCS, PHPUnit (93/93 passing), Pytest, PyLint, Mypy, and Pyright.
   - Executed full Playwright E2E suite (`npx playwright test --reporter=list`), with all 185 tests passing cleanly across Chromium, iPhone 12, and Pixel 7 viewports.
+
+### 72. Playwright CI Reliability & Race Condition Hardening Post Package Upgrades
+- Resolved intermittent test failures and flakiness on CI exposed under runner CPU contention following package upgrades:
+  - **Post-Signup Page Reload Race Condition**:
+    - During signup, `controllers.js` dispatches `setTimeout(() => window.location.reload(), 400)` to reload the SPA into the unverified state.
+    - In [e2e/upload.spec.js](e2e/upload.spec.js) and [e2e/game_loop.spec.js](e2e/game_loop.spec.js), `page.waitForURL('**/#login')` resolved immediately (0ms) because the page was already at `/#login`. Rapid navigation to `/#home` and `/#report?id=GD001-AAAA` caused the scheduled `window.location.reload()` to fire mid-flight, resetting the form and causing `#report-feedback` to remain empty `""`.
+    - Hardened tests to explicitly wait for `#verify-pane` to become visible (`await expect(page.locator('#verify-pane')).toBeVisible({ timeout: 10000 })`), guaranteeing that the 400ms timer and page reload have settled completely before navigating.
+  - **Photo Input Queue Accumulation**:
+    - In [e2e/upload.spec.js](e2e/upload.spec.js), back-to-back `setInputFiles` calls caused a race condition where the second file was attached before the first file had finished processing in the `change` listener.
+    - Added an assertion for the first preview item (`await expect(page.locator('.photo-preview-item')).toHaveCount(1)`) prior to attaching the second file.
+  - **Mobile Navigation Drawer Transition Settling**:
+    - In [e2e/layout.spec.js](e2e/layout.spec.js), replaced a fixed 350ms sleep (`waitForTimeout(350)`) with an `expect(...).toPass({ timeout: 5000 })` assertion block, allowing Playwright to poll until the 300ms CSS slide-in transition finishes and bounds settle within `viewport.width`.
+  - **WebKit Asynchronous Download Initiation & Blob URL Revocation**:
+    - In [public/js/controllers.js](public/js/controllers.js), `window.URL.revokeObjectURL(downloadUrl)` was called synchronously immediately after `a.click()`. In WebKit (Safari engine used for iPhone 12 testing), download navigation is dispatched asynchronously; revoking the blob URL in the same tick aborted the download stream.
+    - Deferred `revokeObjectURL` by 1000ms using `setTimeout`.
+    - Also updated `downloadPayload` to await `window.gameContextLoaded` if `window.currentGameContext.id` is not yet populated, and updated [e2e/export.spec.js](e2e/export.spec.js) to wait for `#export-game-info` to contain `Exporting: Game`.
+- **Testing & Verification**:
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across all linters, type checkers, and PHPUnit.
+  - Playwright E2E suite: All 185 tests passed cleanly with 0 failures and 0 flaky retries.

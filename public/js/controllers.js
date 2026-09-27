@@ -1940,14 +1940,19 @@ document.addEventListener('routeLoaded', (e) => {
         const btnGrabBounds = document.getElementById('btn-grab-bounds');
         const searchFeedback = document.getElementById('search-feedback');
         const gameInfoDiv = document.getElementById('export-game-info');
-
-        if (gameInfoDiv) {
-            if (window.currentGameContext && window.currentGameContext.id) {
-                const titleText = window.currentGameContext.title ? ` - ${window.escapeHTML(window.currentGameContext.title)}` : '';
-                gameInfoDiv.innerHTML = `Exporting: Game ${window.currentGameContext.id}${titleText} (${window.currentGameContext.monthYear})`;
-            } else {
-                gameInfoDiv.innerHTML = `Exporting: Active Game`;
+        const updateExportGameInfo = () => {
+            if (gameInfoDiv) {
+                if (window.currentGameContext && window.currentGameContext.id) {
+                    const titleText = window.currentGameContext.title ? ` - ${window.escapeHTML(window.currentGameContext.title)}` : '';
+                    gameInfoDiv.innerHTML = `Exporting: Game ${window.currentGameContext.id}${titleText} (${window.currentGameContext.monthYear})`;
+                } else {
+                    gameInfoDiv.innerHTML = `Exporting: Active Game`;
+                }
             }
+        };
+        updateExportGameInfo();
+        if (window.gameContextLoaded && (!window.currentGameContext || !window.currentGameContext.id)) {
+            window.gameContextLoaded.then(() => updateExportGameInfo());
         }
 
         const enforceExportAuth = async () => {
@@ -2029,6 +2034,9 @@ document.addEventListener('routeLoaded', (e) => {
             btnTarget.innerText = "DOWNLOADING...";
 
             try {
+                if (window.gameContextLoaded && (!window.currentGameContext || !window.currentGameContext.id)) {
+                    await window.gameContextLoaded;
+                }
                 let url = `api/export.php?n=${b.n}&s=${b.s}&e=${b.e}&w=${b.w}&format=${format}`;
                 let gameSuffix = '';
                 if (window.currentGameContext && window.currentGameContext.id) {
@@ -2068,9 +2076,11 @@ document.addEventListener('routeLoaded', (e) => {
                 document.body.appendChild(a);
                 a.click();
 
-                // Cleanup
-                window.URL.revokeObjectURL(downloadUrl);
-                a.remove();
+                // Cleanup (defer revocation to allow WebKit/Safari to initiate the download stream)
+                setTimeout(() => {
+                    window.URL.revokeObjectURL(downloadUrl);
+                    a.remove();
+                }, 1000);
 
                 btnTarget.disabled = false;
                 btnTarget.innerText = originalText;

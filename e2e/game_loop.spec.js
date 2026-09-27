@@ -93,7 +93,8 @@ test.describe('Core Functional Game Loop', () => {
         const { execSync } = require('child_process');
         execSync(`mysql -h 127.0.0.1 -u geodashing_test -pgeodashing_test_secure_pass geodashing_test -e "UPDATE users SET is_verified = 1 WHERE username = '${dynamicUser}';"`);
 
-        await page.waitForURL('**/#login', { timeout: 5000 });
+        // Wait for the post-signup page reload to finish cleanly before navigating
+        await expect(page.locator('#verify-pane')).toBeVisible({ timeout: 10000 });
         await page.goto('/#home');
         await page.waitForURL('**/#home', { timeout: 5000 });
 
@@ -155,9 +156,8 @@ test.describe('Core Functional Game Loop', () => {
         const { execSync } = require('child_process');
         execSync(`mysql -h 127.0.0.1 -u geodashing_test -pgeodashing_test_secure_pass geodashing_test -e "UPDATE users SET is_verified = 1 WHERE username = '${dynamicUser}';"`);
 
-        // Wait dynamically for the frontend to naturally redirect to login (1.5s delay)
-        // to clear the setTimeout race condition, then force navigate to home.
-        await page.waitForURL('**/#login', { timeout: 5000 });
+        // Wait for the post-signup page reload to finish cleanly before navigating
+        await expect(page.locator('#verify-pane')).toBeVisible({ timeout: 10000 });
         await page.goto('/#home');
         await page.waitForURL('**/#home', { timeout: 5000 });
 

@@ -39,14 +39,13 @@ test.describe('Navigation Layout Constraints', () => {
             await expect(mobileDrawer).toBeVisible();
             
             // Wait for the CSS transition (0.3s) to slide the drawer fully into view
-            await page.waitForTimeout(350);
-
-            const box = await mobileDrawer.boundingBox();
-            expect(box).not.toBeNull();
-            
-            // Critical assertion: The drawer must not bleed off the right or left edge of the phone.
-            expect(box.x).toBeGreaterThanOrEqual(0);
-            expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+            await expect(async () => {
+                const box = await mobileDrawer.boundingBox();
+                expect(box).not.toBeNull();
+                // Critical assertion: The drawer must not bleed off the right or left edge of the phone.
+                expect(box.x).toBeGreaterThanOrEqual(0);
+                expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+            }).toPass({ timeout: 5000 });
         } else {
             // Desktop checking
             const desktopLinks = page.locator('#desktop-links');
