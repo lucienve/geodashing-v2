@@ -32,7 +32,7 @@ graph TD
 ```
 
 ### Administrative Prerequisites
-All commands on the production machine are executed using `uv run` with configurations loaded from `backend/config.ini`.
+All commands on the production machine are executed using `uv run --no-sync --no-dev` with configurations loaded from `backend/config.ini`. Passing `--no-sync --no-dev` ensures that `uv` uses the production virtual environment as-is without attempting to install or synchronize development dependencies. (Alternatively, you can run `export UV_NO_SYNC=1` in your production shell session).
 
 ```bash
 # Navigate to the project root on production
@@ -83,7 +83,7 @@ Extract all score rankings, spatial nearest-city context, and approved player ph
 mkdir -p /tmp/summary_work
 
 # Synthesize the raw summary files using the Gemini model
-uv run python -m backend.scripts.generate_summary --game_id 13 --output_dir /tmp/summary_work
+uv run --no-sync --no-dev python -m backend.scripts.generate_summary --game_id 13 --output_dir /tmp/summary_work
 ```
 
 #### 2. Review and Polish the Generated Output
@@ -93,7 +93,7 @@ Open `/tmp/summary_work/game_13_output.html` in a text editor. Review the format
 Run the administrative validator to check the HTML fragment structure and upload it directly to the database:
 
 ```bash
-uv run python -m backend.scripts.game_utils \
+uv run --no-sync --no-dev python -m backend.scripts.game_utils \
   --upload-summary /tmp/summary_work/game_13_output.html \
   --game_id 13
 ```
@@ -105,7 +105,7 @@ uv run python -m backend.scripts.game_utils \
 Once the summary is successfully saved in the database, dispatch it to the registered geodashing player mailing list specified in the `config.ini` file using:
 
 ```bash
-uv run python -m backend.scripts.game_utils \
+uv run --no-sync --no-dev python -m backend.scripts.game_utils \
   --email-summary \
   --game_id 13
 ```
@@ -123,14 +123,14 @@ Execute the `--activate` command to swap active states in a single database tran
 
 ```bash
 # Activating the June Game (ID 14) and archiving the May Game (ID 13)
-uv run python -m backend.scripts.game_utils --activate 14
+uv run --no-sync --no-dev python -m backend.scripts.game_utils --activate 14
 ```
 
 #### 2. Perform Sanity Checks
 List the database games to confirm that the active status has correctly shifted:
 
 ```bash
-uv run python -m backend.scripts.game_utils --list
+uv run --no-sync --no-dev python -m backend.scripts.game_utils --list
 ```
 
 The output must show that the target game is now active:
@@ -153,7 +153,7 @@ Run the game generator using the `--preview` flag. Explicitly set the title, tar
 
 ```bash
 # Seeding Game 15 for July 2026 in inactive preview mode
-uv run python -m backend.scripts.generate_game \
+uv run --no-sync --no-dev python -m backend.scripts.generate_game \
   --title "July 2026 Dashing Classic" \
   --count 31000 \
   --year 2026 \
@@ -165,7 +165,7 @@ uv run python -m backend.scripts.generate_game \
 Verify that the new preview game has successfully registered in an inactive state:
 
 ```bash
-uv run python -m backend.scripts.game_utils --list
+uv run --no-sync --no-dev python -m backend.scripts.game_utils --list
 ```
 
 The output should resemble the following:
