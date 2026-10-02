@@ -241,4 +241,79 @@ test.describe('Report Draft Auto-Save and Restoration', () => {
         const tips = page.locator('.photo-caption-tip');
         await expect(tips.first()).toContainText('native Camera app first');
     });
+
+    test('Simulated Mad Dash: captures at point of approach, restores after reload, successfully submits, and cleans draft', async ({ page }, testInfo) => {
+        test.setTimeout(60000);
+
+        const dynamicUser = `MadDasher_${Date.now()}_${testInfo.workerIndex}`;
+        const dynamicPass = `SecurePass123!`;
+
+        // 1. Signup and verify user
+        await page.goto('/#login');
+        await page.click('#toggle-signup');
+        await page.fill('#signup-username', dynamicUser);
+        await page.fill('#signup-email', `${dynamicUser}@example.com`);
+        await page.fill('#signup-password', dynamicPass);
+        await page.fill('#signup-password-verify', dynamicPass);
+        const [response] = await Promise.all([
+            page.waitForResponse(res => res.url().includes('auth.php?action=signup')),
+            page.click('#btn-submit-signup')
+        ]);
+        const responseBody = await response.json();
+        expect(responseBody.status).toBe('success');
+
+        const { execSync } = require('child_process');
+        execSync(`mysql -h 127.0.0.1 -u geodashing_test -pgeodashing_test_secure_pass geodashing_test -e "UPDATE users SET is_verified = 1 WHERE username = '${dynamicUser}';"`);
+
+        await expect(page.locator('#verify-pane')).toBeVisible({ timeout: 10000 });
+        await page.goto('/#home');
+        await page.waitForURL('**/#home', { timeout: 5000 });
+
+        // 2. Arrive at dashpoint, open report view
+        await page.goto('/#report?id=GD001-AAAA');
+        await expect(page.locator('#dashpoint_id')).toHaveValue('GD001-AAAA');
+
+        // 3. Sync GPS while physically at the point
+        await page.click('#btn-geolocation');
+        await expect(page.locator('#input-lat')).toHaveValue('40.712800');
+        await expect(page.locator('#input-lon')).toHaveValue('-74.006000');
+
+        // 4. Attach photo at the scene
+        const imagePath = path.resolve(__dirname, '../public/images/android-chrome-192x192.png');
+        await page.setInputFiles('#input-photos', imagePath);
+        await expect(page.locator('.photo-preview-item')).toHaveCount(1);
+
+        // 5. Dasher drives away to a safe spot; browser reloads or user navigates
+        await page.reload();
+        await page.evaluate(mockGps);
+        await page.goto('/#report?id=GD001-AAAA');
+
+        // 6. Verify restored state in the safe spot
+        await expect(page.locator('#draft-restore-banner')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('#input-lat')).toHaveValue('40.712800');
+        await expect(page.locator('#input-lon')).toHaveValue('-74.006000');
+        await expect(page.locator('.photo-preview-item')).toHaveCount(1);
+
+        // 7. Complete the field narrative and submit
+        await page.fill('#log-textarea', 'Completed mad dash safely after driving to a quiet parking lot.');
+        await page.click('#btn-submit-report');
+
+        // 8. Verify successful submission feedback
+        const feedback = page.locator('#report-feedback');
+        await expect(feedback).toContainText('Success!', { timeout: 30000 });
+
+        // 9. Verify draft was purged from IndexedDB
+        const draftAfterSuccess = await page.evaluate(async () => {
+            return await window.DraftStorage.getDraft('GD001-AAAA');
+        });
+        expect(draftAfterSuccess).toBeNull();
+
+        // 10. Reopen report view and verify form is clean without restore banner
+        await page.goto('/#report?id=GD001-AAAA');
+        await expect(page.locator('#draft-restore-banner')).toHaveCount(0);
+        await expect(page.locator('#log-textarea')).toHaveValue('');
+        await expect(page.locator('#input-lat')).toHaveValue('');
+        await expect(page.locator('#input-lon')).toHaveValue('');
+        await expect(page.locator('.photo-preview-item')).toHaveCount(0);
+    });
 });

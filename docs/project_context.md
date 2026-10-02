@@ -626,3 +626,20 @@ The application allows users to participate in global geographic games where the
   - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across all linters, type checkers, and test runners.
   - Playwright test suite: All 21 tests in `e2e/report_draft.spec.js` passed cleanly with 0 failures and 0 flakes across Chromium, iPhone 12, and Pixel 7 viewports.
 
+### 77. End-to-End Mad Dash Verification & Multi-Device Testing (Phase 4)
+- **Problem**: Validate the entire end-to-end user workflow under simulated real-world conditions where a dasher visits a physical dashpoint, captures live GPS coordinates and on-site photos, leaves the area (driving to a safe location), experiences navigation/page reload events, restores the uncommitted draft with binary photos and locked coordinates, completes narrative notes, successfully submits the report, and has their draft purged from storage.
+- **Architectural Implementation**:
+  - **End-to-End Simulation**:
+    - In [e2e/report_draft.spec.js](e2e/report_draft.spec.js), implemented a dedicated test: `Simulated Mad Dash: captures at point of approach, restores after reload, successfully submits, and cleans draft`.
+    - Dynamically generates and verifies a test dasher account in the test MySQL database.
+    - Simulates physical arrival at target dashpoint `GD001-AAAA`, locking live coordinates via mocked geolocation (`40.712800`, `-74.006000`).
+    - Attaches on-site photo assets, verifying thumbnail preview rendering.
+    - Simulates departure to a safe parking lot by reloading the browser and updating the navigation context.
+    - Validates full draft restoration upon re-opening `#report?id=GD001-AAAA`: the restore banner appears, coordinates remain intact and locked, and the binary photo queue is properly reconstructed in the DOM.
+    - Inputs narrative field notes and submits the report.
+    - Validates that the report submission succeeds (HTTP 200 / success feedback), the draft is purged from `DraftStorage` in IndexedDB, and subsequently navigating back to `#report?id=GD001-AAAA` renders a clean, empty form without residual draft data or banners.
+- **Testing & Verification**:
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across YAPF, PyLint, Mypy, Pyright, Pytest, ESLint, PHP CodeSniffer, and PHPUnit.
+  - Playwright test runner (`npx playwright test e2e/report_draft.spec.js e2e/draft_storage.spec.js --reporter=list`): All 39 tests (15 unit/integration storage tests, 24 report controller & lifecycle tests) passed across Chromium, iPhone 12, and Pixel 7 viewports with 0 failures and 0 flakes.
+
+
