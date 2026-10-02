@@ -6,6 +6,7 @@
  */
 
 let activeIntervals = [];
+let activeRouteCleanups = [];
 
 /**
  * Opens a glassmorphic modal to view the image, show EXIF details, and write a caption.
@@ -84,6 +85,16 @@ document.addEventListener('routeLoaded', (e) => {
     // Purge any lingering Javascript intervals (like the countdown timer) from previous views
     activeIntervals.forEach(clearInterval);
     activeIntervals = [];
+
+    // Execute and clear any route-specific cleanup callbacks from previous views
+    activeRouteCleanups.forEach((cleanup) => {
+        try {
+            cleanup();
+        } catch (cleanupErr) {
+            console.warn('Error during route cleanup execution.', cleanupErr);
+        }
+    });
+    activeRouteCleanups = [];
 
     // Clear any marker navigation tracking if navigating away from dashpoint views
     if (!route.startsWith('#dashpoint')) {
@@ -605,15 +616,278 @@ document.addEventListener('routeLoaded', (e) => {
         const btnAddPhotos = document.getElementById('btn-add-photos');
         const inputPhotos = document.getElementById('input-photos');
         const previewGrid = document.getElementById('photo-preview-grid');
+        const logArea = document.getElementById('log-textarea');
+        const charCounter = document.getElementById('char-counter');
+        const inputIsAttempt = document.getElementById('input-is-attempt');
+        const inputSuppressEmail = document.getElementById('input-suppress-email');
+        const reportForm = document.getElementById('form-report');
+
+        // Extract target dashpoint ID early from route hash or input field
+        let targetId = '';
+        if (route.includes('?')) {
+            const hashParams = new URLSearchParams(route.split('?')[1]);
+            targetId = hashParams.get('id') || '';
+            if (targetId) {
+                const idInput = document.getElementById('dashpoint_id');
+                if (idInput) idInput.value = targetId;
+            }
+        }
+        if (!targetId) {
+            const idInput = document.getElementById('dashpoint_id');
+            if (idInput && idInput.value) {
+                targetId = idInput.value;
+            }
+        }
 
         let currentPhotoQueue = new DataTransfer();
-
         let photoCaptions = [];
         let activeReportPreviewUrls = [];
+        let isRestoringDraft = false;
+        let gpsSyncedAt = null;
+        let gpsDisplayState = null;
+
+        // Auto-save debouncing & concurrency serialization state
+        let draftSaveTimeout = null;
+        let isSavingDraft = false;
+        let hasPendingSave = false;
 
         const revokeReportPreviewUrls = () => {
             activeReportPreviewUrls.forEach(url => URL.revokeObjectURL(url));
             activeReportPreviewUrls = [];
+        };
+
+        const saveCurrentDraft = async () => {
+            if (!targetId || !window.DraftStorage || isRestoringDraft) {
+                return;
+            }
+
+            const latVal = latInput ? latInput.value.trim() : '';
+            const lonVal = lonInput ? lonInput.value.trim() : '';
+            const notesVal = logArea ? logArea.value : '';
+            const isAttemptVal = inputIsAttempt ? inputIsAttempt.checked : false;
+            const suppressEmailVal = inputSuppressEmail ? inputSuppressEmail.checked : false;
+
+            const photosList = [];
+            if (currentPhotoQueue && currentPhotoQueue.files) {
+                Array.from(currentPhotoQueue.files).forEach((file, idx) => {
+                    photosList.push({
+                        blob: file,
+                        name: file.name,
+                        type: file.type,
+                        caption: photoCaptions[idx] || ''
+                    });
+                });
+            }
+
+            const hasContent = latVal !== '' ||
+                               lonVal !== '' ||
+                               notesVal.trim() !== '' ||
+                               photosList.length > 0 ||
+                               isAttemptVal ||
+                               suppressEmailVal;
+
+            if (!hasContent) {
+                await window.DraftStorage.deleteDraft(targetId);
+                return;
+            }
+
+            const draftData = {
+                lat: latVal,
+                lon: lonVal,
+                synced_at: gpsSyncedAt,
+                gps_display: gpsDisplayState || (btnGeo ? btnGeo.innerText : null),
+                notes: notesVal,
+                is_attempt: isAttemptVal,
+                suppress_email: suppressEmailVal,
+                photos: photosList
+            };
+
+            await window.DraftStorage.saveDraft(targetId, draftData);
+            document.dispatchEvent(new CustomEvent('draftSaved', { detail: { dashpointId: targetId } }));
+        };
+
+        const executeSave = async () => {
+            if (isSavingDraft) {
+                hasPendingSave = true;
+                return;
+            }
+            isSavingDraft = true;
+            try {
+                await saveCurrentDraft();
+            } finally {
+                isSavingDraft = false;
+                if (hasPendingSave) {
+                    hasPendingSave = false;
+                    executeSave();
+                }
+            }
+        };
+
+        const performSave = () => {
+            if (draftSaveTimeout) {
+                clearTimeout(draftSaveTimeout);
+                draftSaveTimeout = null;
+            }
+            executeSave();
+        };
+
+        const scheduleSave = (delay = 500) => {
+            if (draftSaveTimeout) {
+                clearTimeout(draftSaveTimeout);
+            }
+            draftSaveTimeout = setTimeout(() => {
+                draftSaveTimeout = null;
+                executeSave();
+            }, delay);
+        };
+
+        const renderDraftRestoreBanner = () => {
+            const existingBanner = document.getElementById('draft-restore-banner');
+            if (existingBanner) existingBanner.remove();
+
+            if (!reportForm) return;
+
+            const banner = document.createElement('div');
+            banner.className = 'alert alert-info draft-restore-banner';
+            banner.id = 'draft-restore-banner';
+
+            const span = document.createElement('span');
+            span.textContent = 'Draft restored from earlier visit.';
+
+            const discardBtn = document.createElement('button');
+            discardBtn.type = 'button';
+            discardBtn.className = 'btn btn-secondary btn-sm';
+            discardBtn.id = 'btn-discard-draft';
+            discardBtn.textContent = 'DISCARD DRAFT';
+
+            discardBtn.addEventListener('click', async () => {
+                if (draftSaveTimeout) {
+                    clearTimeout(draftSaveTimeout);
+                    draftSaveTimeout = null;
+                }
+                hasPendingSave = false;
+
+                if (window.DraftStorage && targetId) {
+                    await window.DraftStorage.deleteDraft(targetId);
+                }
+                banner.remove();
+
+                reportForm.reset();
+                if (targetId) {
+                    const idField = document.getElementById('dashpoint_id');
+                    if (idField) idField.value = targetId;
+                }
+                currentPhotoQueue = new DataTransfer();
+                photoCaptions = [];
+                if (inputPhotos) {
+                    inputPhotos.files = currentPhotoQueue.files;
+                }
+                renderPhotoGrid();
+
+                if (btnGeo) {
+                    btnGeo.innerText = 'SYNC LIVE GPS';
+                    btnGeo.style.color = '';
+                    btnGeo.style.borderColor = '';
+                }
+                gpsSyncedAt = null;
+                gpsDisplayState = null;
+
+                if (charCounter) {
+                    charCounter.innerText = '10,000 chars remaining';
+                    charCounter.style.color = 'var(--accent-amber)';
+                    charCounter.style.fontWeight = 'normal';
+                }
+            });
+
+            banner.appendChild(span);
+            banner.appendChild(discardBtn);
+            reportForm.insertBefore(banner, reportForm.firstChild);
+        };
+
+        const restoreDraftIfPresent = async () => {
+            if (!targetId || !window.DraftStorage) return;
+
+            try {
+                const draft = await window.DraftStorage.getDraft(targetId);
+                if (!draft) return;
+
+                isRestoringDraft = true;
+
+                if (draft.lat && latInput) {
+                    latInput.value = draft.lat;
+                }
+                if (draft.lon && lonInput) {
+                    lonInput.value = draft.lon;
+                }
+                if (draft.synced_at) {
+                    gpsSyncedAt = draft.synced_at;
+                }
+                if (draft.gps_display && btnGeo) {
+                    gpsDisplayState = draft.gps_display;
+                    btnGeo.innerText = draft.gps_display;
+                    btnGeo.style.color = 'var(--accent-green)';
+                    btnGeo.style.borderColor = 'var(--accent-green)';
+                } else if (draft.lat && draft.lon && btnGeo) {
+                    gpsDisplayState = 'LOCKED (SYNCED)';
+                    btnGeo.innerText = 'LOCKED (SYNCED)';
+                    btnGeo.style.color = 'var(--accent-green)';
+                    btnGeo.style.borderColor = 'var(--accent-green)';
+                }
+
+                if (inputIsAttempt && typeof draft.is_attempt === 'boolean') {
+                    inputIsAttempt.checked = draft.is_attempt;
+                }
+                if (inputSuppressEmail && typeof draft.suppress_email === 'boolean') {
+                    inputSuppressEmail.checked = draft.suppress_email;
+                }
+
+                if (logArea && typeof draft.notes === 'string') {
+                    logArea.value = draft.notes;
+                    if (charCounter) {
+                        const len = logArea.value.length;
+                        const remaining = 10000 - len;
+                        charCounter.innerText = `${remaining.toLocaleString()} chars remaining`;
+                        if (remaining <= 50) {
+                            charCounter.style.color = 'var(--accent-red)';
+                            charCounter.style.fontWeight = 'bold';
+                        } else {
+                            charCounter.style.color = 'var(--accent-amber)';
+                            charCounter.style.fontWeight = 'normal';
+                        }
+                    }
+                }
+
+                if (Array.isArray(draft.photos) && draft.photos.length > 0) {
+                    const restoredDt = new DataTransfer();
+                    const restoredCaptions = [];
+
+                    draft.photos.forEach((photo) => {
+                        if (photo && photo.blob) {
+                            const fileName = photo.name || 'photo.jpg';
+                            const fileType = photo.type || photo.blob.type || 'image/jpeg';
+                            const file = new File([photo.blob], fileName, {
+                                type: fileType,
+                                lastModified: Date.now()
+                            });
+                            restoredDt.items.add(file);
+                            restoredCaptions.push(photo.caption || '');
+                        }
+                    });
+
+                    currentPhotoQueue = restoredDt;
+                    photoCaptions = restoredCaptions;
+                    if (inputPhotos) {
+                        inputPhotos.files = currentPhotoQueue.files;
+                    }
+                    renderPhotoGrid();
+                }
+
+                renderDraftRestoreBanner();
+            } catch (err) {
+                console.warn('Failed to restore report draft.', err);
+            } finally {
+                isRestoringDraft = false;
+            }
         };
 
         const renderPhotoGrid = () => {
@@ -652,6 +926,7 @@ document.addEventListener('routeLoaded', (e) => {
                     photoCaptions = newCaptions;
                     if (inputPhotos) inputPhotos.files = currentPhotoQueue.files;
                     renderPhotoGrid();
+                    performSave();
                 });
 
                 // Tap to add caption
@@ -660,6 +935,7 @@ document.addEventListener('routeLoaded', (e) => {
                     openCaptionModal(objectUrl, photoCaptions[index], (newCaption) => {
                         photoCaptions[index] = newCaption;
                         renderPhotoGrid();
+                        performSave();
                     });
                 });
 
@@ -714,6 +990,7 @@ document.addEventListener('routeLoaded', (e) => {
                         currentPhotoQueue = newDt;
                         if (inputPhotos) inputPhotos.files = currentPhotoQueue.files;
                         renderPhotoGrid();
+                        performSave();
                     }
                 });
 
@@ -742,7 +1019,7 @@ document.addEventListener('routeLoaded', (e) => {
                 });
 
                 if (exceeded) {
-                    alert("Maximum 10 photos allowed.");
+                    alert('Maximum 10 photos allowed.');
                 }
 
                 let totalSize = 0;
@@ -756,6 +1033,7 @@ document.addEventListener('routeLoaded', (e) => {
 
                 inputPhotos.files = currentPhotoQueue.files;
                 renderPhotoGrid();
+                performSave();
             });
         }
 
@@ -769,29 +1047,30 @@ document.addEventListener('routeLoaded', (e) => {
             }
         };
 
+        const handleCoordinateBlur = function () {
+            sanitizeCoordinate.call(this);
+            performSave();
+        };
+
         if (latInput) {
-            latInput.addEventListener('blur', sanitizeCoordinate);
+            latInput.addEventListener('blur', handleCoordinateBlur);
         }
         if (lonInput) {
-            lonInput.addEventListener('blur', sanitizeCoordinate);
+            lonInput.addEventListener('blur', handleCoordinateBlur);
         }
 
-        // If they click map markers, the ID gets injected into the URL ?id=GD...
-        // Parse this from the SPA routing hash.
-        if (route.includes('?')) {
-            const hashParams = new URLSearchParams(route.split('?')[1]);
-            const targetId = hashParams.get('id');
-            if (targetId) {
-                const idInput = document.getElementById('dashpoint_id');
-                if (idInput) idInput.value = targetId;
-            }
+        if (inputIsAttempt) {
+            inputIsAttempt.addEventListener('change', performSave);
+        }
+        if (inputSuppressEmail) {
+            inputSuppressEmail.addEventListener('change', performSave);
         }
 
         // HTML5 geolocation binder. Inputs are not globally readonly.
         if (btnGeo) {
             btnGeo.addEventListener('click', (ev) => {
                 ev.preventDefault();
-                btnGeo.innerText = "PULLING GPS...";
+                btnGeo.innerText = 'PULLING GPS...';
                 btnGeo.classList.add('btn-loading');
 
                 const geoTarget = window.mockGeolocation || navigator.geolocation;
@@ -802,28 +1081,29 @@ document.addEventListener('routeLoaded', (e) => {
                             lonInput.value = position.coords.longitude.toFixed(6);
 
                             btnGeo.classList.remove('btn-loading');
-                            btnGeo.innerText = "SYNCED";
-                            btnGeo.style.color = "var(--accent-green)";
-                            btnGeo.style.borderColor = "var(--accent-green)";
+                            btnGeo.innerText = 'SYNCED';
+                            btnGeo.style.color = 'var(--accent-green)';
+                            btnGeo.style.borderColor = 'var(--accent-green)';
+                            gpsSyncedAt = Date.now();
+                            gpsDisplayState = 'SYNCED';
+                            performSave();
                         },
                         (error) => {
                             console.error(error);
                             btnGeo.classList.remove('btn-loading');
-                            btnGeo.innerText = "GPS CAPTURE FAILED";
-                            btnGeo.style.color = "var(--accent-red)";
+                            btnGeo.innerText = 'GPS CAPTURE FAILED';
+                            btnGeo.style.color = 'var(--accent-red)';
                         },
                         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                     );
                 } else {
                     btnGeo.classList.remove('btn-loading');
-                    btnGeo.innerText = "BROWSER REJECTED GPS";
+                    btnGeo.innerText = 'BROWSER REJECTED GPS';
                 }
             });
         }
 
         // Dynamic log character counter.
-        const logArea = document.getElementById('log-textarea');
-        const charCounter = document.getElementById('char-counter');
         if (logArea && charCounter) {
             logArea.addEventListener('input', () => {
                 const len = logArea.value.length;
@@ -832,19 +1112,51 @@ document.addEventListener('routeLoaded', (e) => {
                 charCounter.innerText = `${remaining.toLocaleString()} chars remaining`;
 
                 if (remaining <= 50) {
-                    charCounter.style.color = "var(--accent-red)";
-                    charCounter.style.fontWeight = "bold";
+                    charCounter.style.color = 'var(--accent-red)';
+                    charCounter.style.fontWeight = 'bold';
                 } else {
-                    charCounter.style.color = "var(--accent-amber)";
-                    charCounter.style.fontWeight = "normal";
+                    charCounter.style.color = 'var(--accent-amber)';
+                    charCounter.style.fontWeight = 'normal';
                 }
+                scheduleSave(500);
+            });
+
+            logArea.addEventListener('blur', () => {
+                performSave();
             });
         }
 
+        // Mobile lifecycle flush hooks & route cleanup
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden') {
+                performSave();
+            }
+        };
+        const handlePageHide = () => {
+            performSave();
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('pagehide', handlePageHide);
+
+        activeRouteCleanups.push(() => {
+            if (draftSaveTimeout) {
+                clearTimeout(draftSaveTimeout);
+                draftSaveTimeout = null;
+                performSave();
+            }
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('pagehide', handlePageHide);
+            revokeReportPreviewUrls();
+        });
+
+        // Initialize draft restoration on view entry
+        restoreDraftIfPresent();
+
         // Final Logging Form Submitter trapping the Data matrix into api.js
-        const reportForm = document.getElementById('form-report');
-        if (reportForm) {
-            reportForm.addEventListener('submit', async (ev) => {
+        const reportFormEl = document.getElementById('form-report');
+        if (reportFormEl) {
+            reportFormEl.addEventListener('submit', async (ev) => {
                 ev.preventDefault();
 
                 const submitBtn = document.getElementById('btn-submit-report');
@@ -853,7 +1165,7 @@ document.addEventListener('routeLoaded', (e) => {
                 // 1. Initial Local Coordinate Validation Matrix preventing impossible values
                 const userLat = parseFloat(latInput.value);
                 const userLon = parseFloat(lonInput.value);
-                const targetId = document.getElementById('dashpoint_id').value;
+                const currentTargetId = document.getElementById('dashpoint_id').value;
                 const logLength = logArea ? logArea.value.length : 0;
 
                 if (logLength === 0 || logLength > 10000) {
@@ -871,17 +1183,17 @@ document.addEventListener('routeLoaded', (e) => {
                 }
 
                 submitBtn.disabled = true;
-                submitBtn.innerText = "Checking distance...";
+                submitBtn.innerText = 'Checking distance...';
 
                 try {
                     // 2. Safely Fetch target constraints transparently before throwing Heavy User Photos across the bandwidth
-                    const targetRes = await fetch(`api/dashpoint.php?id=${targetId}`);
+                    const targetRes = await fetch(`api/dashpoint.php?id=${currentTargetId}`);
                     const targetJson = await targetRes.json();
 
                     if (targetJson.status !== 'success') {
                         feedbackStatus.innerHTML = `<div class="alert alert-error">[-] Error: Could not find that dashpoint.</div>`;
                         submitBtn.disabled = false;
-                        submitBtn.innerText = "SUBMIT LOG";
+                        submitBtn.innerText = 'SUBMIT LOG';
                         return;
                     }
 
@@ -896,7 +1208,7 @@ document.addEventListener('routeLoaded', (e) => {
                     if (!isAttempt && distance > 100) {
                         feedbackStatus.innerHTML = `<div class="alert alert-error">[-] Too far away. You are <strong>${distance.toFixed(1)}m</strong> from the dashpoint. You must be within 100m.</div>`;
                         submitBtn.disabled = false;
-                        submitBtn.innerText = "SUBMIT LOG";
+                        submitBtn.innerText = 'SUBMIT LOG';
                         return;
                     }
 
@@ -911,20 +1223,32 @@ document.addEventListener('routeLoaded', (e) => {
                     if (totalSize > limitBytes) {
                         feedbackStatus.innerHTML = `<div class="alert alert-error">[-] Upload rejected: Total photo size (${(totalSize / 1024 / 1024).toFixed(1)}MB) exceeds the ${window.postMaxSize || '25M'} server limit. Please reduce image resolution or attach fewer photos.</div>`;
                         submitBtn.disabled = false;
-                        submitBtn.innerText = "SUBMIT LOG";
+                        submitBtn.innerText = 'SUBMIT LOG';
                         return;
                     }
 
-                    submitBtn.innerText = "Uploading photo...";
+                    submitBtn.innerText = 'Uploading photo...';
 
                     // 4. Actuating the standard POST request wrapper wrapping all data safely
-                    const formData = new FormData(reportForm);
+                    const formData = new FormData(reportFormEl);
                     photoCaptions.forEach(c => {
                         formData.append('captions[]', c);
                     });
                     const result = await API.logVisit(formData);
 
                     if (result.status === 'success') {
+                        if (draftSaveTimeout) {
+                            clearTimeout(draftSaveTimeout);
+                            draftSaveTimeout = null;
+                        }
+                        hasPendingSave = false;
+
+                        if (window.DraftStorage && currentTargetId) {
+                            await window.DraftStorage.deleteDraft(currentTargetId);
+                        }
+                        const existingBanner = document.getElementById('draft-restore-banner');
+                        if (existingBanner) existingBanner.remove();
+
                         if (isAttempt) {
                             feedbackStatus.innerHTML = `<div class="alert alert-warning">[+] Attempt logged. We saved your attempt at ${userLat.toFixed(5)}, ${userLon.toFixed(5)} (${result.distance.toFixed(1)}m away). You earned 0 points.</div>`;
                         } else {
@@ -933,17 +1257,20 @@ document.addEventListener('routeLoaded', (e) => {
 
                         // Capture the target before the form reset.
                         const targetPersistence = document.getElementById('dashpoint_id').value;
-                        reportForm.reset();
+                        reportFormEl.reset();
                         document.getElementById('dashpoint_id').value = targetPersistence;
                         currentPhotoQueue = new DataTransfer();
                         photoCaptions = [];
                         renderPhotoGrid();
 
-                        btnGeo.innerText = "SYNC LIVE GPS";
-                        btnGeo.style.color = ""; // Reset inline CSS
+                        btnGeo.innerText = 'SYNC LIVE GPS';
+                        btnGeo.style.color = ''; // Reset inline CSS
+                        btnGeo.style.borderColor = '';
+                        gpsSyncedAt = null;
+                        gpsDisplayState = null;
 
                         // Hide the form to make the success message clearly visible
-                        reportForm.style.display = 'none';
+                        reportFormEl.style.display = 'none';
 
                         // Trigger a map refresh to implicitly update the dashpoint marker's state and colors
                         if (typeof map !== 'undefined' && map && typeof google !== 'undefined' && google.maps) {
@@ -957,7 +1284,7 @@ document.addEventListener('routeLoaded', (e) => {
                 }
 
                 submitBtn.disabled = false;
-                submitBtn.innerText = "SUBMIT LOG";
+                submitBtn.innerText = 'SUBMIT LOG';
             });
         }
     }

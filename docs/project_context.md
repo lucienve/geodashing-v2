@@ -575,3 +575,32 @@ The application allows users to participate in global geographic games where the
   - Pre-commit runner (`uv run pre-commit run --all-files`) passed cleanly with 0 errors across all linters, type checkers, and test runners.
   - Playwright test suite: All 15 tests in `e2e/draft_storage.spec.js` passed across Chromium, iPhone 12, and Pixel 7 viewports.
 
+### 75. Report Controller Draft Integration & Lifecycle Auto-Save (Phase 2)
+- **Problem**: With the storage engine in place (`DraftStorage`), the `#report` route controller needed to automatically capture field logs, sync timestamps, coordinate locks, checkboxes, and photo attachments in real time, survive backgrounding when switching apps or locking mobile devices, and reliably restore all field data (including binary photos) when returning to the report page.
+- **Architectural Implementation**:
+  - **Serial Concurrency & Auto-Save Queue**:
+    - In [public/js/controllers.js](public/js/controllers.js), implemented `saveCurrentDraft()` to capture coordinates, GPS sync timestamp, GPS button display state, notes narrative, `is_attempt` and `suppress_email` checkboxes, and photo queue (files and captions).
+    - Serialized async storage operations via `executeSave()` using `isSavingDraft` and `hasPendingSave` state flags. Any intermediate state changes occurring while a save is in-flight automatically queue an immediate follow-up write in the `finally` block, eliminating race conditions.
+  - **Debounced Scheduling & Lifecycle Flush Hooks**:
+    - Notes input is debounced by 500ms (`scheduleSave(500)`).
+    - Immediate flushes (`performSave()`) execute on `#log-textarea` `blur`, `document.addEventListener('visibilitychange')` (when `document.visibilityState === 'hidden'`), and `window.addEventListener('pagehide')`. This ensures that locking the device or switching apps immediately after typing captures all keystrokes into persistent storage.
+    - All photo queue actions (attachment, deletion, caption updates, and drag-and-drop reordering) and coordinate changes immediately trigger auto-save.
+  - **Route Navigation Cleanup & Memory Management**:
+    - Implemented `activeRouteCleanups` to unhook view-specific global listeners, cancel pending timers while flushing uncommitted draft state, and revoke preview object URLs (`URL.revokeObjectURL`) to prevent memory leaks across SPA hash transitions.
+  - **Draft Hydration & Critical DOM Synchronization**:
+    - On `#report` view entry, `restoreDraftIfPresent()` retrieves the draft from `DraftStorage`.
+    - Coordinates, GPS button styling ("LOCKED (SYNCED)"), narrative notes, character counter, and checkboxes are pre-filled.
+    - Stored photo Blobs are reconstituted into native `File` objects (`new File([photo.blob], ...)`), loaded into a new `DataTransfer()` queue, and rendered to the preview grid with custom captions.
+    - **DOM Sync Guarantee**: Explicitly sets `inputPhotos.files = currentPhotoQueue.files`, ensuring standard `new FormData(reportFormEl)` submissions serialize restored photos without requiring user re-selection.
+    - Injects a dismissible `#draft-restore-banner` with a "DISCARD DRAFT" button that clears pending timers, purges the draft from `DraftStorage`, and resets the form.
+  - **Draft Disposal Safety**:
+    - Drafts are deleted only upon confirmed HTTP 200 / `result.status === 'success'`. In cases of distance rejection (>100m for non-attempts), form validation failures, file size limits, or server errors, the draft in `DraftStorage` remains intact.
+  - **UI Styling**:
+    - In [public/css/index.css](public/css/index.css), added `.btn-sm`, `.alert-info`, and `.draft-restore-banner` flex layout styling to seamlessly integrate with the responsive glassmorphic dark theme.
+  - **Automated Verification**:
+    - Developed [e2e/report_draft.spec.js](e2e/report_draft.spec.js) verifying full reload persistence, captioned photo rehydration, DOM input sync, discard draft functionality, immediate blur flushes, and distance rejection draft preservation.
+- **Testing & Code Review**:
+  - Code reviewed and approved unconditionally by the Senior Staff Code Reviewer subagent.
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across YAPF, PyLint, Mypy, Pyright, Pytest, ESLint, PHP CodeSniffer, and PHPUnit.
+  - Playwright test suite: All 12 tests in `e2e/report_draft.spec.js` and all 15 tests in `e2e/draft_storage.spec.js` passed across Chromium, iPhone 12, and Pixel 7 viewports.
+

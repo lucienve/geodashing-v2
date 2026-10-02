@@ -1049,6 +1049,14 @@ body, html {
   border: 1px solid var(--text-muted);
 }
 
+.btn-sm {
+  width: auto;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .alert {
   padding: 1rem;
   border-radius: 4px;
@@ -1060,6 +1068,20 @@ body, html {
   background: rgba(239, 68, 68, 0.2);
   border: 1px solid var(--accent-red);
   color: #ffb3b3;
+}
+
+.alert-info {
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid #38bdf8;
+  color: #7dd3fc;
+}
+
+.draft-restore-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 /* -------------------------------------------------------------------------
