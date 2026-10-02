@@ -560,3 +560,18 @@ The application allows users to participate in global geographic games where the
 - **Production Turnover Cron & Rollover Documentation**:
   - Updated [docs/admin_guide.md](docs/admin_guide.md) and [docs/game_rollover.md](docs/game_rollover.md) to document `uv run --no-sync --no-dev` for the `/etc/cron.d/geodashing-turnover` system cron and manual rollover execution.
 
+### 74. Offline Draft Storage Service (Phase 1)
+- **Problem**: When dashers visit high-traffic dashpoints ("mad dashes") and relocate to safer areas to write field narratives, mobile operating systems (especially iOS WebKit) frequently reload background tabs under memory pressure, destroying unsubmitted notes, coordinates, and camera-captured photos. Furthermore, photos captured via the browser's camera input are stored in temporary browser sandboxes and never saved to the device's native camera roll.
+- **Architectural Implementation**:
+  - Implemented [public/js/draft-storage.js](public/js/draft-storage.js), a zero-dependency Vanilla JS storage service leveraging `IndexedDB` (`geodashing_db`, store `report_drafts`).
+  - Stored binary photos as serialized `ArrayBuffer` objects to bypass WebKit's native blob storage disk serialization bug (`UnknownError: Error preparing Blob/File data`), reconstituting genuine `Blob` objects via a shared `hydrateRecord()` helper upon retrieval.
+  - Built an in-memory session `Map` fallback with identical blob hydration guarantees to gracefully handle Safari Private Browsing mode and restricted WebViews where `window.indexedDB.open()` throws `SecurityError`.
+  - Added safe concurrency handling in `getDb()` via in-flight promise caching (`dbOpenPromise`), automatic connection invalidation on `dbInstance.onclose`, and transactional commitment listening (`transaction.oncomplete`) for stale draft pruning (`pruneExpiredDrafts`).
+  - Registered `<script src="js/draft-storage.js"></script>` in [public/index.html](public/index.html) prior to `controllers.js`.
+  - Declared `DraftStorage: "readonly"` under ESLint global variables in [eslint.config.mjs](eslint.config.mjs).
+  - Developed full automated unit and integration tests in [e2e/draft_storage.spec.js](e2e/draft_storage.spec.js), verifying namespace initialization, blob storage/retrieval, MIME type preservation, in-memory fallback execution in isolated iframes, and transactional stale pruning.
+- **Testing & Code Review**:
+  - Code reviewed and approved unconditionally by the Senior Staff Code Reviewer subagent.
+  - Pre-commit runner (`uv run pre-commit run --all-files`) passed cleanly with 0 errors across all linters, type checkers, and test runners.
+  - Playwright test suite: All 15 tests in `e2e/draft_storage.spec.js` passed across Chromium, iPhone 12, and Pixel 7 viewports.
+

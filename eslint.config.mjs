@@ -14,7 +14,8 @@ export default [
                 dataLayer: "readonly",
                 API: "writable",
                 map: "writable",
-                markerClusterer: "readonly"
+                markerClusterer: "readonly",
+                DraftStorage: "readonly"
             }
         },
         rules: {
