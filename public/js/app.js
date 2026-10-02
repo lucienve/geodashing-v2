@@ -179,6 +179,9 @@ function initRouting() {
     if (contentDiv) {
         contentDiv.addEventListener('click', (e) => {
             if (e.target === contentDiv && window.innerWidth <= 768) {
+                if (document.getElementById('form-report')) {
+                    return; // Protect active field log from accidental dismissal
+                }
                 window.location.hash = '#home';
             }
         });
@@ -653,4 +656,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initRouting();
     initGameContext();
     initAuthState();
+    if (window.DraftStorage && typeof window.DraftStorage.pruneExpiredDrafts === 'function') {
+        window.DraftStorage.pruneExpiredDrafts(7).catch((err) => {
+            console.warn('Failed to prune expired drafts during boot.', err);
+        });
+    }
 });

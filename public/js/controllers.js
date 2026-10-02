@@ -1070,6 +1070,17 @@ document.addEventListener('routeLoaded', (e) => {
         if (btnGeo) {
             btnGeo.addEventListener('click', (ev) => {
                 ev.preventDefault();
+
+                // Re-sync protection: If coordinates are already populated, confirm before overwriting
+                if (latInput && lonInput && latInput.value.trim() !== '' && lonInput.value.trim() !== '') {
+                    const confirmOverwrite = window.confirm(
+                        'Coordinates are already locked from your earlier sync. Re-syncing will overwrite them with your current physical location. Overwrite?'
+                    );
+                    if (!confirmOverwrite) {
+                        return;
+                    }
+                }
+
                 btnGeo.innerText = 'PULLING GPS...';
                 btnGeo.classList.add('btn-loading');
 

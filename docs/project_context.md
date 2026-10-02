@@ -604,3 +604,25 @@ The application allows users to participate in global geographic games where the
   - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across YAPF, PyLint, Mypy, Pyright, Pytest, ESLint, PHP CodeSniffer, and PHPUnit.
   - Playwright test suite: All 12 tests in `e2e/report_draft.spec.js` and all 15 tests in `e2e/draft_storage.spec.js` passed across Chromium, iPhone 12, and Pixel 7 viewports.
 
+### 76. Report UX Safeguards, Boot Pruning & User Guidance (Phase 3)
+- **Problem**: When field players visit dashpoints and relocate before submitting, several usability and data loss risks remained:
+  1. Accidentally tapping "SYNC LIVE GPS" after driving away from the target would overwrite previously captured physical coordinates with the player's remote position without warning.
+  2. On mobile devices, accidental backdrop touches on `#app-content` outside the form modal would trigger SPA routing to `#home` and collapse the field log view.
+  3. Abandoned or unsubmitted drafts would accumulate indefinitely in local device storage without automated expiration.
+  4. Users capturing photos directly through the web form camera input were unaware that browser security sandboxes prevent those photos from being saved to the device's native camera roll.
+- **Architectural Implementation**:
+  - **Re-Sync Overwrite Protection**:
+    - In [public/js/controllers.js](public/js/controllers.js), updated the `#btn-geolocation` click listener to check if `latInput` and `lonInput` already contain non-empty values. If so, a confirmation dialog (`window.confirm`) prompts the user before calling `getCurrentPosition()`. Dismissing the prompt leaves existing locked coordinates and UI styling completely untouched.
+  - **Accidental Mobile Backdrop Dismissal Protection**:
+    - In [public/js/app.js](public/js/app.js), updated the mobile backdrop click listener (`window.innerWidth <= 768`) on `contentDiv` to check `if (document.getElementById('form-report')) return;`. This prevents background taps from closing the field log form, requiring users to explicitly use the header close anchor (`&times;`) or submit button.
+  - **App Boot Stale Draft Pruning**:
+    - In [public/js/app.js](public/js/app.js), hooked `window.DraftStorage.pruneExpiredDrafts(7)` into the `DOMContentLoaded` boot sequence with proper feature detection and promise error handling, silently pruning abandoned drafts older than 7 days.
+  - **Camera Roll User Guidance**:
+    - In [public/templates/report.html](public/templates/report.html), added an educational tip under "ADD PHOTOS": *"Tip: For best results, take photos with your phone's native Camera app first, then select them here from your library so they stay safely in your Photos."*
+  - **Automated Verification**:
+    - In [e2e/report_draft.spec.js](e2e/report_draft.spec.js), expanded the test suite to 21 tests covering dialog cancellation/acceptance for coordinate re-sync, backdrop dismissal suppression on mobile viewport dimensions, and photo guidance rendering.
+- **Testing & Code Review**:
+  - Code reviewed and approved unconditionally by the Senior Staff Code Reviewer subagent.
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across all linters, type checkers, and test runners.
+  - Playwright test suite: All 21 tests in `e2e/report_draft.spec.js` passed cleanly with 0 failures and 0 flakes across Chromium, iPhone 12, and Pixel 7 viewports.
+

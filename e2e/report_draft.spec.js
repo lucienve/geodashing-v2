@@ -181,4 +181,64 @@ test.describe('Report Draft Auto-Save and Restoration', () => {
         expect(draftAfterRejection).not.toBeNull();
         expect(draftAfterRejection.notes).toBe('Attempted log from far away.');
     });
+
+    test('Prompts confirmation before overwriting locked coordinates on re-sync', async ({ page }) => {
+        await page.goto('/#report?id=GD001-AAAA');
+        await expect(page.locator('#dashpoint_id')).toHaveValue('GD001-AAAA');
+
+        // Initial coordinates
+        await page.fill('#input-lat', '40.712800');
+        await page.fill('#input-lon', '-74.006000');
+
+        // Configure mockGeolocation to return new position
+        await page.evaluate(() => {
+            window.mockGeolocation = {
+                getCurrentPosition: (success) => {
+                    success({ coords: { latitude: 35.000000, longitude: -80.000000, accuracy: 5 } });
+                }
+            };
+        });
+
+        // 1. User cancels the overwrite dialog
+        page.once('dialog', async (dialog) => {
+            expect(dialog.message()).toContain('Coordinates are already locked');
+            await dialog.dismiss();
+        });
+        await page.click('#btn-geolocation');
+
+        // Coordinates should remain untouched
+        await expect(page.locator('#input-lat')).toHaveValue('40.712800');
+        await expect(page.locator('#input-lon')).toHaveValue('-74.006000');
+
+        // 2. User confirms the overwrite dialog
+        page.once('dialog', async (dialog) => {
+            expect(dialog.message()).toContain('Coordinates are already locked');
+            await dialog.accept();
+        });
+        await page.click('#btn-geolocation');
+
+        // Coordinates should now update to new mock position
+        await expect(page.locator('#input-lat')).toHaveValue('35.000000');
+        await expect(page.locator('#input-lon')).toHaveValue('-80.000000');
+    });
+
+    test('Protects active field report from accidental mobile backdrop dismissal', async ({ page }) => {
+        // Set mobile viewport
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.goto('/#report?id=GD001-AAAA');
+        await expect(page.locator('#form-report')).toBeVisible();
+
+        // Click outside the form onto app-content background
+        await page.locator('#app-content').click({ position: { x: 5, y: 5 } });
+
+        // URL must stay on report route and form must remain visible
+        await expect(page.locator('#form-report')).toBeVisible();
+        expect(page.url()).toContain('#report?id=GD001-AAAA');
+    });
+
+    test('Renders native camera tip in report form photo section', async ({ page }) => {
+        await page.goto('/#report?id=GD001-AAAA');
+        const tips = page.locator('.photo-caption-tip');
+        await expect(tips.first()).toContainText('native Camera app first');
+    });
 });
