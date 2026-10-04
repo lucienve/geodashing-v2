@@ -702,5 +702,19 @@ The application allows users to participate in global geographic games where the
   - Playwright layout test runner (`npx playwright test e2e/layout.spec.js --reporter=list`): 6/6 tests passed.
   - Code reviewed and approved by the Expert Code Reviewer subagent.
 
-
-
+### 81. Catch-up Mailing List Sync Utility Script (Phase 4)
+- **Problem**: Historical verified players registered before automated enrollment were not present on the `dashers@geodashing.org` Google Group mailing list, and their database `subscribe_group` status may not have reflected their current membership status.
+- **Architectural Implementation**:
+  - **CLI Synchronization Utility**:
+    - Created [backend/scripts/sync_mailing_list.php](backend/scripts/sync_mailing_list.php) supporting `--dry-run` (default preview mode), `--execute` (live mutation mode), `--all-verified` (all verified players vs opted-in only), and `-h`/`--help`.
+    - Enforced CLI-only execution guard via `php_sapi_name() === 'cli'`.
+    - Integrated with `GoogleGroupService::listMembers()` with automatic email normalization (`strtolower(trim(...))`) and pagination to fetch current group membership.
+    - Queried target players from MySQL and performed three-way set reconciliation:
+      - Already enrolled players (in DB and group)
+      - Pending enrollment players (in DB but missing from group)
+      - External group members (in group but not in matched player list)
+    - In `--execute` mode, enrolls pending players with per-user `try/catch` isolation, updates database `subscribe_group = 1` strictly upon successful enrollment, and throttles requests by 100ms (`usleep(100000)`) to respect Google Workspace Directory API quotas.
+- **Testing & Verification**:
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across YAPF, PyLint, Mypy, Pyright, Pytest, ESLint, PHP CodeSniffer, and PHPUnit.
+  - CLI script verified via `php backend/scripts/sync_mailing_list.php --help`.
+  - Code reviewed and approved unconditionally by the Expert Code Reviewer subagent.
