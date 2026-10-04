@@ -117,15 +117,20 @@ try {
     echo "      Matching Verified Players in Database: " . count($users) . "\n\n";
 
     // 4. Analyze Discrepancies
-    $alreadySubscribed = [];
+    $alreadyInSync = [];
+    $alreadyInGroupNeedDbSync = [];
     $toEnroll = [];
     $matchedEmails = [];
 
     foreach ($users as $user) {
         $userEmail = strtolower(trim((string) $user['email']));
         if (isset($groupMemberMap[$userEmail])) {
-            $alreadySubscribed[] = $user;
             $matchedEmails[$userEmail] = true;
+            if (!empty($user['subscribe_group'])) {
+                $alreadyInSync[] = $user;
+            } else {
+                $alreadyInGroupNeedDbSync[] = $user;
+            }
         } else {
             $toEnroll[] = $user;
         }
@@ -142,23 +147,32 @@ try {
     echo "--------------------------------------------------------------------\n";
     echo "Synchronization Plan Summary:\n";
     echo "--------------------------------------------------------------------\n";
-    echo "  Already in Google Group: " . count($alreadySubscribed) . "\n";
-    echo "  Pending Enrollment:      " . count($toEnroll) . "\n";
-    echo "  External / Other Group Members: " . count($externalMembers) . "\n\n";
+    echo "  In Group & Database Synced:   " . count($alreadyInSync) . "\n";
+    echo "  In Group, Database Needs Sync: " . count($alreadyInGroupNeedDbSync) . "\n";
+    echo "  Pending Group Enrollment:     " . count($toEnroll) . "\n";
+    echo "  External / Other Members:     " . count($externalMembers) . "\n\n";
 
-    if (!empty($alreadySubscribed)) {
-        echo "--- Already Subscribed Players (" . count($alreadySubscribed) . ") ---\n";
-        foreach ($alreadySubscribed as $u) {
-            echo "  [OK] {$u['email']} (User: {$u['username']})\n";
+    if (!empty($alreadyInSync)) {
+        echo "--- Already Subscribed & Synced (" . count($alreadyInSync) . ") ---\n";
+        foreach ($alreadyInSync as $u) {
+            echo "  [OK]   {$u['email']} (User: {$u['username']})\n";
+        }
+        echo "\n";
+    }
+
+    if (!empty($alreadyInGroupNeedDbSync)) {
+        echo "--- In Google Group, Database Flag Out of Sync (" . count($alreadyInGroupNeedDbSync) . ") ---\n";
+        foreach ($alreadyInGroupNeedDbSync as $u) {
+            echo "  [SYNC] {$u['email']} (User: {$u['username']}, DB currently 0 -> target 1)\n";
         }
         echo "\n";
     }
 
     if (!empty($toEnroll)) {
-        echo "--- Pending Enrollment Players (" . count($toEnroll) . ") ---\n";
+        echo "--- Pending Group Enrollment (" . count($toEnroll) . ") ---\n";
         foreach ($toEnroll as $u) {
             $optedStatus = !empty($u['subscribe_group']) ? "opted-in" : "not opted-in";
-            echo "  [+]  {$u['email']} (User: {$u['username']}, DB status: {$optedStatus})\n";
+            echo "  [+]    {$u['email']} (User: {$u['username']}, DB status: {$optedStatus})\n";
         }
         echo "\n";
     }
@@ -166,7 +180,7 @@ try {
     if (!empty($externalMembers)) {
         echo "--- External Group Members (not in matched player list) (" . count($externalMembers) . ") ---\n";
         foreach ($externalMembers as $m) {
-            echo "  [*]  {$m['email']} (Role: {$m['role']}, Type: {$m['type']})\n";
+            echo "  [*]    {$m['email']} (Role: {$m['role']}, Type: {$m['type']})\n";
         }
         echo "\n";
     }
@@ -185,47 +199,63 @@ try {
         exit(0);
     }
 
-    // Execute Enrollment Mutations
-    echo "--------------------------------------------------------------------\n";
-    echo "[EXECUTING MUTATIONS] Enrolling " . count($toEnroll) . " player(s)...\n";
-    echo "--------------------------------------------------------------------\n";
+    $updateStmt = $db->prepare("UPDATE users SET subscribe_group = 1 WHERE id = :id");
 
+    // 6a. Update database flag for players already in the Google Group
+    $dbUpdatedCount = 0;
+    if (!empty($alreadyInGroupNeedDbSync)) {
+        echo "--------------------------------------------------------------------\n";
+        echo "[UPDATING DATABASE] Synchronizing " . count($alreadyInGroupNeedDbSync) . " player(s) already in Google Group...\n";
+        echo "--------------------------------------------------------------------\n";
+        foreach ($alreadyInGroupNeedDbSync as $user) {
+            $updateStmt->execute([':id' => (int) $user['id']]);
+            echo "  [+] Database updated for {$user['email']} ({$user['username']})\n";
+            $dbUpdatedCount++;
+        }
+        echo "\n";
+    }
+
+    // 6b. Execute Enrollment Mutations for missing players
     $successCount = 0;
     $failureCount = 0;
 
-    $updateStmt = $db->prepare("UPDATE users SET subscribe_group = 1 WHERE id = :id");
+    if (!empty($toEnroll)) {
+        echo "--------------------------------------------------------------------\n";
+        echo "[ENROLLING IN GOOGLE GROUP] Enrolling " . count($toEnroll) . " player(s)...\n";
+        echo "--------------------------------------------------------------------\n";
 
-    foreach ($toEnroll as $user) {
-        $email = $user['email'];
-        $username = $user['username'];
-        $userId = (int) $user['id'];
+        foreach ($toEnroll as $user) {
+            $email = $user['email'];
+            $username = $user['username'];
+            $userId = (int) $user['id'];
 
-        echo "  -> Enrolling {$email} ({$username})... ";
+            echo "  -> Enrolling {$email} ({$username})... ";
 
-        try {
-            $apiSuccess = $groupService->addMember($email);
-            if ($apiSuccess) {
-                // Update database subscribe_group flag
-                $updateStmt->execute([':id' => $userId]);
-                echo "SUCCESS\n";
-                $successCount++;
-            } else {
-                echo "FAILED (API returned false)\n";
+            try {
+                $apiSuccess = $groupService->addMember($email);
+                if ($apiSuccess) {
+                    $updateStmt->execute([':id' => $userId]);
+                    echo "SUCCESS\n";
+                    $successCount++;
+                } else {
+                    echo "FAILED (API returned false)\n";
+                    $failureCount++;
+                }
+            } catch (Throwable $e) {
+                echo "FAILED: " . $e->getMessage() . "\n";
                 $failureCount++;
             }
-        } catch (Throwable $e) {
-            echo "FAILED: " . $e->getMessage() . "\n";
-            $failureCount++;
-        }
 
-        // Throttle requests slightly (100ms) to respect Google Workspace Directory API quotas
-        usleep(100000);
+            // Throttle requests slightly (100ms) to respect Google Workspace Directory API quotas
+            usleep(100000);
+        }
     }
 
     echo "\n--------------------------------------------------------------------\n";
     echo "[EXECUTION COMPLETE]\n";
-    echo "  Successfully enrolled: {$successCount}\n";
-    echo "  Failures:              {$failureCount}\n";
+    echo "  Database records synced: " . $dbUpdatedCount . "\n";
+    echo "  Newly enrolled in group: {$successCount}\n";
+    echo "  Failures:                {$failureCount}\n";
     echo "--------------------------------------------------------------------\n";
 } catch (Throwable $e) {
     echo "\n[ERROR] An unexpected error occurred: " . $e->getMessage() . "\n";
