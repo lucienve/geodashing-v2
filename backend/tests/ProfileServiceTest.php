@@ -28,6 +28,11 @@ class ProfileServiceTest extends TestCase
         $this->profileService = new ProfileService($this->pdoMock);
     }
 
+    protected function tearDown(): void
+    {
+        $_SESSION = [];
+    }
+
     #[Test]
     public function getProfileSettingsReturnsNullIfUserNotFound()
     {
@@ -46,7 +51,8 @@ class ProfileServiceTest extends TestCase
         $stmtUserMock->method('fetch')->willReturn([
             'id' => 1,
             'username' => 'testuser',
-            'created_at' => '2023-01-01 10:00:00'
+            'created_at' => '2023-01-01 10:00:00',
+            'subscribe_group' => 1
         ]);
 
         $stmtLogsMock = $this->createMock(PDOStatement::class);
@@ -85,11 +91,41 @@ class ProfileServiceTest extends TestCase
         $this->assertEquals(1, $result['user']['id']);
         $this->assertEquals('testuser', $result['user']['username']);
         $this->assertEquals(5, $result['user']['lifetime_score']);
+        $this->assertArrayNotHasKey('subscribe_group', $result['user']);
 
         $this->assertCount(1, $result['games']);
         $this->assertEquals(1, $result['games'][0]['game_id']);
         $this->assertEquals(5, $result['games'][0]['game_total_score']);
         $this->assertCount(2, $result['games'][0]['visits']);
+    }
+
+    #[Test]
+    public function getProfileSettingsIncludesSubscribeGroupForSelf()
+    {
+        $_SESSION['username'] = 'testuser';
+
+        $stmtUserMock = $this->createMock(PDOStatement::class);
+        $stmtUserMock->method('fetch')->willReturn([
+            'id' => 1,
+            'username' => 'testuser',
+            'created_at' => '2023-01-01 10:00:00',
+            'subscribe_group' => 1
+        ]);
+
+        $stmtLogsMock = $this->createMock(PDOStatement::class);
+        $stmtLogsMock->method('fetchAll')->willReturn([]);
+
+        $this->pdoMock->expects($this->exactly(2))
+            ->method('prepare')
+            ->willReturnOnConsecutiveCalls($stmtUserMock, $stmtLogsMock);
+
+        $result = $this->profileService->getProfileSettings('testuser');
+
+        $this->assertNotNull($result);
+        $this->assertArrayHasKey('subscribe_group', $result['user']);
+        $this->assertTrue($result['user']['subscribe_group']);
+
+        unset($_SESSION['username']);
     }
 
     #[Test]

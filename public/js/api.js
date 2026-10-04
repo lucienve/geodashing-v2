@@ -597,6 +597,28 @@ window.API = {
         } finally {
             this._inFlightMutations.delete(dashpointId);
         }
+    },
+
+    /**
+     * Updates the authenticated player's mailing list subscription preference.
+     * @param {boolean} subscribe Whether to subscribe (true) or unsubscribe (false).
+     * @returns {Promise<Object>} API response status and message.
+     */
+    setSubscription: async function (subscribe) {
+        try {
+            const headers = Object.assign({}, this.getHeaders(), {
+                'Content-Type': 'application/json'
+            });
+            const res = await fetch('api/subscription.php', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({ subscribe: Boolean(subscribe) })
+            });
+            return await res.json();
+        } catch (e) {
+            console.error(e);
+            return { status: 'error', message: 'Network communication error.' };
+        }
     }
 };
 

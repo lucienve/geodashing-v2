@@ -677,4 +677,30 @@ The application allows users to participate in global geographic games where the
   - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across all linters, typecheckers, and test suites.
   - Code reviewed and approved unconditionally by the Expert Code Reviewer subagent.
 
+### 80. Player Profile Subscription Management UI & API (Phase 3)
+- **Problem**: Players had no self-service mechanism in the application to inspect their current mailing list subscription status or toggle their subscription on and off.
+- **Architectural Implementation**:
+  - **Profile Settings Query & Privacy Guard**:
+    - Updated `ProfileService::getProfileSettings()` in [backend/services/ProfileService.php](backend/services/ProfileService.php) to select `subscribe_group` from the `users` table.
+    - Added an ownership check verifying `$_SESSION['username']` matches the requested profile's username before exposing `subscribe_group` in the returned `user` payload, preventing exposure of subscription preferences when viewing other players' public profiles.
+    - Updated [public/api/profile.php](public/api/profile.php) to require `backend/session.php` to initialize the session context.
+    - Added unit test `getProfileSettingsIncludesSubscribeGroupForSelf` and tearDown session cleanup in [backend/tests/ProfileServiceTest.php](backend/tests/ProfileServiceTest.php).
+  - **Subscription API Endpoint**:
+    - Implemented [public/api/subscription.php](public/api/subscription.php) accepting POST requests with a JSON body `{ "subscribe": bool }`.
+    - Enforces authentication and email verification (`empty($_SESSION['user_id']) || empty($_SESSION['is_verified'])`), and relies on `backend/session.php` automatic CSRF validation on mutating HTTP methods.
+    - Interacts with `GoogleGroupService` to add or remove the member from `dashers@geodashing.org`.
+    - Strictly commits the database update (`UPDATE users SET subscribe_group = :sub WHERE id = :id`) only after the Google Directory API call succeeds.
+    - Wrapped in resilient error handling returning appropriate HTTP status codes (400, 401, 404, 405, 502, 500).
+  - **Frontend API & Profile Controller**:
+    - Added `API.setSubscription(subscribe)` in [public/js/api.js](public/js/api.js) passing authenticated headers and CSRF tokens.
+    - Updated `#profile` controller in [public/js/controllers.js](public/js/controllers.js) to render a Mailing List card with a status badge (`SUBSCRIBED` / `NOT SUBSCRIBED`) and a toggle button (`#btn-toggle-subscription`) when viewing one's own profile.
+    - Wired click listener handling asynchronous subscription updates, visual loading states, and status/badge updates.
+  - **CSS Styling**:
+    - Added responsive styles in [public/css/index.css](public/css/index.css) for `.profile-subscription-card`, `.profile-subscription-header`, `.profile-subscription-badge`, `.badge-subscribed`, `.badge-unsubscribed`, and `.subscription-feedback`.
+- **Testing & Verification**:
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across YAPF, PyLint, Mypy, Pyright, Pytest, ESLint, PHP CodeSniffer, and PHPUnit.
+  - Playwright layout test runner (`npx playwright test e2e/layout.spec.js --reporter=list`): 6/6 tests passed.
+  - Code reviewed and approved by the Expert Code Reviewer subagent.
+
+
 

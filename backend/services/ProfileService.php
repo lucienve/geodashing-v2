@@ -35,7 +35,7 @@ class ProfileService
     public function getProfileSettings(string $username): ?array
     {
         // 1. Get User Core Details
-        $stmtUser = $this->db->prepare("SELECT id, username, created_at FROM users WHERE username = :username");
+        $stmtUser = $this->db->prepare("SELECT id, username, created_at, subscribe_group FROM users WHERE username = :username");
         $stmtUser->execute([':username' => $username]);
         $user = $stmtUser->fetch(PDO::FETCH_ASSOC);
 
@@ -95,13 +95,24 @@ class ProfileService
             ];
         }
 
+        $isSelf = false;
+        if (!empty($_SESSION['username'])) {
+            $isSelf = (strcasecmp((string) $_SESSION['username'], $user['username']) === 0);
+        }
+
+        $userPayload = [
+            "id" => $user['id'],
+            "username" => $user['username'],
+            "created_at" => $user['created_at'],
+            "lifetime_score" => $totalScore
+        ];
+
+        if ($isSelf) {
+            $userPayload["subscribe_group"] = (bool) ($user['subscribe_group'] ?? false);
+        }
+
         return [
-            "user" => [
-                "id" => $user['id'],
-                "username" => $user['username'],
-                "created_at" => $user['created_at'],
-                "lifetime_score" => $totalScore
-            ],
+            "user" => $userPayload,
             "games" => array_values($gamesHistory)
         ];
     }

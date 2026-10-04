@@ -1640,6 +1640,29 @@ document.addEventListener('routeLoaded', (e) => {
                 </div>
             `;
 
+            if (u.subscribe_group !== undefined) {
+                const isSub = Boolean(u.subscribe_group);
+                html += `
+                    <div class="dash-block profile-subscription-card">
+                        <div class="profile-subscription-header">
+                            <h4 class="profile-subscription-title">Mailing List</h4>
+                            <span id="profile-subscription-badge" class="profile-subscription-badge ${isSub ? 'badge-subscribed' : 'badge-unsubscribed'}">
+                                ${isSub ? 'SUBSCRIBED' : 'NOT SUBSCRIBED'}
+                            </span>
+                        </div>
+                        <p class="profile-subscription-desc">
+                            Subscribe to <strong>dashers@geodashing.org</strong> to receive game announcements, monthly results, player discussions, and dash logs via email.
+                        </p>
+                        <div class="profile-subscription-actions">
+                            <button id="btn-toggle-subscription" class="btn ${isSub ? 'btn-secondary' : 'btn-primary'}" data-subscribed="${isSub ? '1' : '0'}">
+                                ${isSub ? 'Unsubscribe from Mailing List' : 'Subscribe to Mailing List'}
+                            </button>
+                        </div>
+                        <div id="profile-subscription-feedback" class="subscription-feedback"></div>
+                    </div>
+                `;
+            }
+
             if (data.games && data.games.length > 0) {
                 html += `<h4 class="profile-section-title">Historical Activity</h4>`;
 
@@ -1683,6 +1706,49 @@ document.addEventListener('routeLoaded', (e) => {
             }
 
             container.innerHTML = html;
+
+            const toggleBtn = document.getElementById('btn-toggle-subscription');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', async () => {
+                    const isCurrentlySubscribed = toggleBtn.getAttribute('data-subscribed') === '1';
+                    const newSubscribed = !isCurrentlySubscribed;
+                    const feedback = document.getElementById('profile-subscription-feedback');
+                    const badge = document.getElementById('profile-subscription-badge');
+
+                    toggleBtn.disabled = true;
+                    toggleBtn.innerText = 'Updating...';
+                    if (feedback) feedback.innerHTML = '';
+
+                    try {
+                        const result = await API.setSubscription(newSubscribed);
+                        if (result.status === 'success') {
+                            const subState = Boolean(result.subscribe_group);
+                            toggleBtn.setAttribute('data-subscribed', subState ? '1' : '0');
+                            toggleBtn.className = `btn ${subState ? 'btn-secondary' : 'btn-primary'}`;
+                            toggleBtn.innerText = subState ? 'Unsubscribe from Mailing List' : 'Subscribe to Mailing List';
+                            if (badge) {
+                                badge.className = `profile-subscription-badge ${subState ? 'badge-subscribed' : 'badge-unsubscribed'}`;
+                                badge.innerText = subState ? 'SUBSCRIBED' : 'NOT SUBSCRIBED';
+                            }
+                            if (feedback) {
+                                feedback.innerHTML = `<div class="alert alert-success">${window.escapeHTML(result.message || 'Preference updated successfully.')}</div>`;
+                            }
+                        } else {
+                            if (feedback) {
+                                feedback.innerHTML = `<div class="alert alert-error">[-] ${window.escapeHTML(result.message || 'Failed to update subscription.')}</div>`;
+                            }
+                            toggleBtn.innerText = isCurrentlySubscribed ? 'Unsubscribe from Mailing List' : 'Subscribe to Mailing List';
+                        }
+                    } catch (_err) {
+                        if (feedback) {
+                            feedback.innerHTML = '<div class="alert alert-error">[-] An error occurred while updating subscription.</div>';
+                        }
+                        toggleBtn.innerText = isCurrentlySubscribed ? 'Unsubscribe from Mailing List' : 'Subscribe to Mailing List';
+                    } finally {
+                        toggleBtn.disabled = false;
+                    }
+                });
+            }
         }).catch(_err => {
             container.innerHTML = `<div class="alert alert-error">[-] System Offline. Profile unavailable.</div>`;
         });
