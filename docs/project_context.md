@@ -642,4 +642,22 @@ The application allows users to participate in global geographic games where the
   - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across YAPF, PyLint, Mypy, Pyright, Pytest, ESLint, PHP CodeSniffer, and PHPUnit.
   - Playwright test runner (`npx playwright test e2e/report_draft.spec.js e2e/draft_storage.spec.js --reporter=list`): All 39 tests (15 unit/integration storage tests, 24 report controller & lifecycle tests) passed across Chromium, iPhone 12, and Pixel 7 viewports with 0 failures and 0 flakes.
 
+### 78. Automated Google Group Subscription & Profile Management (Phase 1)
+- **Problem**: Player enrollment in the `dashers@geodashing.org` Google Group was previously unautomated, requiring manual mailto transmission by dashers and direct manual management in Google Groups.
+- **Architectural Implementation**:
+  - **Google Workspace Directory API Integration**:
+    - Implemented [backend/services/GoogleGroupService.php](backend/services/GoogleGroupService.php) encapsulating Google Workspace Admin SDK Directory API group membership operations using Google Service Account credentials with Domain-Wide Delegation.
+    - Set the service account to impersonate `tracker@geodashing.org` (assigned the Google Workspace Groups Admin role).
+    - Designed dependency-injected constructor allowing unit tests to supply mock directory services without requiring live Google Cloud credentials.
+    - Implemented idempotent `addMember` (treating HTTP 409 conflict as success) and `removeMember` (treating HTTP 404 as success).
+    - Implemented `listMembers` with automatic `pageToken` pagination support and defensive null-safety handling.
+    - Included `APP_ENV === 'testing'` bypass preventing live external API calls during automated integration tests.
+  - **Configuration Updates**:
+    - Updated [backend/config.ini.example](backend/config.ini.example) with `GOOGLE_GROUP_ADMIN_USER` and `GOOGLE_GROUP_KEY` configuration variables.
+  - **Unit Testing Coverage**:
+    - Implemented comprehensive unit tests in [backend/tests/GoogleGroupServiceTest.php](backend/tests/GoogleGroupServiceTest.php) covering valid/invalid emails, successful mutations, 409/404 idempotent handling, 500 error reporting, paginated member listings, and test bypass.
+- **Testing & Verification**:
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across all project linters and test suites (PHP CodeSniffer, PHPUnit, ESLint, YAPF, PyLint, Mypy, Pyright, Pytest).
+  - Code reviewed and approved by the Expert Code Reviewer subagent with all polish suggestions reconciled.
+
 
