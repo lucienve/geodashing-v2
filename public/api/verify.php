@@ -9,6 +9,7 @@
 declare(strict_types=1);
 
 use App\Services\AuthService;
+use App\Services\GoogleGroupService;
 
 require_once __DIR__ . '/../../backend/session.php';
 require_once __DIR__ . '/../../vendor/autoload.php';
@@ -34,6 +35,16 @@ try {
         $_SESSION['user_id'] = $result['user_id'];
         $_SESSION['username'] = $result['username'];
         $_SESSION['is_verified'] = 1;
+
+        // Auto-enroll user in the player mailing list if preference was requested
+        if (!empty($result['subscribe_group']) && !empty($result['email'])) {
+            try {
+                $groupService = new GoogleGroupService();
+                $groupService->addMember($result['email']);
+            } catch (Throwable $e) {
+                error_log("Verification mailing list auto-subscription error: " . $e->getMessage());
+            }
+        }
 
         // Redirect with success anchor
         $subscribeParam = !empty($result['subscribe_group']) ? '&subscribe=1' : '';

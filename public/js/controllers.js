@@ -1349,19 +1349,17 @@ document.addEventListener('routeLoaded', (e) => {
                     const verifiedInject = document.createElement('div');
                     verifiedInject.className = 'verified-success-box';
 
-                    let mailtoSection = '';
+                    let subscribeSection = '';
                     if (urlArgs.includes('subscribe=1')) {
-                        mailtoSection = `
+                        const profileUrl = user && user.username ? `#profile?username=${encodeURIComponent(user.username)}` : '#home';
+                        subscribeSection = `
                         <div class="verify-subscribe-box">
-                            <h4>Subscribe to Mailing List</h4>
+                            <h4>Mailing List Active</h4>
                             <p>
-                                You requested to join the <strong>dashers@geodashing.org</strong> mailing list. Stay active in the community with game announcements, game results, player discussions, and real-time logs. Click below to launch your email client, then hit send to request to join. You can unsubscribe at any time.
+                                You have been subscribed to the <strong>dashers@geodashing.org</strong> mailing list. Stay active in the community with game announcements, game results, player discussions, and real-time logs.
                             </p>
-                            <a href="mailto:dashers+subscribe@geodashing.org?subject=Subscribe&body=Please%20add%20me%20to%20the%20dashers%40geodashing.org%20mailing%20list." class="btn btn-secondary btn-send-subscribe">
-                                ✉ SEND SUBSCRIPTION EMAIL
-                            </a>
                             <p class="verify-subscribe-fallback">
-                                <em>Trouble with the button?</em> Manually send a blank email to <strong class="text-primary-email">dashers+subscribe@geodashing.org</strong> from your registered email address.
+                                You can manage or unsubscribe from the mailing list anytime from your <a href="${profileUrl}">Player Profile</a>.
                             </p>
                         </div>
                         `;
@@ -1370,8 +1368,8 @@ document.addEventListener('routeLoaded', (e) => {
                     verifiedInject.innerHTML = `
                     <h3>Email confirmed.</h3>
                     <p>Welcome to Geodashing!</p>
-                    ${mailtoSection}
-                    <a href="#home" class="btn btn-primary ${mailtoSection ? 'btn-primary-reduced' : ''}">Return to the map.</a>
+                    ${subscribeSection}
+                    <a href="#home" class="btn btn-primary ${subscribeSection ? 'btn-primary-reduced' : ''}">Return to the map.</a>
                 `;
                     document.getElementById('view-login').appendChild(verifiedInject);
                 } else {

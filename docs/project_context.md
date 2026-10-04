@@ -660,4 +660,21 @@ The application allows users to participate in global geographic games where the
   - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across all project linters and test suites (PHP CodeSniffer, PHPUnit, ESLint, YAPF, PyLint, Mypy, Pyright, Pytest).
   - Code reviewed and approved by the Expert Code Reviewer subagent with all polish suggestions reconciled.
 
+### 79. Auto-Enrollment on Verification & Registration Default (Phase 2)
+- **Problem**: Registration required manual opt-in (checkbox unchecked by default) and account verification prompted players to manually compose and send subscription emails via a mailto button.
+- **Architectural Implementation**:
+  - **Signup Default**:
+    - Updated [public/templates/login.html](public/templates/login.html) to make the `dashers@geodashing.org` subscription checkbox (`#signup-subscribe`) checked by default.
+  - **Verification Payload & Query**:
+    - Updated `AuthService::verifyEmail()` in [backend/services/AuthService.php](backend/services/AuthService.php) to select and return `email` in the user verification payload.
+    - Updated unit test expectations and assertions in [backend/tests/AuthServiceTest.php](backend/tests/AuthServiceTest.php).
+  - **Resilient Auto-Enrollment Hook**:
+    - Updated [public/api/verify.php](public/api/verify.php) to instantiate `GoogleGroupService` and automatically enroll verified players into `dashers@geodashing.org` if `subscribe_group` is enabled.
+    - Wrapped enrollment in a `try/catch (\Throwable $e)` block logging any Google API errors without blocking account verification or user session generation.
+  - **Post-Verification Confirmation UI**:
+    - Updated [public/js/controllers.js](public/js/controllers.js) to display a clean confirmation banner upon successful verification informing the player that they are enrolled on `dashers@geodashing.org`, with a direct link to their Player Profile to manage or unsubscribe anytime.
+- **Testing & Verification**:
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across all linters, typecheckers, and test suites.
+  - Code reviewed and approved unconditionally by the Expert Code Reviewer subagent.
+
 

@@ -173,6 +173,7 @@ class AuthServiceTest extends TestCase
         $selectMock->method('fetch')->willReturn([
             'id' => 42,
             'username' => 'Lucien',
+            'email' => 'lucien@example.com',
             'subscribe_group' => 1
         ]);
 
@@ -188,6 +189,7 @@ class AuthServiceTest extends TestCase
         $this->assertEquals('success', $result['status']);
         $this->assertEquals(42, $result['user_id']);
         $this->assertEquals('Lucien', $result['username']);
+        $this->assertEquals('lucien@example.com', $result['email']);
         $this->assertTrue($result['subscribe_group']);
     }
 }

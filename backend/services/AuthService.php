@@ -279,7 +279,7 @@ class AuthService
     {
         try {
             // Evaluate the verification token strictly matching the Users table
-            $stmt = $this->db->prepare("SELECT id, username, subscribe_group FROM users WHERE verification_token = :token AND is_verified = 0 LIMIT 1");
+            $stmt = $this->db->prepare("SELECT id, username, email, subscribe_group FROM users WHERE verification_token = :token AND is_verified = 0 LIMIT 1");
             $stmt->execute([':token' => $token]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -292,6 +292,7 @@ class AuthService
                     "status" => "success",
                     "user_id" => (int) $user['id'],
                     "username" => $user['username'],
+                    "email" => $user['email'],
                     "subscribe_group" => (bool) $user['subscribe_group']
                 ];
             } else {
