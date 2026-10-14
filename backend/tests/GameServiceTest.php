@@ -7,13 +7,11 @@ namespace App\Tests;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use App\Services\GameService;
 use PDO;
 use PDOStatement;
 
 #[CoversClass(GameService::class)]
-#[AllowMockObjectsWithoutExpectations]
 class GameServiceTest extends TestCase
 {
     private $pdoMock;

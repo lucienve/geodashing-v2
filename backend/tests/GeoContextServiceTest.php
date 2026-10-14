@@ -5,29 +5,27 @@ declare(strict_types=1);
 namespace Tests;
 
 use PHPUnit\Framework\TestCase;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use App\Services\GeoContextService;
 use PDO;
 use PDOStatement;
 
-#[AllowMockObjectsWithoutExpectations]
 class GeoContextServiceTest extends TestCase
 {
     /**
-     * @var GeoContextService|\PHPUnit\Framework\MockObject\MockObject
+     * @var GeoContextService&\PHPUnit\Framework\MockObject\Stub
      */
     private $service;
 
     protected function setUp(): void
     {
-        $pdoMock = $this->createMock(PDO::class);
+        $pdoMock = $this->createStub(PDO::class);
 
-        // We use a partial mock to bypass the actual HTTP/CURL calls and DB spatial queries
+        // We use a partial stub to bypass the actual HTTP/CURL calls and DB spatial queries
         // so we can test the string formatting and bearing math in isolation.
-        $this->service = $this->getMockBuilder(GeoContextService::class)
+        $this->service = $this->getStubBuilder(GeoContextService::class)
             ->setConstructorArgs([$pdoMock, 'fake_api_key'])
             ->onlyMethods(['getProvinceAndCountry', 'getLargestNearbyCity'])
-            ->getMock();
+            ->getStub();
     }
 
     public function testGetDashpointContextWithBothRegionAndCity()
@@ -117,7 +115,7 @@ class GeoContextServiceTest extends TestCase
      */
     public function testCalculateBearing()
     {
-        $pdoMock = $this->createMock(PDO::class);
+        $pdoMock = $this->createStub(PDO::class);
         $service = new GeoContextService($pdoMock, 'fake_api_key');
 
         $reflection = new \ReflectionClass($service);
@@ -142,7 +140,7 @@ class GeoContextServiceTest extends TestCase
 
     public function testGetTimezoneOffsetEmptyApiKey()
     {
-        $pdoMock = $this->createMock(PDO::class);
+        $pdoMock = $this->createStub(PDO::class);
         $service = new GeoContextService($pdoMock, ''); // Empty API key
 
         // Should return 0 immediately without making curl requests
@@ -152,8 +150,8 @@ class GeoContextServiceTest extends TestCase
 
     public function testEvaluateAndGetExtremeAnnotations()
     {
-        $pdoMock = $this->createMock(PDO::class);
-        $stmtMock = $this->createMock(PDOStatement::class);
+        $pdoMock = $this->createStub(PDO::class);
+        $stmtMock = $this->createStub(PDOStatement::class);
 
         $pdoMock->method('prepare')->willReturn($stmtMock);
 

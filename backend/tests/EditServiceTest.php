@@ -11,7 +11,6 @@ use App\Services\MediaService;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
 /**
  * EditServiceTest
@@ -20,7 +19,6 @@ use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
  * Session ownership, safely orchestrate GCP Deletions, and strictly enforce Image Counts.
  */
 #[CoversClass(EditService::class)]
-#[AllowMockObjectsWithoutExpectations]
 class EditServiceTest extends TestCase
 {
     private $pdoMock;
@@ -29,8 +27,8 @@ class EditServiceTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->pdoMock = $this->createMock(PDO::class);
-        $this->mediaMock = $this->createMock(MediaService::class);
+        $this->pdoMock = $this->createStub(PDO::class);
+        $this->mediaMock = $this->createStub(MediaService::class);
         $this->editService = new EditService($this->pdoMock, $this->mediaMock);
     }
 
@@ -41,7 +39,7 @@ class EditServiceTest extends TestCase
     #[Test]
     public function processEditRejectsForeignOwnership()
     {
-        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetch')->willReturn(false); // Simulates standard DB failure
         $this->pdoMock->method('prepare')->willReturn($stmtMock);
 
@@ -58,7 +56,10 @@ class EditServiceTest extends TestCase
     #[Test]
     public function processEditTriggersMediaDeletionForAbandonedUrls()
     {
-        $stmtMock = $this->createMock(PDOStatement::class);
+        $this->mediaMock = $this->createMock(MediaService::class);
+        $this->editService = new EditService($this->pdoMock, $this->mediaMock);
+
+        $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetch')->willReturn([
             'id' => 10,
             'is_active' => 1,
@@ -78,7 +79,7 @@ class EditServiceTest extends TestCase
             if (strpos($sql, 'UPDATE visits') !== false) {
                 return $updateStmtMock;
             }
-            return $this->createMock(PDOStatement::class);
+            return $this->createStub(PDOStatement::class);
         });
 
         // We explicitly tell the Server we ONLY want to keep `historic_2.jpg`.
@@ -103,6 +104,9 @@ class EditServiceTest extends TestCase
     #[Test]
     public function processEditRestrictsMaximumImageMerges()
     {
+        $this->mediaMock = $this->createMock(MediaService::class);
+        $this->editService = new EditService($this->pdoMock, $this->mediaMock);
+
         // Simulate a database row with 8 physical binaries
         $existingPhotos = [];
         $keptStrings = [];
@@ -112,7 +116,7 @@ class EditServiceTest extends TestCase
             $keptStrings[] = $url;
         }
 
-        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetch')->willReturn([
             'id' => 10,
             'is_active' => 1,
@@ -156,7 +160,7 @@ class EditServiceTest extends TestCase
         $notes = 'Changing notes';
         $keptPhotosRaw = '[]';
 
-        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetch')->willReturn([
             'id' => 10,
             'is_active' => 0,
@@ -177,7 +181,7 @@ class EditServiceTest extends TestCase
     #[Test]
     public function processEditUpdatesKeptPhotoCaptions()
     {
-        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetch')->willReturn([
             'id' => 10,
             'is_active' => 1,
@@ -196,7 +200,7 @@ class EditServiceTest extends TestCase
             if (strpos($sql, 'UPDATE visits') !== false) {
                 return $updateStmtMock;
             }
-            return $this->createMock(PDOStatement::class);
+            return $this->createStub(PDOStatement::class);
         });
 
         // We update the caption of historic_1.jpg

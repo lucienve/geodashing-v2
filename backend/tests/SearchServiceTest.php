@@ -7,7 +7,6 @@ namespace App\Tests;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use App\Services\SearchService;
 use PDO;
 use PDOStatement;
@@ -19,7 +18,6 @@ use PDOStatement;
  * coordinate logic cleanly bifurcates vectors in MySQL.
  */
 #[CoversClass(SearchService::class)]
-#[AllowMockObjectsWithoutExpectations]
 class SearchServiceTest extends TestCase
 {
     private $pdoMock;
@@ -39,7 +37,7 @@ class SearchServiceTest extends TestCase
     #[Test]
     public function processesStandardBoundingBoxQuery()
     {
-        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetchAll')->willReturn([
             ['id' => 'GD001-AAAA', 'lat' => 45.0, 'lon' => -70.0, 'visit_count' => 0]
         ]);
@@ -66,7 +64,7 @@ class SearchServiceTest extends TestCase
     #[Test]
     public function processesAntiMeridianDateLineOverflow()
     {
-        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetchAll')->willReturn([
             ['id' => 'GD001-FIJI', 'lat' => -18.0, 'lon' => 179.9, 'visit_count' => 1],
             ['id' => 'GD001-SAMO', 'lat' => -13.0, 'lon' => -171.0, 'visit_count' => 5]
@@ -98,7 +96,7 @@ class SearchServiceTest extends TestCase
     #[Test]
     public function searchVisitsProcessesStandardBoundingBoxQuery()
     {
-        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetchAll')->willReturn([
             ['id' => 1, 'dashpoint_id' => 'GD001-AAAA', 'username' => 'testuser', 'lat' => 45.0, 'lon' => -70.0, 'is_attempt' => 0, 'score_awarded' => 3, 'reported_time' => '2026-07-01 12:00:00']
         ]);
@@ -127,7 +125,7 @@ class SearchServiceTest extends TestCase
     #[Test]
     public function searchVisitsProcessesAntiMeridianDateLineOverflow()
     {
-        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetchAll')->willReturn([
             ['id' => 1, 'dashpoint_id' => 'GD001-FIJI', 'username' => 'testuser1', 'lat' => -18.0, 'lon' => 179.9, 'is_attempt' => 0, 'score_awarded' => 3, 'reported_time' => '2026-07-01 12:00:00'],
             ['id' => 2, 'dashpoint_id' => 'GD001-SAMO', 'username' => 'testuser2', 'lat' => -13.0, 'lon' => -171.0, 'is_attempt' => 1, 'score_awarded' => 0, 'reported_time' => '2026-07-01 13:00:00']

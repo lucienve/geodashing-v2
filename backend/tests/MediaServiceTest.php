@@ -9,7 +9,6 @@ use App\Services\MediaService;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Google\Cloud\Storage\StorageClient;
 use Google\Cloud\Storage\Bucket;
 
@@ -20,7 +19,6 @@ use Google\Cloud\Storage\Bucket;
  * of the Google Cloud Storage pipeline via Dependency Injection mock protocols.
  */
 #[CoversClass(MediaService::class)]
-#[AllowMockObjectsWithoutExpectations]
 class MediaServiceTest extends TestCase
 {
     private $storageMock;
@@ -31,8 +29,8 @@ class MediaServiceTest extends TestCase
         // Mock the native Google Cloud Bucket Object
         $this->bucketMock = $this->createMock(Bucket::class);
 
-        // Mock the overarching StorageClient to prevent live backend credentials scanning
-        $this->storageMock = $this->createMock(StorageClient::class);
+        // Stub the overarching StorageClient to prevent live backend credentials scanning
+        $this->storageMock = $this->createStub(StorageClient::class);
         $this->storageMock->method('bucket')->willReturn($this->bucketMock);
     }
 
@@ -54,6 +52,8 @@ class MediaServiceTest extends TestCase
             'error' => array_fill(0, 11, UPLOAD_ERR_OK),
             'size' => array_fill(0, 11, 1000)
         ];
+
+        $this->bucketMock->expects($this->never())->method('upload');
 
         // The exact Exception string hard-mapped to MediaService.php lines 45-50
         $this->expectException(Exception::class);
@@ -79,6 +79,8 @@ class MediaServiceTest extends TestCase
             'error' => [UPLOAD_ERR_INI_SIZE],
             'size' => [10000000]
         ];
+
+        $this->bucketMock->expects($this->never())->method('upload');
 
         $this->expectException(Exception::class);
         $this->expectExceptionMessage("Payload exceeds PHP 'upload_max_filesize' limits");
@@ -218,7 +220,7 @@ class MediaServiceTest extends TestCase
                         $thumbHeight = $size[1];
                     }
                 }
-                return $this->createMock(\Google\Cloud\Storage\StorageObject::class);
+                return $this->createStub(\Google\Cloud\Storage\StorageObject::class);
             });
 
         $service->uploadPhotos($fakeFiles, 'GD-TEST', 1);

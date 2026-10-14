@@ -11,13 +11,11 @@ namespace App\Tests;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use App\Services\SitemapService;
 use PDO;
 use PDOStatement;
 
 #[CoversClass(SitemapService::class)]
-#[AllowMockObjectsWithoutExpectations]
 class SitemapServiceTest extends TestCase
 {
     private $pdoMock;
@@ -67,13 +65,13 @@ class SitemapServiceTest extends TestCase
         $this->assertStringContainsString('<?xml version="1.0" encoding="UTF-8"?>', $xml);
         $this->assertStringContainsString('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">', $xml);
 
-        // Validate core root
-        $this->assertStringContainsString('<loc>http://test.local/</loc>', $xml);
-
         // Validate static help pages
         $this->assertStringContainsString('<loc>http://test.local/?page=about</loc>', $xml);
         $this->assertStringContainsString('<loc>http://test.local/?page=how-to</loc>', $xml);
         $this->assertStringContainsString('<loc>http://test.local/?page=contact</loc>', $xml);
+
+        // Validate core root
+        $this->assertStringContainsString('<loc>http://test.local/</loc>', $xml);
 
         // Validate dynamic injection
         $this->assertStringContainsString('<loc>http://test.local/?dashpoint=GD001-AAAA</loc>', $xml);
@@ -106,13 +104,14 @@ class SitemapServiceTest extends TestCase
     #[Test]
     public function testGenerateSitemapXmlDoesNotDoubleEscapeUrls(): void
     {
-        $stmtMock1 = $this->createMock(PDOStatement::class);
+        $stmtMock1 = $this->createStub(PDOStatement::class);
         $stmtMock1->method('fetchAll')->willReturn([]);
 
-        $stmtMock2 = $this->createMock(PDOStatement::class);
+        $stmtMock2 = $this->createStub(PDOStatement::class);
         $stmtMock2->method('fetchAll')->willReturn([]);
 
-        $this->pdoMock->method('prepare')
+        $this->pdoMock->expects($this->exactly(2))
+            ->method('prepare')
             ->willReturnOnConsecutiveCalls($stmtMock1, $stmtMock2);
 
         $customSitemapService = new SitemapService($this->pdoMock, "http://test.local?page=main&version=2");

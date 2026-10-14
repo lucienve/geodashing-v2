@@ -30,7 +30,7 @@ class RerollServiceTest extends TestCase
     {
         putenv('APP_ENV=testing');
         $_ENV['APP_ENV'] = 'testing';
-        $this->pdoMock = $this->createMock(PDO::class);
+        $this->pdoMock = $this->createStub(PDO::class);
     }
 
     #[Test]
@@ -52,10 +52,10 @@ class RerollServiceTest extends TestCase
     #[Test]
     public function rerollFailsWhenUserHasZeroFinds(): void
     {
-        $userStmt = $this->createMock(PDOStatement::class);
+        $userStmt = $this->createStub(PDOStatement::class);
         $userStmt->method('fetch')->willReturn(['username' => 'TestUser']);
 
-        $findsStmt = $this->createMock(PDOStatement::class);
+        $findsStmt = $this->createStub(PDOStatement::class);
         $findsStmt->method('fetch')->willReturn(['find_count' => 0]);
 
         $this->pdoMock->method('prepare')->willReturnCallback(function ($sql) use ($userStmt, $findsStmt) {
@@ -65,7 +65,7 @@ class RerollServiceTest extends TestCase
             if (str_contains($sql, 'FROM visits')) {
                 return $findsStmt;
             }
-            return $this->createMock(PDOStatement::class);
+            return $this->createStub(PDOStatement::class);
         });
 
         $service = new RerollService($this->pdoMock, null, $this->testConfig);
@@ -79,13 +79,13 @@ class RerollServiceTest extends TestCase
     #[Test]
     public function rerollFailsWhenGameIsActive(): void
     {
-        $userStmt = $this->createMock(PDOStatement::class);
+        $userStmt = $this->createStub(PDOStatement::class);
         $userStmt->method('fetch')->willReturn(['username' => 'TestUser']);
 
-        $findsStmt = $this->createMock(PDOStatement::class);
+        $findsStmt = $this->createStub(PDOStatement::class);
         $findsStmt->method('fetch')->willReturn(['find_count' => 5]);
 
-        $dpStmt = $this->createMock(PDOStatement::class);
+        $dpStmt = $this->createStub(PDOStatement::class);
         $dpStmt->method('fetch')->willReturn([
             'id' => 'GD001-AAAA',
             'game_id' => 2,
@@ -106,7 +106,7 @@ class RerollServiceTest extends TestCase
             if (str_contains($sql, 'FROM dashpoints')) {
                 return $dpStmt;
             }
-            return $this->createMock(PDOStatement::class);
+            return $this->createStub(PDOStatement::class);
         });
 
         $service = new RerollService($this->pdoMock, null, $this->testConfig);
@@ -120,13 +120,13 @@ class RerollServiceTest extends TestCase
     #[Test]
     public function rerollFailsWhenDashpointAlreadyRerolled(): void
     {
-        $userStmt = $this->createMock(PDOStatement::class);
+        $userStmt = $this->createStub(PDOStatement::class);
         $userStmt->method('fetch')->willReturn(['username' => 'TestUser']);
 
-        $findsStmt = $this->createMock(PDOStatement::class);
+        $findsStmt = $this->createStub(PDOStatement::class);
         $findsStmt->method('fetch')->willReturn(['find_count' => 5]);
 
-        $dpStmt = $this->createMock(PDOStatement::class);
+        $dpStmt = $this->createStub(PDOStatement::class);
         $dpStmt->method('fetch')->willReturn([
             'id' => 'GD002-AAAA',
             'game_id' => 3,
@@ -137,7 +137,7 @@ class RerollServiceTest extends TestCase
             'is_active' => 0
         ]);
 
-        $dpRerollsStmt = $this->createMock(PDOStatement::class);
+        $dpRerollsStmt = $this->createStub(PDOStatement::class);
         $dpRerollsStmt->method('fetch')->willReturn(['reroll_count' => 1]);
 
         $this->pdoMock->method('prepare')->willReturnCallback(
@@ -154,7 +154,7 @@ class RerollServiceTest extends TestCase
                 if (str_contains($sql, 'WHERE dashpoint_id = :dashpoint_id')) {
                     return $dpRerollsStmt;
                 }
-                return $this->createMock(PDOStatement::class);
+                return $this->createStub(PDOStatement::class);
             }
         );
 
@@ -169,13 +169,13 @@ class RerollServiceTest extends TestCase
     #[Test]
     public function rerollSuccess(): void
     {
-        $userStmt = $this->createMock(PDOStatement::class);
+        $userStmt = $this->createStub(PDOStatement::class);
         $userStmt->method('fetch')->willReturn(['username' => 'TestUser']);
 
-        $findsStmt = $this->createMock(PDOStatement::class);
+        $findsStmt = $this->createStub(PDOStatement::class);
         $findsStmt->method('fetch')->willReturn(['find_count' => 3]);
 
-        $dpStmt = $this->createMock(PDOStatement::class);
+        $dpStmt = $this->createStub(PDOStatement::class);
         $dpStmt->method('fetch')->willReturn([
             'id' => 'GD002-AAAA',
             'game_id' => 3,
@@ -186,13 +186,13 @@ class RerollServiceTest extends TestCase
             'is_active' => 0
         ]);
 
-        $dpRerollsStmt = $this->createMock(PDOStatement::class);
+        $dpRerollsStmt = $this->createStub(PDOStatement::class);
         $dpRerollsStmt->method('fetch')->willReturn(['reroll_count' => 0]);
 
-        $userRerollsStmt = $this->createMock(PDOStatement::class);
+        $userRerollsStmt = $this->createStub(PDOStatement::class);
         $userRerollsStmt->method('fetch')->willReturn(['user_reroll_count' => 1]);
 
-        $execStmt = $this->createMock(PDOStatement::class);
+        $execStmt = $this->createStub(PDOStatement::class);
         $execStmt->method('execute')->willReturn(true);
 
         $this->pdoMock->method('prepare')->willReturnCallback(
@@ -216,7 +216,7 @@ class RerollServiceTest extends TestCase
             }
         );
 
-        $geoMock = $this->createMock(GeoContextService::class);
+        $geoMock = $this->createStub(GeoContextService::class);
         $geoMock->method('getDashpointContext')->willReturn('Mocked GeoContext');
 
         $service = new class ($this->pdoMock, $geoMock, $this->testConfig) extends RerollService {

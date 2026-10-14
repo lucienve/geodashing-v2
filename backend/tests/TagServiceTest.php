@@ -21,7 +21,7 @@ class TagServiceTest extends TestCase
     {
         putenv('APP_ENV=testing');
         $_ENV['APP_ENV'] = 'testing';
-        $this->pdoMock = $this->createMock(PDO::class);
+        $this->pdoMock = $this->createStub(PDO::class);
     }
 
     protected function tearDown(): void
@@ -83,6 +83,7 @@ class TagServiceTest extends TestCase
     #[Test]
     public function getTagsForUserAndGameFormatsAssociativeDictionary(): void
     {
+        $this->pdoMock = $this->createMock(PDO::class);
         $stmtMock = $this->createMock(PDOStatement::class);
         $stmtMock->expects($this->once())
             ->method('execute')
@@ -132,7 +133,8 @@ class TagServiceTest extends TestCase
     #[Test]
     public function setTagRejectsNonExistentDashpoint(): void
     {
-        $checkStmt = $this->createMock(PDOStatement::class);
+        $this->pdoMock = $this->createMock(PDO::class);
+        $checkStmt = $this->createStub(PDOStatement::class);
         $checkStmt->method('fetch')->willReturn(false);
 
         $this->pdoMock->expects($this->once())
@@ -150,7 +152,8 @@ class TagServiceTest extends TestCase
     #[Test]
     public function setTagRejectsCompletedPastGame(): void
     {
-        $checkStmt = $this->createMock(PDOStatement::class);
+        $this->pdoMock = $this->createMock(PDO::class);
+        $checkStmt = $this->createStub(PDOStatement::class);
         $checkStmt->method('fetch')->willReturn([
             'id' => 'GD000-AAAA',
             'is_active' => false,
@@ -172,7 +175,8 @@ class TagServiceTest extends TestCase
     #[Test]
     public function setTagSucceedsInActiveGame(): void
     {
-        $checkStmt = $this->createMock(PDOStatement::class);
+        $this->pdoMock = $this->createMock(PDO::class);
+        $checkStmt = $this->createStub(PDOStatement::class);
         $checkStmt->method('fetch')->willReturn([
             'id' => 'GD001-AAAA',
             'is_active' => true,
@@ -198,7 +202,8 @@ class TagServiceTest extends TestCase
     #[Test]
     public function setTagSucceedsInPreviewGame(): void
     {
-        $checkStmt = $this->createMock(PDOStatement::class);
+        $this->pdoMock = $this->createMock(PDO::class);
+        $checkStmt = $this->createStub(PDOStatement::class);
         $checkStmt->method('fetch')->willReturn([
             'id' => 'GD002-AAAA',
             'is_active' => false,
@@ -224,7 +229,8 @@ class TagServiceTest extends TestCase
     #[Test]
     public function deleteTagRejectsCompletedPastGame(): void
     {
-        $checkStmt = $this->createMock(PDOStatement::class);
+        $this->pdoMock = $this->createMock(PDO::class);
+        $checkStmt = $this->createStub(PDOStatement::class);
         $checkStmt->method('fetch')->willReturn([
             'id' => 'GD000-AAAA',
             'is_active' => false,
@@ -246,7 +252,8 @@ class TagServiceTest extends TestCase
     #[Test]
     public function deleteTagSucceedsInActiveGame(): void
     {
-        $checkStmt = $this->createMock(PDOStatement::class);
+        $this->pdoMock = $this->createMock(PDO::class);
+        $checkStmt = $this->createStub(PDOStatement::class);
         $checkStmt->method('fetch')->willReturn([
             'id' => 'GD001-AAAA',
             'is_active' => true,
@@ -271,6 +278,7 @@ class TagServiceTest extends TestCase
     #[Test]
     public function purgeTagsForDashpointReturnsRowCount(): void
     {
+        $this->pdoMock = $this->createMock(PDO::class);
         $stmtMock = $this->createMock(PDOStatement::class);
         $stmtMock->expects($this->once())
             ->method('execute')

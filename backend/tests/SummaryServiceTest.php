@@ -7,7 +7,6 @@ namespace App\Tests;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use App\Services\SummaryService;
 use PDO;
 use PDOStatement;
@@ -16,7 +15,6 @@ use PDOStatement;
  * Summary Service Unit Tests
  */
 #[CoversClass(SummaryService::class)]
-#[AllowMockObjectsWithoutExpectations]
 class SummaryServiceTest extends TestCase
 {
     private $pdoMock;

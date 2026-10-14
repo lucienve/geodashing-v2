@@ -718,3 +718,14 @@ The application allows users to participate in global geographic games where the
   - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across YAPF, PyLint, Mypy, Pyright, Pytest, ESLint, PHP CodeSniffer, and PHPUnit.
   - CLI script verified via `php backend/scripts/sync_mailing_list.php --help`.
   - Code reviewed and approved unconditionally by the Expert Code Reviewer subagent.
+
+### 82. PHPUnit Test Double Root-Cause Refactoring (Stubs vs. Mocks)
+- **Problem**: Fourteen PHPUnit test suites in `backend/tests/` previously used class-level `#[AllowMockObjectsWithoutExpectations]` attributes to suppress PHPUnit notices triggered when test doubles created via `createMock()` or `getMockBuilder()->getMock()` were used strictly for return-value stubbing without `.expects()` call verification.
+- **Architectural Implementation**:
+  - Removed all `#[AllowMockObjectsWithoutExpectations]` attributes and imports across all 14 test suites ([backend/tests/AuthServiceTest.php](backend/tests/AuthServiceTest.php), [backend/tests/DashpointServiceTest.php](backend/tests/DashpointServiceTest.php), [backend/tests/EditServiceTest.php](backend/tests/EditServiceTest.php), [backend/tests/GameServiceTest.php](backend/tests/GameServiceTest.php), [backend/tests/GeoContextServiceTest.php](backend/tests/GeoContextServiceTest.php), [backend/tests/LeaderboardServiceTest.php](backend/tests/LeaderboardServiceTest.php), [backend/tests/MediaServiceTest.php](backend/tests/MediaServiceTest.php), [backend/tests/ProfileServiceTest.php](backend/tests/ProfileServiceTest.php), [backend/tests/ReportServiceTest.php](backend/tests/ReportServiceTest.php), [backend/tests/RerollServiceTest.php](backend/tests/RerollServiceTest.php), [backend/tests/SearchServiceTest.php](backend/tests/SearchServiceTest.php), [backend/tests/SitemapServiceTest.php](backend/tests/SitemapServiceTest.php), [backend/tests/SummaryServiceTest.php](backend/tests/SummaryServiceTest.php), and [backend/tests/TagServiceTest.php](backend/tests/TagServiceTest.php)).
+  - Replaced unasserted `createMock()` and `getMockBuilder()->getMock()` calls with `createStub()` and `getStubBuilder()->getStub()`, reserving `createMock()` strictly for test doubles with explicit `.expects(...)` invocation assertions.
+  - Added explicit `$this->never()` expectations on guard-clause tests where appropriate (such as early validation failures in `AuthServiceTest`, `EditServiceTest`, `MediaServiceTest`, and `ReportServiceTest`).
+- **Testing & Verification**:
+  - Verified zero PHPUnit notices across all 107 tests (`./vendor/bin/phpunit --display-notices --display-phpunit-notices --fail-on-notice backend/tests/`).
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across all configured linters, type checkers, and test suites.
+

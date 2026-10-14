@@ -7,7 +7,6 @@ namespace App\Tests;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use App\Services\ProfileService;
 use PDO;
 use PDOStatement;
@@ -16,7 +15,6 @@ use PDOStatement;
  * ProfileServiceTest
  */
 #[CoversClass(ProfileService::class)]
-#[AllowMockObjectsWithoutExpectations]
 class ProfileServiceTest extends TestCase
 {
     private $pdoMock;
@@ -36,9 +34,9 @@ class ProfileServiceTest extends TestCase
     #[Test]
     public function getProfileSettingsReturnsNullIfUserNotFound()
     {
-        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetch')->willReturn(false);
-        $this->pdoMock->method('prepare')->willReturn($stmtMock);
+        $this->pdoMock->expects($this->once())->method('prepare')->willReturn($stmtMock);
 
         $result = $this->profileService->getProfileSettings('nonexistentuser');
         $this->assertNull($result);
@@ -47,7 +45,7 @@ class ProfileServiceTest extends TestCase
     #[Test]
     public function getProfileSettingsReturnsFormattedData()
     {
-        $stmtUserMock = $this->createMock(PDOStatement::class);
+        $stmtUserMock = $this->createStub(PDOStatement::class);
         $stmtUserMock->method('fetch')->willReturn([
             'id' => 1,
             'username' => 'testuser',
@@ -55,7 +53,7 @@ class ProfileServiceTest extends TestCase
             'subscribe_group' => 1
         ]);
 
-        $stmtLogsMock = $this->createMock(PDOStatement::class);
+        $stmtLogsMock = $this->createStub(PDOStatement::class);
         $stmtLogsMock->method('fetchAll')->willReturn([
             [
                 'visit_id' => 10,
@@ -104,7 +102,7 @@ class ProfileServiceTest extends TestCase
     {
         $_SESSION['username'] = 'testuser';
 
-        $stmtUserMock = $this->createMock(PDOStatement::class);
+        $stmtUserMock = $this->createStub(PDOStatement::class);
         $stmtUserMock->method('fetch')->willReturn([
             'id' => 1,
             'username' => 'testuser',
@@ -112,7 +110,7 @@ class ProfileServiceTest extends TestCase
             'subscribe_group' => 1
         ]);
 
-        $stmtLogsMock = $this->createMock(PDOStatement::class);
+        $stmtLogsMock = $this->createStub(PDOStatement::class);
         $stmtLogsMock->method('fetchAll')->willReturn([]);
 
         $this->pdoMock->expects($this->exactly(2))
@@ -131,16 +129,16 @@ class ProfileServiceTest extends TestCase
     #[Test]
     public function getPlayerMailStatsReturnsAggregatedStats()
     {
-        $stmtScoreMock = $this->createMock(PDOStatement::class);
+        $stmtScoreMock = $this->createStub(PDOStatement::class);
         $stmtScoreMock->method('fetch')->willReturn(['total' => 15]);
 
-        $stmtScoreGameMock = $this->createMock(PDOStatement::class);
+        $stmtScoreGameMock = $this->createStub(PDOStatement::class);
         $stmtScoreGameMock->method('fetch')->willReturn(['total' => 5]);
 
-        $stmtHuntsMock = $this->createMock(PDOStatement::class);
+        $stmtHuntsMock = $this->createStub(PDOStatement::class);
         $stmtHuntsMock->method('fetch')->willReturn(['previous_hunts' => 12]);
 
-        $stmtHuntsGameMock = $this->createMock(PDOStatement::class);
+        $stmtHuntsGameMock = $this->createStub(PDOStatement::class);
         $stmtHuntsGameMock->method('fetch')->willReturn(['previous_hunts' => 3]);
 
         $this->pdoMock->expects($this->exactly(4))

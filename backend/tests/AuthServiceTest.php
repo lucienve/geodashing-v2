@@ -11,7 +11,6 @@ use App\Services\AuthService;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
 /**
  * AuthServiceTest
@@ -19,7 +18,6 @@ use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
  * Verifies core registration boundaries and login payload hashing validity constraints against mocked states.
  */
 #[CoversClass(AuthService::class)]
-#[AllowMockObjectsWithoutExpectations]
 class AuthServiceTest extends TestCase
 {
     private $pdoMock;
@@ -27,16 +25,18 @@ class AuthServiceTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->pdoMock = $this->createMock(PDO::class);
+        $this->pdoMock = $this->createStub(PDO::class);
+        $this->authService = $this->createAuthServiceWithPdo($this->pdoMock);
+    }
 
-        // Instantiate a partial mock exclusively locking out the physical mail router
-        $this->authService = $this->getMockBuilder(AuthService::class)
-            ->setConstructorArgs([$this->pdoMock])
+    private function createAuthServiceWithPdo(PDO $pdo): AuthService
+    {
+        $authService = $this->getStubBuilder(AuthService::class)
+            ->setConstructorArgs([$pdo])
             ->onlyMethods(['executeMail'])
-            ->getMock();
-
-        // Globally nullify side-effects by forcing true return silently
-        $this->authService->method('executeMail')->willReturn(true);
+            ->getStub();
+        $authService->method('executeMail')->willReturn(true);
+        return $authService;
     }
 
     #[Test]
@@ -111,7 +111,7 @@ class AuthServiceTest extends TestCase
     #[Test]
     public function resendVerificationRejectsAlreadyVerifiedUsers()
     {
-        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetch')->willReturn([
             'email' => 'test@example.com',
             'is_verified' => 1,
@@ -129,7 +129,10 @@ class AuthServiceTest extends TestCase
     #[Test]
     public function resendVerificationSucceedsForUnverifiedUsers()
     {
-        $selectMock = $this->createMock(PDOStatement::class);
+        $this->pdoMock = $this->createMock(PDO::class);
+        $this->authService = $this->createAuthServiceWithPdo($this->pdoMock);
+
+        $selectMock = $this->createStub(PDOStatement::class);
         $selectMock->method('fetch')->willReturn([
             'email' => 'test@example.com',
             'is_verified' => 0,
@@ -169,7 +172,10 @@ class AuthServiceTest extends TestCase
     #[Test]
     public function verifyEmailReturnsSubscribeGroupPreference()
     {
-        $selectMock = $this->createMock(PDOStatement::class);
+        $this->pdoMock = $this->createMock(PDO::class);
+        $this->authService = $this->createAuthServiceWithPdo($this->pdoMock);
+
+        $selectMock = $this->createStub(PDOStatement::class);
         $selectMock->method('fetch')->willReturn([
             'id' => 42,
             'username' => 'Lucien',
@@ -177,7 +183,7 @@ class AuthServiceTest extends TestCase
             'subscribe_group' => 1
         ]);
 
-        $updateMock = $this->createMock(PDOStatement::class);
+        $updateMock = $this->createStub(PDOStatement::class);
         $updateMock->method('execute')->willReturn(true);
 
         $this->pdoMock->expects($this->exactly(2))

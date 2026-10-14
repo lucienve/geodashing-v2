@@ -7,7 +7,6 @@ namespace App\Tests;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use App\Services\LeaderboardService;
 use PDO;
 use PDOStatement;
@@ -19,7 +18,6 @@ use PDOStatement;
  * Tie-breaker algorithms parsing identical players.
  */
 #[CoversClass(LeaderboardService::class)]
-#[AllowMockObjectsWithoutExpectations]
 class LeaderboardServiceTest extends TestCase
 {
     private $pdoMock;
@@ -27,7 +25,7 @@ class LeaderboardServiceTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->pdoMock = $this->createMock(PDO::class);
+        $this->pdoMock = $this->createStub(PDO::class);
         $this->leaderboardService = new LeaderboardService($this->pdoMock);
     }
 
@@ -38,7 +36,7 @@ class LeaderboardServiceTest extends TestCase
     #[Test]
     public function getSoloRankingsProperlyResolvesTieBreakers()
     {
-        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock = $this->createStub(PDOStatement::class);
 
         // Simulating the MySQL Engine returning an Array sorted `ORDER BY total_score DESC, u.username ASC`
         $stmtMock->method('fetchAll')->willReturn([
@@ -72,7 +70,7 @@ class LeaderboardServiceTest extends TestCase
     #[Test]
     public function getSoloRankingsHandlesExactSimultaneousTiesProperly()
     {
-        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock = $this->createStub(PDOStatement::class);
 
         $stmtMock->method('fetchAll')->willReturn([
             ['user_id' => 4, 'username' => 'Delta', 'total_score' => 50, 'total_finds' => 20, 'last_find_time' => '2026-03-10 12:00:00'],
@@ -100,7 +98,7 @@ class LeaderboardServiceTest extends TestCase
     #[Test]
     public function getSoloRankingsHandlesEmptySetsSafely()
     {
-        $stmtMock = $this->createMock(PDOStatement::class);
+        $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetchAll')->willReturn([]); // Simulate ZERO results
 
         $this->pdoMock->method('prepare')->willReturn($stmtMock);
@@ -116,7 +114,10 @@ class LeaderboardServiceTest extends TestCase
     #[Test]
     public function getSoloRankingsPreparesQueryExcludingAttempts()
     {
-        $stmtMock = $this->createMock(PDOStatement::class);
+        $this->pdoMock = $this->createMock(PDO::class);
+        $this->leaderboardService = new LeaderboardService($this->pdoMock);
+
+        $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetchAll')->willReturn([]);
 
         $this->pdoMock->expects($this->once())
