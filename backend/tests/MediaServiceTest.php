@@ -191,7 +191,6 @@ class MediaServiceTest extends TestCase
         $tempFile = tempnam(sys_get_temp_dir(), 'fktst');
         $img = imagecreatetruecolor(10, 20);
         imagejpeg($img, $tempFile);
-        imagedestroy($img);
 
         $fakeFiles = [
             'name' => ['valid_pic.jpg'],

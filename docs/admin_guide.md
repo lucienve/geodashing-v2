@@ -10,7 +10,7 @@ All administrative utilities are located in the `backend/scripts/` directory and
 
 ### Technical Target Versions
 *   **Python**: `3.14` (Pinned via `.python-version`)
-*   **PHP**: `8.3.6`
+*   **PHP**: `8.5`
 *   **MySQL**: `8.4.8`
 
 ### Installation & Virtual Environment Setup

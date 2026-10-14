@@ -7,7 +7,7 @@ The application allows users to participate in global geographic games where the
 ## Architectural Decisions
 - **Core Stack**: 
   - **Frontend**: Vanilla JS (ES6+), Semantic HTML5, Vanilla CSS3. **No Heavy Frameworks** (React/Vue/etc. are strictly prohibited). Logic is decoupled into separate files (`api.js`, `app.js`, `controllers.js`, `map.js`). Node.js **24.16.0** is enforced via `.nvmrc` for local tooling, linting, and E2E testing.
-  - **Backend**: Primary API layer written in **PHP 8.3.6** (`public/api`) supplemented with **Python 3.14** (pinned via `.python-version`) for server-side scripts / game generation algorithms (`generate_game.py`). `uv` (Astral) is mandated to provision and manage the Python 3.14 runtime, `pyproject.toml` dependencies, and execution via `uv run`.
+  - **Backend**: Primary API layer written in **PHP 8.5** (`public/api`) supplemented with **Python 3.14** (pinned via `.python-version`) for server-side scripts / game generation algorithms (`generate_game.py`). `uv` (Astral) is mandated to provision and manage the Python 3.14 runtime, `pyproject.toml` dependencies, and execution via `uv run`.
   - **Database**: **MySQL 8.4.8** using native drivers (PDO for PHP, `mysql-connector-python` for Python). **No ORM is used**. All queries are securely handled via explicit parameterized statements.
   - **Media Storage**: Google Cloud Storage buckets handle user-uploaded photos natively via PHP APIs.
 - **Security Posture**: 
@@ -727,5 +727,25 @@ The application allows users to participate in global geographic games where the
   - Added explicit `$this->never()` expectations on guard-clause tests where appropriate (such as early validation failures in `AuthServiceTest`, `EditServiceTest`, `MediaServiceTest`, and `ReportServiceTest`).
 - **Testing & Verification**:
   - Verified zero PHPUnit notices across all 107 tests (`./vendor/bin/phpunit --display-notices --display-phpunit-notices --fail-on-notice backend/tests/`).
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across all configured linters, type checkers, and test suites.
+
+### 83. PHP 8.5 Runtime, CI, and Dependency Upgrade
+- **Problem**: Following the production server upgrade to Ubuntu 26.04.1 LTS (which upgraded the PHP runtime to `8.5.4`), CI workflows, the E2E Apache container, project documentation, and Composer dependencies remained pinned to PHP `8.3` / PHPUnit `12.5` / Symfony Mime `7.4`, and several PHP 8.5 deprecated function calls (`imagedestroy()`, `curl_close()`, `ReflectionMethod::setAccessible()`, `ReflectionProperty::setAccessible()`) triggered runtime deprecation notices.
+- **Architectural Implementation**:
+  - **PHP 8.5 Deprecation Remediation**:
+    - Removed deprecated `imagedestroy()` calls in [backend/services/MediaService.php](backend/services/MediaService.php) and [backend/tests/MediaServiceTest.php](backend/tests/MediaServiceTest.php) (`GdImage` objects are automatically freed when going out of scope since PHP 8.0).
+    - Removed deprecated `curl_close()` call in [backend/services/GeoContextService.php](backend/services/GeoContextService.php) (`CurlHandle` objects are automatically closed when going out of scope since PHP 8.0).
+    - Removed deprecated `ReflectionMethod::setAccessible()` and `ReflectionProperty::setAccessible()` calls in [backend/scripts/catchup_emails.php](backend/scripts/catchup_emails.php), [backend/scripts/recreate_thumbnails.php](backend/scripts/recreate_thumbnails.php), and [backend/tests/GeoContextServiceTest.php](backend/tests/GeoContextServiceTest.php) (no-op since PHP 8.1).
+  - **CI & E2E Container Upgrade**:
+    - Upgraded `shivammathur/setup-php@v2` from `php-version: '8.3'` to `php-version: '8.5'` in [.github/workflows/ci-verification.yml](.github/workflows/ci-verification.yml) and [.github/workflows/ci-e2e.yml](.github/workflows/ci-e2e.yml).
+    - Upgraded E2E container base image from `FROM php:8.3-apache` to `FROM php:8.5-apache` in [e2e/Dockerfile](e2e/Dockerfile) and updated the comment in [e2e/docker-compose.yml](e2e/docker-compose.yml).
+  - **Composer & PHPUnit Upgrade**:
+    - Updated [composer.json](composer.json) and [composer.lock](composer.lock) to require `"php": "^8.5"` and upgraded `"phpunit/phpunit": "^13.4"`, `"symfony/mime": "^8.1"`, `"google/cloud-storage": "^2.6"`, and `"google/apiclient": "^2.20"`.
+    - Hardened `lint:syntax` in [composer.json](composer.json) to check `backend/`, `public/api/`, and `e2e/` without masking non-zero exit codes.
+    - Updated [phpunit.xml](phpunit.xml) schema to `13.4` and enabled `failOnDeprecation="true"` and `failOnNotice="true"`.
+  - **Documentation Synchronization**:
+    - Updated target PHP version references to `8.5` in [docs/admin_guide.md](docs/admin_guide.md) and [docs/project_context.md](docs/project_context.md).
+- **Testing & Verification**:
+  - Verified PHPUnit 13.4 execution with zero deprecations and zero notices across all 107 tests (`composer run test`).
   - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across all configured linters, type checkers, and test suites.
 

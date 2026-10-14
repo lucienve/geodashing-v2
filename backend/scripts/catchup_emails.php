@@ -41,7 +41,6 @@ try {
     $reportService = new ReportService($db, null, $profileService);
     $reflection = new \ReflectionClass(ReportService::class);
     $method = $reflection->getMethod('sendVisitReportEmail');
-    $method->setAccessible(true);
 
     foreach ($visits as $visit) {
         $userId = $visit['user_id'];

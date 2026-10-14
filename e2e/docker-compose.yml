@@ -31,7 +31,7 @@ services:
       -public-host localhost:4443
       -data /data
 
-  # Multi-process Apache + PHP 8.3 E2E test server
+  # Multi-process Apache + PHP 8.5 E2E test server
   web:
     build:
       context: ..

@@ -281,7 +281,6 @@ class MediaService
                 case 3:
                     $rotated = @imagerotate($image, 180, 0);
                     if ($rotated !== false) {
-                        imagedestroy($image);
                         $image = $rotated;
                     }
                     break;
@@ -292,14 +291,12 @@ class MediaService
                     imageflip($image, IMG_FLIP_VERTICAL);
                     $rotated = @imagerotate($image, 270, 0);
                     if ($rotated !== false) {
-                        imagedestroy($image);
                         $image = $rotated;
                     }
                     break;
                 case 6:
                     $rotated = @imagerotate($image, 270, 0);
                     if ($rotated !== false) {
-                        imagedestroy($image);
                         $image = $rotated;
                     }
                     break;
@@ -307,14 +304,12 @@ class MediaService
                     imageflip($image, IMG_FLIP_HORIZONTAL);
                     $rotated = @imagerotate($image, 270, 0);
                     if ($rotated !== false) {
-                        imagedestroy($image);
                         $image = $rotated;
                     }
                     break;
                 case 8:
                     $rotated = @imagerotate($image, 90, 0);
                     if ($rotated !== false) {
-                        imagedestroy($image);
                         $image = $rotated;
                     }
                     break;
@@ -362,9 +357,6 @@ class MediaService
                 $success = imagewebp($thumbnail, $tempFile, 85);
                 break;
         }
-
-        imagedestroy($image);
-        imagedestroy($thumbnail);
 
         if (!$success) {
             @unlink($tempFile);

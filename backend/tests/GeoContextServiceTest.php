@@ -120,7 +120,6 @@ class GeoContextServiceTest extends TestCase
 
         $reflection = new \ReflectionClass($service);
         $method = $reflection->getMethod('calculateBearing');
-        $method->setAccessible(true);
 
         // From Null Island (0,0) to North (1,0)
         $this->assertEquals("North", $method->invoke($service, 0, 0, 1, 0));

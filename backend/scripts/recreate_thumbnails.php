@@ -36,14 +36,11 @@ try {
     $reflection = new \ReflectionClass(MediaService::class);
 
     $generateThumbnailMethod = $reflection->getMethod('generateThumbnail');
-    $generateThumbnailMethod->setAccessible(true);
 
     $storageProp = $reflection->getProperty('storage');
-    $storageProp->setAccessible(true);
     $storageClient = $storageProp->getValue($mediaService);
 
     $bucketNameProp = $reflection->getProperty('bucketName');
-    $bucketNameProp->setAccessible(true);
     $realBucketName = $bucketNameProp->getValue($mediaService);
 
     $bucket = $storageClient->bucket($realBucketName);
