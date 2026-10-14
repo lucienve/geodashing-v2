@@ -749,3 +749,8 @@ The application allows users to participate in global geographic games where the
   - Verified PHPUnit 13.4 execution with zero deprecations and zero notices across all 107 tests (`composer run test`).
   - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across all configured linters, type checkers, and test suites.
 
+### 84. Gemini 4 Argon Evaluation and Adoption
+- Evaluated Google GenAI's `gemini-4-argon` model on the end-to-end benchmark evaluation suite ([test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py)) across 4 historical game datasets ([summary_examples](../data/summary_examples/)).
+- Confirmed 100% test pass rate with perfect 5/5 scores across all evaluation metrics (Tone, Accuracy, and Narrative Quality) as evaluated by LLM-as-a-Judge (`gemini-3.8-flash`), and full compliance with deterministic HTML rules (semantic tags, self-closing void tags, absolute SPA links, and thumbnail-wrapped photos).
+- Upgraded the default AI summarizer model reference to `gemini-4-argon` across configurations ([config.ini.example](../backend/config.ini.example)), unit test configurations ([test_generate_summary.py](../backend/tests/test_generate_summary.py)), fallback judge settings in the evaluation suite ([test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py)), and administrative documentation ([admin_guide.md](admin_guide.md), [gemini_model_evaluation.md](gemini_model_evaluation.md)).
+
