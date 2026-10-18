@@ -3,7 +3,6 @@
 # Accessing the internal _generate_summary helper function is necessary
 # in this test to evaluate the system instruction prompt pipeline in isolation.
 
-import configparser
 import os
 import re
 import html.parser
@@ -303,7 +302,7 @@ def evaluate_summary_quality(
         judge_model: str,
         input_text: str,
         generated_html: str,
-        thinking_level: str | None = None) -> EvaluationResult:
+        thinking_level: str = "medium") -> EvaluationResult:
     """Invokes the judge LLM with a Pydantic response schema to score the summary quality."""
     prompt = f"""
 You are the Quality Assurance Judge for the Geodashing Game Administrator summary generator.
@@ -323,67 +322,21 @@ Evaluation Criteria:
 Evaluate the summary and return the scores, justification, and a final verdict. The final verdict 'passed' should be True only if all scores are 4 or 5.
 """
 
-    generation_config: backend.scripts.generate_summary.GenerationConfigDict = {}
-    if thinking_level:
-        generation_config["thinking_level"] = thinking_level.lower()
-
     interaction = client.interactions.create(
         model=judge_model,
         input=prompt,
-        response_format=[{
+        response_format={
             "type": "text",
             "mime_type": "application/json",
             "schema": EvaluationResult.model_json_schema()
-        }],
-        generation_config=generation_config or None)
+        },
+        generation_config={"thinking_level": thinking_level.lower()})
 
     output_text = getattr(interaction, "output_text", None)
     if not output_text:
         raise ValueError("Judge model returned an empty or invalid response")
 
     return EvaluationResult.model_validate_json(str(output_text))
-
-
-def _get_eval_config(
-        cfg_p: str) -> tuple[dict[str, str | None], google.genai.Client, str]:
-    """Extracts candidate and judge configurations and OAuth clients."""
-    ai_config = backend.scripts.generate_summary.configure_environment(cfg_p)
-    client = backend.scripts.generate_summary.get_gemini_client(ai_config)
-
-    config = configparser.ConfigParser()
-    config.read(cfg_p)
-    judge_model = "gemini-4-argon"
-    if 'gemini' in config and 'GEMINI_EVAL_MODEL' in config['gemini']:
-        val = config['gemini']['GEMINI_EVAL_MODEL']
-        if val:
-            judge_model = val.strip('"\'')
-    return ai_config, client, judge_model
-
-
-# pylint: disable=duplicate-code
-# This duplicate code block is architecturally necessary because the test suite
-# replicates the local temp file and remote GenAI file cleanup logic from
-# generate_summary.py to ensure identical resource hygiene under test conditions.
-def _cleanup_context(
-        client: google.genai.Client,
-        upload_context: backend.scripts.generate_summary.UploadContext
-) -> None:
-    """Closes and deletes all local temporary files and uploaded remote assets."""
-    for local_file in upload_context["local_temp_files"]:
-        try:
-            if os.path.exists(local_file):
-                os.unlink(local_file)
-        except OSError as e:
-            print(f"Failed to delete local temp file {local_file}: {e}")
-
-    for uploaded_file in upload_context["uploaded_ai_files"]:
-        try:
-            if uploaded_file.name:
-                client.files.delete(name=uploaded_file.name)
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            print(
-                f"Failed to delete remote AI Studio file {uploaded_file.name}: {e}"
-            )
 
 
 def _load_benchmark_input(exs_d: str, prefix: str) -> str:
@@ -400,8 +353,10 @@ def test_evaluate_benchmark_summary(prefix: str) -> None:
     c_dir = os.path.dirname(os.path.abspath(__file__))
     exs_d = os.path.join(c_dir, '../../data/summary_examples/')
 
-    ai_config, client, judge_model = _get_eval_config(
+    ai_config = backend.scripts.generate_summary.configure_environment(
         os.path.join(c_dir, '../config.ini'))
+    client = backend.scripts.generate_summary.get_gemini_client(ai_config)
+    judge_model = ai_config.get("eval_model") or "gemini-4-argon"
 
     raw_input_text = _load_benchmark_input(exs_d, prefix)
     parsed = parse_benchmark_input(raw_input_text)
@@ -433,7 +388,7 @@ def test_evaluate_benchmark_summary(prefix: str) -> None:
             judge_model,
             raw_input_text,
             generated_html,
-            thinking_level=ai_config.get('thinking_level'))
+            thinking_level=ai_config.get('thinking_level') or "medium")
 
         # Print detailed diagnostic report
         print(f"\n--- Evaluation Report for {prefix} ---")
@@ -455,4 +410,4 @@ def test_evaluate_benchmark_summary(prefix: str) -> None:
         assert eval_result.passed, "Judge model did not pass the output summary"
 
     finally:
-        _cleanup_context(client, upload_context)
+        backend.scripts.generate_summary.cleanup_upload_context(upload_context)

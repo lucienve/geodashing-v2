@@ -60,14 +60,6 @@ class ModelOutputStepDict(typing.TypedDict):
 InteractionStep = UserInputStepDict | ModelOutputStepDict
 
 
-class GenerationConfigDict(typing.TypedDict, total=False):
-    """Configuration options for model generation in Interactions API."""
-    thinking_level: str
-    max_output_tokens: int
-    seed: int
-    stop_sequences: list[str]
-
-
 class UploadContext(typing.TypedDict):
     """Context container for local and uploaded GenAI files."""
     client: google.genai.Client
@@ -90,7 +82,8 @@ def configure_environment(config_path: str) -> dict[str, str | None]:
 
     model_name = None
     project_id = None
-    thinking_level = None
+    thinking_level = "medium"
+    eval_model = "gemini-4-argon"
     api_key = None
 
     # Support loading API key, model, project ID, and thinking level from config.ini
@@ -105,9 +98,12 @@ def configure_environment(config_path: str) -> dict[str, str | None]:
         project_id = config['gemini'].get('GEMINI_PROJECT_ID')
         if project_id:
             project_id = project_id.strip('"\'')
-        thinking_level = config['gemini'].get('GEMINI_THINKING_LEVEL')
-        if thinking_level:
-            thinking_level = thinking_level.strip('"\'')
+        raw_thinking = config['gemini'].get('GEMINI_THINKING_LEVEL')
+        if raw_thinking and raw_thinking.strip('"\''):
+            thinking_level = raw_thinking.strip('"\'').lower()
+        raw_eval_model = config['gemini'].get('GEMINI_EVAL_MODEL')
+        if raw_eval_model and raw_eval_model.strip('"\''):
+            eval_model = raw_eval_model.strip('"\'')
 
     if not model_name:
         raise ValueError(
@@ -118,6 +114,7 @@ def configure_environment(config_path: str) -> dict[str, str | None]:
         "model_name": model_name,
         "project_id": project_id,
         "thinking_level": thinking_level,
+        "eval_model": eval_model,
         "api_key": api_key
     }
 
@@ -435,16 +432,13 @@ def _generate_summary(client: google.genai.Client,
     steps: list[InteractionStep] = load_chat_history(examples_dir)
     steps.append({"type": "user_input", "content": prompt})
 
-    generation_config: GenerationConfigDict = {}
-    thinking_level = ai_config.get('thinking_level')
-    if thinking_level:
-        generation_config["thinking_level"] = thinking_level.lower()
+    thinking_level = (ai_config.get('thinking_level') or 'medium').lower()
 
     interaction = client.interactions.create(
         model=model_name,
         system_instruction=sys_inst,
         input=steps,
-        generation_config=generation_config or None)
+        generation_config={"thinking_level": thinking_level})
     output_text = getattr(interaction, "output_text", None)
     if output_text is not None:
         return str(output_text)
@@ -487,6 +481,27 @@ def _get_game_data(
         conn.close()
 
 
+def cleanup_upload_context(upload_context: UploadContext) -> None:
+    """Deletes all local temporary files and uploaded remote GenAI files."""
+    for local_file in upload_context["local_temp_files"]:
+        try:
+            if os.path.exists(local_file):
+                os.unlink(local_file)
+        except OSError as e:
+            print(f"Failed to delete local temp file {local_file}: {e}",
+                  file=sys.stderr)
+
+    client = upload_context["client"]
+    for uploaded_file in upload_context["uploaded_ai_files"]:
+        try:
+            if uploaded_file.name:
+                client.files.delete(name=uploaded_file.name)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print(
+                f"Failed to delete remote AI Studio file {uploaded_file.name}: {e}",
+                file=sys.stderr)
+
+
 def run_summary_generation(args: argparse.Namespace, config_path: str,
                            instructions_path: str, examples_dir: str) -> None:
     """Orchestrates the data extraction, AI upload, and generation process."""
@@ -508,26 +523,8 @@ def run_summary_generation(args: argparse.Namespace, config_path: str,
                                          examples_dir, prompt)
         write_summary_files(args.output_dir, args.game_id, prompt,
                             summary_html)
-
     finally:
-        # A. Clean up local temporary files
-        for local_file in upload_context["local_temp_files"]:
-            try:
-                if os.path.exists(local_file):
-                    os.unlink(local_file)
-            except OSError as e:
-                print(f"Failed to delete local temp file {local_file}: {e}",
-                      file=sys.stderr)
-
-        # B. Clean up uploaded remote AI Studio files
-        for uploaded_file in upload_context["uploaded_ai_files"]:
-            try:
-                if uploaded_file.name:
-                    client.files.delete(name=uploaded_file.name)
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                print(
-                    f"Failed to delete remote AI Studio file {uploaded_file.name}: {e}",
-                    file=sys.stderr)
+        cleanup_upload_context(upload_context)
 
 
 def main() -> None:

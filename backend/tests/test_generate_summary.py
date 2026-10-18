@@ -250,7 +250,7 @@ def test_get_gemini_client(mock_auth_default: unittest.mock.MagicMock,
                      autospec=True)
 def test_generate_summary(mock_load_chat: unittest.mock.MagicMock,
                           mock_load_sys: unittest.mock.MagicMock) -> None:
-    """Test AI Studio API call structure via Client without thinking_level."""
+    """Test AI Studio API call structure via Client with default and custom thinking_level."""
     mock_client = unittest.mock.MagicMock(spec=google.genai.Client)
     mock_interaction = mock_client.interactions.create.return_value
     mock_interaction.output_text = "generated HTML"
@@ -278,40 +278,18 @@ def test_generate_summary(mock_load_chat: unittest.mock.MagicMock,
             "type": "user_input",
             "content": prompt_items
         }],
-        generation_config=None)
+        generation_config={"thinking_level": "medium"})
 
-
-@unittest.mock.patch(
-    "backend.scripts.generate_summary.load_system_instructions", autospec=True)
-@unittest.mock.patch("backend.scripts.generate_summary.load_chat_history",
-                     autospec=True)
-def test_generate_summary_with_thinking_level(
-        mock_load_chat: unittest.mock.MagicMock,
-        mock_load_sys: unittest.mock.MagicMock) -> None:
-    """Test AI Studio API call structure via Client with thinking_level."""
-    mock_client = unittest.mock.MagicMock(spec=google.genai.Client)
-    mock_interaction = mock_client.interactions.create.return_value
-    mock_interaction.output_text = "generated HTML with thinking"
-
-    mock_load_sys.return_value = "sys inst"
+    mock_client.interactions.create.reset_mock()
     mock_load_chat.return_value = []
-
-    prompt_items: list[backend.scripts.generate_summary.ContentItem] = [{
-        "type":
-        "text",
-        "text":
-        "my prompt"
-    }]
-    ai_config: dict[str, str | None] = {
+    ai_config_custom: dict[str, str | None] = {
         "model_name": "m1",
-        "thinking_level": "medium"
+        "thinking_level": "HIGH"
     }
-    result = backend.scripts.generate_summary._generate_summary(
-        mock_client, ai_config, "sys.txt", "/fake/dir", prompt_items)
-
-    assert result == "generated HTML with thinking"
-    mock_load_sys.assert_called_once_with("sys.txt")
-    mock_load_chat.assert_called_once_with("/fake/dir")
+    backend.scripts.generate_summary._generate_summary(mock_client,
+                                                       ai_config_custom,
+                                                       "sys.txt", "/fake/dir",
+                                                       prompt_items)
     mock_client.interactions.create.assert_called_once_with(
         model="m1",
         system_instruction="sys inst",
@@ -319,7 +297,7 @@ def test_generate_summary_with_thinking_level(
             "type": "user_input",
             "content": prompt_items
         }],
-        generation_config={"thinking_level": "medium"})
+        generation_config={"thinking_level": "high"})
 
 
 @unittest.mock.patch("backend.scripts.generate_summary.os.path.exists",
@@ -330,7 +308,8 @@ def test_generate_summary_with_thinking_level(
 [gemini]
 GEMINI_API_KEY = "test-key"
 GEMINI_MODEL = "gemini-4-argon"
-GEMINI_THINKING_LEVEL = "medium"
+GEMINI_THINKING_LEVEL = "HIGH"
+GEMINI_EVAL_MODEL = "gemini-3.8-flash"
 GEMINI_PROJECT_ID = "test-proj"
 [mail]
 GOOGLE_APPLICATION_CREDENTIALS = "/path/to/creds.json"
@@ -338,14 +317,15 @@ GOOGLE_APPLICATION_CREDENTIALS = "/path/to/creds.json"
 def test_configure_environment_full(
         _mock_open: unittest.mock.MagicMock,
         mock_exists: unittest.mock.MagicMock) -> None:
-    """Verify configure_environment loads all parameters including thinking level."""
+    """Verify configure_environment loads all parameters including thinking level and eval model."""
     mock_exists.return_value = True
     ai_config = backend.scripts.generate_summary.configure_environment(
         "/fake/config.ini")
 
     assert ai_config["model_name"] == "gemini-4-argon"
     assert ai_config["project_id"] == "test-proj"
-    assert ai_config["thinking_level"] == "medium"
+    assert ai_config["thinking_level"] == "high"
+    assert ai_config["eval_model"] == "gemini-3.8-flash"
 
 
 @unittest.mock.patch("backend.scripts.generate_summary.os.path.exists",
