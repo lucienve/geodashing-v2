@@ -1834,7 +1834,6 @@ body, html {
   border: 1px solid var(--accent-amber);
   padding: 1.5rem;
   border-radius: 4px;
-  display: none;
 }
 
 .auth-pane-amber h3 {
@@ -1848,7 +1847,6 @@ body, html {
   border: 1px solid var(--text-muted);
   padding: 1.5rem;
   border-radius: 4px;
-  display: none;
 }
 
 .auth-pane-muted h3 {
@@ -2821,3 +2819,55 @@ body, html {
   fill: #ffffff;
   display: block;
 }
+
+/* Semantic State & Utility Classes */
+.nav-auth-unverified {
+  color: var(--accent-amber);
+}
+
+.content-fade {
+  opacity: 0.3;
+}
+
+.btn-edit-log {
+  background: var(--accent-amber);
+  color: #000;
+  border: none;
+}
+
+.btn-login-prompt {
+  background: transparent;
+  color: var(--accent-red);
+  border: 1px solid var(--accent-red);
+}
+
+.visit-details-collapsible.expanded {
+  display: block;
+}
+
+.photo-dragging {
+  opacity: 0.5;
+}
+
+.btn-sync-gps.gps-synced {
+  color: var(--accent-green);
+  border-color: var(--accent-green);
+}
+
+.btn-sync-gps.gps-error {
+  color: var(--accent-red);
+}
+
+.char-counter.char-counter-warning {
+  color: var(--accent-red);
+  font-weight: bold;
+}
+
+.input-valid {
+  border-color: var(--accent-green) !important;
+}
+
+.input-invalid {
+  border-color: var(--accent-red) !important;
+}
+
