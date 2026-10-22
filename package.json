@@ -9,7 +9,10 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "eslint public/js/**/*.js e2e/**/*.js"
+    "lint": "eslint public/js/**/*.js e2e/**/*.js",
+    "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#vendor\" \"#.venv\" \"#test-results\" \"#playwright-report\" \"#e2e-results\"",
+    "format": "prettier --ignore-path .gitignore --write --single-quote \"**/*.md\" \"public/js/**/*.js\" \"e2e/**/*.js\" \"eslint.config.mjs\"",
+    "format:check": "prettier --ignore-path .gitignore --check --single-quote \"**/*.md\" \"public/js/**/*.js\" \"e2e/**/*.js\" \"eslint.config.mjs\""
   },
   "repository": {
     "type": "git",

@@ -1,763 +1,2059 @@
 # Geodashing V2 - Project Context
 
 ## Overview
-Geodashing V2 is a reimplementation of the classic GeoDashing game originally created by Scout. 
-The application allows users to participate in global geographic games where they are tasked with reaching randomly generated "dashpoints" across the world.
+
+Geodashing V2 is a reimplementation of the classic GeoDashing game originally
+created by Scout. The application allows users to participate in global
+geographic games where they are tasked with reaching randomly generated
+"dashpoints" across the world.
 
 ## Architectural Decisions
-- **Core Stack**: 
-  - **Frontend**: Vanilla JS (ES6+), Semantic HTML5, Vanilla CSS3. **No Heavy Frameworks** (React/Vue/etc. are strictly prohibited). Logic is decoupled into separate files (`api.js`, `app.js`, `controllers.js`, `map.js`). Node.js **24.16.0** is enforced via `.nvmrc` for local tooling, linting, and E2E testing.
-  - **Backend**: Primary API layer written in **PHP 8.5** (`public/api`) supplemented with **Python 3.14** (pinned via `.python-version`) for server-side scripts / game generation algorithms (`generate_game.py`). `uv` (Astral) is mandated to provision and manage the Python 3.14 runtime, `pyproject.toml` dependencies, and execution via `uv run`.
-  - **Database**: **MySQL 8.4.8** using native drivers (PDO for PHP, `mysql-connector-python` for Python). **No ORM is used**. All queries are securely handled via explicit parameterized statements.
-  - **Media Storage**: Google Cloud Storage buckets handle user-uploaded photos natively via PHP APIs.
-- **Security Posture**: 
-  - Centralized session handling (`session.php`) enforces `SameSite=Strict` rules and oversees a global CSRF token architecture. 
-  - Strict input validation against Stored XSS via `escapeHTML` for dynamic DOM additions, and robust email verification workflows to prevent header injection.
-  - Account integrity ensures login requirements for point-logging and log modification.
-- **UI/UX Directives**: 
-  - Implementation requires rich aesthetics prioritizing strong responsiveness and mobile-first logic. Includes native mobile photo uploads, responsive layouts, GPS syncing, Google Maps `AdvancedMarkerElement`, and marker clustering.
+
+- **Core Stack**:
+  - **Frontend**: Vanilla JS (ES6+), Semantic HTML5, Vanilla CSS3. **No Heavy
+    Frameworks** (React/Vue/etc. are strictly prohibited). Logic is decoupled
+    into separate files (`api.js`, `app.js`, `controllers.js`, `map.js`).
+    Node.js **24.16.0** is enforced via `.nvmrc` for local tooling, linting, and
+    E2E testing.
+  - **Backend**: Primary API layer written in **PHP 8.5** (`public/api`)
+    supplemented with **Python 3.14** (pinned via `.python-version`) for
+    server-side scripts / game generation algorithms (`generate_game.py`). `uv`
+    (Astral) is mandated to provision and manage the Python 3.14 runtime,
+    `pyproject.toml` dependencies, and execution via `uv run`.
+  - **Database**: **MySQL 8.4.8** using native drivers (PDO for PHP,
+    `mysql-connector-python` for Python). **No ORM is used**. All queries are
+    securely handled via explicit parameterized statements.
+  - **Media Storage**: Google Cloud Storage buckets handle user-uploaded photos
+    directly via PHP APIs.
+- **Security Posture**:
+  - Centralized session handling (`session.php`) enforces `SameSite=Strict`
+    rules and oversees a global CSRF token architecture.
+  - Strict input validation against Stored XSS via `escapeHTML` for dynamic DOM
+    additions, and robust email verification workflows to prevent header
+    injection.
+  - Account integrity ensures login requirements for point-logging and log
+    modification.
+- **UI/UX Directives**:
+  - Implementation requires rich aesthetics prioritizing strong responsiveness
+    and mobile-first logic. Includes native mobile photo uploads, responsive
+    layouts, GPS syncing, Google Maps `AdvancedMarkerElement`, and marker
+    clustering.
 - **Testing Constraints**:
-  - PHPUnit test files must exclusively live in `backend/tests/` and mirror the structure of the classes they test, rather than in the project root.
-  - Playwright E2E tests are used for automated layout testing and verify the UI constraints across devices without hanging.
-  - Lighthouse tests are integrated to enforce SEO, accessibility, and performance best practices.
-  - Code verification checkers (linters, type checkers, and unit tests) are unified using the **`pre-commit`** framework, ensuring identical verification pipelines locally and in the GitHub Actions CI environment. E2E Playwright tests run separately due to heavy infrastructure requirements.
+  - PHPUnit test files must exclusively live in `backend/tests/` and mirror the
+    structure of the classes they test, rather than in the project root.
+  - Playwright E2E tests are used for automated layout testing and verify the UI
+    constraints across devices without hanging.
+  - Lighthouse tests are integrated to enforce SEO, accessibility, and
+    performance best practices.
+  - Code verification checkers (linters, type checkers, and unit tests) are
+    unified using the **`pre-commit`** framework, ensuring identical
+    verification pipelines locally and in the GitHub Actions CI environment. E2E
+    Playwright tests run separately due to heavy infrastructure requirements.
 
 ## Detailed Milestones & Implementation History
 
-### 1. Engine & Data Generation 
-- Established the base database schemas (`schema.sql`), enforcing strict procedural queries over ORMs.
-- Implemented Python routines using `geopandas` and `shapely` to randomize and insert dashpoints geographically, accounting for explicit exclusions like major lakes. 
-- Format of dashpoint IDs successfully transitioned from numeric to alphanumeric to match classical standards.
+### 1. Engine & Data Generation
+
+- Established the base database schemas (`schema.sql`), enforcing strict
+  procedural queries over ORMs.
+- Implemented Python routines using `geopandas` and `shapely` to randomize and
+  insert dashpoints geographically, accounting for explicit exclusions like
+  major lakes.
+- Format of dashpoint IDs successfully transitioned from numeric to alphanumeric
+  to match classical standards.
 
 ### 2. Core API Layer & Authentication
-- Built PHP endpoints for authentication, securely logging users in, mandating secure email verifications, and facilitating password resets.
-- Added comprehensive reporting features including the ability for users to append logs up to 10k characters. Enabled capabilities for users to dynamically edit their own prior log entries.
-- Implemented automated HTML email notifications that dispatch dashpoint log details (including inline photos and real-time scoring updates) to a configured mailing list immediately after a successful dashpoint claim.
+
+- Built PHP endpoints for authentication, securely logging users in, mandating
+  secure email verifications, and facilitating password resets.
+- Added comprehensive reporting features including the ability for users to
+  append logs up to 10k characters. Enabled capabilities for users to
+  dynamically edit their own prior log entries.
+- Implemented automated HTML email notifications that dispatch dashpoint log
+  details (including inline photos and real-time scoring updates) to a
+  configured mailing list immediately after a successful dashpoint claim.
 - Developed RESTful search and export endpoints for dashpoints.
 
 ### 3. Media Capabilities
-- Integrated `google/cloud-storage` strictly on the PHP layer. Developed bucket management to securely funnel user photo uploads from live capture or mobile galleries.
-- Baked in EXIF functionality to automatically parse location coordinates from uploaded photos, utilizing local and server capabilities to validate report distances dynamically.
+
+- Integrated `google/cloud-storage` strictly on the PHP layer. Developed bucket
+  management to securely funnel user photo uploads from live capture or mobile
+  galleries.
+- Baked in EXIF functionality to automatically parse location coordinates from
+  uploaded photos, utilizing local and server capabilities to validate report
+  distances dynamically.
 
 ### 4. Interactive Mapping & Frontend
-- Built out the core web UI using Vanilla JS leveraging standard Google Maps APIs. Upgraded legacy map features dynamically to Modern `AdvancedMarkerElement` standards.
-- Implemented core exploratory features: marker clustering at high zoom levels, geographic centering controls, dynamic color styling for visited dashpoints, and interactive layer toggling.
-- Iterated heavily for mobile user experiences, trimming redundancies like extra form buttons, and perfecting GPS coordinate syncing.
+
+- Built out the core web UI using Vanilla JS leveraging standard Google Maps
+  APIs. Upgraded legacy map features dynamically to Modern
+  `AdvancedMarkerElement` standards.
+- Implemented core exploratory features: marker clustering at high zoom levels,
+  geographic centering controls, dynamic color styling for visited dashpoints,
+  and interactive layer toggling.
+- Iterated heavily for mobile user experiences, trimming redundancies like extra
+  form buttons, and perfecting GPS coordinate syncing.
 
 ### 5. Historical Data & User Profiles
-- Implemented immutability controls ensuring logs and scoring for completed games are strictly locked on the backend utilizing native SQL JOIN checks.
-- Constructed a global UI paradigm mapping past games to global states allowing the user to context-switch effortlessly between historical snapshots over the entire frontend (Map, Leaderboard).
-- Constructed dynamic `#profile` single page architecture, aggregating total lifetime points, dashpoints accessed, and a complete ledger of previous historical games.
+
+- Implemented immutability controls ensuring logs and scoring for completed
+  games are strictly locked on the backend utilizing native SQL JOIN checks.
+- Constructed a global UI paradigm mapping past games to global states allowing
+  the user to context-switch effortlessly between historical snapshots over the
+  entire frontend (Map, Leaderboard).
+- Constructed dynamic `#profile` single page architecture, aggregating total
+  lifetime points, dashpoints accessed, and a complete ledger of previous
+  historical games.
 
 ### 6. Backend Modernization & Rule Compliance
-- Migrated all monolithic PHP API scripts into dedicated PSR-4 namespaced Service classes.
-- Enabled native Composer autoloading mapped to the `backend/` directory, establishing structured unit testing capabilities.
-- Enforced strict PSR-12 formatting across the entire backend verified natively via `phpcs`.
-- Integrated `declare(strict_types=1);` natively into every PHP file to strictly enforce type safety.
-- Added comprehensive PHPDoc documentation across all Service layers and stripped dramatic/unprofessional tones from logging, strictly complying with new engineering standards.
+
+- Migrated all monolithic PHP API scripts into dedicated PSR-4 namespaced
+  Service classes.
+- Enabled native Composer autoloading mapped to the `backend/` directory,
+  establishing structured unit testing capabilities.
+- Enforced strict PSR-12 formatting across the entire backend verified via
+  `phpcs`.
+- Integrated `declare(strict_types=1);` into every PHP file to strictly enforce
+  type safety.
+- Added comprehensive PHPDoc documentation across all Service layers and
+  stripped dramatic/unprofessional tones from logging, strictly complying with
+  new engineering standards.
 
 ### 7. E2E Testing Synchronization & Infrastructure
-- Modernized and unified the Geodashing Playwright E2E test suite to ensure architectural consistency between the local development environment and the GitHub Actions CI pipeline.
-- Established a hermetic testing environment by isolating E2E execution exclusively to a dedicated `geodashing_test` database, completely preventing accidental pollution of the live development schema.
-- Built a unified database bootstrapping script (`e2e/setup-test-db.sh`) which is directly consumed by the CI workflow and automatically evaluated by a Playwright global setup hook (`e2e/global-setup.js`) locally.
-- Implemented secure environment interception within `backend/Database.php` routing securely to test credentials dynamically via `APP_ENV=testing` without altering any configuration states, supporting environment-level `DB_PORT` overrides to avoid conflicts with host-level development database ports. 
-- Integrated `fsouza/fake-gcs-server` functionally bypassing all real-world Google Cloud Storage APIs ensuring hermetic E2E tests for photo uploads.
+
+- Modernized and unified the Geodashing Playwright E2E test suite to ensure
+  architectural consistency between the local development environment and the
+  GitHub Actions CI pipeline.
+- Established a hermetic testing environment by isolating E2E execution
+  exclusively to a dedicated `geodashing_test` database, completely preventing
+  accidental pollution of the live development schema.
+- Built a unified database bootstrapping script (`e2e/setup-test-db.sh`) which
+  is directly consumed by the CI workflow and automatically evaluated by a
+  Playwright global setup hook (`e2e/global-setup.js`) locally.
+- Implemented secure environment interception within `backend/Database.php`
+  routing securely to test credentials dynamically via `APP_ENV=testing` without
+  altering any configuration states, supporting environment-level `DB_PORT`
+  overrides to avoid conflicts with host-level development database ports.
+- Integrated `fsouza/fake-gcs-server` functionally bypassing all real-world
+  Google Cloud Storage APIs ensuring hermetic E2E tests for photo uploads.
 
 ### 8. Geographical Contextualization
-- Implemented `GeoContextService.php` to dynamically calculate and append geographic context to Dashpoint report emails (e.g., "50 miles northwest of Portland, Maine, United States").
-- Integrated the Google Maps Reverse Geocoding API to resolve the immediate State/Province and Country of Dashpoints.
-- Created `seed_major_cities.py` to ingest the GeoNames `cities15000.txt` dataset into a new local `major_cities` spatial table, facilitating highly efficient `ST_Distance_Sphere` lookups for the nearest major population centers.
+
+- Implemented `GeoContextService.php` to dynamically calculate and append
+  geographic context to Dashpoint report emails (e.g., "50 miles northwest of
+  Portland, Maine, United States").
+- Integrated the Google Maps Reverse Geocoding API to resolve the immediate
+  State/Province and Country of Dashpoints.
+- Created `seed_major_cities.py` to ingest the GeoNames `cities15000.txt`
+  dataset into a new local `major_cities` spatial table, facilitating highly
+  efficient `ST_Distance_Sphere` lookups for the nearest major population
+  centers.
 
 ### 9. Gmail API Migration
-- Replaced the native PHP `mail()` engine with the official Gmail REST API (`google/apiclient`) to guarantee high deliverability, particularly to Gmail users, bypassing spam filters.
-- Implemented `symfony/mime` for structured compilation of complex multipart email payloads, strictly enforcing automatic plain-text fallbacks alongside HTML payloads.
-- Migrated all outbound system emails (Verifications, Password Resets, Dashpoint Reports) to originate uniformly from `tracker@geodashing.org` via Google Workspace Domain-Wide Delegation.
+
+- Replaced the native PHP `mail()` engine with the official Gmail REST API
+  (`google/apiclient`) to guarantee high deliverability, particularly to Gmail
+  users, bypassing spam filters.
+- Implemented `symfony/mime` for structured compilation of complex multipart
+  email payloads, strictly enforcing automatic plain-text fallbacks alongside
+  HTML payloads.
+- Migrated all outbound system emails (Verifications, Password Resets, Dashpoint
+  Reports) to originate uniformly from `tracker@geodashing.org` via Google
+  Workspace Domain-Wide Delegation.
 
 ### 10. Dashpoint Preview & Game Lifecycle Management
-- Implemented the capability to generate non-active "Preview" games using the `--preview` flag in `generate_game.py`, allowing the community to view upcoming dashpoints without prematurely exposing them to log submissions.
-- Built a localized Python administrative utility (`game_utils.py`) to systematically view chronological game sequences and seamlessly execute monthly rollovers via transactional SQL commands.
-- Configured the frontend UI to parse dynamic game states securely, identifying `[PREVIEW]` and `[COMPLETED]` chronological states using native JavaScript Date comparisons, ensuring robust client-side display logic independent of backend integer IDs.
+
+- Implemented the capability to generate non-active "Preview" games using the
+  `--preview` flag in `generate_game.py`, allowing the community to view
+  upcoming dashpoints without prematurely exposing them to log submissions.
+- Built a localized Python administrative utility (`game_utils.py`) to
+  systematically view chronological game sequences and seamlessly execute
+  monthly rollovers via transactional SQL commands.
+- Configured the frontend UI to parse dynamic game states securely, identifying
+  `[PREVIEW]` and `[COMPLETED]` chronological states using native JavaScript
+  Date comparisons, ensuring robust client-side display logic independent of
+  backend integer IDs.
 
 ### 11. AI Game Summaries & Reporting
-- Migrated to the modern `google-genai` Python SDK to automatically synthesize monthly game summaries.
-- Upgraded the summary generation engine from GCP Vertex AI to the Google AI Studio (Gemini Developer API) platform to simplify developer setups and facilitate seamless local testing.
-- Upgraded the default AI summary model to the next-generation series (**`gemini-3.6-flash`** or **`gemini-3.1-pro-preview`**), fully parameterized alongside `GEMINI_API_KEY` under the new `[gemini]` section of `config.ini` (with a complete template supplied in `config.ini.example`).
-- Streamlined image input processing by bypassing Vertex-specific GCS `gs://` URIs and instead downloading photos via standard HTTPS URLs to feed raw image bytes inline via `types.Part.from_bytes()`, ensuring absolute environment portability.
-- The summary engine processes historical logs and selectively curates the best user-submitted photos (rendering them via optimized precomputed thumbnails) to build comprehensive HTML recaps.
-- Implemented data serialization to save inputs and outputs from the GenAI workflows to facilitate future model fine-tuning and few-shot example generation.
+
+- Migrated to the modern `google-genai` Python SDK to automatically synthesize
+  monthly game summaries.
+- Upgraded the summary generation engine from GCP Vertex AI to the Google AI
+  Studio (Gemini Developer API) platform to simplify developer setups and
+  facilitate seamless local testing.
+- Upgraded the default AI summary model to the next-generation series
+  (**`gemini-3.6-flash`** or **`gemini-3.1-pro-preview`**), fully parameterized
+  alongside `GEMINI_API_KEY` under the new `[gemini]` section of `config.ini`
+  (with a complete template supplied in `config.ini.example`).
+- Streamlined image input processing by bypassing Vertex-specific GCS `gs://`
+  URIs and instead downloading photos via standard HTTPS URLs to feed raw image
+  bytes inline via `types.Part.from_bytes()`, ensuring absolute environment
+  portability.
+- The summary engine processes historical logs and selectively curates the best
+  user-submitted photos (rendering them via optimized precomputed thumbnails) to
+  build comprehensive HTML recaps.
+- Implemented data serialization to save inputs and outputs from the GenAI
+  workflows to facilitate future model fine-tuning and few-shot example
+  generation.
 
 ### 12. UI, SEO & Performance Optimizations
-- Integrated automated Lighthouse testing to rigorously enforce strict accessibility, performance, and SEO standards.
-- Addressed indexability of deep-linked SPA routes (like `#dashpoint` and `#help`) by dynamically injecting self-referencing canonical links into the document header.
-- Modernized mobile upload capabilities by integrating a native device library selector and restricting uploads to a hard 10-photo limit. Added a custom Material Design "My Location" control for rapid GPS syncing.
-- Enhanced map UX by automatically refreshing marker layers upon successful log submission, removing the need for manual panning.
-- Optimized DOM performance by minimizing repaints during historical game list generation.
+
+- Integrated automated Lighthouse testing to rigorously enforce strict
+  accessibility, performance, and SEO standards.
+- Addressed indexability of deep-linked SPA routes (like `#dashpoint` and
+  `#help`) by dynamically injecting self-referencing canonical links into the
+  document header.
+- Modernized mobile upload capabilities by integrating a native device library
+  selector and restricting uploads to a hard 10-photo limit. Added a custom
+  Material Design "My Location" control for rapid GPS syncing.
+- Enhanced map UX by automatically refreshing marker layers upon successful log
+  submission, removing the need for manual panning.
+- Optimized DOM performance by minimizing repaints during historical game list
+  generation.
 
 ### 13. Export Contextualization & Data Portability
-- Constrained the data export engine to strictly respect the historical game context active in the frontend. 
-- Updated dynamic export filenames and search queries to lock tightly to the parsed game ID.
-- Bolstered with extensive E2E validation to ensure exported datasets consistently reflect the user's expected context.
+
+- Constrained the data export engine to strictly respect the historical game
+  context active in the frontend.
+- Updated dynamic export filenames and search queries to lock tightly to the
+  parsed game ID.
+- Bolstered with extensive E2E validation to ensure exported datasets
+  consistently reflect the user's expected context.
 
 ### 14. Advanced Security & Session Integrity
-- Enhanced PHP session management to gracefully bypass Ubuntu's default aggressive GC mechanisms, instead relying on strict 30-day sliding activity windows for cookie expiration.
-- Addressed multiple Unicode encoding edge-cases in the native MySQL connector to safely process varied international characters in dashpoint logs.
+
+- Enhanced PHP session management to gracefully bypass Ubuntu's default
+  aggressive GC mechanisms, instead relying on strict 30-day sliding activity
+  windows for cookie expiration.
+- Addressed multiple Unicode encoding edge-cases in the native MySQL connector
+  to safely process varied international characters in dashpoint logs.
 
 ### 15. KML Data Portability & GIS Compatibility
-- Integrated standard KML (Keyhole Markup Language) 2.2 export support inside `ExportService.php` to enable visual mapping layers on modern applications like Google Earth, Google My Maps, QGIS, and physical GPS handheld devices.
-- Crafted clean standard KML `<Placemark>` nodes mapping geographic coordinates using standard `longitude,latitude,altitude` ordering clamped directly to the terrain surface.
-- Formatted placemark descriptions using standard HTML within `<![CDATA[ ... ]]>` blocks to ensure out-of-the-box clickability in Google Earth Pro, Google My Maps, and Google Earth Web's Local KML data layers, accounting for a known Google Earth Web Projects platform limitation where imported HTML is loaded as plain text in their rich text editor until toggled manually.
-- Decoupled KML download endpoints inside the single page application controller, supporting dynamic game active contexts.
+
+- Integrated standard KML (Keyhole Markup Language) 2.2 export support inside
+  `ExportService.php` to enable visual mapping layers on modern applications
+  like Google Earth, Google My Maps, QGIS, and physical GPS handheld devices.
+- Crafted clean standard KML `<Placemark>` nodes mapping geographic coordinates
+  using standard `longitude,latitude,altitude` ordering clamped directly to the
+  terrain surface.
+- Formatted placemark descriptions using standard HTML within
+  `<![CDATA[ ... ]]>` blocks to ensure out-of-the-box clickability in Google
+  Earth Pro, Google My Maps, and Google Earth Web's Local KML data layers,
+  accounting for a known Google Earth Web Projects platform limitation where
+  imported HTML is loaded as plain text in their rich text editor until toggled
+  manually.
+- Decoupled KML download endpoints inside the single page application
+  controller, supporting dynamic game active contexts.
 
 ### 16. UI Navigation & Dynamic Player Profile Redesign
-- Evaluated and streamlined the frontend single page application menu structure, removing the redundant `MAP` link in favor of making the `GEODASHING.v2` brand logo a direct navigation anchor targeting `#home`.
-- Replaced the cluttered, flat desktop buttons (`PROFILE` and `LOGOUT [username]`) with a dynamic, glassmorphic dropdown trigger (`👤 [username] ▾`) that reveals integrated "View Profile" and "Logout" actions in a clean overlay.
-- Grouped player management actions cleanly within a distinct, stylized panel inside the mobile navigation drawer to preserve responsive layouts across all mobile screen sizes.
-- Decoupled all styles into `public/css/index.css` to prevent inline style usage, keeping frontend JS logic focused purely on DOM structure.
-- Verified that all 81 Playwright E2E tests, 52 PHPUnit tests, and 14 Python pytest suites pass successfully under verified, local OS dependencies.
+
+- Evaluated and streamlined the frontend single page application menu structure,
+  removing the redundant `MAP` link in favor of making the `GEODASHING.v2` brand
+  logo a direct navigation anchor targeting `#home`.
+- Replaced the cluttered, flat desktop buttons (`PROFILE` and
+  `LOGOUT [username]`) with a dynamic, glassmorphic dropdown trigger
+  (`👤 [username] ▾`) that reveals integrated "View Profile" and "Logout"
+  actions in a clean overlay.
+- Grouped player management actions cleanly within a distinct, stylized panel
+  inside the mobile navigation drawer to preserve responsive layouts across all
+  mobile screen sizes.
+- Decoupled all styles into `public/css/index.css` to prevent inline style
+  usage, keeping frontend JS logic focused purely on DOM structure.
+- Verified that all 81 Playwright E2E tests, 52 PHPUnit tests, and 14 Python
+  pytest suites pass successfully under verified, local OS dependencies.
 
 ### 17. Game Summaries & Administrative CLI Validator
-- Extended the core MySQL database schema (`schema.sql` and E2E databases) with a `summary` column of type `MEDIUMTEXT` inside the `games` table.
-- Added comprehensive HTML fragment validation inside `game_utils.py` using Python's built-in `html.parser.HTMLParser`. The CLI tool strictly whitelists structural/semantic tags (`<h2>`–`<h6>`, `<p>`, `<strong>`, `<a>`, `<img>`, etc.), validates balanced tags via stack tracking, and actively blocks layout wrappers (`<html>`, `<body>`) and script elements (`<script>`) to prevent Stored XSS or style bleeding.
-- Integrated a new namespaced PHP service class `SummaryService.php` and public JSON controller (`public/api/summary.php`) to retrieve game summaries securely on-demand.
-- Registered dynamic summary URLs (`/?summary=ID`) inside `SitemapService.php` to guarantee dynamic search engine crawlability and sitemap parity.
-- Implemented deep-link routing fallbacks in `public/js/app.js` to client-side convert query parameters to hash routes and automatically highlight context games.
-- Built a glassmorphic floating modal popup overlay and responsive trigger button inside the `#leaderboard` view of `public/js/controllers.js` and `public/templates/leaderboard.html` cleanly styled within `public/css/index.css`.
-- Developed extensive unit test coverage in `backend/tests/test_game_utils.py` and `backend/tests/SummaryServiceTest.php` achieving 100% test success and a perfect 10.00/10 pylint quality rating.
-- Aligned `data/summary_system_instructions.txt` system instructions to generate clean HTML fragments matching the whitelist expected by `game_utils.py` and conform to single-page SEO accessibility standards (nesting subheadings starting at `<h2>`/`<h3>` tags). Mandated absolute URLs (using 'https://www.geodashing.org/' prefix) for all player profile and dashpoint hyperlinks to ensure email view compatibility.
+
+- Extended the core MySQL database schema (`schema.sql` and E2E databases) with
+  a `summary` column of type `MEDIUMTEXT` inside the `games` table.
+- Added comprehensive HTML fragment validation inside `game_utils.py` using
+  Python's built-in `html.parser.HTMLParser`. The CLI tool strictly whitelists
+  structural/semantic tags (`<h2>`–`<h6>`, `<p>`, `<strong>`, `<a>`, `<img>`,
+  etc.), validates balanced tags via stack tracking, and actively blocks layout
+  wrappers (`<html>`, `<body>`) and script elements (`<script>`) to prevent
+  Stored XSS or style bleeding.
+- Integrated a new namespaced PHP service class `SummaryService.php` and public
+  JSON controller (`public/api/summary.php`) to retrieve game summaries securely
+  on-demand.
+- Registered dynamic summary URLs (`/?summary=ID`) inside `SitemapService.php`
+  to guarantee dynamic search engine crawlability and sitemap parity.
+- Implemented deep-link routing fallbacks in `public/js/app.js` to client-side
+  convert query parameters to hash routes and automatically highlight context
+  games.
+- Built a glassmorphic floating modal popup overlay and responsive trigger
+  button inside the `#leaderboard` view of `public/js/controllers.js` and
+  `public/templates/leaderboard.html` cleanly styled within
+  `public/css/index.css`.
+- Developed extensive unit test coverage in `backend/tests/test_game_utils.py`
+  and `backend/tests/SummaryServiceTest.php` achieving 100% test success and a
+  perfect 10.00/10 pylint quality rating.
+- Aligned `data/summary_system_instructions.txt` system instructions to generate
+  clean HTML fragments matching the whitelist expected by `game_utils.py` and
+  conform to single-page SEO accessibility standards (nesting subheadings
+  starting at `<h2>`/`<h3>` tags). Mandated absolute URLs (using
+  `https://www.geodashing.org/` prefix) for all player profile and dashpoint
+  hyperlinks to ensure email view compatibility.
 
 ### 18. Site-Wide Accessibility & Visual Contrast Verification
-- Established an automated, site-wide E2E accessibility and visual contrast verification framework using Playwright to protect against visual regressions and contrast deficiencies.
-- Modified the MySQL E2E test database seeding (`e2e/setup-test-db.sh`) to populate Game 1 (Historical) with a rich HTML summary containing hyperlinks to test the "📖 READ GAME SUMMARY" modal overlay.
-- Added global high-contrast styling in `public/css/index.css` for standard anchors (`a`) and visited anchors (`a:visited`) using `var(--accent-amber)` to protect against browser-default low-contrast purples/blues on dark glassmorphic overlays.
-- Created `e2e/accessibility.spec.js` providing extensive E2E accessibility checking across all 9 SPA views and overlays (under both authenticated and unauthenticated states). The suite programmatically validates heading hierarchies, descriptive text or `aria-label`/`aria-labelledby` on all buttons, alternative text (`alt` attribute) on all images, and explicit/implicit/sibling/ancestor label associations on all input elements. It also queries the browser's CSSOM stylesheets to guarantee both `.summary-rich-content a:visited` and global `a:visited` CSS rules resolve to the amber contrast accent.
-- Verified that all 27 new Playwright E2E accessibility tests, all existing 55 PHPUnit backend tests, all 24 Python unit tests, and the ESLint / Pylint suites pass flawlessly with 0 issues and a perfect 10.00/10 code quality rating!
+
+- Established an automated, site-wide E2E accessibility and visual contrast
+  verification framework using Playwright to protect against visual regressions
+  and contrast deficiencies.
+- Modified the MySQL E2E test database seeding (`e2e/setup-test-db.sh`) to
+  populate Game 1 (Historical) with a rich HTML summary containing hyperlinks to
+  test the "📖 READ GAME SUMMARY" modal overlay.
+- Added global high-contrast styling in `public/css/index.css` for standard
+  anchors (`a`) and visited anchors (`a:visited`) using `var(--accent-amber)` to
+  protect against browser-default low-contrast purples/blues on dark
+  glassmorphic overlays.
+- Created `e2e/accessibility.spec.js` providing extensive E2E accessibility
+  checking across all 9 SPA views and overlays (under both authenticated and
+  unauthenticated states). The suite programmatically validates heading
+  hierarchies, descriptive text or `aria-label`/`aria-labelledby` on all
+  buttons, alternative text (`alt` attribute) on all images, and
+  explicit/implicit/sibling/ancestor label associations on all input elements.
+  It also queries the browser's CSSOM stylesheets to guarantee both
+  `.summary-rich-content a:visited` and global `a:visited` CSS rules resolve to
+  the amber contrast accent.
+- Verified that all 27 new Playwright E2E accessibility tests, all existing 55
+  PHPUnit backend tests, all 24 Python unit tests, and the ESLint / Pylint
+  suites pass flawlessly with 0 issues and a perfect 10.00/10 code quality
+  rating.
 
 ### 19. Mobile UI Overlay Close Behavior & Backdrop Dimming
-- Implemented tap-outside closing behavior for mobile overlays (mobile navigation drawer and route-based `.template-view` bottom sheets), bringing Geodashing V2 into compliance with modern mobile UX standards.
-- Designed full-screen fixed glassmorphic dimming scrim backdrops (`#mobile-nav-backdrop` and `.overlay-active` inside `#app-content`) featuring a subtle `backdrop-filter: blur(4px)` and smooth transition effects to isolate the focused overlay while visually obscuring the Google Map underneath.
-- Strictly scoped the responsive dimming and tap-outside close triggers to mobile screen sizes (`max-width: 768px`) using precise CSS media queries and client-side viewport check logic, preserving the interactive desktop sidebar/map viewport split layout.
-- Added comprehensive E2E interaction coverage inside `e2e/interaction.spec.js` programmatically validating mobile close actions using offset click triggers to avoid narrow layout element overlap.
+
+- Implemented tap-outside closing behavior for mobile overlays (mobile
+  navigation drawer and route-based `.template-view` bottom sheets), bringing
+  Geodashing V2 into compliance with modern mobile UX standards.
+- Designed full-screen fixed glassmorphic dimming scrim backdrops
+  (`#mobile-nav-backdrop` and `.overlay-active` inside `#app-content`) featuring
+  a subtle `backdrop-filter: blur(4px)` and smooth transition effects to isolate
+  the focused overlay while visually obscuring the Google Map underneath.
+- Strictly scoped the responsive dimming and tap-outside close triggers to
+  mobile screen sizes (`max-width: 768px`) using precise CSS media queries and
+  client-side viewport check logic, preserving the interactive desktop
+  sidebar/map viewport split layout.
+- Added comprehensive E2E interaction coverage inside `e2e/interaction.spec.js`
+  programmatically validating mobile close actions using offset click triggers
+  to avoid narrow layout element overlap.
 
 ### 20. Comprehensive Administrative Documentation
-- Created the game administrator's CLI utilities guide in `docs/admin_guide.md` and the standalone `docs/game_rollover.md` operations guide.
-- Documented system setup, prerequisites, configurations (`backend/config.ini`), and details of key administrative scripts (`generate_game.py`, `game_utils.py`, `generate_summary.py`, `seed_major_cities.py`, `catchup_emails.php`) in the administrative utilities guide.
-- Formulated the exact chronological step-by-step rollover procedure (compiling the completed month's AI summary, promoting the current month's preview game to active, and seeding the next month's preview game) as a separate operational playbook (`docs/game_rollover.md`) for safe production environments.
+
+- Created the game administrator's CLI utilities guide in `docs/admin_guide.md`
+  and the standalone `docs/game_rollover.md` operations guide.
+- Documented system setup, prerequisites, configurations (`backend/config.ini`),
+  and details of key administrative scripts (`generate_game.py`,
+  `game_utils.py`, `generate_summary.py`, `seed_major_cities.py`,
+  `catchup_emails.php`) in the administrative utilities guide.
+- Formulated the exact chronological step-by-step rollover procedure (compiling
+  the completed month's AI summary, promoting the current month's preview game
+  to active, and seeding the next month's preview game) as a separate
+  operational playbook (`docs/game_rollover.md`) for safe production
+  environments.
 
 ### 21. End-of-Month Summary Emailing
-- Added `--email-summary` functionality to the `game_utils.py` administrative utility script to dispatch the completed month's HTML summary directly to the player mailing list.
-- Implemented secure Google Service Account authentication with Domain-Wide Delegation impersonation of `tracker@geodashing.org` via the official Gmail REST API, matching the security mechanism of the backend PHP visitation emails.
-- Extracted and formatted both a rich HTML message and a clean, tag-stripped plain-text fallback, setting the custom subject line to `Geodashing Game <game_id> (<Month> <Year>) Results` using the game's chronological database metadata.
-- Implemented an `APP_ENV=testing` environment variable bypass to suppress physical API transmission during automated test executions.
-- Modularized the Python implementation to prevent linter variable complexity, achieving a perfect 10.00/10 Pylint rating on both scripts (`game_utils.py`) and test suites (`test_game_utils.py`).
-- Integrated the new email execution step into the system operations documentation (`docs/admin_guide.md` and `docs/game_rollover.md`) and updated the Rollover Process Map diagram.
+
+- Added `--email-summary` functionality to the `game_utils.py` administrative
+  utility script to dispatch the completed month's HTML summary directly to the
+  player mailing list.
+- Implemented secure Google Service Account authentication with Domain-Wide
+  Delegation impersonation of `tracker@geodashing.org` via the official Gmail
+  REST API, matching the security mechanism of the backend PHP visitation
+  emails.
+- Extracted and formatted both a rich HTML message and a clean, tag-stripped
+  plain-text fallback, setting the custom subject line to
+  `Geodashing Game <game_id> (<Month> <Year>) Results` using the game's
+  chronological database metadata.
+- Implemented an `APP_ENV=testing` environment variable bypass to suppress
+  physical API transmission during automated test executions.
+- Modularized the Python implementation to prevent linter variable complexity,
+  achieving a perfect 10.00/10 Pylint rating on both scripts (`game_utils.py`)
+  and test suites (`test_game_utils.py`).
+- Integrated the new email execution step into the system operations
+  documentation (`docs/admin_guide.md` and `docs/game_rollover.md`) and updated
+  the Rollover Process Map diagram.
 
 ### 22. Python Virtual Environment Directory Migration
-- Migrated the Python virtual environment folder standard from `venv` to `.venv` across all system setups and operations documentation.
-- Updated all occurrences of virtual environment creation and activation commands in `docs/admin_guide.md` and `docs/game_rollover.md` to consistently reference `.venv`.
+
+- Migrated the Python virtual environment folder standard from `venv` to `.venv`
+  across all system setups and operations documentation.
+- Updated all occurrences of virtual environment creation and activation
+  commands in `docs/admin_guide.md` and `docs/game_rollover.md` to consistently
+  reference `.venv`.
 
 ### 23. POST Upload Size Limit & Graceful File Validation
-- Added server-side detection for POST size limit exceeded inside `backend/session.php`. When a user attempts to upload payloads exceeding the server's `post_max_size` limit, the API now returns a structured `413 Payload Too Large` JSON response with a helpful descriptive message rather than failing on validation checks.
-- Developed the `getPostMaxSizeInBytes()` helper in `backend/session.php` to parse standard shorthand PHP configuration formats (like `25M` or `100M`) into absolute byte limits.
-- Exposed these limits dynamically to the frontend by adding `post_max_size` and `post_max_size_bytes` payloads to the auth session endpoint (`public/api/auth.php`).
-- Implemented robust client-side validation in `public/js/controllers.js` and `public/js/app.js` that dynamically reads the server's limits from global state. Both the "Log a Visit" (`#report`) and "Edit Log" (`#edit`) controllers now warn users and restrict uploads relative to the active server configurations dynamically.
-- Fixed potential empty-block linting errors in catch statements to satisfy ESLint checks.
-- Verified that all PHPUnit tests, ESLint checks, and the E2E suites pass successfully.
+
+- Added server-side detection for POST size limit exceeded inside
+  `backend/session.php`. When a user attempts to upload payloads exceeding the
+  server's `post_max_size` limit, the API now returns a structured
+  `413 Payload Too Large` JSON response with a helpful descriptive message
+  rather than failing on validation checks.
+- Developed the `getPostMaxSizeInBytes()` helper in `backend/session.php` to
+  parse standard shorthand PHP configuration formats (like `25M` or `100M`) into
+  absolute byte limits.
+- Exposed these limits dynamically to the frontend by adding `post_max_size` and
+  `post_max_size_bytes` payloads to the auth session endpoint
+  (`public/api/auth.php`).
+- Implemented robust client-side validation in `public/js/controllers.js` and
+  `public/js/app.js` that dynamically reads the server's limits from global
+  state. Both the "Log a Visit" (`#report`) and "Edit Log" (`#edit`) controllers
+  now warn users and restrict uploads relative to the active server
+  configurations dynamically.
+- Fixed potential empty-block linting errors in catch statements to satisfy
+  ESLint checks.
+- Verified that all PHPUnit tests, ESLint checks, and the E2E suites pass
+  successfully.
 
 ### 24. Placeholder Log Email Suppression Option
-- Added a mobile-friendly checkbox `"Placeholder log (suppress email)"` to the **LOG A VISIT** form (`../public/templates/report.html`) below the attempt checkbox, allowing players logging from the field to choose not to send initial notifications to the mailing list.
-- Propagated the `suppress_email` flag from the dynamic `FormData` post in `[report.php](../public/api/report.php)` to the backend service.
-- Refactored `ReportService::processVisit` to accept a default-false `bool $suppressEmail` parameter and wrap the `sendVisitReportEmail` dispatch call inside a conditional check.
-- Added comprehensive unit testing coverage in `[ReportServiceTest.php](../backend/tests/ReportServiceTest.php)` using custom inline anonymous PHP classes that extend `ReportService` to spy on method execution. Tested both standard (email sent) and suppressed (no email sent) execution flows, achieving 100% test success.
-- Verified that our custom checkbox is fully mobile-compliant and passes all automated E2E layout constraints using Playwright viewports testing.
+
+- Added a mobile-friendly checkbox `"Placeholder log (suppress email)"` to the
+  **LOG A VISIT** form (`../public/templates/report.html`) below the attempt
+  checkbox, allowing players logging from the field to choose not to send
+  initial notifications to the mailing list.
+- Propagated the `suppress_email` flag from the dynamic `FormData` post in
+  [report.php](../public/api/report.php) to the backend service.
+- Refactored `ReportService::processVisit` to accept a default-false
+  `bool $suppressEmail` parameter and wrap the `sendVisitReportEmail` dispatch
+  call inside a conditional check.
+- Added comprehensive unit testing coverage in
+  [ReportServiceTest.php](../backend/tests/ReportServiceTest.php) using custom
+  inline anonymous PHP classes that extend `ReportService` to spy on method
+  execution. Tested both standard (email sent) and suppressed (no email sent)
+  execution flows, achieving 100% test success.
+- Verified that our custom checkbox is fully mobile-compliant and passes all
+  automated E2E layout constraints using Playwright viewports testing.
 
 ### 25. Page Visibility Optimization & GPS Error Banner
-- Implemented standard Page Visibility API integration to pause the continuous geolocation watch stream when the browser tab goes to the background or is minimized.
-- Designed a reusable `VisibilityManager` JavaScript utility to handle visibilitychange event callbacks and check document visibility states.
-- Replaced the continuous location tracking stream in `public/js/map.js` with visibility-controlled watch setups that clear browser-level watchPosition resources when hidden, and resume them when visible.
-- Built a custom dark-mode glassmorphic `#gps-error-banner` warning element overlay styled inside `public/css/index.css` to alert players if GPS coordinates are unavailable.
-- Configured geolocation success/error callbacks in `public/js/map.js` to automatically toggle the warning banner visibility.
+
+- Implemented standard Page Visibility API integration to pause the continuous
+  geolocation watch stream when the browser tab goes to the background or is
+  minimized.
+- Designed a reusable `VisibilityManager` JavaScript utility to handle
+  visibilitychange event callbacks and check document visibility states.
+- Replaced the continuous location tracking stream in `public/js/map.js` with
+  visibility-controlled watch setups that clear browser-level watchPosition
+  resources when hidden, and resume them when visible.
+- Built a custom dark-mode glassmorphic `#gps-error-banner` warning element
+  overlay styled inside `public/css/index.css` to alert players if GPS
+  coordinates are unavailable.
+- Configured geolocation success/error callbacks in `public/js/map.js` to
+  automatically toggle the warning banner visibility.
 
 ### 26. Specific Game Leaderboard Deep-Linking
-- Added frontend support for deep-linking directly to a specific game's leaderboard using hash parameters (`#leaderboard?game=[game_id]`) or query parameters (`?game=[game_id]`).
-- Updated the canonical link constructor inside `public/js/app.js` to automatically index `#leaderboard?game=[game_id]` to `https://www.geodashing.org/?game=[game_id]`.
-- Implemented global promise state caching for game context data loading (`window.gameContextLoaded`) to prevent race conditions during deep-linked route controller activations.
-- Integrated URL hash rewriting inside the dropdown `#game-selector` change handler to seamlessly synchronize the active path while navigating leaderboards, ensuring that changing the game dynamically updates the URL, and resetting it to `#leaderboard` when switching back to the active game.
-- Added comprehensive integration tests in `e2e/multi_game.spec.js` to verify specific game leaderboard deep-linking, context updates, and standings rendering.
+
+- Added frontend support for deep-linking directly to a specific game's
+  leaderboard using hash parameters (`#leaderboard?game=[game_id]`) or query
+  parameters (`?game=[game_id]`).
+- Updated the canonical link constructor inside `public/js/app.js` to
+  automatically index `#leaderboard?game=[game_id]` to
+  `https://www.geodashing.org/?game=[game_id]`.
+- Implemented global promise state caching for game context data loading
+  (`window.gameContextLoaded`) to prevent race conditions during deep-linked
+  route controller activations.
+- Integrated URL hash rewriting inside the dropdown `#game-selector` change
+  handler to seamlessly synchronize the active path while navigating
+  leaderboards, ensuring that changing the game dynamically updates the URL, and
+  resetting it to `#leaderboard` when switching back to the active game.
+- Added comprehensive integration tests in `e2e/multi_game.spec.js` to verify
+  specific game leaderboard deep-linking, context updates, and standings
+  rendering.
 
 ### 27. Image Orientation Correction for Thumbnails
-- Addressed EXIF orientation mismatch where thumbnail images displayed at incorrect orientations (rotated by 90 degrees) relative to their full-size counterparts.
-- Implemented `readExifData` helper inside `MediaService.php` to fetch metadata safely.
-- Enhanced `generateThumbnail` in `MediaService.php` to parse EXIF Orientation tags and automatically perform corresponding rotations/flips using PHP GD functions (`imagerotate` and `imageflip`) before resizing.
-- Added comprehensive unit test coverage in `MediaServiceTest.php` simulating image uploads with specific EXIF orientation tags and asserting corrected thumbnail aspect/dimension layouts.
-- Developed `backend/scripts/recreate_thumbnails.php` as a one-time-use administrative utility to retroactively correct and replace affected GCS thumbnails.
+
+- Addressed EXIF orientation mismatch where thumbnail images displayed at
+  incorrect orientations (rotated by 90 degrees) relative to their full-size
+  counterparts.
+- Implemented `readExifData` helper inside `MediaService.php` to fetch metadata
+  safely.
+- Enhanced `generateThumbnail` in `MediaService.php` to parse EXIF Orientation
+  tags and automatically perform corresponding rotations/flips using PHP GD
+  functions (`imagerotate` and `imageflip`) before resizing.
+- Added comprehensive unit test coverage in `MediaServiceTest.php` simulating
+  image uploads with specific EXIF orientation tags and asserting corrected
+  thumbnail aspect/dimension layouts.
+- Developed `backend/scripts/recreate_thumbnails.php` as a one-time-use
+  administrative utility to retroactively correct and replace affected GCS
+  thumbnails.
 
 ### 28. Native Google Group Subscription Option
-- Added an opt-in checkbox to subscribe to the player mailing list (`dashers@geodashing.org`) during player registration.
-- Persisted user preferences using a new `subscribe_group` boolean database column in the `users` table.
-- Updated the backend email verification redirect flow to append `&subscribe=1` to the confirmation redirect URL upon successful account activation.
-- Created a themed, glassmorphic mailing list card on the verification confirmation screen providing a mailto subscription button and clear copyable instructions as a backup.
-- Added comprehensive unit test coverage in `AuthServiceTest.php` verifying subscription state storage and verification endpoint response.
+
+- Added an opt-in checkbox to subscribe to the player mailing list
+  (`dashers@geodashing.org`) during player registration.
+- Persisted user preferences using a new `subscribe_group` boolean database
+  column in the `users` table.
+- Updated the backend email verification redirect flow to append `&subscribe=1`
+  to the confirmation redirect URL upon successful account activation.
+- Created a themed, glassmorphic mailing list card on the verification
+  confirmation screen providing a mailto subscription button and clear copyable
+  instructions as a backup.
+- Added comprehensive unit test coverage in `AuthServiceTest.php` verifying
+  subscription state storage and verification endpoint response.
 
 ### 29. Session Restoration on Email Verification Success
-- Updated `AuthService::verifyEmail` to return the `username` upon verification, and updated `verify.php` to persist it in the active session variables.  Issue #18
+
+- Updated `AuthService::verifyEmail` to return the `username` upon verification,
+  and updated `verify.php` to persist it in the active session variables. Issue
+  #18
 
 ### 30. Containerized E2E Testing Server & Performance Optimization
-- Replaced the single-threaded PHP built-in CLI server setup for E2E tests with a highly concurrent Apache + PHP 8.3 container environment in Docker Compose.  Issue #21
-- Shared the GCS emulator's network namespace (`network_mode: "service:fake-gcs-server"`) to maintain dynamic backend and frontend integration URLs without custom local hostname configuration.
-- Updated the database connection library `Database.php` to resolve `DB_HOST` dynamically in testing mode.
-- Reconfigured the GitHub Actions workflow (`ci-e2e.yml`) to start all services via Docker Compose, establishing 100% test parity between local dev and CI.
-- Mocked external Google Maps API requests (elevation, timezone, geocoding) by routing them to a local mock API controller (`public/api/mock_maps.php`) via a constructor-injected base URL configuration, preventing production logic from checking E2E environment variables and reducing average test suite execution time from 4.5 minutes to 2.1 minutes (a 53% speedup).
+
+- Replaced the single-threaded PHP built-in CLI server setup for E2E tests with
+  a highly concurrent Apache + PHP 8.3 container environment in Docker Compose.
+  Issue #21
+- Shared the GCS emulator's network namespace
+  (`network_mode: "service:fake-gcs-server"`) to maintain dynamic backend and
+  frontend integration URLs without custom local hostname configuration.
+- Updated the database connection library `Database.php` to resolve `DB_HOST`
+  dynamically in testing mode.
+- Reconfigured the GitHub Actions workflow (`ci-e2e.yml`) to start all services
+  via Docker Compose, establishing 100% test parity between local dev and CI.
+- Mocked external Google Maps API requests (elevation, timezone, geocoding) by
+  routing them to a local mock API controller (`public/api/mock_maps.php`) via a
+  constructor-injected base URL configuration, preventing production logic from
+  checking E2E environment variables and reducing average test suite execution
+  time from 4.5 minutes to 2.1 minutes (a 53% speedup).
 
 ### 31. Desktop User Navigation Dropdown Bug Fix
-- Corrected the behavior of the user navigation dropdown trigger button on desktop, preventing it from logging the user out immediately upon click.  Issue #19
-- Re-labeled the dropdown trigger button to `👤 [Username] ▾` for clarity and clean visuals.
+
+- Corrected the behavior of the user navigation dropdown trigger button on
+  desktop, preventing it from logging the user out immediately upon click. Issue
+  #19
+- Re-labeled the dropdown trigger button to `👤 [Username] ▾` for clarity and
+  clean visuals.
 - Updated the E2E verification tests to reflect the new navigation label.
 
 ### 32. Lighthouse Audits CI Isolation
-- Configured [lighthouse.spec.js](e2e/lighthouse.spec.js) to skip Lighthouse audits in local development environments unless explicitly forced via `RUN_LIGHTHOUSE=true`. This avoids launching a separate Chromium debugger and running heavy audits locally, significantly reducing local test suite execution time while preserving full verification on CI.
+
+- Configured [lighthouse.spec.js](../e2e/lighthouse.spec.js) to skip Lighthouse
+  audits in local development environments unless explicitly forced via
+  `RUN_LIGHTHOUSE=true`. This avoids launching a separate Chromium debugger and
+  running heavy audits locally, significantly reducing local test suite
+  execution time while preserving full verification on CI.
 
 ### 33. Code Refactoring & Optimization (Phase 1, 2 & 3)
-- **Phase 1**: Cleaned up redundant `require_once` statements for `Database.php` in [DashpointService.php](backend/services/DashpointService.php) and commented-out autoloading logic in [MediaService.php](backend/services/MediaService.php) to rely on the centralized Composer autoloader.
-- **Phase 2**: Extracted duplicated cURL initialization, option setting, execution, and error checking logic into a centralized `makeApiCall` helper method in [GeoContextService.php](backend/services/GeoContextService.php), reducing duplication in `getTimezoneOffset`, `getProvinceAndCountry`, and `getElevation`.
-- **Phase 3**: Unified duplicated player score and previous hunt count SQL queries into a single helper method `getPlayerMailStats` within [ProfileService.php](backend/services/ProfileService.php). Integrated it into [ReportService.php](backend/services/ReportService.php), [EditService.php](backend/services/EditService.php), and [catchup_emails.php](backend/scripts/catchup_emails.php). Updated prepare statement mocks in [ReportServiceTest.php](backend/tests/ReportServiceTest.php) and added test coverage for the helper in [ProfileServiceTest.php](backend/tests/ProfileServiceTest.php).
+
+- **Phase 1**: Cleaned up redundant `require_once` statements for `Database.php`
+  in [DashpointService.php](../backend/services/DashpointService.php) and
+  commented-out autoloading logic in
+  [MediaService.php](../backend/services/MediaService.php) to rely on the
+  centralized Composer autoloader.
+- **Phase 2**: Extracted duplicated cURL initialization, option setting,
+  execution, and error checking logic into a centralized `makeApiCall` helper
+  method in [GeoContextService.php](../backend/services/GeoContextService.php),
+  reducing duplication in `getTimezoneOffset`, `getProvinceAndCountry`, and
+  `getElevation`.
+- **Phase 3**: Unified duplicated player score and previous hunt count SQL
+  queries into a single helper method `getPlayerMailStats` within
+  [ProfileService.php](../backend/services/ProfileService.php). Integrated it
+  into [ReportService.php](../backend/services/ReportService.php),
+  [EditService.php](../backend/services/EditService.php), and
+  [catchup_emails.php](../backend/scripts/catchup_emails.php). Updated prepare
+  statement mocks in
+  [ReportServiceTest.php](../backend/tests/ReportServiceTest.php) and added test
+  coverage for the helper in
+  [ProfileServiceTest.php](../backend/tests/ProfileServiceTest.php).
 
 ### 34. Production Logging & Error Reporting
-- Configured production error tracking using **Google Cloud Error Reporting** and the **Google Cloud Ops Agent** on the GCE production VM.
-- Documented step-by-step setup instructions inside [admin_guide.md](admin_guide.md) including GCE default service account identification, IAM configuration, Ops Agent installation pipelines, and the custom `/etc/google-cloud-ops-agent/config.yaml` logging filters targeting rotated Apache access and error logs (`geodashing_error.log` and `geodashing_access.log`).
+
+- Configured production error tracking using **Google Cloud Error Reporting**
+  and the **Google Cloud Ops Agent** on the GCE production VM.
+- Documented step-by-step setup instructions inside
+  [admin_guide.md](admin_guide.md) including GCE default service account
+  identification, IAM configuration, Ops Agent installation pipelines, and the
+  custom `/etc/google-cloud-ops-agent/config.yaml` logging filters targeting
+  rotated Apache access and error logs (`geodashing_error.log` and
+  `geodashing_access.log`).
 
 ### 35. Python Style Guide & Type Safety Alignment
-- Aligned the Python codebase in the project for full compliance with the updated style guide and strict typing rules.
-- Added development requirements for type checking via `mypy` and `pyright` in [requirements-dev.txt](requirements-dev.txt).
-- Configured path resolution using a root-level [pytest.ini](pytest.ini) and [pyrightconfig.json](pyrightconfig.json).
-- Refactored imports in all Python scripts and test files to strictly use standard namespace style (`import package` or `import module`) and namespace calls, adhering to Google Python Style Guide principles.
-- Fully annotated all function and method signatures with mandatory type hints across the entire Python codebase (e.g., [db_utils.py](backend/scripts/db_utils.py), [generate_game.py](backend/scripts/generate_game.py), [generate_summary.py](backend/scripts/generate_summary.py), [game_utils.py](backend/scripts/game_utils.py), and all corresponding test suites under `backend/tests/`).
-- Resolved all linter messages and complexity constraints to achieve a perfect 10.00/10 rating under `pylint`, and verified that all type checking (`mypy`, `pyright`) and unit tests (`pytest`) execute cleanly with 0 errors.
+
+- Aligned the Python codebase in the project for full compliance with the
+  updated style guide and strict typing rules.
+- Added development requirements for type checking via `mypy` and `pyright` in
+  [requirements-dev.txt](../requirements-dev.txt).
+- Configured path resolution using a root-level [pytest.ini](../pytest.ini) and
+  [pyrightconfig.json](../pyrightconfig.json).
+- Refactored imports in all Python scripts and test files to strictly use
+  standard namespace style (`import package` or `import module`) and namespace
+  calls, adhering to Google Python Style Guide principles.
+- Fully annotated all function and method signatures with mandatory type hints
+  across the entire Python codebase (e.g.,
+  [db_utils.py](../backend/scripts/db_utils.py),
+  [generate_game.py](../backend/scripts/generate_game.py),
+  [generate_summary.py](../backend/scripts/generate_summary.py),
+  [game_utils.py](../backend/scripts/game_utils.py), and all corresponding test
+  suites under `backend/tests/`).
+- Resolved all linter messages and complexity constraints to achieve a perfect
+  10.00/10 rating under `pylint`, and verified that all type checking (`mypy`,
+  `pyright`) and unit tests (`pytest`) execute cleanly with 0 errors.
 
 ### 36. Python Exact Type Refactoring
-- Evaluated and eliminated type checking suppressions and `typing.Any` types across the backend Python modules.
-- Refactored `mysql-connector` database cursor fetch operations to use precise tuple type-casting (e.g., `tuple[str, str, float, float, str | None, str | None]`) instead of dynamically-inferred database union types.
-- Aligned Google GenAI prompt and context lists to use `list[str | google.genai.types.File]` and history collections to use `list[google.genai.types.Content | google.genai.types.ContentDict]`, resolving list invariance errors on Gemini SDK integrations.
-- Conformed test fixtures and variables under `backend/tests/test_generate_summary.py` to match defined TypedDict structures (`LogEntry`, `UploadContext`).
-- Verified 100% test success (31/31 passed), 10.00/10 pylint rating, and 0 errors under both `mypy` and `pyright`.
+
+- Evaluated and eliminated type checking suppressions and `typing.Any` types
+  across the backend Python modules.
+- Refactored `mysql-connector` database cursor fetch operations to use precise
+  tuple type-casting (e.g.,
+  `tuple[str, str, float, float, str | None, str | None]`) instead of
+  dynamically-inferred database union types.
+- Aligned Google GenAI prompt and context lists to use
+  `list[str | google.genai.types.File]` and history collections to use
+  `list[google.genai.types.Content | google.genai.types.ContentDict]`, resolving
+  list invariance errors on Gemini SDK integrations.
+- Conformed test fixtures and variables under
+  `backend/tests/test_generate_summary.py` to match defined TypedDict structures
+  (`LogEntry`, `UploadContext`).
+- Verified 100% test success (31/31 passed), 10.00/10 pylint rating, and 0
+  errors under both `mypy` and `pyright`.
 
 ### 37. Export Game Data Relocation to Profile Menu
-- Relocated the "Export Game Data" menu item from under the unauthenticated "Help" dropdown menu to the authenticated "Profile" dropdown menu (desktop) and "Player Actions" group (mobile).
-- Restructured `public/js/app.js` navigation builders (`APP_NAVIGATION`, `initAuthState`) to construct the navigation links dynamically upon successful session verification.
-- Updated the automated E2E test suite in `e2e/interaction.spec.js` to log in as `TestUser` prior to verifying the `#search` (Export Coordinates) overlay layout. Modified the desktop selector hover target to trigger the user profile dropdown (`#nav-auth-btn`) instead of the help dropdown.
-- Configured higher timeout limits in `e2e/export.spec.js` (`test.setTimeout(90000)`) to prevent flaky execution timeouts on slow containerized CI environments.
-- Confirmed that the client linter (`npm run lint`) and Playwright E2E tests run successfully with zero errors.
+
+- Relocated the "Export Game Data" menu item from under the unauthenticated
+  "Help" dropdown menu to the authenticated "Profile" dropdown menu (desktop)
+  and "Player Actions" group (mobile).
+- Restructured `public/js/app.js` navigation builders (`APP_NAVIGATION`,
+  `initAuthState`) to construct the navigation links dynamically upon successful
+  session verification.
+- Updated the automated E2E test suite in `e2e/interaction.spec.js` to log in as
+  `TestUser` prior to verifying the `#search` (Export Coordinates) overlay
+  layout. Modified the desktop selector hover target to trigger the user profile
+  dropdown (`#nav-auth-btn`) instead of the help dropdown.
+- Configured higher timeout limits in `e2e/export.spec.js`
+  (`test.setTimeout(90000)`) to prevent flaky execution timeouts on slow
+  containerized CI environments.
+- Confirmed that the client linter (`npm run lint`) and Playwright E2E tests run
+  successfully with zero errors.
 
 ### 38. Completed Game Leaderboard URL Redirection
-- Resolved an issue where navigating to a completed game's leaderboard via the menu showed the static hash `#leaderboard` instead of `#leaderboard?game=ID`, making it hard to share.
-- Modified the frontend router in `public/js/app.js` to automatically redirect `#leaderboard` to `#leaderboard?game=ID` if the selected game context is different from the active game.
-- Added comprehensive Playwright E2E integration tests in `e2e/multi_game.spec.js` using viewport-independent hash navigation to assert that selecting a completed game and loading the leaderboard updates the URL correctly.
+
+- Resolved an issue where navigating to a completed game's leaderboard via the
+  menu showed the static hash `#leaderboard` instead of `#leaderboard?game=ID`,
+  making it hard to share.
+- Modified the frontend router in `public/js/app.js` to automatically redirect
+  `#leaderboard` to `#leaderboard?game=ID` if the selected game context is
+  different from the active game.
+- Added comprehensive Playwright E2E integration tests in
+  `e2e/multi_game.spec.js` using viewport-independent hash navigation to assert
+  that selecting a completed game and loading the leaderboard updates the URL
+  correctly.
 
 ### 39. Leaderboard Tie Handling & Visual Grouping (Strategy 4)
-- Updated the backend [LeaderboardService.php](backend/services/LeaderboardService.php) to rank players purely on points (`total_score`), removing temporal (`last_find_time`) tie-breaking and alphabetical username sorting in the ranking database logic.
-- Updated [LeaderboardServiceTest.php](backend/tests/LeaderboardServiceTest.php) to cover the new point-only tie ranking behavior (tied users receive identical ranks, skipping the next ranking index in standard competition style).
-- Refactored [generate_summary.py](backend/scripts/generate_summary.py) prompt builder and [test_generate_summary.py](backend/tests/test_generate_summary.py) to format game summaries correctly when there are tied winners (designating them as `Winners (tied): UserA, UserB` instead of a single winner).
-- Decoupled styling logic from frontend JS by implementing CSS classes in [index.css](public/css/index.css) for leaderboard cells and visual bracketing layout.
-- Modified the `#leaderboard` controller in [controllers.js](public/js/controllers.js) to pre-process raw standings data into contiguous groups of ties, dynamically merging the rank cell using `rowspan` and formatting the rank with a `T` prefix (e.g. `T1`).
-- Confirmed that all backend PHP/Python tests, linters, and frontend ESLint and Playwright integration tests pass successfully with zero errors.
+
+- Updated the backend
+  [LeaderboardService.php](../backend/services/LeaderboardService.php) to rank
+  players purely on points (`total_score`), removing temporal (`last_find_time`)
+  tie-breaking and alphabetical username sorting in the ranking database logic.
+- Updated
+  [LeaderboardServiceTest.php](../backend/tests/LeaderboardServiceTest.php) to
+  cover the new point-only tie ranking behavior (tied users receive identical
+  ranks, skipping the next ranking index in standard competition style).
+- Refactored [generate_summary.py](../backend/scripts/generate_summary.py)
+  prompt builder and
+  [test_generate_summary.py](../backend/tests/test_generate_summary.py) to
+  format game summaries correctly when there are tied winners (designating them
+  as `Winners (tied): UserA, UserB` instead of a single winner).
+- Decoupled styling logic from frontend JS by implementing CSS classes in
+  [index.css](../public/css/index.css) for leaderboard cells and visual
+  bracketing layout.
+- Modified the `#leaderboard` controller in
+  [controllers.js](../public/js/controllers.js) to pre-process raw standings
+  data into contiguous groups of ties, dynamically merging the rank cell using
+  `rowspan` and formatting the rank with a `T` prefix (e.g. `T1`).
+- Confirmed that all backend PHP/Python tests, linters, and frontend ESLint and
+  Playwright integration tests pass successfully with zero errors.
 
 ### 40. GitHub Dependabot Configuration
-- Added a new GitHub Dependabot configuration file [dependabot.yml](../.github/dependabot.yml) to enable weekly version updates.
-- Enabled version tracking for the project's dependency ecosystems: npm, composer, pip, and github-actions.
+
+- Added a new GitHub Dependabot configuration file
+  [dependabot.yml](../.github/dependabot.yml) to enable weekly version updates.
+- Enabled version tracking for the project's dependency ecosystems: npm,
+  composer, pip, and github-actions.
 
 ### 41. E2E Gemini Model and System Instructions Validation Suite
-- Designed and implemented a manual, on-demand end-to-end evaluation suite to validate new Gemini models and `summary_system_instructions.txt` changes against static log benchmarks.
-- Created [test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py) containing a static log parser, a custom rule-based HTML validator (checking tags whitelist, XHTML self-closing void tags, absolute SPA links, and image thumbnail hierarchies), and an LLM-as-a-Judge API grader with a strict score threshold of $\ge 4/5$.
-- Created developer documentation [gemini_model_evaluation.md](gemini_model_evaluation.md) detailing configuration setup and manual run commands.
-- Verified 100% test success (including skipped status by default) and a perfect 10.00/10 pylint code rating across the entire test suite.
+
+- Designed and implemented a manual, on-demand end-to-end evaluation suite to
+  validate new Gemini models and `summary_system_instructions.txt` changes
+  against static log benchmarks.
+- Created
+  [test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py)
+  containing a static log parser, a custom rule-based HTML validator (checking
+  tags whitelist, XHTML self-closing void tags, absolute SPA links, and image
+  thumbnail hierarchies), and an LLM-as-a-Judge API grader with a strict score
+  threshold of $\ge 4/5$.
+- Created developer documentation
+  [gemini_model_evaluation.md](gemini_model_evaluation.md) detailing
+  configuration setup and manual run commands.
+- Verified 100% test success (including skipped status by default) and a perfect
+  10.00/10 pylint code rating across the entire test suite.
 
 ### 42. PHPUnit IDE Test Discovery Configuration
-- Created a standard [phpunit.xml](phpunit.xml) configuration file at the project root to target the PHPUnit test suite located in `backend/tests/` and bootstrap the composer autoloader.
-- Configured `.vscode/settings.json` with PHPUnit binary path (`vendor/bin/phpunit`) and configuration file mappings (`phpunit.xml`) to allow popular PHPUnit test explorer extensions to automatically discover and display unit tests in the IDE's Testing tab.
+
+- Created a standard [phpunit.xml](../phpunit.xml) configuration file at the
+  project root to target the PHPUnit test suite located in `backend/tests/` and
+  bootstrap the composer autoloader.
+- Configured `.vscode/settings.json` with PHPUnit binary path
+  (`vendor/bin/phpunit`) and configuration file mappings (`phpunit.xml`) to
+  allow popular PHPUnit test explorer extensions to automatically discover and
+  display unit tests in the IDE's Testing tab.
 - Verified that all unit tests and linters execute successfully with 0 errors.
 
 ### 43. GitHub Actions Workflow Permissions Hardening
-- Hardened all GitHub Actions workflow files to adhere to the principle of least privilege.
-- Added explicit root-level `permissions: { contents: read }` configurations to all workflow files:
-  - `[.github/workflows/ci-e2e.yml](../.github/workflows/ci-e2e.yml)`
-  - `[.github/workflows/ci-js-lint.yml](../.github/workflows/ci-js-lint.yml)`
-  - `[.github/workflows/ci-php.yml](../.github/workflows/ci-php.yml)`
-  - `[.github/workflows/ci-python.yml](../.github/workflows/ci-python.yml)`
-  - `[.github/workflows/typecheck.yml](../.github/workflows/typecheck.yml)`
-- Verified that all workflows retain their exact functionality and pass all local test, linting, and type checking pipelines.
+
+- Hardened all GitHub Actions workflow files to adhere to the principle of least
+  privilege.
+- Added explicit root-level `permissions: { contents: read }` configurations to
+  all workflow files:
+  - [.github/workflows/ci-e2e.yml](../.github/workflows/ci-e2e.yml)
+  - [.github/workflows/ci-js-lint.yml](../.github/workflows/ci-js-lint.yml)
+  - [.github/workflows/ci-php.yml](../.github/workflows/ci-php.yml)
+  - [.github/workflows/ci-python.yml](../.github/workflows/ci-python.yml)
+  - [.github/workflows/typecheck.yml](../.github/workflows/typecheck.yml)
+- Verified that all workflows retain their exact functionality and pass all
+  local test, linting, and type checking pipelines.
 
 ### 44. User Photo Captions
-- Extended the database JSON schema for visits photos to support an optional `caption` field.
-- Implemented photo captions in both Log Visit and Edit Log UI. Tapping a photo thumbnail opens a glassmorphic modal overlay to add/edit a caption up to 200 characters.
-- Modified [MediaService.php](backend/services/MediaService.php) to embed the caption into the physical JPEG image metadata (IPTC Tag `2#120` Caption/Abstract) using PHP's native `iptcembed()` function to keep the pipeline dependency-free.
-- Updated [EditService.php](backend/services/EditService.php), [report.php](public/api/report.php), and [edit.php](public/api/edit.php) to process and store updated captions in the database.
-- Integrated captions underneath photo thumbnails in visit report notification emails ([MailerTrait.php](backend/services/MailerTrait.php)).
-- Updated the Gemini AI game summary generation pipeline ([generate_summary.py](backend/scripts/generate_summary.py)) to parse photo captions and include them in the prompt context.
-- Added comprehensive unit testing coverage for caption handling in [MediaServiceTest.php](backend/tests/MediaServiceTest.php), [EditServiceTest.php](backend/tests/EditServiceTest.php), and [test_generate_summary.py](backend/tests/test_generate_summary.py).
-- Created a new Playwright E2E integration test case inside [upload.spec.js](e2e/upload.spec.js) to automate the full user flow (attaching a photo, opening the glassmorphic modal, typing/saving a caption, verifying preview badges, submitting the report, and verifying the ledger details render the saved caption correctly).
-- Verified that all E2E tests, PHPUnit tests, and Python tests pass cleanly with zero linting or type-checking issues.
+
+- Extended the database JSON schema for visits photos to support an optional
+  `caption` field.
+- Implemented photo captions in both Log Visit and Edit Log UI. Tapping a photo
+  thumbnail opens a glassmorphic modal overlay to add/edit a caption up to 200
+  characters.
+- Modified [MediaService.php](../backend/services/MediaService.php) to embed the
+  caption into the physical JPEG image metadata (IPTC Tag `2#120`
+  Caption/Abstract) using PHP's native `iptcembed()` function to keep the
+  pipeline dependency-free.
+- Updated [EditService.php](../backend/services/EditService.php),
+  [report.php](../public/api/report.php), and [edit.php](../public/api/edit.php)
+  to process and store updated captions in the database.
+- Integrated captions underneath photo thumbnails in visit report notification
+  emails ([MailerTrait.php](../backend/services/MailerTrait.php)).
+- Updated the Gemini AI game summary generation pipeline
+  ([generate_summary.py](../backend/scripts/generate_summary.py)) to parse photo
+  captions and include them in the prompt context.
+- Added comprehensive unit testing coverage for caption handling in
+  [MediaServiceTest.php](../backend/tests/MediaServiceTest.php),
+  [EditServiceTest.php](../backend/tests/EditServiceTest.php), and
+  [test_generate_summary.py](../backend/tests/test_generate_summary.py).
+- Created a new Playwright E2E integration test case inside
+  [upload.spec.js](../e2e/upload.spec.js) to automate the full user flow
+  (attaching a photo, opening the glassmorphic modal, typing/saving a caption,
+  verifying preview badges, submitting the report, and verifying the ledger
+  details render the saved caption correctly).
+- Verified that all E2E tests, PHPUnit tests, and Python tests pass cleanly with
+  zero linting or type-checking issues.
 
 ### 45. Game Generation Performance Optimization
-- Optimized the server-side Python game generation engine [generate_game.py](backend/scripts/generate_game.py) to achieve a 100x performance improvement when generating 33,000+ dashpoints.
-- Eliminated the slow global `union_all()` and `difference()` geometry operations on the 10m Natural Earth shapefiles.
-- Implemented `subdivide_geometry` to partition large landmass and lake polygons into smaller grid-based pieces (max metric size 1,000,000 meters) to keep vertex counts low.
-- Implemented a hierarchical spatial query system: performing a fast vectorized **Point-in-Polygon (PIP)** check first via `shapely.contains` to immediately accept points on land, followed by localized `STRtree` bounding box checks and buffer intersections only for boundary candidates.
-- Explicitly added `numpy>=2.4.6` to the python dependencies inside [requirements.txt](requirements.txt).
-- Updated [admin_guide.md](docs/admin_guide.md) documenting the optimized hierarchical spatial indexing mechanics.
-- Verified that all 32 Python pytest unit tests, linters, and type checkers pass successfully with zero issues.
+
+- Optimized the server-side Python game generation engine
+  [generate_game.py](../backend/scripts/generate_game.py) to achieve a 100x
+  performance improvement when generating 33,000+ dashpoints.
+- Eliminated the slow global `union_all()` and `difference()` geometry
+  operations on the 10m Natural Earth shapefiles.
+- Implemented `subdivide_geometry` to partition large landmass and lake polygons
+  into smaller grid-based pieces (max metric size 1,000,000 meters) to keep
+  vertex counts low.
+- Implemented a hierarchical spatial query system: performing a fast vectorized
+  **Point-in-Polygon (PIP)** check first via `shapely.contains` to immediately
+  accept points on land, followed by localized `STRtree` bounding box checks and
+  buffer intersections only for boundary candidates.
+- Explicitly added `numpy>=2.4.6` to the python dependencies inside
+  [requirements.txt](../requirements.txt).
+- Updated [admin_guide.md](admin_guide.md) documenting the optimized
+  hierarchical spatial indexing mechanics.
+- Verified that all 32 Python pytest unit tests, linters, and type checkers pass
+  successfully with zero issues.
 
 ### 46. Pre-Commit Hook & Unified CI Verification Integration
-- Integrated the `pre-commit` framework to unify the local and remote code verification pipelines.
-- Added `pre-commit` to development dependencies inside [requirements-dev.txt](requirements-dev.txt).
-- Configured a root-level [.pre-commit-config.yaml](.pre-commit-config.yaml) containing local system-level hooks for Python linting (`pylint`), type checking (`mypy`, `pyright`), unit testing (`pytest`), JavaScript linting (`eslint`), and PHP linting and testing (`phpcs`, `phpunit`).
-- Implemented `pass_filenames: false` across all local hooks to force full-codebase verification on every run and prevent partial-check drift.
-- Consolidated four legacy GitHub Actions workflows (`ci-python.yml`, `typecheck.yml`, `ci-php.yml`, `ci-js-lint.yml`) into a single, unified [.github/workflows/ci-verification.yml](.github/workflows/ci-verification.yml) file.
-- Verified that all local pre-commit hooks execute and pass successfully with zero errors.
+
+- Integrated the `pre-commit` framework to unify the local and remote code
+  verification pipelines.
+- Added `pre-commit` to development dependencies inside
+  [requirements-dev.txt](../requirements-dev.txt).
+- Configured a root-level [.pre-commit-config.yaml](../.pre-commit-config.yaml)
+  containing local system-level hooks for Python linting (`pylint`), type
+  checking (`mypy`, `pyright`), unit testing (`pytest`), JavaScript linting
+  (`eslint`), and PHP linting and testing (`phpcs`, `phpunit`).
+- Implemented `pass_filenames: false` across all local hooks to force
+  full-codebase verification on every run and prevent partial-check drift.
+- Consolidated four legacy GitHub Actions workflows (`ci-python.yml`,
+  `typecheck.yml`, `ci-php.yml`, `ci-js-lint.yml`) into a single, unified
+  [.github/workflows/ci-verification.yml](../.github/workflows/ci-verification.yml)
+  file.
+- Verified that all local pre-commit hooks execute and pass successfully with
+  zero errors.
 
 ### 47. Map-Screen Proximity Radar HUD (Option 3)
-- Implemented a mobile-HUD proximity radar panel directly on the main map interface (`public/index.html` and `public/css/index.css`), leveraging glassmorphism and pulsing keyframe animations for high visual quality.
-- Updated user marker location tracking inside `public/js/map.js` to calculate a rolling coordinate average over the last 3 GPS ticks, mitigating mobile GPS coordinate jitter.
-- Designed client-side mathematical tracking calculations using the Haversine equation to check the user's distance to active game dashpoints.
-- Implemented a multi-point lock prioritizing the closest dashpoint, but locking focus onto the target once inside the 100m threshold.
-- Integrated a proximity warning hysteresis buffer (unlocking/exiting range state only at $> 110$m while entering at $\le 100$m) to prevent layout flashing.
-- Developed battery-saving dynamic geolocation gating: clearing tracking watchers when navigating to other SPA screens (`routeLoaded` listener) or when the tab is hidden (`visibilitychange`), and downgrading GPS accuracy (`enableHighAccuracy: false`) when distance is $> 500$m.
-- Appended a neon polyline overlay on the Google Map linking the player to the nearest locked dashpoint.
-- Created a robust E2E test suite in `e2e/radar.spec.js` asserting all 9 tracking, hysteresis, UI collapsing, routing sleep, visibility sleep, and battery accuracy gating behaviors using coordinate-flushing helpers and `expect.poll` async assertions.
-- Verified that all linters (`npm run lint`), pre-commit hooks, and Playwright tests pass successfully on Chrome, iPhone, and Pixel layouts.
+
+- Implemented a mobile-HUD proximity radar panel directly on the main map
+  interface (`public/index.html` and `public/css/index.css`), leveraging
+  glassmorphism and pulsing keyframe animations for high visual quality.
+- Updated user marker location tracking inside `public/js/map.js` to calculate a
+  rolling coordinate average over the last 3 GPS ticks, mitigating mobile GPS
+  coordinate jitter.
+- Designed client-side mathematical tracking calculations using the Haversine
+  equation to check the user's distance to active game dashpoints.
+- Implemented a multi-point lock prioritizing the closest dashpoint, but locking
+  focus onto the target once inside the 100m threshold.
+- Integrated a proximity warning hysteresis buffer (unlocking/exiting range
+  state only at $> 110$m while entering at $\le 100$m) to prevent layout
+  flashing.
+- Developed battery-saving dynamic geolocation gating: clearing tracking
+  watchers when navigating to other SPA screens (`routeLoaded` listener) or when
+  the tab is hidden (`visibilitychange`), and downgrading GPS accuracy
+  (`enableHighAccuracy: false`) when distance is $> 500$m.
+- Appended a neon polyline overlay on the Google Map linking the player to the
+  nearest locked dashpoint.
+- Created a robust E2E test suite in `e2e/radar.spec.js` asserting all 9
+  tracking, hysteresis, UI collapsing, routing sleep, visibility sleep, and
+  battery accuracy gating behaviors using coordinate-flushing helpers and
+  `expect.poll` async assertions.
+- Verified that all linters (`npm run lint`), pre-commit hooks, and Playwright
+  tests pass successfully on Chrome, iPhone, and Pixel layouts.
 
 ### 48. Actual Log Locations on Map (Zoom >= 15)
-- Implemented frontend and backend components to display the actual physical locations of user logs/visits on the map when zoomed in sufficiently (Zoom >= 15).
-- Created a new method `searchVisitsRegion` in [SearchService.php](backend/services/SearchService.php) utilizing MySQL spatial coordinates to retrieve approved visits in the bounding box, with full support for anti-meridian Date Line query bifurcation.
-- Exposed the new backend query through a dedicated public API endpoint [search_visits.php](public/api/search_visits.php).
-- Modified the frontend map controller [map.js](public/js/map.js) to track `activeVisitMarkers`. Added logic in `idle` and `zoom_changed` map event listeners to trigger dynamic visit log refreshes when zoom level is >= 15, and clear them below zoom 15.
-- Styled map markers elegantly in [index.css](public/css/index.css) using glassmorphism styling tokens. Added green glowing dots for successful visits, yellow glowing dots for attempts, and small badges showing player usernames next to the dots. Added CSS transitions to animate hover states.
-- Bound click handlers to visit markers that navigate directly to the respective dashpoint hash route (`#dashpoint?id=...`).
-- Wrote extensive unit tests in [SearchServiceTest.php](backend/tests/SearchServiceTest.php) and designed a Playwright integration test suite in [visit_markers.spec.js](e2e/visit_markers.spec.js) verifying rendering, zoom visibility toggles, color differentiation, and redirection paths.
-- Verified that all unit tests, linters, type checkers, and Playwright tests pass successfully with 0 errors.
+
+- Implemented frontend and backend components to display the actual physical
+  locations of user logs/visits on the map when zoomed in sufficiently (Zoom >=
+  15).
+- Created a new method `searchVisitsRegion` in
+  [SearchService.php](../backend/services/SearchService.php) utilizing MySQL
+  spatial coordinates to retrieve approved visits in the bounding box, with full
+  support for anti-meridian Date Line query bifurcation.
+- Exposed the new backend query through a dedicated public API endpoint
+  [search_visits.php](../public/api/search_visits.php).
+- Modified the frontend map controller [map.js](../public/js/map.js) to track
+  `activeVisitMarkers`. Added logic in `idle` and `zoom_changed` map event
+  listeners to trigger dynamic visit log refreshes when zoom level is >= 15, and
+  clear them below zoom 15.
+- Styled map markers elegantly in [index.css](../public/css/index.css) using
+  glassmorphism styling tokens. Added green glowing dots for successful visits,
+  yellow glowing dots for attempts, and small badges showing player usernames
+  next to the dots. Added CSS transitions to animate hover states.
+- Bound click handlers to visit markers that navigate directly to the respective
+  dashpoint hash route (`#dashpoint?id=...`).
+- Wrote extensive unit tests in
+  [SearchServiceTest.php](../backend/tests/SearchServiceTest.php) and designed a
+  Playwright integration test suite in
+  [visit_markers.spec.js](../e2e/visit_markers.spec.js) verifying rendering,
+  zoom visibility toggles, color differentiation, and redirection paths.
+- Verified that all unit tests, linters, type checkers, and Playwright tests
+  pass successfully with 0 errors.
 
 ### 49. Node.js 24 Synchronization & Environment Alignment
-- Standardized the project runtime environment to Node.js `24.16.0` (Node 24 LTS) across development, GitHub Actions CI, and production.
-- Added a repository root [.nvmrc](../.nvmrc) file pinned to `24.16.0` to enable automatic version switching via `nvm use`.
-- Updated NVM local terminal defaults to Node 24 (`nvm alias default 24`) and confirmed zero `EBADENGINE` warnings during `npm ci`.
+
+- Standardized the project runtime environment to Node.js `24.16.0` (Node 24
+  LTS) across development, GitHub Actions CI, and production.
+- Added a repository root [.nvmrc](../.nvmrc) file pinned to `24.16.0` to enable
+  automatic version switching via `nvm use`.
+- Updated NVM local terminal defaults to Node 24 (`nvm alias default 24`) and
+  confirmed zero `EBADENGINE` warnings during `npm ci`.
 
 ### 50. Feature Summary Email Tracking (Git Tags)
-- Established Git tag tracking pattern (`email-summary/YYYY-MM-DD`) to mark commits corresponding to sent feature summary emails.
-- Initialized baseline tag `email-summary/2026-07-22` at commit `1c0aaf0` so that Antigravity can dynamically inspect `git log <latest-email-tag>..HEAD` when drafting future emails.
+
+- Established Git tag tracking pattern (`email-summary/YYYY-MM-DD`) to mark
+  commits corresponding to sent feature summary emails.
+- Initialized baseline tag `email-summary/2026-07-22` at commit `1c0aaf0` so
+  that Antigravity can dynamically inspect `git log <latest-email-tag>..HEAD`
+  when drafting future emails.
 
 ### 51. Debian 12 Python Development Environment & `uv` Integration
-- Standardized local Python environment setup on Debian 12 developer workstations using `uv` (Astral) to provision and manage Python 3.12 (`CPython 3.12.3`) pinned via a root `.python-version` file inside `.venv`.
-- Required installation via `curl -LsSf https://astral.sh/uv/install.sh | sh` (`-L` flag mandatory for URL redirects).
-- Mandated virtual environment creation via `uv venv` (reading `.python-version`) and package synchronization via `uv pip install -r requirements.txt -r requirements-dev.txt`.
-- Configured GitHub Actions CI (`ci-verification.yml`) to consume `python-version-file: '.python-version'`, ensuring 100% version lock parity across dev, CI, and production.
-- Verified that all Python tests (`pytest backend/`), linters (`pylint backend/`), and type checkers (`.venv/bin/mypy backend/`) run cleanly with zero errors under Python 3.12.3.
+
+- Standardized local Python environment setup on Debian 12 developer
+  workstations using `uv` (Astral) to provision and manage Python 3.12
+  (`CPython 3.12.3`) pinned via a root `.python-version` file inside `.venv`.
+- Required installation via `curl -LsSf https://astral.sh/uv/install.sh | sh`
+  (`-L` flag mandatory for URL redirects).
+- Mandated virtual environment creation via `uv venv` (reading
+  `.python-version`) and package synchronization via
+  `uv pip install -r requirements.txt -r requirements-dev.txt`.
+- Configured GitHub Actions CI (`ci-verification.yml`) to consume
+  `python-version-file: '.python-version'`, ensuring 100% version lock parity
+  across dev, CI, and production.
+- Verified that all Python tests (`pytest backend/`), linters
+  (`pylint backend/`), and type checkers (`.venv/bin/mypy backend/`) run cleanly
+  with zero errors under Python 3.12.3.
 
 ### 52. Gemini API Upgrade & Sampling Parameter Deprecation Compliance
-- Audited all Gemini API calls and project configurations against the latest Google GenAI specification updates ([Sampling Parameter Deprecation](https://ai.google.dev/gemini-api/docs/latest-model#sampling-parameter-deprecation)).
-- Removed deprecated `temperature=0.0` parameter from `GenerateContentConfig` in [test_summary_evaluation.py](backend/tests/test_summary_evaluation.py).
-- Upgraded default model references from `gemini-3.5-flash` to `gemini-3.6-flash` across configurations ([config.ini.example](backend/config.ini.example)) and documentation ([admin_guide.md](docs/admin_guide.md), [gemini_model_evaluation.md](docs/gemini_model_evaluation.md)).
-- Updated repository Gemini rules ([gemini_api.md](.agents/rules/gemini_api.md)) to mandate stripping deprecated sampling parameters (`temperature`, `top_p`, `top_k`) and prohibiting prefilled `model` turns.
+
+- Audited all Gemini API calls and project configurations against the latest
+  Google GenAI specification updates
+  ([Sampling Parameter Deprecation](https://ai.google.dev/gemini-api/docs/latest-model#sampling-parameter-deprecation)).
+- Removed deprecated `temperature=0.0` parameter from `GenerateContentConfig` in
+  [test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py).
+- Upgraded default model references from `gemini-3.5-flash` to
+  `gemini-3.6-flash` across configurations
+  ([config.ini.example](../backend/config.ini.example)) and documentation
+  ([admin_guide.md](admin_guide.md),
+  [gemini_model_evaluation.md](gemini_model_evaluation.md)).
+- Updated repository Gemini rules
+  ([gemini_api.md](../.agents/rules/gemini_api.md)) to mandate stripping
+  deprecated sampling parameters (`temperature`, `top_p`, `top_k`) and
+  prohibiting prefilled `model` turns.
 
 ### 53. Dashpoint Reroll during Game Preview (#67)
-- Created git branch `feature/reroll` to implement community dashpoint rerolling during the game preview window.
-- Added `dashpoint_rerolls` table DDL to [schema.sql](schema.sql) and updated [e2e/setup-test-db.sh](e2e/setup-test-db.sh) to record audit history.
-- Added a `[reroll]` configuration section to [config.ini.example](backend/config.ini.example) with `REROLL_ENABLED`, `REROLL_MAX_RADIUS_KM`, `REROLL_MAX_PER_PLAYER`, and `REROLL_NOTIFICATION_EMAIL`.
-- Built [reroll_dashpoint.py](backend/scripts/reroll_dashpoint.py) with derived mathematical constants (`EARTH_RADIUS_KM`, `KM_PER_DEGREE_LAT`, `MIN_COS_LAT_FLOOR`, `MIN_REROLL_RADIUS_KM`), enforcing sequential candidate evaluation and a minimum 100m relocation distance.
-- Removed legacy alias `_build_spatial_filter` from [generate_game.py](backend/scripts/generate_game.py) in favor of direct `build_spatial_filter` calls.
-- Implemented [RerollService.php](backend/services/RerollService.php) enforcing preview lifecycle status, player find history ($\ge 1$), per-player quota ($< 3$), and single-reroll per dashpoint constraint.
-- Resolved coordinate axis swap bug by using explicit geographic functions `ST_Latitude()` and `ST_Longitude()` instead of Cartesian functions `ST_Y()` and `ST_X()` in `RerollService.php`.
-- Added a `--verbose` flag to `reroll_dashpoint.py` and a `verbose` argument to `generate_game.py`'s spatial filter initialization, suppressing progress logging on standard output to prevent PHP `json_decode()` parsing failures unless explicitly enabled by a human user.
-- Extended session authentication endpoint [auth.php](public/api/auth.php) and frontend client [api.js](public/js/api.js) to accept a `game_id` parameter and return the logged-in user's used reroll count.
-- Designed and built an inline expandable form (`#dp-reroll-form`) in [dashpoint.html](public/templates/dashpoint.html) and [controllers.js](public/js/controllers.js) to collect, validate (non-empty, < 100 characters), and transmit the reroll reason, showing remaining quotas dynamically and disabling the button once the user's quota is exhausted.
-- Added general disabled button styling (`.btn:disabled`) in [index.css](public/css/index.css) to gray out disabled elements and set the cursor to `not-allowed`.
-- Isolated parallel Playwright E2E browser workers in [reroll.spec.js](e2e/reroll.spec.js) by routing each project to its own distinct preview dashpoint (`GD002-AAAA`, `GD002-AAAB`, `GD002-AAAC` seeded in [setup-test-db.sh](e2e/setup-test-db.sh)) and enforcing serial execution within each browser suite.
-- Added `sendRerollNotificationEmail` to [MailerTrait.php](backend/services/MailerTrait.php) linking new coordinates to the Geodashing SPA map page (`#dashpoint?id=...`), and enhanced it to query [GeoContextService.php](backend/services/GeoContextService.php) to output geographic context (e.g. "30 miles northeast of Town, State") for the original location.
-- Exposed reroll configuration in [auth.php](public/api/auth.php) and implemented public REST endpoint [reroll.php](public/api/reroll.php) with CSRF header protection.
-- Updated UI templates [dashpoint.html](public/templates/dashpoint.html), frontend controllers [controllers.js](public/js/controllers.js) & [api.js](public/js/api.js), and CSS styles [index.css](public/css/index.css).
+
+- Created git branch `feature/reroll` to implement community dashpoint rerolling
+  during the game preview window.
+- Added `dashpoint_rerolls` table DDL to [schema.sql](../schema.sql) and updated
+  [e2e/setup-test-db.sh](../e2e/setup-test-db.sh) to record audit history.
+- Added a `[reroll]` configuration section to
+  [config.ini.example](../backend/config.ini.example) with `REROLL_ENABLED`,
+  `REROLL_MAX_RADIUS_KM`, `REROLL_MAX_PER_PLAYER`, and
+  `REROLL_NOTIFICATION_EMAIL`.
+- Built [reroll_dashpoint.py](../backend/scripts/reroll_dashpoint.py) with
+  derived mathematical constants (`EARTH_RADIUS_KM`, `KM_PER_DEGREE_LAT`,
+  `MIN_COS_LAT_FLOOR`, `MIN_REROLL_RADIUS_KM`), enforcing sequential candidate
+  evaluation and a minimum 100m relocation distance.
+- Removed legacy alias `_build_spatial_filter` from
+  [generate_game.py](../backend/scripts/generate_game.py) in favor of direct
+  `build_spatial_filter` calls.
+- Implemented [RerollService.php](../backend/services/RerollService.php)
+  enforcing preview lifecycle status, player find history ($\ge 1$), per-player
+  quota ($< 3$), and single-reroll per dashpoint constraint.
+- Resolved coordinate axis swap bug by using explicit geographic functions
+  `ST_Latitude()` and `ST_Longitude()` instead of Cartesian functions `ST_Y()`
+  and `ST_X()` in `RerollService.php`.
+- Added a `--verbose` flag to `reroll_dashpoint.py` and a `verbose` argument to
+  `generate_game.py`'s spatial filter initialization, suppressing progress
+  logging on standard output to prevent PHP `json_decode()` parsing failures
+  unless explicitly enabled by a human user.
+- Extended session authentication endpoint [auth.php](../public/api/auth.php)
+  and frontend client [api.js](../public/js/api.js) to accept a `game_id`
+  parameter and return the logged-in user's used reroll count.
+- Designed and built an inline expandable form (`#dp-reroll-form`) in
+  [dashpoint.html](../public/templates/dashpoint.html) and
+  [controllers.js](../public/js/controllers.js) to collect, validate (non-empty,
+  < 100 characters), and transmit the reroll reason, showing remaining quotas
+  dynamically and disabling the button once the user's quota is exhausted.
+- Added general disabled button styling (`.btn:disabled`) in
+  [index.css](../public/css/index.css) to gray out disabled elements and set the
+  cursor to `not-allowed`.
+- Isolated parallel Playwright E2E browser workers in
+  [reroll.spec.js](../e2e/reroll.spec.js) by routing each project to its own
+  distinct preview dashpoint (`GD002-AAAA`, `GD002-AAAB`, `GD002-AAAC` seeded in
+  [setup-test-db.sh](../e2e/setup-test-db.sh)) and enforcing serial execution
+  within each browser suite.
+- Added `sendRerollNotificationEmail` to
+  [MailerTrait.php](../backend/services/MailerTrait.php) linking new coordinates
+  to the Geodashing SPA map page (`#dashpoint?id=...`), and enhanced it to query
+  [GeoContextService.php](../backend/services/GeoContextService.php) to output
+  geographic context (e.g. "30 miles northeast of Town, State") for the original
+  location.
+- Exposed reroll configuration in [auth.php](../public/api/auth.php) and
+  implemented public REST endpoint [reroll.php](../public/api/reroll.php) with
+  CSRF header protection.
+- Updated UI templates [dashpoint.html](../public/templates/dashpoint.html),
+  frontend controllers [controllers.js](../public/js/controllers.js) &
+  [api.js](../public/js/api.js), and CSS styles
+  [index.css](../public/css/index.css).
 
 ### 54. Gemini 3.7 Flash Upgrade & Configurable Thinking Level
-- Upgraded default model references from `gemini-3.6-flash` to `gemini-3.7-flash` across configurations ([config.ini.example](backend/config.ini.example)), evaluation suites ([test_summary_evaluation.py](backend/tests/test_summary_evaluation.py)), and documentation ([admin_guide.md](docs/admin_guide.md), [gemini_model_evaluation.md](docs/gemini_model_evaluation.md)).
-- Added configurable reasoning support via `GEMINI_THINKING_LEVEL` (defaulting to `"medium"` in examples) across `configure_environment()` and `_generate_summary()` in [generate_summary.py](backend/scripts/generate_summary.py), instantiating `google.genai.types.ThinkingConfig(thinking_level=...)`.
-- Audited API compliance against Gemini 3.x specifications: confirmed absence of deprecated sampling parameters (`temperature`, `top_p`, `top_k`), absence of `candidate_count`, adherence to turn validation rules without prefilled model turns, and updated dependencies to `google-genai>=2.16.0`.
-- Expanded unit tests in [test_generate_summary.py](backend/tests/test_generate_summary.py) to cover thinking level parsing and configuration loading.
+
+- Upgraded default model references from `gemini-3.6-flash` to
+  `gemini-3.7-flash` across configurations
+  ([config.ini.example](../backend/config.ini.example)), evaluation suites
+  ([test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py)),
+  and documentation ([admin_guide.md](admin_guide.md),
+  [gemini_model_evaluation.md](gemini_model_evaluation.md)).
+- Added configurable reasoning support via `GEMINI_THINKING_LEVEL` (defaulting
+  to `"medium"` in examples) across `configure_environment()` and
+  `_generate_summary()` in
+  [generate_summary.py](../backend/scripts/generate_summary.py), instantiating
+  `google.genai.types.ThinkingConfig(thinking_level=...)`.
+- Audited API compliance against Gemini 3.x specifications: confirmed absence of
+  deprecated sampling parameters (`temperature`, `top_p`, `top_k`), absence of
+  `candidate_count`, adherence to turn validation rules without prefilled model
+  turns, and updated dependencies to `google-genai>=2.16.0`.
+- Expanded unit tests in
+  [test_generate_summary.py](../backend/tests/test_generate_summary.py) to cover
+  thinking level parsing and configuration loading.
 
 ### 55. Automated End-of-Month Game Turnover & Ops Agent Alerting
-- Implemented full end-of-month game lifecycle automation triggered via `python -m backend.scripts.game_utils --rollover [--dry-run]`.
-- Enforced strict duplicate prevention in [generate_game.py](backend/scripts/generate_game.py) and [game_utils.py](backend/scripts/game_utils.py) checking `YEAR(start_time)` and `MONTH(start_time)`.
-- Added pre-planned game titles catalog in [data/game_titles.json](data/game_titles.json) covering 2026-08 through 2028-05 (including reusable `_prompt` metadata template for LLM title generation), with automatic fallback formatting for unlisted dates.
-- Added `[game]` configuration block in [config.ini.example](backend/config.ini.example) and [config.ini](backend/config.ini) supporting `DEFAULT_DASHPOINT_COUNT`, `TIMEZONE` (`America/New_York`), and `SEND_TURNOVER_ANNOUNCEMENT`.
-- Built automated announcement email pipeline in `game_utils.py` formatting multipart HTML and text fallbacks announcing the new active game and upcoming preview game to players (`MAILING_LIST_ADDRESS`) via Gmail REST API.
-- Implemented fail-fast error handling (exit code 1) for missing/duplicate preview games and email dispatch failures to trigger Google Cloud Ops Agent and Cloud Alerting (suppressing player emails on failure).
-- Added comprehensive unit tests in [test_game_utils.py](backend/tests/test_game_utils.py) and [test_generate_game.py](backend/tests/test_generate_game.py).
-- Documented operational cron schedules, manual execution flags, Ops Agent receiver pipelines, and Cloud Monitoring alert policies in [admin_guide.md](docs/admin_guide.md) and [game_rollover.md](docs/game_rollover.md).
+
+- Implemented full end-of-month game lifecycle automation triggered via
+  `python -m backend.scripts.game_utils --rollover [--dry-run]`.
+- Enforced strict duplicate prevention in
+  [generate_game.py](../backend/scripts/generate_game.py) and
+  [game_utils.py](../backend/scripts/game_utils.py) checking `YEAR(start_time)`
+  and `MONTH(start_time)`.
+- Added pre-planned game titles catalog in
+  [data/game_titles.json](../data/game_titles.json) covering 2026-08 through
+  2028-05 (including reusable `_prompt` metadata template for LLM title
+  generation), with automatic fallback formatting for unlisted dates.
+- Added `[game]` configuration block in
+  [config.ini.example](../backend/config.ini.example) and
+  [config.ini](../backend/config.ini) supporting `DEFAULT_DASHPOINT_COUNT`,
+  `TIMEZONE` (`America/New_York`), and `SEND_TURNOVER_ANNOUNCEMENT`.
+- Built automated announcement email pipeline in `game_utils.py` formatting
+  multipart HTML and text fallbacks announcing the new active game and upcoming
+  preview game to players (`MAILING_LIST_ADDRESS`) via Gmail REST API.
+- Implemented fail-fast error handling (exit code 1) for missing/duplicate
+  preview games and email dispatch failures to trigger Google Cloud Ops Agent
+  and Cloud Alerting (suppressing player emails on failure).
+- Added comprehensive unit tests in
+  [test_game_utils.py](../backend/tests/test_game_utils.py) and
+  [test_generate_game.py](../backend/tests/test_generate_game.py).
+- Documented operational cron schedules, manual execution flags, Ops Agent
+  receiver pipelines, and Cloud Monitoring alert policies in
+  [admin_guide.md](admin_guide.md) and [game_rollover.md](game_rollover.md).
 
 ### 56. Migration to Gemini Interactions API
-- Migrated summary generation in [generate_summary.py](backend/scripts/generate_summary.py) and evaluation in [test_summary_evaluation.py](backend/tests/test_summary_evaluation.py) to Google GenAI's **Interactions API** (`client.interactions.create()`).
-- Replaced all legacy `google.genai.types` wrapper objects (`GenerateContentConfig`, `ThinkingConfig`, `ThinkingLevel`, `Content`, `Part`) with strict, granular `TypedDict` and `Literal` structures (`TextContentDict`, `ImageContentDict`, `UserInputStepDict`, `ModelOutputStepDict`, `GenerationConfigDict`).
-- Maintained strict typing without `typing.Any` overuse across prompt construction, few-shot step history loading, and model configuration.
+
+- Migrated summary generation in
+  [generate_summary.py](../backend/scripts/generate_summary.py) and evaluation
+  in [test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py)
+  to Google GenAI's **Interactions API** (`client.interactions.create()`).
+- Replaced all legacy `google.genai.types` wrapper objects
+  (`GenerateContentConfig`, `ThinkingConfig`, `ThinkingLevel`, `Content`,
+  `Part`) with strict, granular `TypedDict` and `Literal` structures
+  (`TextContentDict`, `ImageContentDict`, `UserInputStepDict`,
+  `ModelOutputStepDict`, `GenerationConfigDict`).
+- Maintained strict typing without `typing.Any` overuse across prompt
+  construction, few-shot step history loading, and model configuration.
 
 ### 57. Quality Improvements Phase 1: Core Logic, Scoring Documentation, Leaderboard & Sitemap
-- Clarified scoring documentation in [public/templates/how-to.html](public/templates/how-to.html) and code comments in [backend/services/ReportService.php](backend/services/ReportService.php) to document exact game rules (same-day finds share identical point values: 3 points if 0 previous claims, 2 points if 1 previous claim, and 1 point if 2+ previous claims).
-- Configured default PHP timezone to UTC via `date_default_timezone_set('UTC')` in [backend/session.php](backend/session.php) for consistent date parsing across environments.
-- Updated [backend/services/LeaderboardService.php](backend/services/LeaderboardService.php) to exclude 0-point attempts from `total_finds` using `SUM(CASE WHEN v.is_attempt = 0 THEN 1 ELSE 0 END)`.
-- Updated [backend/services/ProfileService.php](backend/services/ProfileService.php) `getPlayerMailStats()` to filter visits with `status = 'approved'`.
-- Fixed double XML escaping in [backend/services/SitemapService.php](backend/services/SitemapService.php) by passing URLs directly to `\XMLWriter::writeElement()`.
-- Expanded unit test coverage in [backend/tests/LeaderboardServiceTest.php](backend/tests/LeaderboardServiceTest.php) and [backend/tests/SitemapServiceTest.php](backend/tests/SitemapServiceTest.php).
+
+- Clarified scoring documentation in
+  [public/templates/how-to.html](../public/templates/how-to.html) and code
+  comments in
+  [backend/services/ReportService.php](../backend/services/ReportService.php) to
+  document exact game rules (same-day finds share identical point values: 3
+  points if 0 previous claims, 2 points if 1 previous claim, and 1 point if 2+
+  previous claims).
+- Configured default PHP timezone to UTC via `date_default_timezone_set('UTC')`
+  in [backend/session.php](../backend/session.php) for consistent date parsing
+  across environments.
+- Updated
+  [backend/services/LeaderboardService.php](../backend/services/LeaderboardService.php)
+  to exclude 0-point attempts from `total_finds` using
+  `SUM(CASE WHEN v.is_attempt = 0 THEN 1 ELSE 0 END)`.
+- Updated
+  [backend/services/ProfileService.php](../backend/services/ProfileService.php)
+  `getPlayerMailStats()` to filter visits with `status = 'approved'`.
+- Fixed double XML escaping in
+  [backend/services/SitemapService.php](../backend/services/SitemapService.php)
+  by passing URLs directly to `\XMLWriter::writeElement()`.
+- Expanded unit test coverage in
+  [backend/tests/LeaderboardServiceTest.php](../backend/tests/LeaderboardServiceTest.php)
+  and
+  [backend/tests/SitemapServiceTest.php](../backend/tests/SitemapServiceTest.php).
 
 ### 58. Quality Improvements Phase 2: Python CLI Validator & Timestamp Generation Consistency
-- Updated `HTMLFragmentValidator` in [backend/scripts/game_utils.py](backend/scripts/game_utils.py) with `VOID_TAGS = {'br', 'hr', 'img'}` and extracted attribute helpers (`_validate_anchor_attributes`, `_validate_image_attributes`), allowing standard HTML5 void elements without self-closing XHTML tags.
-- Replaced `now.replace(...)` timestamp logic in [backend/scripts/generate_game.py](backend/scripts/generate_game.py) with explicit `datetime.datetime(year, month, ...)` construction for reliable start/end date calculation.
-- Expanded unit tests in [backend/tests/test_game_utils.py](backend/tests/test_game_utils.py) to cover HTML5 void tag parsing and standalone image validation.
+
+- Updated `HTMLFragmentValidator` in
+  [backend/scripts/game_utils.py](../backend/scripts/game_utils.py) with
+  `VOID_TAGS = {'br', 'hr', 'img'}` and extracted attribute helpers
+  (`_validate_anchor_attributes`, `_validate_image_attributes`), allowing
+  standard HTML5 void elements without self-closing XHTML tags.
+- Replaced `now.replace(...)` timestamp logic in
+  [backend/scripts/generate_game.py](../backend/scripts/generate_game.py) with
+  explicit `datetime.datetime(year, month, ...)` construction for reliable
+  start/end date calculation.
+- Expanded unit tests in
+  [backend/tests/test_game_utils.py](../backend/tests/test_game_utils.py) to
+  cover HTML5 void tag parsing and standalone image validation.
 
 ### 59. Quality Improvements Phase 3: Media Lifecycle & Storage Hygiene
-- Enhanced `MediaService::deletePhotos()` in [backend/services/MediaService.php](backend/services/MediaService.php) to automatically identify, derive, and delete companion `_thumb` thumbnail files in Google Cloud Storage when photos are removed.
-- Implemented transactional cleanup in [public/api/report.php](public/api/report.php) to immediately delete uploaded GCS images if `ReportService::processVisit()` rejects the visit or fails.
-- Supported `APP_ENV=testing` for `MediaService` initialization in [public/api/edit.php](public/api/edit.php).
-- Added unit tests in [backend/tests/MediaServiceTest.php](backend/tests/MediaServiceTest.php) verifying companion thumbnail deletion.
+
+- Enhanced `MediaService::deletePhotos()` in
+  [backend/services/MediaService.php](../backend/services/MediaService.php) to
+  automatically identify, derive, and delete companion `_thumb` thumbnail files
+  in Google Cloud Storage when photos are removed.
+- Implemented transactional cleanup in
+  [public/api/report.php](../public/api/report.php) to immediately delete
+  uploaded GCS images if `ReportService::processVisit()` rejects the visit or
+  fails.
+- Supported `APP_ENV=testing` for `MediaService` initialization in
+  [public/api/edit.php](../public/api/edit.php).
+- Added unit tests in
+  [backend/tests/MediaServiceTest.php](../backend/tests/MediaServiceTest.php)
+  verifying companion thumbnail deletion.
 
 ### 60. Quality Improvements Phase 4: Spatial Indexing & Query Optimization
-- Added `CREATE SPATIAL INDEX idx_visits_reported_location ON visits (reported_location);` to [schema.sql](schema.sql).
-- Refactored `searchRegion()` and `searchVisitsRegion()` in [backend/services/SearchService.php](backend/services/SearchService.php) to construct WKT bounding polygons and utilize MySQL's spatial relation operator `MBRContains(ST_GeomFromText(...), location)`, eliminating row-by-row function scans and leveraging MySQL's R-Tree spatial indexes.
-- Maintained Anti-Meridian Date Line crossing support using bifurcated polygon checks with `OR`.
-- Updated unit test expectations in [backend/tests/SearchServiceTest.php](backend/tests/SearchServiceTest.php).
+
+- Added
+  `CREATE SPATIAL INDEX idx_visits_reported_location ON visits (reported_location);`
+  to [schema.sql](../schema.sql).
+- Refactored `searchRegion()` and `searchVisitsRegion()` in
+  [backend/services/SearchService.php](../backend/services/SearchService.php) to
+  construct WKT bounding polygons and utilize MySQL's spatial relation operator
+  `MBRContains(ST_GeomFromText(...), location)`, eliminating row-by-row function
+  scans and leveraging MySQL's R-Tree spatial indexes.
+- Maintained Anti-Meridian Date Line crossing support using bifurcated polygon
+  checks with `OR`.
+- Updated unit test expectations in
+  [backend/tests/SearchServiceTest.php](../backend/tests/SearchServiceTest.php).
 
 ### 61. Quality Improvements Phase 5: Frontend UI/UX, Memory Management & Race Conditions
-- Replaced hardcoded production domain in [public/js/controllers.js](public/js/controllers.js) user profile activity links with relative SPA hash navigation (`#dashpoint?id=...`).
-- Fixed double HTML entity escaping on leaderboard game titles by removing redundant `escapeHTML()` call inside `.innerText` assignment.
-- Added `URL.revokeObjectURL()` memory lifecycle management to photo preview rendering loops in both `#report` and `#dashpoint` edit modals.
-- Integrated `AbortController` in [public/js/map.js](public/js/map.js) to cancel inflight bounding box requests on subsequent map movements, eliminating out-of-order race conditions.
+
+- Replaced hardcoded production domain in
+  [public/js/controllers.js](../public/js/controllers.js) user profile activity
+  links with relative SPA hash navigation (`#dashpoint?id=...`).
+- Fixed double HTML entity escaping on leaderboard game titles by removing
+  redundant `escapeHTML()` call inside `.innerText` assignment.
+- Added `URL.revokeObjectURL()` memory lifecycle management to photo preview
+  rendering loops in both `#report` and `#dashpoint` edit modals.
+- Integrated `AbortController` in [public/js/map.js](../public/js/map.js) to
+  cancel inflight bounding box requests on subsequent map movements, eliminating
+  out-of-order race conditions.
 
 ### 62. Python 3.14 Runtime & UV Packaging Migration, Dependabot & System Cron Integration
-- Migrated Python project dependency management from legacy `requirements.txt` and `requirements-dev.txt` to PEP 621 standard [pyproject.toml](pyproject.toml) configured with `[dependency-groups]` (`dev`) and `[tool.uv]`.
-- Updated the pinned Python runtime in [.python-version](.python-version) from `3.12.3` to `3.14`.
-- Updated GitHub Dependabot configuration in [.github/dependabot.yml](.github/dependabot.yml) to track Python dependencies via `package-ecosystem: "uv"`.
-- Updated [.pre-commit-config.yaml](.pre-commit-config.yaml) to invoke Python linters, type checkers, and test runners (`pylint`, `mypy`, `pyright`, `pytest`) using `uv run`.
-- Reconfigured GitHub Actions CI workflow in [.github/workflows/ci-verification.yml](.github/workflows/ci-verification.yml) to use `astral-sh/setup-uv@v5` with `enable-cache: true`, `uv sync --all-groups`, and `uv run pre-commit run --all-files`.
-- Updated production cron configuration in [docs/admin_guide.md](docs/admin_guide.md) and [docs/game_rollover.md](docs/game_rollover.md) to document `/etc/cron.d/geodashing-turnover` using `uv run python -m backend.scripts.game_utils --rollover`.
+
+- Migrated Python project dependency management from legacy `requirements.txt`
+  and `requirements-dev.txt` to PEP 621 standard
+  [pyproject.toml](../pyproject.toml) configured with `[dependency-groups]`
+  (`dev`) and `[tool.uv]`.
+- Updated the pinned Python runtime in [.python-version](../.python-version)
+  from `3.12.3` to `3.14`.
+- Updated GitHub Dependabot configuration in
+  [.github/dependabot.yml](../.github/dependabot.yml) to track Python
+  dependencies via `package-ecosystem: "uv"`.
+- Updated [.pre-commit-config.yaml](../.pre-commit-config.yaml) to invoke Python
+  linters, type checkers, and test runners (`pylint`, `mypy`, `pyright`,
+  `pytest`) using `uv run`.
+- Reconfigured GitHub Actions CI workflow in
+  [.github/workflows/ci-verification.yml](../.github/workflows/ci-verification.yml)
+  to use `astral-sh/setup-uv@v5` with `enable-cache: true`,
+  `uv sync --all-groups`, and `uv run pre-commit run --all-files`.
+- Updated production cron configuration in [docs/admin_guide.md](admin_guide.md)
+  and [docs/game_rollover.md](game_rollover.md) to document
+  `/etc/cron.d/geodashing-turnover` using
+  `uv run python -m backend.scripts.game_utils --rollover`.
 
 ### 63. Gemini 3.8 Flash Evaluation and Adoption
-- Evaluated Google GenAI's `gemini-3.8-flash` model on the end-to-end benchmark evaluation suite ([test_summary_evaluation.py](backend/tests/test_summary_evaluation.py)) across 4 historical game datasets ([summary_examples](data/summary_examples/)).
-- Confirmed 100% test pass rate with perfect 5/5 scores across all evaluation metrics (Tone, Accuracy, and Narrative Quality) as evaluated by LLM-as-a-Judge (`gemini-3.7-flash`), and full compliance with deterministic HTML rules (semantic tags, self-closing void tags, absolute SPA links, and thumbnail-wrapped photos).
-- Upgraded the default AI summarizer model reference to `gemini-3.8-flash` across configurations ([config.ini.example](backend/config.ini.example)), unit test configurations ([test_generate_summary.py](backend/tests/test_generate_summary.py)), fallback judge settings in the evaluation suite ([test_summary_evaluation.py](backend/tests/test_summary_evaluation.py)), and administrative documentation ([admin_guide.md](docs/admin_guide.md), [gemini_model_evaluation.md](docs/gemini_model_evaluation.md)).
+
+- Evaluated Google GenAI's `gemini-3.8-flash` model on the end-to-end benchmark
+  evaluation suite
+  ([test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py))
+  across 4 historical game datasets
+  ([summary_examples](../data/summary_examples/)).
+- Confirmed 100% test pass rate with perfect 5/5 scores across all evaluation
+  metrics (Tone, Accuracy, and Narrative Quality) as evaluated by LLM-as-a-Judge
+  (`gemini-3.7-flash`), and full compliance with deterministic HTML rules
+  (semantic tags, self-closing void tags, absolute SPA links, and
+  thumbnail-wrapped photos).
+- Upgraded the default AI summarizer model reference to `gemini-3.8-flash`
+  across configurations ([config.ini.example](../backend/config.ini.example)),
+  unit test configurations
+  ([test_generate_summary.py](../backend/tests/test_generate_summary.py)),
+  fallback judge settings in the evaluation suite
+  ([test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py)),
+  and administrative documentation ([admin_guide.md](admin_guide.md),
+  [gemini_model_evaluation.md](gemini_model_evaluation.md)).
 
 ### 64. Client UI Review, CSS Decoupling & Web Standards Modernization
-- Conducted a comprehensive UI/UX, web standards, and security audit of the client frontend codebase across all templates, styles, and scripts.
-- Decoupled all inline styles (`style="..."`) from markup across [public/index.html](public/index.html) and all 10 templates in `public/templates/` ([about.html](public/templates/about.html), [contact.html](public/templates/contact.html), [dashpoint.html](public/templates/dashpoint.html), [edit.html](public/templates/edit.html), [how-to.html](public/templates/how-to.html), [leaderboard.html](public/templates/leaderboard.html), [profile.html](public/templates/profile.html), [report.html](public/templates/report.html), [search.html](public/templates/search.html), etc.) into reusable CSS classes in [public/css/index.css](public/css/index.css).
-- Removed dynamic inline style injections across JavaScript modules ([public/js/controllers.js](public/js/controllers.js), [public/js/map.js](public/js/map.js), [public/js/app.js](public/js/app.js)), replacing programmatic element styling with modular CSS component classes (`.visit-card`, `.visit-header`, `.edit-photo-wrapper`, `.edit-photo-delete-btn`, `.map-location-btn`, `.alert-success`, `.alert-warning`, `.profile-card`, etc.).
-- Converted inline event property assignments (`.onclick`) in modal overlays and HUD toggles to `addEventListener('click', ...)` for proper event lifecycle hygiene.
-- Hardened external links with `rel="noopener noreferrer"` across templates and updated `window.open` calls in [public/js/controllers.js](public/js/controllers.js) to prevent reverse tabnabbing.
-- Populated [public/site.webmanifest](public/site.webmanifest) with application metadata (`name`, `short_name`) and dark terminal theme colors (`#09090b`) to eliminate Lighthouse PWA warnings.
+
+- Conducted a comprehensive UI/UX, web standards, and security audit of the
+  client frontend codebase across all templates, styles, and scripts.
+- Decoupled all inline styles (`style="..."`) from markup across
+  [public/index.html](../public/index.html) and all 10 templates in
+  `public/templates/` ([about.html](../public/templates/about.html),
+  [contact.html](../public/templates/contact.html),
+  [dashpoint.html](../public/templates/dashpoint.html),
+  [edit.html](../public/templates/edit.html),
+  [how-to.html](../public/templates/how-to.html),
+  [leaderboard.html](../public/templates/leaderboard.html),
+  [profile.html](../public/templates/profile.html),
+  [report.html](../public/templates/report.html),
+  [search.html](../public/templates/search.html), etc.) into reusable CSS
+  classes in [public/css/index.css](../public/css/index.css).
+- Removed dynamic inline style injections across JavaScript modules
+  ([public/js/controllers.js](../public/js/controllers.js),
+  [public/js/map.js](../public/js/map.js),
+  [public/js/app.js](../public/js/app.js)), replacing programmatic element
+  styling with modular CSS component classes (`.visit-card`, `.visit-header`,
+  `.edit-photo-wrapper`, `.edit-photo-delete-btn`, `.map-location-btn`,
+  `.alert-success`, `.alert-warning`, `.profile-card`, etc.).
+- Converted inline event property assignments (`.onclick`) in modal overlays and
+  HUD toggles to `addEventListener('click', ...)` for proper event lifecycle
+  hygiene.
+- Hardened external links with `rel="noopener noreferrer"` across templates and
+  updated `window.open` calls in
+  [public/js/controllers.js](../public/js/controllers.js) to prevent reverse
+  tabnabbing.
+- Populated [public/site.webmanifest](../public/site.webmanifest) with
+  application metadata (`name`, `short_name`) and dark terminal theme colors
+  (`#09090b`) to eliminate Lighthouse PWA warnings.
+
 ### 65. Private Dashpoint Tagging Feature
-- Implemented a private, player-specific dashpoint tagging system allowing users to mark dashpoints using 4 Google Maps POI palette color and shape combinations (Google Blue Star, Google Purple Diamond, Google Deep Orange Triangle, and Google Magenta Square).
-- **Database Schema**: Added `user_dashpoint_tags` table in [schema.sql](schema.sql) with compound primary key `(user_id, dashpoint_id)` and foreign keys referencing `users(id)` and `dashpoints(id)` with `ON DELETE CASCADE`.
-- **Feature Flag & Allowlist Rollout**: Added a `[tags]` section to [backend/config.ini](backend/config.ini) and [backend/config.ini.example](backend/config.ini.example) with `TAGS_ENABLED` (boolean) and `TAGS_ALLOWLIST` (comma-separated usernames), enabling safe dark deployment and testing before public game launch without code redeployment.
+
+- Implemented a private, player-specific dashpoint tagging system allowing users
+  to mark dashpoints using 4 Google Maps POI palette color and shape
+  combinations (Google Blue Star, Google Purple Diamond, Google Deep Orange
+  Triangle, and Google Magenta Square).
+- **Database Schema**: Added `user_dashpoint_tags` table in
+  [schema.sql](../schema.sql) with compound primary key
+  `(user_id, dashpoint_id)` and foreign keys referencing `users(id)` and
+  `dashpoints(id)` with `ON DELETE CASCADE`.
+- **Feature Flag & Allowlist Rollout**: Added a `[tags]` section to
+  [backend/config.ini](../backend/config.ini) and
+  [backend/config.ini.example](../backend/config.ini.example) with
+  `TAGS_ENABLED` (boolean) and `TAGS_ALLOWLIST` (comma-separated usernames),
+  enabling safe dark deployment and testing before public game launch without
+  code redeployment.
 - **Backend Service & REST API**:
-  - Implemented [backend/services/TagService.php](backend/services/TagService.php) handling palette verification, user permissions, dashpoint modifiability constraints, upserting, and deletion.
-  - Integrated tag purging in [backend/services/RerollService.php](backend/services/RerollService.php) so that preview dashpoint rerolls automatically purge any user tags across all players.
-  - Created RESTful endpoint [public/api/user_tags.php](public/api/user_tags.php) (`GET`, `POST`, `DELETE`) with CSRF protection and session authentication.
-  - Fixed a false-positive HTTP 413 ("Request Entity Too Large") check in [backend/session.php](backend/session.php) for JSON POST requests by checking `post_max_size` against raw content length rather than relying on form-data `$_POST` array population.
+  - Implemented
+    [backend/services/TagService.php](../backend/services/TagService.php)
+    handling palette verification, user permissions, dashpoint modifiability
+    constraints, upserting, and deletion.
+  - Integrated tag purging in
+    [backend/services/RerollService.php](../backend/services/RerollService.php)
+    so that preview dashpoint rerolls automatically purge any user tags across
+    all players.
+  - Created RESTful endpoint
+    [public/api/user_tags.php](../public/api/user_tags.php) (`GET`, `POST`,
+    `DELETE`) with CSRF protection and session authentication.
+  - Fixed a false-positive HTTP 413 ("Request Entity Too Large") check in
+    [backend/session.php](../backend/session.php) for JSON POST requests by
+    checking `post_max_size` against raw content length rather than relying on
+    form-data `$_POST` array population.
 - **Frontend UI & Performance Optimization (Approach B)**:
-  - Avoided database join overhead on rapid map panning by creating a dedicated game-level dictionary loader (`API.loadUserTags(gameId)`) in [public/js/api.js](public/js/api.js) with promise deduplication and client-side optimistic mutation preservation.
-  - Added accessible tag swatch controls with 44×44px touch targets and full ARIA states in [public/templates/dashpoint.html](public/templates/dashpoint.html) and styled in [public/css/index.css](public/css/index.css).
-  - Extended [public/js/map.js](public/js/map.js) to render subtle corner badges on map pins using SVG glyphs and non-blocking pointer events (`pointer-events: none`).
-  - Added automatic state invalidation on session logout in `api.js` and game context changes in [public/js/app.js](public/js/app.js).
+  - Avoided database join overhead on rapid map panning by creating a dedicated
+    game-level dictionary loader (`API.loadUserTags(gameId)`) in
+    [public/js/api.js](../public/js/api.js) with promise deduplication and
+    client-side optimistic mutation preservation.
+  - Added accessible tag swatch controls with 44×44px touch targets and full
+    ARIA states in
+    [public/templates/dashpoint.html](../public/templates/dashpoint.html) and
+    styled in [public/css/index.css](../public/css/index.css).
+  - Extended [public/js/map.js](../public/js/map.js) to render subtle corner
+    badges on map pins using SVG glyphs and non-blocking pointer events
+    (`pointer-events: none`).
+  - Added automatic state invalidation on session logout in `api.js` and game
+    context changes in [public/js/app.js](../public/js/app.js).
 - **Testing & Verification**:
-  - Created [backend/tests/TagServiceTest.php](backend/tests/TagServiceTest.php) with 14 unit test scenarios covering configuration toggles, allowlists, game status rules, palette constraints, and reroll cleanup (all 90 PHPUnit tests pass).
-  - Created [e2e/tagging.spec.js](e2e/tagging.spec.js) verifying guest invisibility, allowlist gating, active game tagging and clearing, preview game tagging, and historical game read-only constraints across Desktop Chrome, iPhone 12 (WebKit), and Pixel 7 (all 15 Playwright tests pass).
+  - Created
+    [backend/tests/TagServiceTest.php](../backend/tests/TagServiceTest.php) with
+    14 unit test scenarios covering configuration toggles, allowlists, game
+    status rules, palette constraints, and reroll cleanup (all 90 PHPUnit tests
+    pass).
+  - Created [e2e/tagging.spec.js](../e2e/tagging.spec.js) verifying guest
+    invisibility, allowlist gating, active game tagging and clearing, preview
+    game tagging, and historical game read-only constraints across Desktop
+    Chrome, iPhone 12 (WebKit), and Pixel 7 (all 15 Playwright tests pass).
 
 ### 66. Multi-Browser & Cross-Device Tag Synchronization
-- Implemented an eventual consistency synchronization mechanism ensuring private dashpoint tags synchronize across multiple open browser instances, mobile devices, and desktop tabs within 60–90 seconds, with immediate (<1s) refresh on tab focus and instant (0ms) same-device cross-tab synchronization.
+
+- Implemented an eventual consistency synchronization mechanism ensuring private
+  dashpoint tags synchronize across multiple open browser instances, mobile
+  devices, and desktop tabs within 60–90 seconds, with immediate (<1s) refresh
+  on tab focus and instant (0ms) same-device cross-tab synchronization.
 - **Backend ETag & Concurrency Optimization**:
-  - Added deterministic stable ETag generation via `TagService::generateETag()` (`ksort()` and SQL `ORDER BY udt.dashpoint_id ASC`).
-  - Added HTTP `ETag`, `Cache-Control: private, no-cache`, `Vary: Cookie`, and normalized `304 Not Modified` handling in [public/api/user_tags.php](public/api/user_tags.php) (stripping Apache `W/` prefixes).
-  - Released exclusive PHP session file locks on `GET` requests immediately via `session_write_close()` to prevent background polling from blocking concurrent operations.
+  - Added deterministic stable ETag generation via `TagService::generateETag()`
+    (`ksort()` and SQL `ORDER BY udt.dashpoint_id ASC`).
+  - Added HTTP `ETag`, `Cache-Control: private, no-cache`, `Vary: Cookie`, and
+    normalized `304 Not Modified` handling in
+    [public/api/user_tags.php](../public/api/user_tags.php) (stripping Apache
+    `W/` prefixes).
+  - Released exclusive PHP session file locks on `GET` requests immediately via
+    `session_write_close()` to prevent background polling from blocking
+    concurrent operations.
 - **Frontend Three-Tier Synchronization Layer**:
-  - Implemented same-device multi-tab synchronization using HTML5 `BroadcastChannel('geodashing_tags')` in [public/js/api.js](public/js/api.js) with defensive envelope validation (`action`, `gameId`, `dashpointId`).
-  - Implemented 60-second TTL cache invalidation and per-game metadata tracking (`_userTagsMeta`).
-  - Added in-flight mutation protection (`_inFlightMutations`) in `api.js` to prevent background sync responses from clobbering active optimistic user updates.
-  - Linked background heartbeat and focus revalidation to `VisibilityManager` (revalidating on tab resume if older than 30s, pausing when hidden).
-  - Wired `userTagsChanged` events into [public/js/map.js](public/js/map.js) (updating pin badges) and [public/js/controllers.js](public/js/controllers.js) (updating open `#dashpoint` view swatches in real time).
+  - Implemented same-device multi-tab synchronization using HTML5
+    `BroadcastChannel('geodashing_tags')` in
+    [public/js/api.js](../public/js/api.js) with defensive envelope validation
+    (`action`, `gameId`, `dashpointId`).
+  - Implemented 60-second TTL cache invalidation and per-game metadata tracking
+    (`_userTagsMeta`).
+  - Added in-flight mutation protection (`_inFlightMutations`) in `api.js` to
+    prevent background sync responses from clobbering active optimistic user
+    updates.
+  - Linked background heartbeat and focus revalidation to `VisibilityManager`
+    (revalidating on tab resume if older than 30s, pausing when hidden).
+  - Wired `userTagsChanged` events into [public/js/map.js](../public/js/map.js)
+    (updating pin badges) and
+    [public/js/controllers.js](../public/js/controllers.js) (updating open
+    `#dashpoint` view swatches in real time).
 - **Testing & Quality**:
-  - Added unit test coverage in [backend/tests/TagServiceTest.php](backend/tests/TagServiceTest.php) verifying deterministic ETag stability (92/92 tests pass).
-  - Added multi-page cross-tab synchronization test case in [e2e/tagging.spec.js](e2e/tagging.spec.js).
+  - Added unit test coverage in
+    [backend/tests/TagServiceTest.php](../backend/tests/TagServiceTest.php)
+    verifying deterministic ETag stability (92/92 tests pass).
+  - Added multi-page cross-tab synchronization test case in
+    [e2e/tagging.spec.js](../e2e/tagging.spec.js).
   - Confirmed 0 errors across ESLint, PHPCS, and PHPUnit.
 
 ### 67. CI Playwright E2E Stabilization & Radar Proximity Isolation
-- Resolved CI E2E test failures on GitHub Actions run #35898406345 across `e2e/radar.spec.js` and `e2e/tagging.spec.js`.
+
+- Resolved CI E2E test failures on GitHub Actions run #35898406345 across
+  `e2e/radar.spec.js` and `e2e/tagging.spec.js`.
 - **Proximity Radar Collision Fix**:
-  - Relocated mock dashpoints `GD001-AAAB` (to Brooklyn `POINT(40.6782 -73.9442)`) and `GD001-AAAC` (to Queens `POINT(40.7282 -73.7949)`) in [e2e/setup-test-db.sh](e2e/setup-test-db.sh).
-  - Prevents proximity collision where `GD001-AAAB` was only 168.6m from the radar test approach coordinate `(40.7150, -74.0060)`, ensuring the HUD reliably isolates `GD001-AAAA` (244.6m) without stealing focus.
+  - Relocated mock dashpoints `GD001-AAAB` (to Brooklyn
+    `POINT(40.6782 -73.9442)`) and `GD001-AAAC` (to Queens
+    `POINT(40.7282 -73.7949)`) in
+    [e2e/setup-test-db.sh](../e2e/setup-test-db.sh).
+  - Prevents proximity collision where `GD001-AAAB` was only 168.6m from the
+    radar test approach coordinate `(40.7150, -74.0060)`, ensuring the HUD
+    reliably isolates `GD001-AAAA` (244.6m) without stealing focus.
 - **CI Tagging Allowlist Parity**:
-  - Configured [.github/workflows/ci-e2e.yml](.github/workflows/ci-e2e.yml) to write `[tags]` with `TAGS_ENABLED = false` and `TAGS_ALLOWLIST = "TestUser"` into the generated `backend/config.ini`.
-  - Added constructor-level environment variable overrides for `TAGS_ENABLED` and `TAGS_ALLOWLIST` in [backend/services/TagService.php](backend/services/TagService.php) when config is loaded from file, while keeping unit-test-injected config arrays completely pure.
+  - Configured [.github/workflows/ci-e2e.yml](../.github/workflows/ci-e2e.yml)
+    to write `[tags]` with `TAGS_ENABLED = false` and
+    `TAGS_ALLOWLIST = "TestUser"` into the generated `backend/config.ini`.
+  - Added constructor-level environment variable overrides for `TAGS_ENABLED`
+    and `TAGS_ALLOWLIST` in
+    [backend/services/TagService.php](../backend/services/TagService.php) when
+    config is loaded from file, while keeping unit-test-injected config arrays
+    completely pure.
   - Added `TestUser` to local `backend/config.ini` for local testing parity.
-  - Added unit test in [backend/tests/TagServiceTest.php](backend/tests/TagServiceTest.php) covering environment variable overrides (93/93 tests pass).
+  - Added unit test in
+    [backend/tests/TagServiceTest.php](../backend/tests/TagServiceTest.php)
+    covering environment variable overrides (93/93 tests pass).
 
 ### 68. Google Maps API Deprecation Cleanup
-- Updated [public/js/map.js](public/js/map.js) to resolve console deprecation warnings from the Google Maps JavaScript API (v3.53+):
-  - Appended `pinView` directly (`container.appendChild(pinView)`) instead of accessing the deprecated `pinView.element` property on `PinElement`.
-  - Migrated marker click handlers on `AdvancedMarkerElement` instances to native DOM `addEventListener('gmp-click', ...)` instead of deprecated `marker.addListener(...)`.
-- Verified with ESLint (0 errors) and Playwright map tests (`map_navigation.spec.js`, `visit_markers.spec.js`) confirming zero deprecation warnings in the browser console.
+
+- Updated [public/js/map.js](../public/js/map.js) to resolve console deprecation
+  warnings from the Google Maps JavaScript API (v3.53+):
+  - Appended `pinView` directly (`container.appendChild(pinView)`) instead of
+    accessing the deprecated `pinView.element` property on `PinElement`.
+  - Migrated marker click handlers on `AdvancedMarkerElement` instances to
+    native DOM `addEventListener('gmp-click', ...)` instead of deprecated
+    `marker.addListener(...)`.
+- Verified with ESLint (0 errors) and Playwright map tests
+  (`map_navigation.spec.js`, `visit_markers.spec.js`) confirming zero
+  deprecation warnings in the browser console.
 
 ### 69. Zoom Level Preservation on In-Map Marker Clicks
-- Disentangled marker click interactions from external deep-link navigation in the SPA:
-  - Previously, clicking any map marker or visit pin routed to `#dashpoint?id=...`, which unconditionally reset `map.setZoom(10)` and `map.setCenter(...)` (originally introduced for direct URL navigation in commit `8074292`).
-  - Implemented in-memory marker tracking (`window._openedFromMapMarkerId`) and immediate smooth panning (`map.panTo`) in [public/js/map.js](public/js/map.js) on marker and container click events, preserving the user's current close-up zoom level (e.g. zoom 15/16).
-  - Aligned visit/attempt marker clicks to pan directly to parent dashpoint coordinates from `window.loadedDashpoints`.
-  - Added initialization focus queuing (`window.__pendingMapFocus`) in [public/js/controllers.js](public/js/controllers.js) and `map.js` for external deep links that resolve before Google Maps finishes initialization.
-  - Added route change validation in [public/js/controllers.js](public/js/controllers.js) (`window.location.hash !== '#dashpoint?id=' + dpId`) to discard stale asynchronous responses and clear stale marker tracking on route exit.
-  - Preserved existing behavior for external deep links (emails, shared URLs, profile page links), ensuring they continue to center on the target dashpoint and reset zoom to city-level (`10`).
+
+- Disentangled marker click interactions from external deep-link navigation in
+  the SPA:
+  - Previously, clicking any map marker or visit pin routed to
+    `#dashpoint?id=...`, which unconditionally reset `map.setZoom(10)` and
+    `map.setCenter(...)` (originally introduced for direct URL navigation in
+    commit `8074292`).
+  - Implemented in-memory marker tracking (`window._openedFromMapMarkerId`) and
+    immediate smooth panning (`map.panTo`) in
+    [public/js/map.js](../public/js/map.js) on marker and container click
+    events, preserving the user's current close-up zoom level (e.g. zoom 15/16).
+  - Aligned visit/attempt marker clicks to pan directly to parent dashpoint
+    coordinates from `window.loadedDashpoints`.
+  - Added initialization focus queuing (`window.__pendingMapFocus`) in
+    [public/js/controllers.js](../public/js/controllers.js) and `map.js` for
+    external deep links that resolve before Google Maps finishes initialization.
+  - Added route change validation in
+    [public/js/controllers.js](../public/js/controllers.js)
+    (`window.location.hash !== '#dashpoint?id=' + dpId`) to discard stale
+    asynchronous responses and clear stale marker tracking on route exit.
+  - Preserved existing behavior for external deep links (emails, shared URLs,
+    profile page links), ensuring they continue to center on the target
+    dashpoint and reset zoom to city-level (`10`).
 - **Testing & Verification**:
-  - Expanded [e2e/map_navigation.spec.js](e2e/map_navigation.spec.js) with test coverage verifying both deep-link zoom level 10 and in-map marker click zoom preservation (at zoom 16 with gentle panning) across Chromium, iPhone 12, and Pixel 7 (9/9 tests pass).
+  - Expanded [e2e/map_navigation.spec.js](../e2e/map_navigation.spec.js) with
+    test coverage verifying both deep-link zoom level 10 and in-map marker click
+    zoom preservation (at zoom 16 with gentle panning) across Chromium, iPhone
+    12, and Pixel 7 (9/9 tests pass).
+
 ### 70. Cluster Renderer Google Maps API Deprecation Resolution
-- Extended Google Maps API modernization in [public/js/map.js](public/js/map.js) to resolve console deprecation warnings during marker clustering:
-  - Migrated `glyph: String(count)` to modern `glyphText: String(count)` on `google.maps.marker.PinElement` in `customClusterRenderer`, eliminating the `<gmp-pin>` deprecation warning.
-  - Configured `gmpClickable: true` on the cluster `google.maps.marker.AdvancedMarkerElement` to ensure `gmp-click` events dispatch correctly when clusters are clicked.
-  - Implemented an instance `.addListener(eventName, handler)` method on cluster markers that delegates directly to `this.addEventListener(eventName, handler)`, satisfying the upstream `@googlemaps/markerclusterer` library's event registration without triggering Google Maps' deprecated bridge warning.
+
+- Extended Google Maps API modernization in
+  [public/js/map.js](../public/js/map.js) to resolve console deprecation
+  warnings during marker clustering:
+  - Migrated `glyph: String(count)` to modern `glyphText: String(count)` on
+    `google.maps.marker.PinElement` in `customClusterRenderer`, eliminating the
+    `<gmp-pin>` deprecation warning.
+  - Configured `gmpClickable: true` on the cluster
+    `google.maps.marker.AdvancedMarkerElement` to ensure `gmp-click` events
+    dispatch correctly when clusters are clicked.
+  - Implemented an instance `.addListener(eventName, handler)` method on cluster
+    markers that delegates directly to
+    `this.addEventListener(eventName, handler)`, satisfying the upstream
+    `@googlemaps/markerclusterer` library's event registration without
+    triggering Google Maps' deprecated bridge warning.
 - **Testing & Verification**:
-  - Confirmed 0 errors across ESLint (`npm run lint`), PHPCS (`composer run lint`), and PHPUnit (`composer run test`, 93/93 passing).
-  - Executed Playwright E2E suite (`npx playwright test --reporter=list`), passing 182 tests with zero `<gmp-pin>` or `<gmp-advanced-marker>` deprecation warnings in the browser console.
+  - Confirmed 0 errors across ESLint (`npm run lint`), PHPCS
+    (`composer run lint`), and PHPUnit (`composer run test`, 93/93 passing).
+  - Executed Playwright E2E suite (`npx playwright test --reporter=list`),
+    passing 182 tests with zero `<gmp-pin>` or `<gmp-advanced-marker>`
+    deprecation warnings in the browser console.
+
 ### 71. Application Template Form Label Accessibility Modernization
-- Resolved accessibility issues ("No label associated with a form field") across all application templates without altering third-party Google Maps internal controls:
+
+- Resolved accessibility issues ("No label associated with a form field") across
+  all application templates without altering third-party Google Maps internal
+  controls:
   - **Explicit Label Associations**:
-    - [public/templates/login.html](public/templates/login.html): Added matching `for="..."` attributes across all login, registration, password recovery, and password reset form fields.
-    - [public/templates/report.html](public/templates/report.html): Added `for="dashpoint_id"`, `for="input-is-attempt"`, `for="input-suppress-email"`, `for="input-photos"`, and `for="log-textarea"`. Converted non-associable multi-input coordinate header `<label>` to `<span class="form-group-flex-label">` and added explicit `aria-label="Visit Latitude"` and `aria-label="Visit Longitude"` attributes to the coordinate inputs.
-    - [public/templates/search.html](public/templates/search.html): Added matching `for="..."` attributes across coordinate bounds inputs (`search-n`, `search-s`, `search-e`, `search-w`).
-    - [public/templates/edit.html](public/templates/edit.html): Added `for="edit_send_email"` and `for="edit-photos"`. Converted non-form section header `<label>PHOTOS</label>` to `<span class="edit-section-label">PHOTOS</span>`.
-    - [public/templates/dashpoint.html](public/templates/dashpoint.html): Converted `<div class="reroll-form-title">` to `<label for="reroll-reason-input" class="reroll-form-title">`. Converted non-form divider `<label class="dash-section-label">PREVIOUS VISITS</label>` to `<span class="dash-section-label">PREVIOUS VISITS</span>`.
-    - [public/index.html](public/index.html): Added `aria-label="Select Game Context"` to `<select id="game-selector">`.
+    - [public/templates/login.html](../public/templates/login.html): Added
+      matching `for="..."` attributes across all login, registration, password
+      recovery, and password reset form fields.
+    - [public/templates/report.html](../public/templates/report.html): Added
+      `for="dashpoint_id"`, `for="input-is-attempt"`,
+      `for="input-suppress-email"`, `for="input-photos"`, and
+      `for="log-textarea"`. Converted non-associable multi-input coordinate
+      header `<label>` to `<span class="form-group-flex-label">` and added
+      explicit `aria-label="Visit Latitude"` and `aria-label="Visit Longitude"`
+      attributes to the coordinate inputs.
+    - [public/templates/search.html](../public/templates/search.html): Added
+      matching `for="..."` attributes across coordinate bounds inputs
+      (`search-n`, `search-s`, `search-e`, `search-w`).
+    - [public/templates/edit.html](../public/templates/edit.html): Added
+      `for="edit_send_email"` and `for="edit-photos"`. Converted non-form
+      section header `<label>PHOTOS</label>` to
+      `<span class="edit-section-label">PHOTOS</span>`.
+    - [public/templates/dashpoint.html](../public/templates/dashpoint.html):
+      Converted `<div class="reroll-form-title">` to
+      `<label for="reroll-reason-input" class="reroll-form-title">`. Converted
+      non-form divider
+      `<label class="dash-section-label">PREVIOUS VISITS</label>` to
+      `<span class="dash-section-label">PREVIOUS VISITS</span>`.
+    - [public/index.html](../public/index.html): Added
+      `aria-label="Select Game Context"` to `<select id="game-selector">`.
   - **CSS Layout Preservation**:
-    - [public/css/index.css](public/css/index.css): Added `display: block;` to `.reroll-form-title` to prevent user-agent inline margin collapse when rendering as an HTML `<label>`.
+    - [public/css/index.css](../public/css/index.css): Added `display: block;`
+      to `.reroll-form-title` to prevent user-agent inline margin collapse when
+      rendering as an HTML `<label>`.
 - **Testing & Verification**:
-  - Confirmed 0 errors across pre-commit hooks (`uv run pre-commit run --all-files`), including ESLint, PHPCS, PHPUnit (93/93 passing), Pytest, PyLint, Mypy, and Pyright.
-  - Executed full Playwright E2E suite (`npx playwright test --reporter=list`), with all 185 tests passing cleanly across Chromium, iPhone 12, and Pixel 7 viewports.
+  - Confirmed 0 errors across pre-commit hooks
+    (`uv run pre-commit run --all-files`), including ESLint, PHPCS, PHPUnit
+    (93/93 passing), Pytest, PyLint, Mypy, and Pyright.
+  - Executed full Playwright E2E suite (`npx playwright test --reporter=list`),
+    with all 185 tests passing cleanly across Chromium, iPhone 12, and Pixel 7
+    viewports.
 
 ### 72. Playwright CI Reliability & Race Condition Hardening Post Package Upgrades
-- Resolved intermittent test failures and flakiness on CI exposed under runner CPU contention following package upgrades:
+
+- Resolved intermittent test failures and flakiness on CI exposed under runner
+  CPU contention following package upgrades:
   - **Post-Signup Page Reload Race Condition**:
-    - During signup, `controllers.js` dispatches `setTimeout(() => window.location.reload(), 400)` to reload the SPA into the unverified state.
-    - In [e2e/upload.spec.js](e2e/upload.spec.js) and [e2e/game_loop.spec.js](e2e/game_loop.spec.js), `page.waitForURL('**/#login')` resolved immediately (0ms) because the page was already at `/#login`. Rapid navigation to `/#home` and `/#report?id=GD001-AAAA` caused the scheduled `window.location.reload()` to fire mid-flight, resetting the form and causing `#report-feedback` to remain empty `""`.
-    - Hardened tests to explicitly wait for `#verify-pane` to become visible (`await expect(page.locator('#verify-pane')).toBeVisible({ timeout: 10000 })`), guaranteeing that the 400ms timer and page reload have settled completely before navigating.
+    - During signup, `controllers.js` dispatches
+      `setTimeout(() => window.location.reload(), 400)` to reload the SPA into
+      the unverified state.
+    - In [e2e/upload.spec.js](../e2e/upload.spec.js) and
+      [e2e/game_loop.spec.js](../e2e/game_loop.spec.js),
+      `page.waitForURL('**/#login')` resolved immediately (0ms) because the page
+      was already at `/#login`. Rapid navigation to `/#home` and
+      `/#report?id=GD001-AAAA` caused the scheduled `window.location.reload()`
+      to fire mid-flight, resetting the form and causing `#report-feedback` to
+      remain empty `""`.
+    - Hardened tests to explicitly wait for `#verify-pane` to become visible via
+      `expect(page.locator('#verify-pane')).toBeVisible({ timeout: 10000 })`,
+      guaranteeing that the 400ms timer and page reload have settled completely
+      before navigating.
   - **Photo Input Queue Accumulation**:
-    - In [e2e/upload.spec.js](e2e/upload.spec.js), back-to-back `setInputFiles` calls caused a race condition where the second file was attached before the first file had finished processing in the `change` listener.
-    - Added an assertion for the first preview item (`await expect(page.locator('.photo-preview-item')).toHaveCount(1)`) prior to attaching the second file.
+    - In [e2e/upload.spec.js](../e2e/upload.spec.js), back-to-back
+      `setInputFiles` calls caused a race condition where the second file was
+      attached before the first file had finished processing in the `change`
+      listener.
+    - Added an assertion for the first preview item
+      (`await expect(page.locator('.photo-preview-item')).toHaveCount(1)`) prior
+      to attaching the second file.
   - **Mobile Navigation Drawer Transition Settling**:
-    - In [e2e/layout.spec.js](e2e/layout.spec.js), replaced a fixed 350ms sleep (`waitForTimeout(350)`) with an `expect(...).toPass({ timeout: 5000 })` assertion block, allowing Playwright to poll until the 300ms CSS slide-in transition finishes and bounds settle within `viewport.width`.
+    - In [e2e/layout.spec.js](../e2e/layout.spec.js), replaced a fixed 350ms
+      sleep (`waitForTimeout(350)`) with an
+      `expect(...).toPass({ timeout: 5000 })` assertion block, allowing
+      Playwright to poll until the 300ms CSS slide-in transition finishes and
+      bounds settle within `viewport.width`.
   - **WebKit Asynchronous Download Initiation & Blob URL Revocation**:
-    - In [public/js/controllers.js](public/js/controllers.js), `window.URL.revokeObjectURL(downloadUrl)` was called synchronously immediately after `a.click()`. In WebKit (Safari engine used for iPhone 12 testing), download navigation is dispatched asynchronously; revoking the blob URL in the same tick aborted the download stream.
+    - In [public/js/controllers.js](../public/js/controllers.js),
+      `window.URL.revokeObjectURL(downloadUrl)` was called synchronously
+      immediately after `a.click()`. In WebKit (Safari engine used for iPhone 12
+      testing), download navigation is dispatched asynchronously; revoking the
+      blob URL in the same tick aborted the download stream.
     - Deferred `revokeObjectURL` by 1000ms using `setTimeout`.
-    - Also updated `downloadPayload` to await `window.gameContextLoaded` if `window.currentGameContext.id` is not yet populated, and updated [e2e/export.spec.js](e2e/export.spec.js) to wait for `#export-game-info` to contain `Exporting: Game`.
+    - Also updated `downloadPayload` to await `window.gameContextLoaded` if
+      `window.currentGameContext.id` is not yet populated, and updated
+      [e2e/export.spec.js](../e2e/export.spec.js) to wait for
+      `#export-game-info` to contain `Exporting: Game`.
 - **Testing & Verification**:
-  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across all linters, type checkers, and PHPUnit.
-  - Playwright E2E suite: All 185 tests passed cleanly with 0 failures and 0 flaky retries.
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across
+    all linters, type checkers, and PHPUnit.
+  - Playwright E2E suite: All 185 tests passed cleanly with 0 failures and 0
+    flaky retries.
 
 ### 73. Dashpoint Reroll Runtime Flags & Server Logging
-- **Problem**: When triggering a dashpoint reroll on production, `RerollService.php` invoked `uv run` to execute `backend/scripts/reroll_dashpoint.py`. Because `uv run` by default synchronizes dependencies against `pyproject.toml` and its `default-groups = ["dev"]`, it detected that `mypy` was missing (as `uv sync --no-dev` was run during production deployment) and attempted to install it. Because the web server process user lacked write permissions to the `.venv` directory, the operation failed with `Permission denied (os error 13)`. Furthermore, the caught exception in `public/api/reroll.php` was omitted from server error logs.
+
+- **Problem**: When triggering a dashpoint reroll on production,
+  `RerollService.php` invoked `uv run` to execute
+  `backend/scripts/reroll_dashpoint.py`. Because `uv run` by default
+  synchronizes dependencies against `pyproject.toml` and its
+  `default-groups = ["dev"]`, it detected that `mypy` was missing (as
+  `uv sync --no-dev` was run during production deployment) and attempted to
+  install it. Because the web server process user lacked write permissions to
+  the `.venv` directory, the operation failed with
+  `Permission denied (os error 13)`. Furthermore, the caught exception in
+  `public/api/reroll.php` was omitted from server error logs.
 - **Reroll Execution Hardening**:
-  - Updated `buildRerollCommand()` in [backend/services/RerollService.php](backend/services/RerollService.php) to append `--no-sync --no-dev` to `uv run`. This instructs `uv run` to treat the environment as read-only at runtime and bypass synchronization checks across all environments.
-  - Updated [backend/tests/RerollServiceTest.php](backend/tests/RerollServiceTest.php) to assert `--no-sync --no-dev` presence in the generated CLI command.
+  - Updated `buildRerollCommand()` in
+    [backend/services/RerollService.php](../backend/services/RerollService.php)
+    to append `--no-sync --no-dev` to `uv run`. This instructs `uv run` to treat
+    the environment as read-only at runtime and bypass synchronization checks
+    across all environments.
+  - Updated
+    [backend/tests/RerollServiceTest.php](../backend/tests/RerollServiceTest.php)
+    to assert `--no-sync --no-dev` presence in the generated CLI command.
 - **Server Error Logging**:
-  - Added `error_log("Reroll API Error: " . $e->getMessage());` in the `catch` block of [public/api/reroll.php](public/api/reroll.php).
-  - Added `error_log("Reroll script execution failed (exit code {$returnCode}): " . $errMsg);` in `executePythonRerollScript()` in [backend/services/RerollService.php](backend/services/RerollService.php).
+  - Added `error_log("Reroll API Error: " . $e->getMessage());` in the `catch`
+    block of [public/api/reroll.php](../public/api/reroll.php).
+  - Added
+    `error_log("Reroll script execution failed (exit code {$returnCode}): " . $errMsg);`
+    in `executePythonRerollScript()` in
+    [backend/services/RerollService.php](../backend/services/RerollService.php).
 - **Production Turnover Cron & Rollover Documentation**:
-  - Updated [docs/admin_guide.md](docs/admin_guide.md) and [docs/game_rollover.md](docs/game_rollover.md) to document `uv run --no-sync --no-dev` for the `/etc/cron.d/geodashing-turnover` system cron and manual rollover execution.
+  - Updated [docs/admin_guide.md](admin_guide.md) and
+    [docs/game_rollover.md](game_rollover.md) to document
+    `uv run --no-sync --no-dev` for the `/etc/cron.d/geodashing-turnover` system
+    cron and manual rollover execution.
 
 ### 74. Offline Draft Storage Service (Phase 1)
-- **Problem**: When dashers visit high-traffic dashpoints ("mad dashes") and relocate to safer areas to write field narratives, mobile operating systems (especially iOS WebKit) frequently reload background tabs under memory pressure, destroying unsubmitted notes, coordinates, and camera-captured photos. Furthermore, photos captured via the browser's camera input are stored in temporary browser sandboxes and never saved to the device's native camera roll.
+
+- **Problem**: When dashers visit high-traffic dashpoints ("mad dashes") and
+  relocate to safer areas to write field narratives, mobile operating systems
+  (especially iOS WebKit) frequently reload background tabs under memory
+  pressure, destroying unsubmitted notes, coordinates, and camera-captured
+  photos. Furthermore, photos captured via the browser's camera input are stored
+  in temporary browser sandboxes and never saved to the device's native camera
+  roll.
 - **Architectural Implementation**:
-  - Implemented [public/js/draft-storage.js](public/js/draft-storage.js), a zero-dependency Vanilla JS storage service leveraging `IndexedDB` (`geodashing_db`, store `report_drafts`).
-  - Stored binary photos as serialized `ArrayBuffer` objects to bypass WebKit's native blob storage disk serialization bug (`UnknownError: Error preparing Blob/File data`), reconstituting genuine `Blob` objects via a shared `hydrateRecord()` helper upon retrieval.
-  - Built an in-memory session `Map` fallback with identical blob hydration guarantees to gracefully handle Safari Private Browsing mode and restricted WebViews where `window.indexedDB.open()` throws `SecurityError`.
-  - Added safe concurrency handling in `getDb()` via in-flight promise caching (`dbOpenPromise`), automatic connection invalidation on `dbInstance.onclose`, and transactional commitment listening (`transaction.oncomplete`) for stale draft pruning (`pruneExpiredDrafts`).
-  - Registered `<script src="js/draft-storage.js"></script>` in [public/index.html](public/index.html) prior to `controllers.js`.
-  - Declared `DraftStorage: "readonly"` under ESLint global variables in [eslint.config.mjs](eslint.config.mjs).
-  - Developed full automated unit and integration tests in [e2e/draft_storage.spec.js](e2e/draft_storage.spec.js), verifying namespace initialization, blob storage/retrieval, MIME type preservation, in-memory fallback execution in isolated iframes, and transactional stale pruning.
+  - Implemented [public/js/draft-storage.js](../public/js/draft-storage.js), a
+    zero-dependency Vanilla JS storage service leveraging `IndexedDB`
+    (`geodashing_db`, store `report_drafts`).
+  - Stored binary photos as serialized `ArrayBuffer` objects to bypass WebKit's
+    native blob storage disk serialization bug
+    (`UnknownError: Error preparing Blob/File data`), reconstituting genuine
+    `Blob` objects via a shared `hydrateRecord()` helper upon retrieval.
+  - Built an in-memory session `Map` fallback with identical blob hydration
+    guarantees to gracefully handle Safari Private Browsing mode and restricted
+    WebViews where `window.indexedDB.open()` throws `SecurityError`.
+  - Added safe concurrency handling in `getDb()` via in-flight promise caching
+    (`dbOpenPromise`), automatic connection invalidation on
+    `dbInstance.onclose`, and transactional commitment listening
+    (`transaction.oncomplete`) for stale draft pruning (`pruneExpiredDrafts`).
+  - Registered `<script src="js/draft-storage.js"></script>` in
+    [public/index.html](../public/index.html) prior to `controllers.js`.
+  - Declared `DraftStorage: "readonly"` under ESLint global variables in
+    [eslint.config.mjs](../eslint.config.mjs).
+  - Developed full automated unit and integration tests in
+    [e2e/draft_storage.spec.js](../e2e/draft_storage.spec.js), verifying
+    namespace initialization, blob storage/retrieval, MIME type preservation,
+    in-memory fallback execution in isolated iframes, and transactional stale
+    pruning.
 - **Testing & Code Review**:
-  - Code reviewed and approved unconditionally by the Senior Staff Code Reviewer subagent.
-  - Pre-commit runner (`uv run pre-commit run --all-files`) passed cleanly with 0 errors across all linters, type checkers, and test runners.
-  - Playwright test suite: All 15 tests in `e2e/draft_storage.spec.js` passed across Chromium, iPhone 12, and Pixel 7 viewports.
+  - Code reviewed and approved unconditionally by the Senior Staff Code Reviewer
+    subagent.
+  - Pre-commit runner (`uv run pre-commit run --all-files`) passed cleanly with
+    0 errors across all linters, type checkers, and test runners.
+  - Playwright test suite: All 15 tests in `e2e/draft_storage.spec.js` passed
+    across Chromium, iPhone 12, and Pixel 7 viewports.
 
 ### 75. Report Controller Draft Integration & Lifecycle Auto-Save (Phase 2)
-- **Problem**: With the storage engine in place (`DraftStorage`), the `#report` route controller needed to automatically capture field logs, sync timestamps, coordinate locks, checkboxes, and photo attachments in real time, survive backgrounding when switching apps or locking mobile devices, and reliably restore all field data (including binary photos) when returning to the report page.
+
+- **Problem**: With the storage engine in place (`DraftStorage`), the `#report`
+  route controller needed to automatically capture field logs, sync timestamps,
+  coordinate locks, checkboxes, and photo attachments in real time, survive
+  backgrounding when switching apps or locking mobile devices, and reliably
+  restore all field data (including binary photos) when returning to the report
+  page.
 - **Architectural Implementation**:
   - **Serial Concurrency & Auto-Save Queue**:
-    - In [public/js/controllers.js](public/js/controllers.js), implemented `saveCurrentDraft()` to capture coordinates, GPS sync timestamp, GPS button display state, notes narrative, `is_attempt` and `suppress_email` checkboxes, and photo queue (files and captions).
-    - Serialized async storage operations via `executeSave()` using `isSavingDraft` and `hasPendingSave` state flags. Any intermediate state changes occurring while a save is in-flight automatically queue an immediate follow-up write in the `finally` block, eliminating race conditions.
+    - In [public/js/controllers.js](../public/js/controllers.js), implemented
+      `saveCurrentDraft()` to capture coordinates, GPS sync timestamp, GPS
+      button display state, notes narrative, `is_attempt` and `suppress_email`
+      checkboxes, and photo queue (files and captions).
+    - Serialized async storage operations via `executeSave()` using
+      `isSavingDraft` and `hasPendingSave` state flags. Any intermediate state
+      changes occurring while a save is in-flight automatically queue an
+      immediate follow-up write in the `finally` block, eliminating race
+      conditions.
   - **Debounced Scheduling & Lifecycle Flush Hooks**:
     - Notes input is debounced by 500ms (`scheduleSave(500)`).
-    - Immediate flushes (`performSave()`) execute on `#log-textarea` `blur`, `document.addEventListener('visibilitychange')` (when `document.visibilityState === 'hidden'`), and `window.addEventListener('pagehide')`. This ensures that locking the device or switching apps immediately after typing captures all keystrokes into persistent storage.
-    - All photo queue actions (attachment, deletion, caption updates, and drag-and-drop reordering) and coordinate changes immediately trigger auto-save.
+    - Immediate flushes (`performSave()`) execute on `#log-textarea` `blur`,
+      `document.addEventListener('visibilitychange')` (when
+      `document.visibilityState === 'hidden'`), and
+      `window.addEventListener('pagehide')`. This ensures that locking the
+      device or switching apps immediately after typing captures all keystrokes
+      into persistent storage.
+    - All photo queue actions (attachment, deletion, caption updates, and
+      drag-and-drop reordering) and coordinate changes immediately trigger
+      auto-save.
   - **Route Navigation Cleanup & Memory Management**:
-    - Implemented `activeRouteCleanups` to unhook view-specific global listeners, cancel pending timers while flushing uncommitted draft state, and revoke preview object URLs (`URL.revokeObjectURL`) to prevent memory leaks across SPA hash transitions.
+    - Implemented `activeRouteCleanups` to unhook view-specific global
+      listeners, cancel pending timers while flushing uncommitted draft state,
+      and revoke preview object URLs (`URL.revokeObjectURL`) to prevent memory
+      leaks across SPA hash transitions.
   - **Draft Hydration & Critical DOM Synchronization**:
-    - On `#report` view entry, `restoreDraftIfPresent()` retrieves the draft from `DraftStorage`.
-    - Coordinates, GPS button styling ("LOCKED (SYNCED)"), narrative notes, character counter, and checkboxes are pre-filled.
-    - Stored photo Blobs are reconstituted into native `File` objects (`new File([photo.blob], ...)`), loaded into a new `DataTransfer()` queue, and rendered to the preview grid with custom captions.
-    - **DOM Sync Guarantee**: Explicitly sets `inputPhotos.files = currentPhotoQueue.files`, ensuring standard `new FormData(reportFormEl)` submissions serialize restored photos without requiring user re-selection.
-    - Injects a dismissible `#draft-restore-banner` with a "DISCARD DRAFT" button that clears pending timers, purges the draft from `DraftStorage`, and resets the form.
+    - On `#report` view entry, `restoreDraftIfPresent()` retrieves the draft
+      from `DraftStorage`.
+    - Coordinates, GPS button styling ("LOCKED (SYNCED)"), narrative notes,
+      character counter, and checkboxes are pre-filled.
+    - Stored photo Blobs are reconstituted into native `File` objects
+      (`new File([photo.blob], ...)`), loaded into a new `DataTransfer()` queue,
+      and rendered to the preview grid with custom captions.
+    - **DOM Sync Guarantee**: Explicitly sets
+      `inputPhotos.files = currentPhotoQueue.files`, ensuring standard
+      `new FormData(reportFormEl)` submissions serialize restored photos without
+      requiring user re-selection.
+    - Injects a dismissible `#draft-restore-banner` with a "DISCARD DRAFT"
+      button that clears pending timers, purges the draft from `DraftStorage`,
+      and resets the form.
   - **Draft Disposal Safety**:
-    - Drafts are deleted only upon confirmed HTTP 200 / `result.status === 'success'`. In cases of distance rejection (>100m for non-attempts), form validation failures, file size limits, or server errors, the draft in `DraftStorage` remains intact.
+    - Drafts are deleted only upon confirmed HTTP 200 /
+      `result.status === 'success'`. In cases of distance rejection (>100m for
+      non-attempts), form validation failures, file size limits, or server
+      errors, the draft in `DraftStorage` remains intact.
   - **UI Styling**:
-    - In [public/css/index.css](public/css/index.css), added `.btn-sm`, `.alert-info`, and `.draft-restore-banner` flex layout styling to seamlessly integrate with the responsive glassmorphic dark theme.
+    - In [public/css/index.css](../public/css/index.css), added `.btn-sm`,
+      `.alert-info`, and `.draft-restore-banner` flex layout styling to
+      seamlessly integrate with the responsive glassmorphic dark theme.
   - **Automated Verification**:
-    - Developed [e2e/report_draft.spec.js](e2e/report_draft.spec.js) verifying full reload persistence, captioned photo rehydration, DOM input sync, discard draft functionality, immediate blur flushes, and distance rejection draft preservation.
+    - Developed [e2e/report_draft.spec.js](../e2e/report_draft.spec.js)
+      verifying full reload persistence, captioned photo rehydration, DOM input
+      sync, discard draft functionality, immediate blur flushes, and distance
+      rejection draft preservation.
 - **Testing & Code Review**:
-  - Code reviewed and approved unconditionally by the Senior Staff Code Reviewer subagent.
-  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across YAPF, PyLint, Mypy, Pyright, Pytest, ESLint, PHP CodeSniffer, and PHPUnit.
-  - Playwright test suite: All 12 tests in `e2e/report_draft.spec.js` and all 15 tests in `e2e/draft_storage.spec.js` passed across Chromium, iPhone 12, and Pixel 7 viewports.
+  - Code reviewed and approved unconditionally by the Senior Staff Code Reviewer
+    subagent.
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across
+    YAPF, PyLint, Mypy, Pyright, Pytest, ESLint, PHP CodeSniffer, and PHPUnit.
+  - Playwright test suite: All 12 tests in `e2e/report_draft.spec.js` and all 15
+    tests in `e2e/draft_storage.spec.js` passed across Chromium, iPhone 12, and
+    Pixel 7 viewports.
 
 ### 76. Report UX Safeguards, Boot Pruning & User Guidance (Phase 3)
-- **Problem**: When field players visit dashpoints and relocate before submitting, several usability and data loss risks remained:
-  1. Accidentally tapping "SYNC LIVE GPS" after driving away from the target would overwrite previously captured physical coordinates with the player's remote position without warning.
-  2. On mobile devices, accidental backdrop touches on `#app-content` outside the form modal would trigger SPA routing to `#home` and collapse the field log view.
-  3. Abandoned or unsubmitted drafts would accumulate indefinitely in local device storage without automated expiration.
-  4. Users capturing photos directly through the web form camera input were unaware that browser security sandboxes prevent those photos from being saved to the device's native camera roll.
+
+- **Problem**: When field players visit dashpoints and relocate before
+  submitting, several usability and data loss risks remained:
+  1. Accidentally tapping "SYNC LIVE GPS" after driving away from the target
+     would overwrite previously captured physical coordinates with the player's
+     remote position without warning.
+  2. On mobile devices, accidental backdrop touches on `#app-content` outside
+     the form modal would trigger SPA routing to `#home` and collapse the field
+     log view.
+  3. Abandoned or unsubmitted drafts would accumulate indefinitely in local
+     device storage without automated expiration.
+  4. Users capturing photos directly through the web form camera input were
+     unaware that browser security sandboxes prevent those photos from being
+     saved to the device's native camera roll.
 - **Architectural Implementation**:
   - **Re-Sync Overwrite Protection**:
-    - In [public/js/controllers.js](public/js/controllers.js), updated the `#btn-geolocation` click listener to check if `latInput` and `lonInput` already contain non-empty values. If so, a confirmation dialog (`window.confirm`) prompts the user before calling `getCurrentPosition()`. Dismissing the prompt leaves existing locked coordinates and UI styling completely untouched.
+    - In [public/js/controllers.js](../public/js/controllers.js), updated the
+      `#btn-geolocation` click listener to check if `latInput` and `lonInput`
+      already contain non-empty values. If so, a confirmation dialog
+      (`window.confirm`) prompts the user before calling `getCurrentPosition()`.
+      Dismissing the prompt leaves existing locked coordinates and UI styling
+      completely untouched.
   - **Accidental Mobile Backdrop Dismissal Protection**:
-    - In [public/js/app.js](public/js/app.js), updated the mobile backdrop click listener (`window.innerWidth <= 768`) on `contentDiv` to check `if (document.getElementById('form-report')) return;`. This prevents background taps from closing the field log form, requiring users to explicitly use the header close anchor (`&times;`) or submit button.
+    - In [public/js/app.js](../public/js/app.js), updated the mobile backdrop
+      click listener (`window.innerWidth <= 768`) on `contentDiv` to check
+      `if (document.getElementById('form-report')) return;`. This prevents
+      background taps from closing the field log form, requiring users to
+      explicitly use the header close anchor (`&times;`) or submit button.
   - **App Boot Stale Draft Pruning**:
-    - In [public/js/app.js](public/js/app.js), hooked `window.DraftStorage.pruneExpiredDrafts(7)` into the `DOMContentLoaded` boot sequence with proper feature detection and promise error handling, silently pruning abandoned drafts older than 7 days.
+    - In [public/js/app.js](../public/js/app.js), hooked
+      `window.DraftStorage.pruneExpiredDrafts(7)` into the `DOMContentLoaded`
+      boot sequence with proper feature detection and promise error handling,
+      silently pruning abandoned drafts older than 7 days.
   - **Camera Roll User Guidance**:
-    - In [public/templates/report.html](public/templates/report.html), added an educational tip under "ADD PHOTOS": *"Tip: For best results, take photos with your phone's native Camera app first, then select them here from your library so they stay safely in your Photos."*
+    - In [public/templates/report.html](../public/templates/report.html), added
+      an educational tip under "ADD PHOTOS": _"Tip: For best results, take
+      photos with your phone's native Camera app first, then select them here
+      from your library so they stay safely in your Photos."_
   - **Automated Verification**:
-    - In [e2e/report_draft.spec.js](e2e/report_draft.spec.js), expanded the test suite to 21 tests covering dialog cancellation/acceptance for coordinate re-sync, backdrop dismissal suppression on mobile viewport dimensions, and photo guidance rendering.
+    - In [e2e/report_draft.spec.js](../e2e/report_draft.spec.js), expanded the
+      test suite to 21 tests covering dialog cancellation/acceptance for
+      coordinate re-sync, backdrop dismissal suppression on mobile viewport
+      dimensions, and photo guidance rendering.
 - **Testing & Code Review**:
-  - Code reviewed and approved unconditionally by the Senior Staff Code Reviewer subagent.
-  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across all linters, type checkers, and test runners.
-  - Playwright test suite: All 21 tests in `e2e/report_draft.spec.js` passed cleanly with 0 failures and 0 flakes across Chromium, iPhone 12, and Pixel 7 viewports.
+  - Code reviewed and approved unconditionally by the Senior Staff Code Reviewer
+    subagent.
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across
+    all linters, type checkers, and test runners.
+  - Playwright test suite: All 21 tests in `e2e/report_draft.spec.js` passed
+    cleanly with 0 failures and 0 flakes across Chromium, iPhone 12, and Pixel 7
+    viewports.
 
 ### 77. End-to-End Mad Dash Verification & Multi-Device Testing (Phase 4)
-- **Problem**: Validate the entire end-to-end user workflow under simulated real-world conditions where a dasher visits a physical dashpoint, captures live GPS coordinates and on-site photos, leaves the area (driving to a safe location), experiences navigation/page reload events, restores the uncommitted draft with binary photos and locked coordinates, completes narrative notes, successfully submits the report, and has their draft purged from storage.
+
+- **Problem**: Validate the entire end-to-end user workflow under simulated
+  real-world conditions where a dasher visits a physical dashpoint, captures
+  live GPS coordinates and on-site photos, leaves the area (driving to a safe
+  location), experiences navigation/page reload events, restores the uncommitted
+  draft with binary photos and locked coordinates, completes narrative notes,
+  successfully submits the report, and has their draft purged from storage.
 - **Architectural Implementation**:
   - **End-to-End Simulation**:
-    - In [e2e/report_draft.spec.js](e2e/report_draft.spec.js), implemented a dedicated test: `Simulated Mad Dash: captures at point of approach, restores after reload, successfully submits, and cleans draft`.
-    - Dynamically generates and verifies a test dasher account in the test MySQL database.
-    - Simulates physical arrival at target dashpoint `GD001-AAAA`, locking live coordinates via mocked geolocation (`40.712800`, `-74.006000`).
+    - In [e2e/report_draft.spec.js](../e2e/report_draft.spec.js), implemented a
+      dedicated test: _"Simulated Mad Dash: captures at point of approach,
+      restores after reload, successfully submits, and cleans draft"_.
+    - Dynamically generates and verifies a test dasher account in the test MySQL
+      database.
+    - Simulates physical arrival at target dashpoint `GD001-AAAA`, locking live
+      coordinates via mocked geolocation (`40.712800`, `-74.006000`).
     - Attaches on-site photo assets, verifying thumbnail preview rendering.
-    - Simulates departure to a safe parking lot by reloading the browser and updating the navigation context.
-    - Validates full draft restoration upon re-opening `#report?id=GD001-AAAA`: the restore banner appears, coordinates remain intact and locked, and the binary photo queue is properly reconstructed in the DOM.
+    - Simulates departure to a safe parking lot by reloading the browser and
+      updating the navigation context.
+    - Validates full draft restoration upon re-opening `#report?id=GD001-AAAA`:
+      the restore banner appears, coordinates remain intact and locked, and the
+      binary photo queue is properly reconstructed in the DOM.
     - Inputs narrative field notes and submits the report.
-    - Validates that the report submission succeeds (HTTP 200 / success feedback), the draft is purged from `DraftStorage` in IndexedDB, and subsequently navigating back to `#report?id=GD001-AAAA` renders a clean, empty form without residual draft data or banners.
+    - Validates that the report submission succeeds (HTTP 200 / success
+      feedback), the draft is purged from `DraftStorage` in IndexedDB, and
+      subsequently navigating back to `#report?id=GD001-AAAA` renders a clean,
+      empty form without residual draft data or banners.
 - **Testing & Verification**:
-  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across YAPF, PyLint, Mypy, Pyright, Pytest, ESLint, PHP CodeSniffer, and PHPUnit.
-  - Playwright test runner (`npx playwright test e2e/report_draft.spec.js e2e/draft_storage.spec.js --reporter=list`): All 39 tests (15 unit/integration storage tests, 24 report controller & lifecycle tests) passed across Chromium, iPhone 12, and Pixel 7 viewports with 0 failures and 0 flakes.
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across
+    YAPF, PyLint, Mypy, Pyright, Pytest, ESLint, PHP CodeSniffer, and PHPUnit.
+  - Playwright test runner
+    (`npx playwright test e2e/report_draft.spec.js e2e/draft_storage.spec.js --reporter=list`):
+    All 39 tests (15 unit/integration storage tests, 24 report controller &
+    lifecycle tests) passed across Chromium, iPhone 12, and Pixel 7 viewports
+    with 0 failures and 0 flakes.
 
 ### 78. Automated Google Group Subscription & Profile Management (Phase 1)
-- **Problem**: Player enrollment in the `dashers@geodashing.org` Google Group was previously unautomated, requiring manual mailto transmission by dashers and direct manual management in Google Groups.
+
+- **Problem**: Player enrollment in the `dashers@geodashing.org` Google Group
+  was previously unautomated, requiring manual mailto transmission by dashers
+  and direct manual management in Google Groups.
 - **Architectural Implementation**:
   - **Google Workspace Directory API Integration**:
-    - Implemented [backend/services/GoogleGroupService.php](backend/services/GoogleGroupService.php) encapsulating Google Workspace Admin SDK Directory API group membership operations using Google Service Account credentials with Domain-Wide Delegation.
-    - Set the service account to impersonate `tracker@geodashing.org` (assigned the Google Workspace Groups Admin role).
-    - Designed dependency-injected constructor allowing unit tests to supply mock directory services without requiring live Google Cloud credentials.
-    - Implemented idempotent `addMember` (treating HTTP 409 conflict as success) and `removeMember` (treating HTTP 404 as success).
-    - Implemented `listMembers` with automatic `pageToken` pagination support and defensive null-safety handling.
-    - Included `APP_ENV === 'testing'` bypass preventing live external API calls during automated integration tests.
+    - Implemented
+      [backend/services/GoogleGroupService.php](../backend/services/GoogleGroupService.php)
+      encapsulating Google Workspace Admin SDK Directory API group membership
+      operations using Google Service Account credentials with Domain-Wide
+      Delegation.
+    - Set the service account to impersonate `tracker@geodashing.org` (assigned
+      the Google Workspace Groups Admin role).
+    - Designed dependency-injected constructor allowing unit tests to supply
+      mock directory services without requiring live Google Cloud credentials.
+    - Implemented idempotent `addMember` (treating HTTP 409 conflict as success)
+      and `removeMember` (treating HTTP 404 as success).
+    - Implemented `listMembers` with automatic `pageToken` pagination support
+      and defensive null-safety handling.
+    - Included `APP_ENV === 'testing'` bypass preventing live external API calls
+      during automated integration tests.
   - **Configuration Updates**:
-    - Updated [backend/config.ini.example](backend/config.ini.example) with `GOOGLE_GROUP_ADMIN_USER` and `GOOGLE_GROUP_KEY` configuration variables.
+    - Updated [backend/config.ini.example](../backend/config.ini.example) with
+      `GOOGLE_GROUP_ADMIN_USER` and `GOOGLE_GROUP_KEY` configuration variables.
   - **Unit Testing Coverage**:
-    - Implemented comprehensive unit tests in [backend/tests/GoogleGroupServiceTest.php](backend/tests/GoogleGroupServiceTest.php) covering valid/invalid emails, successful mutations, 409/404 idempotent handling, 500 error reporting, paginated member listings, and test bypass.
+    - Implemented comprehensive unit tests in
+      [backend/tests/GoogleGroupServiceTest.php](../backend/tests/GoogleGroupServiceTest.php)
+      covering valid/invalid emails, successful mutations, 409/404 idempotent
+      handling, 500 error reporting, paginated member listings, and test bypass.
 - **Testing & Verification**:
-  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across all project linters and test suites (PHP CodeSniffer, PHPUnit, ESLint, YAPF, PyLint, Mypy, Pyright, Pytest).
-  - Code reviewed and approved by the Expert Code Reviewer subagent with all polish suggestions reconciled.
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across
+    all project linters and test suites (PHP CodeSniffer, PHPUnit, ESLint, YAPF,
+    PyLint, Mypy, Pyright, Pytest).
+  - Code reviewed and approved by the Expert Code Reviewer subagent with all
+    polish suggestions reconciled.
 
 ### 79. Auto-Enrollment on Verification & Registration Default (Phase 2)
-- **Problem**: Registration required manual opt-in (checkbox unchecked by default) and account verification prompted players to manually compose and send subscription emails via a mailto button.
+
+- **Problem**: Registration required manual opt-in (checkbox unchecked by
+  default) and account verification prompted players to manually compose and
+  send subscription emails via a mailto button.
 - **Architectural Implementation**:
   - **Signup Default**:
-    - Updated [public/templates/login.html](public/templates/login.html) to make the `dashers@geodashing.org` subscription checkbox (`#signup-subscribe`) checked by default.
+    - Updated [public/templates/login.html](../public/templates/login.html) to
+      make the `dashers@geodashing.org` subscription checkbox
+      (`#signup-subscribe`) checked by default.
   - **Verification Payload & Query**:
-    - Updated `AuthService::verifyEmail()` in [backend/services/AuthService.php](backend/services/AuthService.php) to select and return `email` in the user verification payload.
-    - Updated unit test expectations and assertions in [backend/tests/AuthServiceTest.php](backend/tests/AuthServiceTest.php).
+    - Updated `AuthService::verifyEmail()` in
+      [backend/services/AuthService.php](../backend/services/AuthService.php) to
+      select and return `email` in the user verification payload.
+    - Updated unit test expectations and assertions in
+      [backend/tests/AuthServiceTest.php](../backend/tests/AuthServiceTest.php).
   - **Resilient Auto-Enrollment Hook**:
-    - Updated [public/api/verify.php](public/api/verify.php) to instantiate `GoogleGroupService` and automatically enroll verified players into `dashers@geodashing.org` if `subscribe_group` is enabled.
-    - Wrapped enrollment in a `try/catch (\Throwable $e)` block logging any Google API errors without blocking account verification or user session generation.
+    - Updated [public/api/verify.php](../public/api/verify.php) to instantiate
+      `GoogleGroupService` and automatically enroll verified players into
+      `dashers@geodashing.org` if `subscribe_group` is enabled.
+    - Wrapped enrollment in a `try/catch (\Throwable $e)` block logging any
+      Google API errors without blocking account verification or user session
+      generation.
   - **Post-Verification Confirmation UI**:
-    - Updated [public/js/controllers.js](public/js/controllers.js) to display a clean confirmation banner upon successful verification informing the player that they are enrolled on `dashers@geodashing.org`, with a direct link to their Player Profile to manage or unsubscribe anytime.
+    - Updated [public/js/controllers.js](../public/js/controllers.js) to display
+      a clean confirmation banner upon successful verification informing the
+      player that they are enrolled on `dashers@geodashing.org`, with a direct
+      link to their Player Profile to manage or unsubscribe anytime.
 - **Testing & Verification**:
-  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across all linters, typecheckers, and test suites.
-  - Code reviewed and approved unconditionally by the Expert Code Reviewer subagent.
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across
+    all linters, typecheckers, and test suites.
+  - Code reviewed and approved unconditionally by the Expert Code Reviewer
+    subagent.
 
 ### 80. Player Profile Subscription Management UI & API (Phase 3)
-- **Problem**: Players had no self-service mechanism in the application to inspect their current mailing list subscription status or toggle their subscription on and off.
+
+- **Problem**: Players had no self-service mechanism in the application to
+  inspect their current mailing list subscription status or toggle their
+  subscription on and off.
 - **Architectural Implementation**:
   - **Profile Settings Query & Privacy Guard**:
-    - Updated `ProfileService::getProfileSettings()` in [backend/services/ProfileService.php](backend/services/ProfileService.php) to select `subscribe_group` from the `users` table.
-    - Added an ownership check verifying `$_SESSION['username']` matches the requested profile's username before exposing `subscribe_group` in the returned `user` payload, preventing exposure of subscription preferences when viewing other players' public profiles.
-    - Updated [public/api/profile.php](public/api/profile.php) to require `backend/session.php` to initialize the session context.
-    - Added unit test `getProfileSettingsIncludesSubscribeGroupForSelf` and tearDown session cleanup in [backend/tests/ProfileServiceTest.php](backend/tests/ProfileServiceTest.php).
+    - Updated `ProfileService::getProfileSettings()` in
+      [backend/services/ProfileService.php](../backend/services/ProfileService.php)
+      to select `subscribe_group` from the `users` table.
+    - Added an ownership check verifying `$_SESSION['username']` matches the
+      requested profile's username before exposing `subscribe_group` in the
+      returned `user` payload, preventing exposure of subscription preferences
+      when viewing other players' public profiles.
+    - Updated [public/api/profile.php](../public/api/profile.php) to require
+      `backend/session.php` to initialize the session context.
+    - Added unit test `getProfileSettingsIncludesSubscribeGroupForSelf` and
+      tearDown session cleanup in
+      [backend/tests/ProfileServiceTest.php](../backend/tests/ProfileServiceTest.php).
   - **Subscription API Endpoint**:
-    - Implemented [public/api/subscription.php](public/api/subscription.php) accepting POST requests with a JSON body `{ "subscribe": bool }`.
-    - Enforces authentication and email verification (`empty($_SESSION['user_id']) || empty($_SESSION['is_verified'])`), and relies on `backend/session.php` automatic CSRF validation on mutating HTTP methods.
-    - Interacts with `GoogleGroupService` to add or remove the member from `dashers@geodashing.org`.
-    - Strictly commits the database update (`UPDATE users SET subscribe_group = :sub WHERE id = :id`) only after the Google Directory API call succeeds.
-    - Wrapped in resilient error handling returning appropriate HTTP status codes (400, 401, 404, 405, 502, 500).
+    - Implemented [public/api/subscription.php](../public/api/subscription.php)
+      accepting POST requests with a JSON body `{ "subscribe": bool }`.
+    - Enforces authentication and email verification
+      (`empty($_SESSION['user_id']) || empty($_SESSION['is_verified'])`), and
+      relies on `backend/session.php` automatic CSRF validation on mutating HTTP
+      methods.
+    - Interacts with `GoogleGroupService` to add or remove the member from
+      `dashers@geodashing.org`.
+    - Strictly commits the database update
+      (`UPDATE users SET subscribe_group = :sub WHERE id = :id`) only after the
+      Google Directory API call succeeds.
+    - Wrapped in resilient error handling returning appropriate HTTP status
+      codes (400, 401, 404, 405, 502, 500).
   - **Frontend API & Profile Controller**:
-    - Added `API.setSubscription(subscribe)` in [public/js/api.js](public/js/api.js) passing authenticated headers and CSRF tokens.
-    - Updated `#profile` controller in [public/js/controllers.js](public/js/controllers.js) to render a Mailing List card with a status badge (`SUBSCRIBED` / `NOT SUBSCRIBED`) and a toggle button (`#btn-toggle-subscription`) when viewing one's own profile.
-    - Wired click listener handling asynchronous subscription updates, visual loading states, and status/badge updates.
+    - Added `API.setSubscription(subscribe)` in
+      [public/js/api.js](../public/js/api.js) passing authenticated headers and
+      CSRF tokens.
+    - Updated `#profile` controller in
+      [public/js/controllers.js](../public/js/controllers.js) to render a
+      Mailing List card with a status badge (`SUBSCRIBED` / `NOT SUBSCRIBED`)
+      and a toggle button (`#btn-toggle-subscription`) when viewing one's own
+      profile.
+    - Wired click listener handling asynchronous subscription updates, visual
+      loading states, and status/badge updates.
   - **CSS Styling**:
-    - Added responsive styles in [public/css/index.css](public/css/index.css) for `.profile-subscription-card`, `.profile-subscription-header`, `.profile-subscription-badge`, `.badge-subscribed`, `.badge-unsubscribed`, and `.subscription-feedback`.
+    - Added responsive styles in [public/css/index.css](../public/css/index.css)
+      for `.profile-subscription-card`, `.profile-subscription-header`,
+      `.profile-subscription-badge`, `.badge-subscribed`, `.badge-unsubscribed`,
+      and `.subscription-feedback`.
 - **Testing & Verification**:
-  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across YAPF, PyLint, Mypy, Pyright, Pytest, ESLint, PHP CodeSniffer, and PHPUnit.
-  - Playwright layout test runner (`npx playwright test e2e/layout.spec.js --reporter=list`): 6/6 tests passed.
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across
+    YAPF, PyLint, Mypy, Pyright, Pytest, ESLint, PHP CodeSniffer, and PHPUnit.
+  - Playwright layout test runner
+    (`npx playwright test e2e/layout.spec.js --reporter=list`): 6/6 tests
+    passed.
   - Code reviewed and approved by the Expert Code Reviewer subagent.
 
 ### 81. Catch-up Mailing List Sync Utility Script (Phase 4)
-- **Problem**: Historical verified players registered before automated enrollment were not present on the `dashers@geodashing.org` Google Group mailing list, and their database `subscribe_group` status may not have reflected their current membership status.
+
+- **Problem**: Historical verified players registered before automated
+  enrollment were not present on the `dashers@geodashing.org` Google Group
+  mailing list, and their database `subscribe_group` status may not have
+  reflected their current membership status.
 - **Architectural Implementation**:
   - **CLI Synchronization Utility**:
-    - Created [backend/scripts/sync_mailing_list.php](backend/scripts/sync_mailing_list.php) supporting `--dry-run` (default preview mode), `--execute` (live mutation mode), `--all-verified` (all verified players vs opted-in only), and `-h`/`--help`.
+    - Created
+      [backend/scripts/sync_mailing_list.php](../backend/scripts/sync_mailing_list.php)
+      supporting `--dry-run` (default preview mode), `--execute` (live mutation
+      mode), `--all-verified` (all verified players vs opted-in only), and
+      `-h`/`--help`.
     - Enforced CLI-only execution guard via `php_sapi_name() === 'cli'`.
-    - Integrated with `GoogleGroupService::listMembers()` with automatic email normalization (`strtolower(trim(...))`) and pagination to fetch current group membership.
-    - Queried target players from MySQL and performed three-way set reconciliation:
+    - Integrated with `GoogleGroupService::listMembers()` with automatic email
+      normalization (`strtolower(trim(...))`) and pagination to fetch current
+      group membership.
+    - Queried target players from MySQL and performed three-way set
+      reconciliation:
       - Already enrolled players (in DB and group)
       - Pending enrollment players (in DB but missing from group)
       - External group members (in group but not in matched player list)
-    - In `--execute` mode, enrolls pending players with per-user `try/catch` isolation, updates database `subscribe_group = 1` strictly upon successful enrollment, and throttles requests by 100ms (`usleep(100000)`) to respect Google Workspace Directory API quotas.
+    - In `--execute` mode, enrolls pending players with per-user `try/catch`
+      isolation, updates database `subscribe_group = 1` strictly upon successful
+      enrollment, and throttles requests by 100ms (`usleep(100000)`) to respect
+      Google Workspace Directory API quotas.
 - **Testing & Verification**:
-  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across YAPF, PyLint, Mypy, Pyright, Pytest, ESLint, PHP CodeSniffer, and PHPUnit.
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across
+    YAPF, PyLint, Mypy, Pyright, Pytest, ESLint, PHP CodeSniffer, and PHPUnit.
   - CLI script verified via `php backend/scripts/sync_mailing_list.php --help`.
-  - Code reviewed and approved unconditionally by the Expert Code Reviewer subagent.
+  - Code reviewed and approved unconditionally by the Expert Code Reviewer
+    subagent.
 
 ### 82. PHPUnit Test Double Root-Cause Refactoring (Stubs vs. Mocks)
-- **Problem**: Fourteen PHPUnit test suites in `backend/tests/` previously used class-level `#[AllowMockObjectsWithoutExpectations]` attributes to suppress PHPUnit notices triggered when test doubles created via `createMock()` or `getMockBuilder()->getMock()` were used strictly for return-value stubbing without `.expects()` call verification.
+
+- **Problem**: Fourteen PHPUnit test suites in `backend/tests/` previously used
+  class-level `#[AllowMockObjectsWithoutExpectations]` attributes to suppress
+  PHPUnit notices triggered when test doubles created via `createMock()` or
+  `getMockBuilder()->getMock()` were used strictly for return-value stubbing
+  without `.expects()` call verification.
 - **Architectural Implementation**:
-  - Removed all `#[AllowMockObjectsWithoutExpectations]` attributes and imports across all 14 test suites ([backend/tests/AuthServiceTest.php](backend/tests/AuthServiceTest.php), [backend/tests/DashpointServiceTest.php](backend/tests/DashpointServiceTest.php), [backend/tests/EditServiceTest.php](backend/tests/EditServiceTest.php), [backend/tests/GameServiceTest.php](backend/tests/GameServiceTest.php), [backend/tests/GeoContextServiceTest.php](backend/tests/GeoContextServiceTest.php), [backend/tests/LeaderboardServiceTest.php](backend/tests/LeaderboardServiceTest.php), [backend/tests/MediaServiceTest.php](backend/tests/MediaServiceTest.php), [backend/tests/ProfileServiceTest.php](backend/tests/ProfileServiceTest.php), [backend/tests/ReportServiceTest.php](backend/tests/ReportServiceTest.php), [backend/tests/RerollServiceTest.php](backend/tests/RerollServiceTest.php), [backend/tests/SearchServiceTest.php](backend/tests/SearchServiceTest.php), [backend/tests/SitemapServiceTest.php](backend/tests/SitemapServiceTest.php), [backend/tests/SummaryServiceTest.php](backend/tests/SummaryServiceTest.php), and [backend/tests/TagServiceTest.php](backend/tests/TagServiceTest.php)).
-  - Replaced unasserted `createMock()` and `getMockBuilder()->getMock()` calls with `createStub()` and `getStubBuilder()->getStub()`, reserving `createMock()` strictly for test doubles with explicit `.expects(...)` invocation assertions.
-  - Added explicit `$this->never()` expectations on guard-clause tests where appropriate (such as early validation failures in `AuthServiceTest`, `EditServiceTest`, `MediaServiceTest`, and `ReportServiceTest`).
+  - Removed all `#[AllowMockObjectsWithoutExpectations]` attributes and imports
+    across all 14 test suites
+    ([backend/tests/AuthServiceTest.php](../backend/tests/AuthServiceTest.php),
+    [backend/tests/DashpointServiceTest.php](../backend/tests/DashpointServiceTest.php),
+    [backend/tests/EditServiceTest.php](../backend/tests/EditServiceTest.php),
+    [backend/tests/GameServiceTest.php](../backend/tests/GameServiceTest.php),
+    [backend/tests/GeoContextServiceTest.php](../backend/tests/GeoContextServiceTest.php),
+    [backend/tests/LeaderboardServiceTest.php](../backend/tests/LeaderboardServiceTest.php),
+    [backend/tests/MediaServiceTest.php](../backend/tests/MediaServiceTest.php),
+    [backend/tests/ProfileServiceTest.php](../backend/tests/ProfileServiceTest.php),
+    [backend/tests/ReportServiceTest.php](../backend/tests/ReportServiceTest.php),
+    [backend/tests/RerollServiceTest.php](../backend/tests/RerollServiceTest.php),
+    [backend/tests/SearchServiceTest.php](../backend/tests/SearchServiceTest.php),
+    [backend/tests/SitemapServiceTest.php](../backend/tests/SitemapServiceTest.php),
+    [backend/tests/SummaryServiceTest.php](../backend/tests/SummaryServiceTest.php),
+    and
+    [backend/tests/TagServiceTest.php](../backend/tests/TagServiceTest.php)).
+  - Replaced unasserted `createMock()` and `getMockBuilder()->getMock()` calls
+    with `createStub()` and `getStubBuilder()->getStub()`, reserving
+    `createMock()` strictly for test doubles with explicit `.expects(...)`
+    invocation assertions.
+  - Added explicit `$this->never()` expectations on guard-clause tests where
+    appropriate (such as early validation failures in `AuthServiceTest`,
+    `EditServiceTest`, `MediaServiceTest`, and `ReportServiceTest`).
 - **Testing & Verification**:
-  - Verified zero PHPUnit notices across all 107 tests (`./vendor/bin/phpunit --display-notices --display-phpunit-notices --fail-on-notice backend/tests/`).
-  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across all configured linters, type checkers, and test suites.
+  - Verified zero PHPUnit notices across all 107 tests (`./vendor/bin/phpunit`
+    with `--display-notices --display-phpunit-notices --fail-on-notice`).
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across
+    all configured linters, type checkers, and test suites.
 
 ### 83. PHP 8.5 Runtime, CI, and Dependency Upgrade
-- **Problem**: Following the production server upgrade to Ubuntu 26.04.1 LTS (which upgraded the PHP runtime to `8.5.4`), CI workflows, the E2E Apache container, project documentation, and Composer dependencies remained pinned to PHP `8.3` / PHPUnit `12.5` / Symfony Mime `7.4`, and several PHP 8.5 deprecated function calls (`imagedestroy()`, `curl_close()`, `ReflectionMethod::setAccessible()`, `ReflectionProperty::setAccessible()`) triggered runtime deprecation notices.
+
+- **Problem**: Following the production server upgrade to Ubuntu 26.04.1 LTS
+  (which upgraded the PHP runtime to `8.5.4`), CI workflows, the E2E Apache
+  container, project documentation, and Composer dependencies remained pinned to
+  PHP `8.3` / PHPUnit `12.5` / Symfony Mime `7.4`, and several PHP 8.5
+  deprecated function calls (`imagedestroy()`, `curl_close()`,
+  `ReflectionMethod::setAccessible()`, `ReflectionProperty::setAccessible()`)
+  triggered runtime deprecation notices.
 - **Architectural Implementation**:
   - **PHP 8.5 Deprecation Remediation**:
-    - Removed deprecated `imagedestroy()` calls in [backend/services/MediaService.php](backend/services/MediaService.php) and [backend/tests/MediaServiceTest.php](backend/tests/MediaServiceTest.php) (`GdImage` objects are automatically freed when going out of scope since PHP 8.0).
-    - Removed deprecated `curl_close()` call in [backend/services/GeoContextService.php](backend/services/GeoContextService.php) (`CurlHandle` objects are automatically closed when going out of scope since PHP 8.0).
-    - Removed deprecated `ReflectionMethod::setAccessible()` and `ReflectionProperty::setAccessible()` calls in [backend/scripts/catchup_emails.php](backend/scripts/catchup_emails.php), [backend/scripts/recreate_thumbnails.php](backend/scripts/recreate_thumbnails.php), and [backend/tests/GeoContextServiceTest.php](backend/tests/GeoContextServiceTest.php) (no-op since PHP 8.1).
+    - Removed deprecated `imagedestroy()` calls in
+      [backend/services/MediaService.php](../backend/services/MediaService.php)
+      and
+      [backend/tests/MediaServiceTest.php](../backend/tests/MediaServiceTest.php)
+      (`GdImage` objects are automatically freed when going out of scope since
+      PHP 8.0).
+    - Removed deprecated `curl_close()` call in
+      [backend/services/GeoContextService.php](../backend/services/GeoContextService.php)
+      (`CurlHandle` objects are automatically closed when going out of scope
+      since PHP 8.0).
+    - Removed deprecated `ReflectionMethod::setAccessible()` and
+      `ReflectionProperty::setAccessible()` calls in
+      [backend/scripts/catchup_emails.php](../backend/scripts/catchup_emails.php),
+      [backend/scripts/recreate_thumbnails.php](../backend/scripts/recreate_thumbnails.php),
+      and
+      [backend/tests/GeoContextServiceTest.php](../backend/tests/GeoContextServiceTest.php)
+      (no-op since PHP 8.1).
   - **CI & E2E Container Upgrade**:
-    - Upgraded `shivammathur/setup-php@v2` from `php-version: '8.3'` to `php-version: '8.5'` in [.github/workflows/ci-verification.yml](.github/workflows/ci-verification.yml) and [.github/workflows/ci-e2e.yml](.github/workflows/ci-e2e.yml).
-    - Upgraded E2E container base image from `FROM php:8.3-apache` to `FROM php:8.5-apache` in [e2e/Dockerfile](e2e/Dockerfile) and updated the comment in [e2e/docker-compose.yml](e2e/docker-compose.yml).
+    - Upgraded `shivammathur/setup-php@v2` from `php-version: '8.3'` to
+      `php-version: '8.5'` in
+      [.github/workflows/ci-verification.yml](../.github/workflows/ci-verification.yml)
+      and [.github/workflows/ci-e2e.yml](../.github/workflows/ci-e2e.yml).
+    - Upgraded E2E container base image from `FROM php:8.3-apache` to
+      `FROM php:8.5-apache` in [e2e/Dockerfile](../e2e/Dockerfile) and updated
+      the comment in [e2e/docker-compose.yml](../e2e/docker-compose.yml).
   - **Composer & PHPUnit Upgrade**:
-    - Updated [composer.json](composer.json) and [composer.lock](composer.lock) to require `"php": "^8.5"` and upgraded `"phpunit/phpunit": "^13.4"`, `"symfony/mime": "^8.1"`, `"google/cloud-storage": "^2.6"`, and `"google/apiclient": "^2.20"`.
-    - Hardened `lint:syntax` in [composer.json](composer.json) to check `backend/`, `public/api/`, and `e2e/` without masking non-zero exit codes.
-    - Updated [phpunit.xml](phpunit.xml) schema to `13.4` and enabled `failOnDeprecation="true"` and `failOnNotice="true"`.
+    - Updated [composer.json](../composer.json) and
+      [composer.lock](../composer.lock) to require `"php": "^8.5"` and upgraded
+      `"phpunit/phpunit": "^13.4"`, `"symfony/mime": "^8.1"`,
+      `"google/cloud-storage": "^2.6"`, and `"google/apiclient": "^2.20"`.
+    - Hardened `lint:syntax` in [composer.json](../composer.json) to check
+      `backend/`, `public/api/`, and `e2e/` without masking non-zero exit codes.
+    - Updated [phpunit.xml](../phpunit.xml) schema to `13.4` and enabled
+      `failOnDeprecation="true"` and `failOnNotice="true"`.
   - **Documentation Synchronization**:
-    - Updated target PHP version references to `8.5` in [docs/admin_guide.md](docs/admin_guide.md) and [docs/project_context.md](docs/project_context.md).
+    - Updated target PHP version references to `8.5` in
+      [docs/admin_guide.md](admin_guide.md) and
+      [docs/project_context.md](project_context.md).
 - **Testing & Verification**:
-  - Verified PHPUnit 13.4 execution with zero deprecations and zero notices across all 107 tests (`composer run test`).
-  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across all configured linters, type checkers, and test suites.
+  - Verified PHPUnit 13.4 execution with zero deprecations and zero notices
+    across all 107 tests (`composer run test`).
+  - Pre-commit runner (`uv run pre-commit run --all-files`): 100% passed across
+    all configured linters, type checkers, and test suites.
 
 ### 84. Gemini 4 Argon Evaluation and Adoption
-- Evaluated Google GenAI's `gemini-4-argon` model on the end-to-end benchmark evaluation suite ([test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py)) across 4 historical game datasets ([summary_examples](../data/summary_examples/)).
-- Confirmed 100% test pass rate with perfect 5/5 scores across all evaluation metrics (Tone, Accuracy, and Narrative Quality) as evaluated by LLM-as-a-Judge (`gemini-3.8-flash`), and full compliance with deterministic HTML rules (semantic tags, self-closing void tags, absolute SPA links, and thumbnail-wrapped photos).
-- Upgraded the default AI summarizer model reference to `gemini-4-argon` across configurations ([config.ini.example](../backend/config.ini.example)), unit test configurations ([test_generate_summary.py](../backend/tests/test_generate_summary.py)), fallback judge settings in the evaluation suite ([test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py)), and administrative documentation ([admin_guide.md](admin_guide.md), [gemini_model_evaluation.md](gemini_model_evaluation.md)).
+
+- Evaluated Google GenAI's `gemini-4-argon` model on the end-to-end benchmark
+  evaluation suite
+  ([test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py))
+  across 4 historical game datasets
+  ([summary_examples](../data/summary_examples/)).
+- Confirmed 100% test pass rate with perfect 5/5 scores across all evaluation
+  metrics (Tone, Accuracy, and Narrative Quality) as evaluated by LLM-as-a-Judge
+  (`gemini-3.8-flash`), and full compliance with deterministic HTML rules
+  (semantic tags, self-closing void tags, absolute SPA links, and
+  thumbnail-wrapped photos).
+- Upgraded the default AI summarizer model reference to `gemini-4-argon` across
+  configurations ([config.ini.example](../backend/config.ini.example)), unit
+  test configurations
+  ([test_generate_summary.py](../backend/tests/test_generate_summary.py)),
+  fallback judge settings in the evaluation suite
+  ([test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py)),
+  and administrative documentation ([admin_guide.md](admin_guide.md),
+  [gemini_model_evaluation.md](gemini_model_evaluation.md)).
 
 ### 85. Gemini 3+ Codebase Simplification and Consolidation
-- Simplified Gemini Interactions API configuration and invocation logic under the baseline guarantee that only Gemini 3+ and Gemini 4+ models are used:
-  - Updated `configure_environment()` in [generate_summary.py](../backend/scripts/generate_summary.py) to default `thinking_level` to `"medium"` (normalized to lowercase) and load `eval_model` (defaulting to `"gemini-4-argon"`), eliminating redundant `config.ini` parsing in [test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py).
-  - Removed the `GenerationConfigDict` wrapper and conditional `thinking_level` branching across `_generate_summary()` in [generate_summary.py](../backend/scripts/generate_summary.py) and `evaluate_summary_quality()` in [test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py), passing `generation_config={"thinking_level": ...}` and single-modality `response_format` dicts directly.
-  - Extracted a shared `cleanup_upload_context()` helper in [generate_summary.py](../backend/scripts/generate_summary.py) and reused it in [test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py), removing the duplicate file/upload teardown code and eliminating the `# pylint: disable=duplicate-code` suppression.
-  - Consolidated unit test cases in [test_generate_summary.py](../backend/tests/test_generate_summary.py).
 
+- Simplified Gemini Interactions API configuration and invocation logic under
+  the baseline guarantee that only Gemini 3+ and Gemini 4+ models are used:
+  - Updated `configure_environment()` in
+    [generate_summary.py](../backend/scripts/generate_summary.py) to default
+    `thinking_level` to `"medium"` (normalized to lowercase) and load
+    `eval_model` (defaulting to `"gemini-4-argon"`), eliminating redundant
+    `config.ini` parsing in
+    [test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py).
+  - Removed the `GenerationConfigDict` wrapper and conditional `thinking_level`
+    branching across `_generate_summary()` in
+    [generate_summary.py](../backend/scripts/generate_summary.py) and
+    `evaluate_summary_quality()` in
+    [test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py),
+    passing `generation_config={"thinking_level": ...}` and single-modality
+    `response_format` dicts directly.
+  - Extracted a shared `cleanup_upload_context()` helper in
+    [generate_summary.py](../backend/scripts/generate_summary.py) and reused it
+    in
+    [test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py),
+    removing the duplicate file/upload teardown code and eliminating the
+    `# pylint: disable=duplicate-code` suppression.
+  - Consolidated unit test cases in
+    [test_generate_summary.py](../backend/tests/test_generate_summary.py).
+
+### 86. Codebase-Wide Style, Type Safety, and Standards Remediation
+
+- Conducted a comprehensive four-phase audit and remediation across Python, PHP,
+  JavaScript/HTML/CSS, Markdown, pre-commit hooks, and GitHub Actions CI
+  workflows:
+  - **Phase 1 (Python & Gemini API Standards)**:
+    - Promoted tested internal functions in
+      [game_utils.py](../backend/scripts/game_utils.py) and
+      [generate_summary.py](../backend/scripts/generate_summary.py) to public
+      functions and eliminated all inline `# pylint: disable` suppressions
+      across `backend/`.
+    - Enforced strict type annotations on all functions and empty collection
+      variables, added Google-style docstrings across all modules and test
+      methods, and added `autospec=True` to standard `unittest.mock.patch` calls
+      in [test_game_utils.py](../backend/tests/test_game_utils.py).
+    - Wrapped `EvaluationResult.model_validate_json()` in
+      [test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py)
+      with `try...except (pydantic.ValidationError, json.JSONDecodeError)`,
+      added `GEMINI_EVAL_MODEL` to
+      [config.ini.example](../backend/config.ini.example), and hardened
+      database/file I/O error handling across `backend/scripts/*.py`.
+  - **Phase 2 (PHP 8.5, SQL/Spatial, & GCS Fake Standards)**:
+    - Moved [MailerTraitTest.php](../backend/tests/MailerTraitTest.php) to
+      `backend/tests/` (`namespace App\Tests;`) and moved `"App\\Tests\\"` to
+      `autoload-dev` in [composer.json](../composer.json).
+    - Added `declare(strict_types=1);` to
+      [catchup_emails.php](../backend/scripts/catchup_emails.php) and
+      [router.php](../e2e/router.php), removed `warning-severity=0` from
+      [phpcs.xml](../phpcs.xml), expanded `composer run lint` to cover
+      `backend/ public/api/ e2e/router.php`, and added missing native types,
+      `#[\Override]` attributes, and PHPDoc blocks across all services and
+      tests.
+    - Replaced SQL variable interpolation with bound parameters in
+      [ReportService.php](../backend/services/ReportService.php) and
+      [GeoContextService.php](../backend/services/GeoContextService.php),
+      updated [SearchService.php](../backend/services/SearchService.php) and
+      [SearchServiceTest.php](../backend/tests/SearchServiceTest.php) to
+      construct `POLYGON` WKT in `Lng Lat` order with
+      `ST_GeomFromText(:poly, 4326, 'axis-order=long-lat')`, and eliminated all
+      26 `@` error-suppression operators using explicit file checks and scoped
+      warning handlers.
+  - **Phase 3 (JavaScript, HTML/CSS Frontend, & E2E Standards)**:
+    - Added `eslint-plugin-jsdoc`, `prettier`, and `markdownlint-cli2` to
+      [package.json](../package.json), updated
+      [eslint.config.mjs](../eslint.config.mjs) with Google JS semantic and
+      JSDoc rules, and formatted all JS/E2E files with Prettier (2-space indent,
+      80-character line limit, single quotes).
+    - Added `@fileoverview` and JSDoc blocks across `public/js/*.js` and
+      `e2e/*.js`, refactored all `.style.*` mutations and `.onclick` handlers in
+      [app.js](../public/js/app.js), [map.js](../public/js/map.js), and
+      [controllers.js](../public/js/controllers.js) to semantic CSS classes in
+      [index.css](../public/css/index.css) and `addEventListener`, and updated
+      summary example images in
+      [game_1_output.html](../data/summary_examples/game_1_output.html) and
+      [game_3_output.html](../data/summary_examples/game_3_output.html) to
+      reference `_thumb.jpg` thumbnails.
+  - **Phase 4 (Markdown, Pre-Commit Hooks, & CI Workflows)**:
+    - Tracked [.prettierrc](../.prettierrc) and
+      [.markdownlint.json](../.markdownlint.json) directly in version control,
+      normalized all relative links and portable paths across documentation,
+      formatted all Markdown files to 80 characters with Prettier, and
+      synchronized [.pre-commit-config.yaml](../.pre-commit-config.yaml) and
+      [.github/workflows/ci-e2e.yml](../.github/workflows/ci-e2e.yml).

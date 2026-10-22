@@ -7,12 +7,13 @@ on:
   push:
     branches: [ "master", "main" ]
     paths:
-      - 'js/**'
-      - 'css/**'
+      - 'public/js/**'
+      - 'public/css/**'
+      - 'public/templates/**'
+      - 'public/index.html'
+      - 'public/api/**'
       - 'e2e/**'
       - 'backend/**/*.php'
-      - 'templates/**'
-      - 'index.html'
       - 'package.json'
       - 'playwright.config.js'
       - 'schema.sql'
@@ -20,12 +21,13 @@ on:
   pull_request:
     branches: [ "master", "main" ]
     paths:
-      - 'js/**'
-      - 'css/**'
+      - 'public/js/**'
+      - 'public/css/**'
+      - 'public/templates/**'
+      - 'public/index.html'
+      - 'public/api/**'
       - 'e2e/**'
       - 'backend/**/*.php'
-      - 'templates/**'
-      - 'index.html'
       - 'package.json'
       - 'playwright.config.js'
       - 'schema.sql'
@@ -63,7 +65,7 @@ jobs:
           cat << 'EOF' > backend/config.ini
           DB_HOST = 127.0.0.1
           DB_PORT = 3306
-          DB_NAME = geodashing
+          DB_NAME = geodashing_test
           DB_USER = root
           DB_PASS = default_root_pass
 

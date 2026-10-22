@@ -1,12 +1,16 @@
 # Geodashing Data Directory
 
-This directory stores necessary datasets for running Geodashing features, such as geographical contextualization algorithms.
+This directory stores necessary datasets for running Geodashing features, such
+as geographical contextualization algorithms.
 
 ## Generating GeoNames Datasets
 
-The geographical contextualization feature requires local demographic data to function offline and avoid third-party API costs when finding the nearest major population center.
+The geographical contextualization feature requires local demographic data to
+function offline and avoid third-party API costs when finding the nearest major
+population center.
 
-You can download the latest required GeoNames files directly into this directory by running the following commands:
+You can download the latest required GeoNames files directly into this directory
+by running the following commands:
 
 ```bash
 # 1. Download and extract the major cities dataset (cities with population > 15,000)
@@ -21,15 +25,17 @@ curl -O http://download.geonames.org/export/dump/admin1CodesASCII.txt
 curl -O http://download.geonames.org/export/dump/countryInfo.txt
 ```
 
-After downloading these files, you can populate the local database by running the seed script from the root directory:
+After downloading these files, you can populate the local database by running
+the seed script from the root directory:
 
 ```bash
-python3 backend/scripts/seed_major_cities.py
+uv run python -m backend.scripts.seed_major_cities
 ```
 
 ## Game Generation Datasets
 
-The core geographic generation logic requires natural earth shapefiles and a bad words list. You can download them using the following commands:
+The core geographic generation logic requires natural earth shapefiles and a bad
+words list. You can download them using the following commands:
 
 ```bash
 # Natural Earth datasets for geographical boundaries

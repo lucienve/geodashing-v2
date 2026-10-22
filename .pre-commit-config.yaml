@@ -41,18 +41,32 @@ repos:
         entry: npm run lint
         language: system
         pass_filenames: false
-        files: ^(public/js/.*\.js|e2e/.*\.js)$
+        files: ^(public/js/.*\.js|e2e/.*\.js|.*\.m?js)$
+
+      - id: prettier
+        name: Prettier
+        entry: npm run format:check
+        language: system
+        pass_filenames: false
+        files: \.(md|m?js)$
+
+      - id: markdownlint
+        name: Markdownlint
+        entry: npm run lint:md
+        language: system
+        pass_filenames: false
+        files: \.md$
 
       - id: phpcs
         name: PHP CodeSniffer
         entry: composer run lint
         language: system
         pass_filenames: false
-        files: ^backend/.*\.php$
+        files: ^(backend|public/api|e2e)/.*\.php$
 
       - id: phpunit
         name: PHPUnit
         entry: composer run test
         language: system
         pass_filenames: false
-        files: ^backend/.*\.php$
+        files: ^(backend|public/api|e2e)/.*\.php$
