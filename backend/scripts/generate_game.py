@@ -2,9 +2,9 @@
 
 import argparse
 import calendar
+import datetime
 import os
 import sys
-import datetime
 import typing
 
 import geopandas as gpd
@@ -23,14 +23,19 @@ def load_blocklist(bad_words_path: str) -> set[str]:
     if not os.path.exists(bad_words_path):
         raise FileNotFoundError(
             f"Profanity blocklist not found at {bad_words_path}")
-    with open(bad_words_path, 'r', encoding='utf-8') as f:
-        return set(line.strip().upper() for line in f
-                   if len(line.strip()) == 4)
+    try:
+        with open(bad_words_path, 'r', encoding='utf-8') as f:
+            return set(line.strip().upper() for line in f
+                       if len(line.strip()) == 4)
+    except OSError as e:
+        raise RuntimeError(
+            f"Failed to read profanity blocklist at {bad_words_path}: {e}"
+        ) from e
 
 
 def int_to_letters(index: int) -> str:
     """Converts an integer to a 4-letter alphabetic sequence string."""
-    result = []
+    result: list[str] = []
     for _ in range(4):
         result.append(chr(65 + (index % 26)))
         index //= 26
@@ -89,12 +94,9 @@ def initialize_new_game(cursor: mysql.connector.cursor.MySQLCursor,
         """
 
     cursor.execute(insert_game_sql, (game_title, start_time, end_time))
-    assert cursor.lastrowid is not None
+    if cursor.lastrowid is None:
+        raise RuntimeError("Failed to retrieve lastrowid for new game insert.")
     return cursor.lastrowid
-
-
-# Alias for backward compatibility
-_initialize_new_game = initialize_new_game
 
 
 def bulk_insert_dashpoints(cursor: mysql.connector.cursor.MySQLCursor,
@@ -111,7 +113,7 @@ def bulk_insert_dashpoints(cursor: mysql.connector.cursor.MySQLCursor,
 
     batch_size = 5000
     for i in range(0, len(points), batch_size):
-        batch_data = []
+        batch_data: list[tuple[str, int, str]] = []
         for point in points[i:i + batch_size]:
             seq_str, current_seq_index = generate_valid_sequence_id(
                 current_seq_index, blocklist)
@@ -123,25 +125,21 @@ def bulk_insert_dashpoints(cursor: mysql.connector.cursor.MySQLCursor,
         cursor.executemany(insert_dp_sql, batch_data)
 
 
-# Alias for backward compatibility
-_bulk_insert_dashpoints = bulk_insert_dashpoints
-
-
 def seed_database(points: list[shapely.geometry.Point], config_path: str,
                   game_title: str, bad_words_path: str,
                   **kwargs: typing.Any) -> None:
     """Seeds the newly generated Dashpoints into tracking tables along with a new active Game state.
 
     Args:
-        points (list[shapely.geometry.Point]): Mathematically verified Point geometries to insert.
+        points (list[shapely.geometry.Point]): Validated Point geometries to insert.
         config_path (str): The path to the PHP backend config.ini.
         game_title (str): Brief descriptive title of the game.
         bad_words_path (str): Path to the profanity filter blocklist.
         **kwargs: Optional overrides including 'year' (int), 'month' (int),
                   and 'is_preview' (bool) for generating inactive games.
-        
+
     Raises:
-        Exception: General sql error handling wrapper for safe failure.
+        RuntimeError: If database initialization or seeding fails.
     """
     print("\nConnecting to the database to seed points...")
     try:
@@ -156,13 +154,13 @@ def seed_database(points: list[shapely.geometry.Point], config_path: str,
             is_preview_val = bool(
                 is_preview) if is_preview is not None else False
 
-            game_id = _initialize_new_game(cursor, game_title, year_val,
-                                           month_val, is_preview_val)
+            game_id = initialize_new_game(cursor, game_title, year_val,
+                                          month_val, is_preview_val)
 
             print(
                 f"Bulk inserting {len(points)} Dashpoints for Game ID format GD{game_id:03d}..."
             )
-            _bulk_insert_dashpoints(cursor, points, game_id, bad_words_path)
+            bulk_insert_dashpoints(cursor, points, game_id, bad_words_path)
 
             conn.commit()
             print("Database seeding completed successfully!")
@@ -201,7 +199,7 @@ def subdivide_geometry(
     y_coords = np.arange(miny, maxy + max_size, max_size)
 
     # Flatten the grid creation to minimize nested block depth
-    grid_boxes = []
+    grid_boxes: list[shapely.geometry.Polygon] = []
     for i in range(len(x_coords) - 1):
         for j in range(len(y_coords) - 1):
             grid_boxes.append(
@@ -245,6 +243,7 @@ class SpatialFilter:
                  tree_lakes: shapely.strtree.STRtree,
                  land_sub: list[shapely.geometry.base.BaseGeometry],
                  lakes_sub: list[shapely.geometry.base.BaseGeometry]) -> None:
+        """Initializes spatial trees and subdivided geometry lists."""
         self.tree_land = tree_land
         self.tree_lakes = tree_lakes
         self.land_sub = land_sub

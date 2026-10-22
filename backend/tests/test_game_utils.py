@@ -1,5 +1,4 @@
 """Unit tests for game_utils.py administrative and validation scripts."""
-# pylint: disable=protected-access
 
 import argparse
 import datetime
@@ -19,6 +18,7 @@ class TestHTMLFragmentValidator(unittest.TestCase):
     """Test case verifying HTML fragment whitelisting, stack-nesting, and format checks."""
 
     def setUp(self) -> None:
+        """Initializes a fresh HTMLFragmentValidator before each test."""
         self.validator = backend.scripts.game_utils.HTMLFragmentValidator()
 
     def test_valid_html_fragment(self) -> None:
@@ -168,8 +168,7 @@ class TestUploadSummaryCLI(unittest.TestCase):
                          autospec=True)
     def test_non_existent_game_id_aborts(
             self, mock_path_exists: unittest.mock.MagicMock) -> None:
-        """Uploading to a non-existent game ID must raise a SystemExit
-        immediately without checking files."""
+        """Uploading to a non-existent game ID must raise SystemExit immediately."""
         mock_path_exists.return_value = True
         mock_cursor = unittest.mock.MagicMock(
             spec=mysql.connector.cursor.MySQLCursor)
@@ -192,8 +191,7 @@ class TestUploadSummaryCLI(unittest.TestCase):
     def test_invalid_summary_fails_upload(
             self, mock_file_open: unittest.mock.MagicMock,
             mock_path_exists: unittest.mock.MagicMock) -> None:
-        """Invalid summaries containing document wrapper tags must trigger
-        SystemExit without DB changes."""
+        """Invalid summaries containing document wrapper tags must trigger SystemExit."""
         mock_path_exists.return_value = True
         mock_cursor = unittest.mock.MagicMock(
             spec=mysql.connector.cursor.MySQLCursor)
@@ -215,6 +213,7 @@ class TestEmailSummaryCLI(unittest.TestCase):
     """Test cases validating the email_summary configurations and API."""
 
     def setUp(self) -> None:
+        """Initializes mock database cursor and connection before each test."""
         self.mock_cursor = unittest.mock.MagicMock(
             spec=mysql.connector.cursor.MySQLCursor)
         self.mock_conn = unittest.mock.MagicMock(
@@ -250,7 +249,7 @@ class TestEmailSummaryCLI(unittest.TestCase):
                          autospec=True)
     def test_testing_env_bypass(
             self, mock_path_exists: unittest.mock.MagicMock) -> None:
-        """If APP_ENV is 'testing', physical email sending must be bypassed and exit cleanly."""
+        """If APP_ENV is 'testing', email sending must be bypassed and exit cleanly."""
         mock_path_exists.return_value = True
         self.mock_cursor.fetchone.return_value = ("Game 12",
                                                   "<p>Summary html</p>",
@@ -331,6 +330,7 @@ class TestRolloverCLI(unittest.TestCase):
     """Test cases validating the automated monthly rollover functions and CLI workflow."""
 
     def setUp(self) -> None:
+        """Sets up mock database cursor and connection for rollover tests."""
         self.mock_cursor = unittest.mock.MagicMock(
             spec=mysql.connector.cursor.MySQLCursor)
         self.mock_conn = unittest.mock.MagicMock(
@@ -339,7 +339,8 @@ class TestRolloverCLI(unittest.TestCase):
     def test_load_game_config_defaults(self) -> None:
         """Loading config from non-existent path should return default configurations."""
         with unittest.mock.patch("backend.scripts.game_utils.os.path.exists",
-                                 return_value=False):
+                                 return_value=False,
+                                 autospec=True):
             config = backend.scripts.game_utils.load_game_config(
                 "nonexistent.ini")
             self.assertEqual(config['default_dashpoint_count'], 35000)
@@ -352,7 +353,9 @@ class TestRolloverCLI(unittest.TestCase):
                        "DEFAULT_DASHPOINT_COUNT = 40000\n"
                        "TIMEZONE = America/Chicago\n"
                        "SEND_TURNOVER_ANNOUNCEMENT = false\n")
-        with unittest.mock.patch("backend.scripts.game_utils.os.path.exists", return_value=True), \
+        with unittest.mock.patch("backend.scripts.game_utils.os.path.exists",
+                                 return_value=True,
+                                 autospec=True), \
              unittest.mock.patch("builtins.open", unittest.mock.mock_open(read_data=config_text)):
             config = backend.scripts.game_utils.load_game_config("dummy.ini")
             self.assertEqual(config['default_dashpoint_count'], 40000)
@@ -367,7 +370,9 @@ class TestRolloverCLI(unittest.TestCase):
             "2026-08":
             "Briars, Bogs, and Other Minor Inconveniences"
         })
-        with unittest.mock.patch("backend.scripts.game_utils.os.path.exists", return_value=True), \
+        with unittest.mock.patch("backend.scripts.game_utils.os.path.exists",
+                                 return_value=True,
+                                 autospec=True), \
              unittest.mock.patch("builtins.open", unittest.mock.mock_open(read_data=titles_data)):
             title = backend.scripts.game_utils.get_game_title(
                 2026, 8, "data/game_titles.json")
@@ -377,7 +382,8 @@ class TestRolloverCLI(unittest.TestCase):
     def test_get_game_title_fallback(self) -> None:
         """Missing title in json or missing file should fall back to standard template."""
         with unittest.mock.patch("backend.scripts.game_utils.os.path.exists",
-                                 return_value=False):
+                                 return_value=False,
+                                 autospec=True):
             title = backend.scripts.game_utils.get_game_title(
                 2026, 9, "data/game_titles.json")
             self.assertEqual(title, "September 2026 Dashing Classic")
@@ -416,10 +422,10 @@ class TestRolloverCLI(unittest.TestCase):
             "<strong>September 2026</strong>", body)
 
     def test_activate_current_month_missing_fails_fast(self) -> None:
-        """If no game exists for current month, _activate_current_month_game raises RuntimeError."""
+        """If no game exists for current month, activate_current_month_game raises RuntimeError."""
         self.mock_cursor.fetchall.return_value = []
         with self.assertRaises(RuntimeError) as ctx:
-            backend.scripts.game_utils._activate_current_month_game(
+            backend.scripts.game_utils.activate_current_month_game(
                 self.mock_cursor, self.mock_conn, (2026, 8), dry_run=False)
         self.assertIn("No preview game exists for 2026-08", str(ctx.exception))
 
@@ -430,7 +436,7 @@ class TestRolloverCLI(unittest.TestCase):
             (15, "Game B", False, None, None)
         ]
         with self.assertRaises(RuntimeError) as ctx:
-            backend.scripts.game_utils._activate_current_month_game(
+            backend.scripts.game_utils.activate_current_month_game(
                 self.mock_cursor, self.mock_conn, (2026, 8), dry_run=False)
         self.assertIn("Multiple conflicting games found", str(ctx.exception))
 
@@ -438,7 +444,7 @@ class TestRolloverCLI(unittest.TestCase):
         """Activating an existing preview game updates DB state and commits."""
         self.mock_cursor.fetchall.return_value = [(14, "August 2026", False,
                                                    None, None)]
-        active_id, active_title = backend.scripts.game_utils._activate_current_month_game(
+        active_id, active_title = backend.scripts.game_utils.activate_current_month_game(
             self.mock_cursor, self.mock_conn, (2026, 8), dry_run=False)
         self.assertEqual(active_id, 14)
         self.assertEqual(active_title, "August 2026")
@@ -452,16 +458,18 @@ class TestRolloverCLI(unittest.TestCase):
         """If next preview game is already in DB, skip point generation."""
         self.mock_cursor.fetchall.return_value = [(16, "September 2026", False,
                                                    None, None)]
-        preview_id, preview_title = backend.scripts.game_utils._generate_next_preview_game(
+        preview_id, preview_title = backend.scripts.game_utils.generate_next_preview_game(
             self.mock_cursor, self.mock_conn, (2026, 9), 35000, dry_run=False)
         self.assertEqual(preview_id, 16)
         self.assertEqual(preview_title, "September 2026")
 
     @unittest.mock.patch(
-        "backend.scripts.generate_game.generate_valid_dashpoints")
-    @unittest.mock.patch("backend.scripts.generate_game.initialize_new_game")
+        "backend.scripts.generate_game.generate_valid_dashpoints",
+        autospec=True)
+    @unittest.mock.patch("backend.scripts.generate_game.initialize_new_game",
+                         autospec=True)
     @unittest.mock.patch(
-        "backend.scripts.generate_game.bulk_insert_dashpoints")
+        "backend.scripts.generate_game.bulk_insert_dashpoints", autospec=True)
     def test_generate_next_preview_game_generates(
             self, mock_bulk_insert: unittest.mock.MagicMock,
             mock_init_game: unittest.mock.MagicMock,
@@ -471,7 +479,7 @@ class TestRolloverCLI(unittest.TestCase):
         mock_gen_points.return_value = [shapely.geometry.Point(0, 0)]
         mock_init_game.return_value = 17
 
-        preview_id, preview_title = backend.scripts.game_utils._generate_next_preview_game(
+        preview_id, preview_title = backend.scripts.game_utils.generate_next_preview_game(
             self.mock_cursor, self.mock_conn, (2026, 9), 35000, dry_run=False)
         self.assertEqual(preview_id, 17)
         self.assertEqual(preview_title,
@@ -481,13 +489,16 @@ class TestRolloverCLI(unittest.TestCase):
         mock_bulk_insert.assert_called_once()
         self.mock_conn.commit.assert_called_once()
 
-    @unittest.mock.patch("backend.scripts.game_utils.load_game_config")
+    @unittest.mock.patch("backend.scripts.game_utils.load_game_config",
+                         autospec=True)
     @unittest.mock.patch(
-        "backend.scripts.game_utils._activate_current_month_game")
+        "backend.scripts.game_utils.activate_current_month_game",
+        autospec=True)
     @unittest.mock.patch(
-        "backend.scripts.game_utils._generate_next_preview_game")
+        "backend.scripts.game_utils.generate_next_preview_game", autospec=True)
     @unittest.mock.patch(
-        "backend.scripts.game_utils._dispatch_announcement_email")
+        "backend.scripts.game_utils.dispatch_announcement_email",
+        autospec=True)
     def test_execute_rollover_full_flow(
             self, mock_dispatch: unittest.mock.MagicMock,
             mock_gen_preview: unittest.mock.MagicMock,
@@ -519,13 +530,16 @@ class TestRolloverCLI(unittest.TestCase):
                                                  35000, False)
         mock_dispatch.assert_called_once()
 
-    @unittest.mock.patch("backend.scripts.game_utils.load_game_config")
+    @unittest.mock.patch("backend.scripts.game_utils.load_game_config",
+                         autospec=True)
     @unittest.mock.patch(
-        "backend.scripts.game_utils._activate_current_month_game")
+        "backend.scripts.game_utils.activate_current_month_game",
+        autospec=True)
     @unittest.mock.patch(
-        "backend.scripts.game_utils._generate_next_preview_game")
+        "backend.scripts.game_utils.generate_next_preview_game", autospec=True)
     @unittest.mock.patch(
-        "backend.scripts.game_utils._dispatch_announcement_email")
+        "backend.scripts.game_utils.dispatch_announcement_email",
+        autospec=True)
     def test_execute_rollover_email_failure_raises(
             self, mock_dispatch: unittest.mock.MagicMock,
             mock_gen_preview: unittest.mock.MagicMock,
@@ -553,7 +567,8 @@ class TestRolloverCLI(unittest.TestCase):
                                                         })
         self.assertIn("SMTP connection timeout", str(ctx.exception))
 
-    @unittest.mock.patch("backend.scripts.game_utils.execute_rollover")
+    @unittest.mock.patch("backend.scripts.game_utils.execute_rollover",
+                         autospec=True)
     def test_execute_cli_actions_rollover(
             self, mock_exec_rollover: unittest.mock.MagicMock) -> None:
         """CLI action dispatcher invokes execute_rollover when --rollover is set."""

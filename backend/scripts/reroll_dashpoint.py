@@ -64,9 +64,16 @@ def generate_polar_candidate(
         origin: tuple[float, float],
         min_radius_km: float = MIN_REROLL_RADIUS_KM,
         max_radius_km: float = 10.0) -> tuple[float, float]:
-    """Generates a single random coordinate uniformly distributed in the annulus
-    between min and max radius."""
+    """Generates a random coordinate uniformly distributed in the target annulus.
 
+    Args:
+        origin (tuple[float, float]): Origin coordinate (latitude, longitude).
+        min_radius_km (float): Minimum relocation distance in kilometers.
+        max_radius_km (float): Maximum relocation distance in kilometers.
+
+    Returns:
+        tuple[float, float]: Candidate coordinate (latitude, longitude).
+    """
     origin_lat_deg, origin_lon_deg = origin
     origin_lat_rad = math.radians(origin_lat_deg)
     origin_lon_rad = math.radians(origin_lon_deg)
@@ -167,7 +174,7 @@ def main() -> None:
             with open(args.output_file, "w", encoding="utf-8") as f:
                 json.dump(output, f)
         print(json.dumps(output))
-    except (RuntimeError, ValueError, FileNotFoundError) as e:
+    except (RuntimeError, ValueError, OSError) as e:
         output = {"status": "error", "message": str(e)}
         if args.output_file:
             try:

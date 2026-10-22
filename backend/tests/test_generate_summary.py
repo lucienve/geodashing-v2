@@ -1,32 +1,32 @@
 """Unit tests for generate_summary.py."""
-# pylint: disable=protected-access
 
 import http.client
 import unittest.mock
 
-import google.oauth2.service_account
 import google.genai
 import google.genai.types
+import google.oauth2.service_account
+import pytest
 
 import backend.scripts.generate_summary
 
 
 def test_parse_photos_json() -> None:
     """Test parsing of photos JSON string."""
-    res1 = backend.scripts.generate_summary._parse_photos_json(
+    res1 = backend.scripts.generate_summary.parse_photos_json(
         '["http://example.com/1.jpg"]')
     assert not res1
-    res2 = backend.scripts.generate_summary._parse_photos_json(
+    res2 = backend.scripts.generate_summary.parse_photos_json(
         '[{"url": "http://example.com/1.jpg"}]')
     assert not res2
-    res3 = backend.scripts.generate_summary._parse_photos_json(
+    res3 = backend.scripts.generate_summary.parse_photos_json(
         '[{"url": "http://example.com/1.jpg", '
         '"thumb_url": "http://example.com/1_thumb.jpg"}]')
     assert res3 == [{
         "url": "http://example.com/1.jpg",
         "thumb_url": "http://example.com/1_thumb.jpg"
     }]
-    res4 = backend.scripts.generate_summary._parse_photos_json(
+    res4 = backend.scripts.generate_summary.parse_photos_json(
         '[{"url": "http://example.com/1.jpg", '
         '"thumb_url": "http://example.com/1_thumb.jpg", '
         '"caption": "Beautiful sunset"}]')
@@ -35,8 +35,8 @@ def test_parse_photos_json() -> None:
         "thumb_url": "http://example.com/1_thumb.jpg",
         "caption": "Beautiful sunset"
     }]
-    assert not backend.scripts.generate_summary._parse_photos_json('')
-    assert not backend.scripts.generate_summary._parse_photos_json(
+    assert not backend.scripts.generate_summary.parse_photos_json('')
+    assert not backend.scripts.generate_summary.parse_photos_json(
         'invalid json')
 
 
@@ -265,7 +265,7 @@ def test_generate_summary(mock_load_chat: unittest.mock.MagicMock,
         "my prompt"
     }]
     ai_config: dict[str, str | None] = {"model_name": "m1"}
-    result = backend.scripts.generate_summary._generate_summary(
+    result = backend.scripts.generate_summary.generate_summary(
         mock_client, ai_config, "sys.txt", "/fake/dir", prompt_items)
 
     assert result == "generated HTML"
@@ -286,10 +286,10 @@ def test_generate_summary(mock_load_chat: unittest.mock.MagicMock,
         "model_name": "m1",
         "thinking_level": "HIGH"
     }
-    backend.scripts.generate_summary._generate_summary(mock_client,
-                                                       ai_config_custom,
-                                                       "sys.txt", "/fake/dir",
-                                                       prompt_items)
+    backend.scripts.generate_summary.generate_summary(mock_client,
+                                                      ai_config_custom,
+                                                      "sys.txt", "/fake/dir",
+                                                      prompt_items)
     mock_client.interactions.create.assert_called_once_with(
         model="m1",
         system_instruction="sys inst",
@@ -341,7 +341,6 @@ def test_configure_environment_missing_model(
         mock_exists: unittest.mock.MagicMock) -> None:
     """Verify configure_environment raises ValueError when GEMINI_MODEL is absent."""
     mock_exists.return_value = True
-    import pytest  # pylint: disable=import-outside-toplevel
     with pytest.raises(ValueError,
                        match="GEMINI_MODEL must be explicitly defined"):
         backend.scripts.generate_summary.configure_environment(

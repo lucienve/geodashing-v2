@@ -2,9 +2,11 @@
 
 import configparser
 import unittest.mock
-import pytest
+
 import mysql.connector
 import mysql.connector.cursor
+import pytest
+
 import backend.scripts.db_utils
 
 
@@ -67,6 +69,18 @@ def test_get_db_connection_mysql_error() -> None:
 
         with pytest.raises(RuntimeError,
                            match="Database Connection Error: Mock DB Error"):
+            backend.scripts.db_utils.get_db_connection("fake/path.ini")
+
+
+def test_get_db_connection_config_error() -> None:
+    """Verify that missing [database] section raises RuntimeError."""
+    with unittest.mock.patch('os.path.exists', return_value=True, autospec=True), \
+         unittest.mock.patch('configparser.ConfigParser.read', autospec=True), \
+         unittest.mock.patch(
+             'configparser.ConfigParser.__getitem__',
+             side_effect=KeyError('database'),
+             autospec=True):
+        with pytest.raises(RuntimeError, match="Database Configuration Error"):
             backend.scripts.db_utils.get_db_connection("fake/path.ini")
 
 

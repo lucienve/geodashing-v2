@@ -1,1 +1,1 @@
-# Python package initialization.
+"""Backend package initialization for Geodashing V2."""

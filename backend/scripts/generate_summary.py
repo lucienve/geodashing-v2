@@ -7,15 +7,16 @@ import os
 import sys
 import tempfile
 import typing
-import urllib.request
 import urllib.error
+import urllib.request
 
-import mysql.connector
-import mysql.connector.cursor
 import google.auth
 import google.auth.exceptions
 import google.genai
+import google.genai.errors
 import google.genai.types
+import mysql.connector
+import mysql.connector.cursor
 
 import backend.scripts.db_utils
 
@@ -197,7 +198,7 @@ def _extract_scores(cursor: mysql.connector.cursor.MySQLCursor,
             for r in rows]
 
 
-def _parse_photos_json(photos_json: str | None) -> list[dict[str, str]]:
+def parse_photos_json(photos_json: str | None) -> list[dict[str, str]]:
     """Parses the photos JSON string into a list of photo dictionaries."""
     photos: list[dict[str, str]] = []
     if photos_json:
@@ -238,7 +239,7 @@ def _extract_logs(cursor: mysql.connector.cursor.MySQLCursor,
     formatted_logs: list[LogEntry] = []
     for dp_id, username, dp_lat, dp_lon, notes, photos_json in raw_logs:
         city = get_nearest_city(cursor, dp_lat, dp_lon)
-        photos = _parse_photos_json(photos_json)
+        photos = parse_photos_json(photos_json)
         formatted_logs.append({
             'dp_id': dp_id,
             'username': username,
@@ -275,7 +276,7 @@ def load_chat_history(examples_dir: str) -> list[InteractionStep]:
     if not os.path.isdir(examples_dir):
         return steps
 
-    example_prefixes = []
+    example_prefixes: list[str] = []
     for filename in os.listdir(examples_dir):
         if filename.endswith('_input.txt'):
             example_prefixes.append(filename.replace('_input.txt', ''))
@@ -351,7 +352,7 @@ def _append_photo_parts(parts: list[ContentItem], photos: list[dict[str, str]],
                     uploaded_file.mime_type or "image/jpeg"
                 })
                 parts.append({"type": "text", "text": "\n"})
-            except Exception as err:  # pylint: disable=broad-exception-caught
+            except (google.genai.errors.APIError, OSError, ValueError) as err:
                 print(f"Failed to upload image {full_url} to AI Studio: {err}",
                       file=sys.stderr)
                 parts.append({
@@ -421,9 +422,9 @@ def construct_new_data(game_title: str, scores: list[tuple[str, int]],
     return parts
 
 
-def _generate_summary(client: google.genai.Client,
-                      ai_config: dict[str, str | None], instructions_path: str,
-                      examples_dir: str, prompt: list[ContentItem]) -> str:
+def generate_summary(client: google.genai.Client,
+                     ai_config: dict[str, str | None], instructions_path: str,
+                     examples_dir: str, prompt: list[ContentItem]) -> str:
     """Generates the summary using the initialized client and prompt."""
     model_name = ai_config.get('model_name')
     if not model_name:
@@ -468,17 +469,12 @@ def write_summary_files(output_dir: str, game_id: int,
     print(f"Output file: {out_path}")
 
 
-def _get_game_data(
+def get_game_data(
         config_path: str,
         game_id: int) -> tuple[str, list[tuple[str, int]], list[LogEntry]]:
     """Extracts game title, scores, and formatted logs from the database."""
-    conn = backend.scripts.db_utils.get_db_connection(config_path)
-    cursor = conn.cursor()
-    try:
+    with backend.scripts.db_utils.db_session(config_path) as (_conn, cursor):
         return extract_logs_and_scores(cursor, game_id)
-    finally:
-        cursor.close()
-        conn.close()
 
 
 def cleanup_upload_context(upload_context: UploadContext) -> None:
@@ -496,7 +492,7 @@ def cleanup_upload_context(upload_context: UploadContext) -> None:
         try:
             if uploaded_file.name:
                 client.files.delete(name=uploaded_file.name)
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except (google.genai.errors.APIError, OSError, ValueError) as e:
             print(
                 f"Failed to delete remote AI Studio file {uploaded_file.name}: {e}",
                 file=sys.stderr)
@@ -506,7 +502,7 @@ def run_summary_generation(args: argparse.Namespace, config_path: str,
                            instructions_path: str, examples_dir: str) -> None:
     """Orchestrates the data extraction, AI upload, and generation process."""
     ai_config = configure_environment(config_path)
-    game_data = _get_game_data(config_path, args.game_id)
+    game_data = get_game_data(config_path, args.game_id)
 
     client = get_gemini_client(ai_config)
 
@@ -519,8 +515,8 @@ def run_summary_generation(args: argparse.Namespace, config_path: str,
     try:
         prompt = construct_new_data(game_data[0], game_data[1], game_data[2],
                                     upload_context)
-        summary_html = _generate_summary(client, ai_config, instructions_path,
-                                         examples_dir, prompt)
+        summary_html = generate_summary(client, ai_config, instructions_path,
+                                        examples_dir, prompt)
         write_summary_files(args.output_dir, args.game_id, prompt,
                             summary_html)
     finally:
@@ -555,9 +551,10 @@ def main() -> None:
     try:
         run_summary_generation(args, config_path, instructions_path,
                                examples_dir)
-    except (FileNotFoundError, ValueError,
+    except (FileNotFoundError, ValueError, RuntimeError, OSError, TypeError,
+            google.genai.errors.APIError,
             mysql.connector.Error) as specific_err:
-        print(f"Configuration or Database Error: {specific_err}",
+        print(f"Configuration or Execution Error: {specific_err}",
               file=sys.stderr)
         sys.exit(1)
 

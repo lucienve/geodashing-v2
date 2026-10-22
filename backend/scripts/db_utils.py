@@ -29,13 +29,17 @@ def get_db_connection(
         raise FileNotFoundError(f"Database config not found at {config_path}")
 
     config = configparser.ConfigParser()
-    config.read(config_path)
-
-    host = config['database'].get('DB_HOST', '127.0.0.1').strip('"\'')
-    port = config['database'].get('DB_PORT', '3306').strip('"\'')
-    user = config['database'].get('DB_USER', 'geodashing').strip('"\'')
-    password = config['database'].get('DB_PASS', '').strip('"\'')
-    database = config['database'].get('DB_NAME', 'geodashing').strip('"\'')
+    try:
+        config.read(config_path)
+        db_section = config['database']
+        host = db_section.get('DB_HOST', '127.0.0.1').strip('"\'')
+        port = db_section.get('DB_PORT', '3306').strip('"\'')
+        user = db_section.get('DB_USER', 'geodashing').strip('"\'')
+        password = db_section.get('DB_PASS', '').strip('"\'')
+        database = db_section.get('DB_NAME', 'geodashing').strip('"\'')
+    except (configparser.Error, KeyError, OSError) as e:
+        raise RuntimeError(
+            f"Database Configuration Error in {config_path}: {e}") from e
 
     try:
         conn = mysql.connector.connect(host=host,

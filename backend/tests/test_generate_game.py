@@ -1,8 +1,4 @@
 """Tests for the Geodashing V2 point generator script."""
-# pylint: disable=protected-access
-# Architecturally, unit testing private helper functions (_initialize_new_game and
-# _bulk_insert_dashpoints) is required to verify the correctness of individual database
-# operations without executing the entire orchestrator.
 
 import datetime
 import unittest.mock
@@ -26,7 +22,8 @@ def test_generate_spherical_points() -> None:
 
 
 def test_water_exclusion_logic() -> None:
-    """Verify that the 500m buffer logic accurately intersects land.
+    """Verify that the coastal buffer logic accurately intersects land.
+
     Uses an EPSG:6933 (Cylindrical Equal Area) mock polygon for testing.
     """
     # Create a simple 1km x 1km square 'island' at the equator
@@ -35,9 +32,9 @@ def test_water_exclusion_logic() -> None:
 
     # Point 1: On the island
     p1 = shapely.geometry.Point(0, 0)
-    # Point 2: 400m offshore (Valid = within 500m)
+    # Point 2: 400m offshore (Valid = within 500m test buffer)
     p2 = shapely.geometry.Point(900, 0)
-    # Point 3: 600m offshore (Invalid = >500m)
+    # Point 3: 600m offshore (Invalid = >500m test buffer)
     p3 = shapely.geometry.Point(1100, 0)
 
     points_gdf = gpd.GeoDataFrame(geometry=[p1, p2, p3], crs="EPSG:6933")
@@ -51,11 +48,8 @@ def test_water_exclusion_logic() -> None:
 
 
 def test_inland_lake_avoidance(monkeypatch: pytest.MonkeyPatch) -> None:
-    """
-    Validates the geometric differencing matrix ensuring that Dashpoints
-    never spawn inside Inland Lakes or Oceans.
-    """
-    # 1. Define strictly controlled Mock Boundaries (EPSG:4326 Degrees)
+    """Validates geometric differencing so dashpoints avoid inland lakes and oceans."""
+    # 1. Define mock boundaries (EPSG:4326 Degrees)
     land_polygon = shapely.geometry.box(-5, -5, 5, 5)
     lake_polygon = shapely.geometry.box(-1, -1, 1, 1)
 
@@ -69,28 +63,27 @@ def test_inland_lake_avoidance(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr('backend.scripts.generate_game.gpd.read_file',
                         read_file_side_effect)
 
-    # 2. Inject target coordinates dynamically representing the random generator logic
+    # 2. Inject target coordinates representing candidate generator output
     test_points = [
         shapely.geometry.Point(
-            0, 0),  # Target 1: Dead center of the Lake (Should be EXCLUDED)
+            0, 0),  # Target 1: Center of the lake (should be excluded)
         shapely.geometry.Point(
-            3, 3),  # Target 2: Dry Land away from water (Should be KEPT)
+            3, 3),  # Target 2: Dry land away from water (should be kept)
         shapely.geometry.Point(
-            10,
-            10)  # Target 3: Remote Ocean outside island (Should be EXCLUDED)
+            10, 10)  # Target 3: Ocean outside island (should be excluded)
     ]
 
     monkeypatch.setattr(
         'backend.scripts.generate_game.generate_spherical_points',
         lambda *args, **kwargs: test_points)
 
-    # 3. Execute the Geopandas Mathematics constraint engine
+    # 3. Execute the spatial filter pipeline
     valid_points = backend.scripts.generate_game.generate_valid_dashpoints(
         target_count=1,
         land_zip_path="mock_land.zip",
         lakes_zip_path="mock_lakes.zip")
 
-    # 4. Assert geometric success array.
+    # 4. Assert geometric filtering result
     assert len(valid_points) == 1, "Exactly one Dashpoint should exist."
     assert valid_points[0].x == 3.0, "Point X did not match land bounds"
     assert valid_points[0].y == 3.0, "Point Y did not match land bounds"
@@ -153,7 +146,7 @@ def test_bulk_insert_dashpoints(monkeypatch: pytest.MonkeyPatch) -> None:
         spec=mysql.connector.cursor.MySQLCursor)
     points = [shapely.geometry.Point(10, 20), shapely.geometry.Point(-30, 40)]
 
-    backend.scripts.generate_game._bulk_insert_dashpoints(
+    backend.scripts.generate_game.bulk_insert_dashpoints(
         mock_cursor, points, game_id=7, bad_words_path="mock/path")
 
     assert mock_cursor.executemany.call_count == 1

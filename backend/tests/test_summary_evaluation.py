@@ -1,14 +1,13 @@
 """End-to-end evaluation tests for Gemini models and system instructions."""
-# pylint: disable=protected-access
-# Accessing the internal _generate_summary helper function is necessary
-# in this test to evaluate the system instruction prompt pipeline in isolation.
 
+import html.parser
+import json
 import os
 import re
-import html.parser
-import pytest
-import pydantic
+
 import google.genai
+import pydantic
+import pytest
 
 import backend.scripts.generate_summary
 
@@ -47,6 +46,7 @@ class SummaryHTMLValidator(html.parser.HTMLParser):
     """Custom parser to validate strict HTML restrictions in generated summaries."""
 
     def __init__(self) -> None:
+        """Initializes the summary HTML validator state."""
         super().__init__()
         self.errors: list[str] = []
         self.allowed_tags = {
@@ -103,6 +103,7 @@ class SummaryHTMLValidator(html.parser.HTMLParser):
 
     def handle_starttag(self, tag: str,
                         attrs: list[tuple[str, str | None]]) -> None:
+        """Validates opening HTML tags, sampling sections, anchors, and images."""
         self.tag_stack.append(tag)
         attrs_dict = {name: val for name, val in attrs if val is not None}
 
@@ -128,6 +129,7 @@ class SummaryHTMLValidator(html.parser.HTMLParser):
             self._check_image(attrs_dict)
 
     def handle_endtag(self, tag: str) -> None:
+        """Validates closing tags and sampling paragraph capitalization rules."""
         if self.tag_stack and self.tag_stack[-1] == tag:
             self.tag_stack.pop()
 
@@ -148,6 +150,7 @@ class SummaryHTMLValidator(html.parser.HTMLParser):
             self.current_anchor_href = None
 
     def handle_data(self, data: str) -> None:
+        """Accumulates text chunks inside sampling waypoint paragraphs."""
         if self.current_paragraph_chunks is not None:
             self.current_paragraph_chunks.append(data)
 
@@ -336,7 +339,10 @@ Evaluate the summary and return the scores, justification, and a final verdict. 
     if not output_text:
         raise ValueError("Judge model returned an empty or invalid response")
 
-    return EvaluationResult.model_validate_json(str(output_text))
+    try:
+        return EvaluationResult.model_validate_json(str(output_text))
+    except (pydantic.ValidationError, json.JSONDecodeError) as err:
+        raise ValueError(f"Invalid judge response JSON: {err}") from err
 
 
 def _load_benchmark_input(exs_d: str, prefix: str) -> str:
@@ -372,7 +378,7 @@ def test_evaluate_benchmark_summary(prefix: str) -> None:
 
         inst_p = os.path.join(c_dir,
                               '../../data/summary_system_instructions.txt')
-        generated_html = backend.scripts.generate_summary._generate_summary(
+        generated_html = backend.scripts.generate_summary.generate_summary(
             client, ai_config, inst_p, exs_d, prompt)
 
         assert generated_html, "Candidate model returned an empty summary"

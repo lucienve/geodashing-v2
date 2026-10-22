@@ -13,11 +13,14 @@ import os
 import re
 import sys
 import typing
+import urllib.error
 import urllib.request
 import zoneinfo
 
+import google.auth.exceptions
 import google.auth.transport.requests
 import google.oauth2.service_account
+import mysql.connector
 import mysql.connector.connection
 import mysql.connector.cursor
 
@@ -40,10 +43,11 @@ class HTMLFragmentValidator(html.parser.HTMLParser):
 
     VOID_TAGS = {'br', 'hr', 'img'}
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initializes the HTML fragment validator state."""
         super().__init__()
-        self.stack = []
-        self.errors = []
+        self.stack: list[str] = []
+        self.errors: list[str] = []
         self.has_content = False
 
     def _validate_anchor_attributes(
@@ -80,6 +84,7 @@ class HTMLFragmentValidator(html.parser.HTMLParser):
 
     def handle_starttag(self, tag: str,
                         attrs: list[tuple[str, str | None]]) -> None:
+        """Validates opening HTML tags and their attributes."""
         tag_lower = tag.lower()
         if tag_lower not in self.VOID_TAGS:
             self.stack.append(tag_lower)
@@ -96,11 +101,13 @@ class HTMLFragmentValidator(html.parser.HTMLParser):
 
     def handle_startendtag(self, tag: str,
                            attrs: list[tuple[str, str | None]]) -> None:
+        """Validates self-closing HTML tags and their attributes."""
         self.handle_starttag(tag, attrs)
         if tag.lower() not in self.VOID_TAGS:
             self.handle_endtag(tag)
 
     def handle_endtag(self, tag: str) -> None:
+        """Validates closing HTML tags against the open tag stack."""
         tag_lower = tag.lower()
         if tag_lower in self.VOID_TAGS:
             if self.stack and self.stack[-1] == tag_lower:
@@ -118,6 +125,7 @@ class HTMLFragmentValidator(html.parser.HTMLParser):
                 f"Mismatched closing tag: </{tag}>. Expected </{expected}>")
 
     def handle_data(self, data: str) -> None:
+        """Records whether non-whitespace text content is present."""
         if data.strip():
             self.has_content = True
 
@@ -129,10 +137,7 @@ class HTMLFragmentValidator(html.parser.HTMLParser):
         try:
             self.feed(html_content)
             self.close()
-        # HTMLParser.feed() can raise unexpected parsing exceptions or AssertionErrors
-        # depending on internal implementation and malformed structure, so catching
-        # all exceptions is architecturally unavoidable here to guarantee the CLI never crashes.
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except (AssertionError, ValueError, TypeError, RuntimeError) as e:
             self.errors.append(f"HTML parsing exception: {str(e)}")
 
         if self.stack:
@@ -312,7 +317,7 @@ def send_via_gmail_api(credentials_path: str, to_email: str, subject: str,
             "Content-Type": "application/json"
         },
         method='POST')
-    with urllib.request.urlopen(api_req) as response:
+    with urllib.request.urlopen(api_req, timeout=10) as response:
         if 'id' in json.loads(response.read().decode('utf-8')):
             print("Email dispatched successfully!")
         else:
@@ -342,12 +347,10 @@ def email_summary(cursor: mysql.connector.cursor.MySQLCursor, game_id: int,
 
     to_email, credentials_path = load_mail_config(config_path)
 
-    # Bypass physical API interaction during E2E/unit testing
+    # Bypass outbound API interaction during E2E/unit testing
     app_env = os.getenv('APP_ENV') or ''
     if app_env == 'testing':
-        print(
-            f"APP_ENV=testing: Suppressed physical email transmission to {to_email}"
-        )
+        print(f"APP_ENV=testing: Suppressed email transmission to {to_email}")
         return
 
     print(
@@ -360,10 +363,8 @@ def email_summary(cursor: mysql.connector.cursor.MySQLCursor, game_id: int,
                       if start_time else "Unknown Month")
         subject = f"Geodashing Game {game_id} ({month_year}) Results"
         send_via_gmail_api(credentials_path, to_email, subject, summary)
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        # Catching all base exceptions is architecturally unavoidable here to ensure
-        # the CLI does not crash with raw Python/Google SDK tracebacks in production
-        # and instead reports a clean, professional error message to the admin.
+    except (google.auth.exceptions.GoogleAuthError, urllib.error.URLError,
+            TimeoutError, OSError, ValueError) as e:
         print(f"Failed to email summary: {e}", file=sys.stderr)
         sys.exit(1)
 
@@ -482,16 +483,14 @@ def send_turnover_announcement(config_path: str,
 
     app_env = os.getenv('APP_ENV') or ''
     if app_env == 'testing':
-        print(
-            f"APP_ENV=testing: Suppressed physical email transmission to {to_email}"
-        )
+        print(f"APP_ENV=testing: Suppressed email transmission to {to_email}")
         return
 
     print(f"Dispatching turnover announcement email to {to_email}...")
     send_via_gmail_api(credentials_path, to_email, subject, html_body)
 
 
-def _activate_current_month_game(
+def activate_current_month_game(
         cursor: mysql.connector.cursor.MySQLCursor,
         conn: mysql.connector.connection.MySQLConnection,
         target_date: tuple[int, int], dry_run: bool) -> tuple[int, str]:
@@ -534,7 +533,7 @@ def _activate_current_month_game(
     return active_id, active_title
 
 
-def _generate_next_preview_game(
+def generate_next_preview_game(
         cursor: mysql.connector.cursor.MySQLCursor,
         conn: mysql.connector.connection.MySQLConnection,
         target_date: tuple[int, int], dashpoint_count: int,
@@ -581,13 +580,13 @@ def _generate_next_preview_game(
     return preview_id, preview_title
 
 
-def _dispatch_announcement_email(config_path: str,
-                                 active_info: tuple[int, str,
+def dispatch_announcement_email(config_path: str,
+                                active_info: tuple[int, str,
+                                                   datetime.datetime],
+                                preview_info: tuple[int, str,
                                                     datetime.datetime],
-                                 preview_info: tuple[int, str,
-                                                     datetime.datetime],
-                                 dry_run: bool) -> None:
-    """Helper to format and dispatch the player turnover announcement email."""
+                                dry_run: bool) -> None:
+    """Formats and dispatches the player turnover announcement email."""
     subject, html_body = build_turnover_announcement_email(
         active_game=(active_info[0], active_info[1]),
         active_date=active_info[2],
@@ -611,7 +610,7 @@ def _compute_rollover_dates(
     tz: datetime.tzinfo
     try:
         tz = zoneinfo.ZoneInfo(tz_name)
-    except Exception:  # pylint: disable=broad-exception-caught
+    except (zoneinfo.ZoneInfoNotFoundError, ValueError, KeyError):
         tz = datetime.timezone.utc
 
     now = datetime.datetime.now(tz)
@@ -630,8 +629,18 @@ def execute_rollover(cursor: mysql.connector.cursor.MySQLCursor,
                      config_path: str,
                      dry_run: bool = False,
                      overrides: dict[str, int | None] | None = None) -> None:
-    """Orchestrates the complete end-of-month turnover: activates current preview game,
-    generates next preview game, and announces to players."""
+    """Orchestrates the monthly game rollover workflow.
+
+    Activates the current month's preview game, generates the upcoming month's
+    preview game, and sends the player announcement email.
+
+    Args:
+        cursor (mysql.connector.cursor.MySQLCursor): Active database cursor.
+        conn (mysql.connector.connection.MySQLConnection): Active database connection.
+        config_path (str): Path to backend/config.ini.
+        dry_run (bool): When True, simulates actions without database or email side effects.
+        overrides (dict[str, int | None] | None): Optional year, month, and count overrides.
+    """
     game_config = load_game_config(config_path)
     count_override = overrides.get('count') if overrides else None
     dashpoint_count = count_override or game_config.get(
@@ -651,18 +660,18 @@ def execute_rollover(cursor: mysql.connector.cursor.MySQLCursor,
     print("=" * 80)
 
     # 1. Activate Current Month Game
-    active_game = _activate_current_month_game(cursor, conn,
-                                               (cur_date.year, cur_date.month),
-                                               dry_run)
+    active_game = activate_current_month_game(cursor, conn,
+                                              (cur_date.year, cur_date.month),
+                                              dry_run)
 
     # 2. Inspect & Generate Next Month Preview Game
-    preview_game = _generate_next_preview_game(
+    preview_game = generate_next_preview_game(
         cursor, conn, (next_date.year, next_date.month), dashpoint_count,
         dry_run)
 
     # 3. Dispatch Player Announcement Email
     if game_config.get('send_turnover_announcement', True):
-        _dispatch_announcement_email(
+        dispatch_announcement_email(
             config_path, (active_game[0], active_game[1], cur_date),
             (preview_game[0], preview_game[1], next_date), dry_run)
 
@@ -781,7 +790,9 @@ def main() -> None:
         with backend.scripts.db_utils.db_session(config_path) as (conn,
                                                                   cursor):
             execute_cli_actions(cursor, conn, args, config_path)
-    except (FileNotFoundError, RuntimeError, ValueError) as e:
+    except (FileNotFoundError, RuntimeError, ValueError, OSError,
+            urllib.error.URLError, google.auth.exceptions.GoogleAuthError,
+            mysql.connector.Error) as e:
         print(f"\nExecution Error: {e}", file=sys.stderr)
         sys.exit(1)
 

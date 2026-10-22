@@ -1,6 +1,6 @@
 [config]
 ; Path to the uv binary if installed in a non-standard location
-UV_BIN = "/home/lucienve/.local/bin/uv"
+UV_BIN = "/path/to/.local/bin/uv"
 
 [database]
 DB_HOST = "127.0.0.1"
@@ -21,6 +21,7 @@ GOOGLE_MAPS_API_KEY = "AIzaSy..."
 [gemini]
 GEMINI_API_KEY = "AIzaSy..."
 GEMINI_MODEL = "gemini-4-argon"
+GEMINI_EVAL_MODEL = "gemini-4-argon"
 GEMINI_THINKING_LEVEL = "medium"
 GEMINI_PROJECT_ID = "your-gcp-project-id"
 
