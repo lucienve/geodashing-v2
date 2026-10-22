@@ -77,7 +77,10 @@ $modeLabel = $isDryRun ? "DRY-RUN (Preview Mode)" : "EXECUTE (Live Mutation Mode
 echo "====================================================================\n";
 echo "Geodashing Mailing List Synchronization\n";
 echo "Mode: {$modeLabel}\n";
-echo "Scope: " . ($allVerified ? "All Verified Players (is_verified = 1)" : "Opted-in Verified Players (subscribe_group = 1)") . "\n";
+$scopeDesc = $allVerified
+    ? "All Verified Players (is_verified = 1)"
+    : "Opted-in Verified Players (subscribe_group = 1)";
+echo "Scope: " . $scopeDesc . "\n";
 echo "====================================================================\n\n";
 
 try {
@@ -161,7 +164,8 @@ try {
     }
 
     if (!empty($alreadyInGroupNeedDbSync)) {
-        echo "--- In Google Group, Database Flag Out of Sync (" . count($alreadyInGroupNeedDbSync) . ") ---\n";
+        $syncCount = count($alreadyInGroupNeedDbSync);
+        echo "--- In Google Group, Database Flag Out of Sync ({$syncCount}) ---\n";
         foreach ($alreadyInGroupNeedDbSync as $u) {
             echo "  [SYNC] {$u['email']} (User: {$u['username']}, DB currently 0 -> target 1)\n";
         }
@@ -178,7 +182,8 @@ try {
     }
 
     if (!empty($externalMembers)) {
-        echo "--- External Group Members (not in matched player list) (" . count($externalMembers) . ") ---\n";
+        $extCount = count($externalMembers);
+        echo "--- External Group Members (not in matched player list) ({$extCount}) ---\n";
         foreach ($externalMembers as $m) {
             echo "  [*]    {$m['email']} (Role: {$m['role']}, Type: {$m['type']})\n";
         }
@@ -204,8 +209,9 @@ try {
     // 6a. Update database flag for players already in the Google Group
     $dbUpdatedCount = 0;
     if (!empty($alreadyInGroupNeedDbSync)) {
+        $syncCount = count($alreadyInGroupNeedDbSync);
         echo "--------------------------------------------------------------------\n";
-        echo "[UPDATING DATABASE] Synchronizing " . count($alreadyInGroupNeedDbSync) . " player(s) already in Google Group...\n";
+        echo "[UPDATING DATABASE] Synchronizing {$syncCount} player(s) already in Google Group...\n";
         echo "--------------------------------------------------------------------\n";
         foreach ($alreadyInGroupNeedDbSync as $user) {
             $updateStmt->execute([':id' => (int) $user['id']]);

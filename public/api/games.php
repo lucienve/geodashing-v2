@@ -8,9 +8,9 @@
 
 declare(strict_types=1);
 
-header('Content-Type: application/json');
-
 use App\Services\GameService;
+
+header('Content-Type: application/json');
 
 if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     require_once __DIR__ . '/../../vendor/autoload.php';

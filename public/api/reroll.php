@@ -45,9 +45,12 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         $rerollService = new RerollService($db);
         $result = $rerollService->rerollDashpoint((int) $_SESSION['user_id'], $dashpointId, $reason);
         echo json_encode($result);
-    } catch (Exception $e) {
-        error_log("Reroll API Error: " . $e->getMessage());
+    } catch (DomainException | InvalidArgumentException $e) {
         http_response_code(400);
         echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+    } catch (Exception $e) {
+        error_log("Reroll API Error: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(["status" => "error", "message" => "Failed to relocate dashpoint."]);
     }
 }

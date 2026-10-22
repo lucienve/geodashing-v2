@@ -17,29 +17,40 @@ class TagService
 {
     /**
      * Allowed preset color and shape pairs (Palette Option 1: Google Maps Categories).
+     *
+     * @var array<int, array{color: string, shape: string}>
      */
-    public const ALLOWED_TAGS = [
+    public const array ALLOWED_TAGS = [
         ['color' => '#1a73e8', 'shape' => 'star'],
         ['color' => '#8e24aa', 'shape' => 'diamond'],
         ['color' => '#e64a19', 'shape' => 'triangle'],
         ['color' => '#d81b60', 'shape' => 'square']
     ];
 
+    /**
+     * @var PDO The configured database connection.
+     */
     private PDO $db;
+
+    /**
+     * @var array<string, mixed> Parsed configuration array.
+     */
     private array $config;
 
     /**
      * Constructor.
      *
      * @param PDO $db Database connection.
-     * @param array|null $config Optional injected configuration array.
+     * @param array<string, mixed>|null $config Optional injected configuration array.
      */
     public function __construct(PDO $db, ?array $config = null)
     {
         $this->db = $db;
         if ($config === null) {
             $configPath = __DIR__ . '/../config.ini';
-            $this->config = file_exists($configPath) ? (parse_ini_file($configPath, true) ?: []) : [];
+            $this->config = (file_exists($configPath) && is_readable($configPath))
+                ? (parse_ini_file($configPath, true) ?: [])
+                : [];
             if (getenv('TAGS_ENABLED') !== false) {
                 $this->config['tags']['TAGS_ENABLED'] = getenv('TAGS_ENABLED');
             }

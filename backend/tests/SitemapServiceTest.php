@@ -1,26 +1,40 @@
 <?php
 
-/**
- * Sitemap Service Unit Tests
- */
-
 declare(strict_types=1);
 
 namespace App\Tests;
 
-use PHPUnit\Framework\TestCase;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\Attributes\CoversClass;
 use App\Services\SitemapService;
+use DOMDocument;
 use PDO;
 use PDOStatement;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
 
+/**
+ * SitemapServiceTest
+ *
+ * Verifies SitemapService XML generation and database query hydration.
+ */
 #[CoversClass(SitemapService::class)]
 class SitemapServiceTest extends TestCase
 {
-    private $pdoMock;
-    private $sitemapService;
+    /**
+     * @var PDO&MockObject
+     */
+    private PDO $pdoMock;
 
+    /**
+     * @var SitemapService
+     */
+    private SitemapService $sitemapService;
+
+    /**
+     * Sets up the test fixtures.
+     */
+    #[\Override]
     protected function setUp(): void
     {
         $this->pdoMock = $this->createMock(PDO::class);

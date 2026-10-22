@@ -4,19 +4,36 @@ declare(strict_types=1);
 
 namespace App\Tests;
 
-use PHPUnit\Framework\TestCase;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\Attributes\CoversClass;
 use App\Services\DashpointService;
 use PDO;
 use PDOStatement;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
 
+/**
+ * DashpointServiceTest
+ *
+ * Verifies DashpointService retrieval and visit ledger hydration.
+ */
 #[CoversClass(DashpointService::class)]
 class DashpointServiceTest extends TestCase
 {
-    private $pdoMock;
-    private $dashpointService;
+    /**
+     * @var PDO&MockObject
+     */
+    private PDO $pdoMock;
 
+    /**
+     * @var DashpointService
+     */
+    private DashpointService $dashpointService;
+
+    /**
+     * Sets up the test fixtures.
+     */
+    #[\Override]
     protected function setUp(): void
     {
         // Synthesize the PDO connection so we don't accidentally touch the actual active Geodashing database
@@ -24,7 +41,11 @@ class DashpointServiceTest extends TestCase
         $this->dashpointService = new DashpointService($this->pdoMock);
     }
 
-    public function testGetDashpointDetailsSuccess()
+    /**
+     * Verifies getDashpointDetails returns dashpoint metadata and decoded visit photos.
+     */
+    #[Test]
+    public function testGetDashpointDetailsSuccess(): void
     {
         $dashpointId = 'GD001-AAAA';
 
@@ -81,7 +102,11 @@ class DashpointServiceTest extends TestCase
         $this->assertEquals('/uploads/pic1.jpg', $result['visits'][0]['photos'][0]);
     }
 
-    public function testGetDashpointDetailsNotFound()
+    /**
+     * Verifies getDashpointDetails returns null when a dashpoint is not found.
+     */
+    #[Test]
+    public function testGetDashpointDetailsNotFound(): void
     {
         $dashpointId = 'GD001-GHOS';
 

@@ -4,28 +4,47 @@ declare(strict_types=1);
 
 namespace App\Tests;
 
-use PHPUnit\Framework\TestCase;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\Attributes\CoversClass;
 use App\Services\GameService;
 use PDO;
 use PDOStatement;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
 
+/**
+ * GameServiceTest
+ *
+ * Verifies GameService query and game list retrieval.
+ */
 #[CoversClass(GameService::class)]
 class GameServiceTest extends TestCase
 {
-    private $pdoMock;
-    private $gameService;
+    /**
+     * @var PDO&MockObject
+     */
+    private PDO $pdoMock;
 
+    /**
+     * @var GameService
+     */
+    private GameService $gameService;
+
+    /**
+     * Sets up the test fixtures.
+     */
+    #[\Override]
     protected function setUp(): void
     {
         $this->pdoMock = $this->createMock(PDO::class);
         $this->gameService = new GameService($this->pdoMock);
     }
 
-
+    /**
+     * Verifies getAllGames returns ordered list of games.
+     */
     #[Test]
-    public function getAllGamesReturnsListOfGames()
+    public function getAllGamesReturnsListOfGames(): void
     {
         $stmtMock = $this->createMock(PDOStatement::class);
         $gamesData = [

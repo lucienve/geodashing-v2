@@ -21,10 +21,25 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(EditService::class)]
 class EditServiceTest extends TestCase
 {
-    private $pdoMock;
-    private $mediaMock;
-    private $editService;
+    /**
+     * @var PDO
+     */
+    private PDO $pdoMock;
 
+    /**
+     * @var MediaService
+     */
+    private MediaService $mediaMock;
+
+    /**
+     * @var EditService
+     */
+    private EditService $editService;
+
+    /**
+     * Sets up the test fixtures.
+     */
+    #[\Override]
     protected function setUp(): void
     {
         $this->pdoMock = $this->createStub(PDO::class);
@@ -37,7 +52,7 @@ class EditServiceTest extends TestCase
      * tries to modify a Dashpoint log they do not own.
      */
     #[Test]
-    public function processEditRejectsForeignOwnership()
+    public function processEditRejectsForeignOwnership(): void
     {
         $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetch')->willReturn(false); // Simulates standard DB failure
@@ -54,7 +69,7 @@ class EditServiceTest extends TestCase
      * from the incoming `kept_photos` JSON payload are structurally dumped to GCP Deletion.
      */
     #[Test]
-    public function processEditTriggersMediaDeletionForAbandonedUrls()
+    public function processEditTriggersMediaDeletionForAbandonedUrls(): void
     {
         $this->mediaMock = $this->createMock(MediaService::class);
         $this->editService = new EditService($this->pdoMock, $this->mediaMock);
@@ -72,23 +87,25 @@ class EditServiceTest extends TestCase
         $updateStmtMock = $this->createMock(PDOStatement::class);
         $updateStmtMock->expects($this->once())->method('execute'); // Ensure the DB updates securely
 
-        $this->pdoMock->method('prepare')->willReturnCallback(function ($sql) use ($stmtMock, $updateStmtMock) {
-            if (strpos($sql, 'SELECT v.id') !== false) {
-                return $stmtMock;
+        $this->pdoMock->method('prepare')->willReturnCallback(
+            function (string $sql) use ($stmtMock, $updateStmtMock): PDOStatement {
+                if (strpos($sql, 'SELECT v.id') !== false) {
+                    return $stmtMock;
+                }
+                if (strpos($sql, 'UPDATE visits') !== false) {
+                    return $updateStmtMock;
+                }
+                return $this->createStub(PDOStatement::class);
             }
-            if (strpos($sql, 'UPDATE visits') !== false) {
-                return $updateStmtMock;
-            }
-            return $this->createStub(PDOStatement::class);
-        });
+        );
 
         // We explicitly tell the Server we ONLY want to keep `historic_2.jpg`.
-        $keptRaw = json_encode(['https://storage.googleapis.com/b/historic_2.jpg']);
+        $keptRaw = (string)json_encode(['https://storage.googleapis.com/b/historic_2.jpg']);
 
         // Assert that the MediaService intercepts `historic_1.jpg` for destruction.
         $this->mediaMock->expects($this->once())
-             ->method('deletePhotos')
-             ->with(['https://storage.googleapis.com/b/historic_1.jpg']);
+            ->method('deletePhotos')
+            ->with(['https://storage.googleapis.com/b/historic_1.jpg']);
 
         $result = $this->editService->processEdit(1, 'GD001-AAAB', 'Changed notes.', $keptRaw, null, false);
 
@@ -102,7 +119,7 @@ class EditServiceTest extends TestCase
      * Proves the architectural 10-Media limitation is strictly enforced post-merge
      */
     #[Test]
-    public function processEditRestrictsMaximumImageMerges()
+    public function processEditRestrictsMaximumImageMerges(): void
     {
         $this->mediaMock = $this->createMock(MediaService::class);
         $this->editService = new EditService($this->pdoMock, $this->mediaMock);
@@ -134,15 +151,22 @@ class EditServiceTest extends TestCase
 
         // Ensure MediaService uploads the 3 new ones securely
         $this->mediaMock->expects($this->once())
-             ->method('uploadPhotos')
-             ->willReturn([
-                 ['url' => 'https://../new1.jpg'],
-                 ['url' => 'https://../new2.jpg'],
-                 ['url' => 'https://../new3.jpg']
-             ]);
+            ->method('uploadPhotos')
+            ->willReturn([
+                ['url' => 'https://../new1.jpg'],
+                ['url' => 'https://../new2.jpg'],
+                ['url' => 'https://../new3.jpg']
+            ]);
 
         // Submit the mutation.
-        $result = $this->editService->processEdit(1, 'GD001-AAAB', 'Updating photos.', json_encode($keptStrings), $newFilesMock, false);
+        $result = $this->editService->processEdit(
+            1,
+            'GD001-AAAB',
+            'Updating photos.',
+            (string)json_encode($keptStrings),
+            $newFilesMock,
+            false
+        );
 
         // It should abort, returning a 400.
         $this->assertEquals("error", $result['status']);
@@ -153,7 +177,7 @@ class EditServiceTest extends TestCase
      * Asserts that editing aborts when targeting a past/inactive game.
      */
     #[Test]
-    public function processEditRejectsInactiveGame()
+    public function processEditRejectsInactiveGame(): void
     {
         $userId = 1;
         $dashpointId = 'GD001-XXXX';
@@ -179,32 +203,39 @@ class EditServiceTest extends TestCase
      * Asserts that editing captions for kept photos is correctly updated and stored.
      */
     #[Test]
-    public function processEditUpdatesKeptPhotoCaptions()
+    public function processEditUpdatesKeptPhotoCaptions(): void
     {
         $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetch')->willReturn([
             'id' => 10,
             'is_active' => 1,
             'photos' => json_encode([
-                ['url' => 'https://storage.googleapis.com/b/historic_1.jpg', 'caption' => 'Old Caption', 'lat' => null, 'lon' => null],
+                [
+                    'url' => 'https://storage.googleapis.com/b/historic_1.jpg',
+                    'caption' => 'Old Caption',
+                    'lat' => null,
+                    'lon' => null
+                ],
             ])
         ]);
 
         $updateStmtMock = $this->createMock(PDOStatement::class);
         $updateStmtMock->expects($this->once())->method('execute');
 
-        $this->pdoMock->method('prepare')->willReturnCallback(function ($sql) use ($stmtMock, $updateStmtMock) {
-            if (strpos($sql, 'SELECT v.id') !== false) {
-                return $stmtMock;
+        $this->pdoMock->method('prepare')->willReturnCallback(
+            function (string $sql) use ($stmtMock, $updateStmtMock): PDOStatement {
+                if (strpos($sql, 'SELECT v.id') !== false) {
+                    return $stmtMock;
+                }
+                if (strpos($sql, 'UPDATE visits') !== false) {
+                    return $updateStmtMock;
+                }
+                return $this->createStub(PDOStatement::class);
             }
-            if (strpos($sql, 'UPDATE visits') !== false) {
-                return $updateStmtMock;
-            }
-            return $this->createStub(PDOStatement::class);
-        });
+        );
 
         // We update the caption of historic_1.jpg
-        $keptRaw = json_encode([
+        $keptRaw = (string)json_encode([
             ['url' => 'https://storage.googleapis.com/b/historic_1.jpg', 'caption' => 'Updated Caption']
         ]);
 

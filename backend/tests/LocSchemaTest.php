@@ -19,8 +19,15 @@ use DOMDocument;
 #[CoversClass(ExportService::class)]
 class LocSchemaTest extends TestCase
 {
+    /**
+     * @var ExportService
+     */
     private ExportService $exportService;
 
+    /**
+     * Sets up the test fixtures.
+     */
+    #[\Override]
     protected function setUp(): void
     {
         $this->exportService = new ExportService();
@@ -30,7 +37,7 @@ class LocSchemaTest extends TestCase
      * Asserts that a populated LOC document cleanly passes XSD validation.
      */
     #[Test]
-    public function generatedLocStrictlyAdheresToCustomSchemaDefinition()
+    public function generatedLocStrictlyAdheresToCustomSchemaDefinition(): void
     {
         $points = [
             ['id' => 'GD001-AAAA', 'lat' => 45.0, 'lon' => -70.0],

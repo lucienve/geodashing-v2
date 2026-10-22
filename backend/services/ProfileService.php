@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services;
 
 use PDO;
-use Exception;
 
 /**
  * Class ProfileService
@@ -14,6 +13,9 @@ use Exception;
  */
 class ProfileService
 {
+    /**
+     * @var PDO The configured database connection.
+     */
     private PDO $db;
 
     /**
@@ -30,12 +32,14 @@ class ProfileService
      * Get profile metrics for a specific user.
      *
      * @param string $username The username of the user.
-     * @return array|null Returns array of user data and games history or null if user not found.
+     * @return array<string, mixed>|null Returns array of user data and games history or null if user not found.
      */
     public function getProfileSettings(string $username): ?array
     {
         // 1. Get User Core Details
-        $stmtUser = $this->db->prepare("SELECT id, username, created_at, subscribe_group FROM users WHERE username = :username");
+        $stmtUser = $this->db->prepare(
+            "SELECT id, username, created_at, subscribe_group FROM users WHERE username = :username"
+        );
         $stmtUser->execute([':username' => $username]);
         $user = $stmtUser->fetch(PDO::FETCH_ASSOC);
 
@@ -45,7 +49,7 @@ class ProfileService
 
         // 2. Fetch Historical Logs and Scores joining Games and Dashpoints
         $query = "
-            SELECT 
+            SELECT
                 v.id AS visit_id,
                 v.score_awarded,
                 v.is_attempt,
@@ -123,7 +127,7 @@ class ProfileService
      * @param int $userId The ID of the user.
      * @param int $gameId The ID of the active game.
      * @param string|null $beforeTime Optional ISO timestamp to only count hunts prior to a specific time.
-     * @return array Array containing 'total_points_all_games', 'total_points_game', 'previous_hunts_all_games', and 'previous_hunts_game'.
+     * @return array<string, int> Aggregated player point and hunt statistics.
      */
     public function getPlayerMailStats(int $userId, int $gameId, ?string $beforeTime = null): array
     {
@@ -134,9 +138,9 @@ class ProfileService
         $totalPointsAllGames = $rowScore ? (int) $rowScore['total'] : 0;
 
         $scoreGameQuery = "
-            SELECT SUM(v.score_awarded) AS total 
-            FROM visits v 
-            JOIN dashpoints d ON v.dashpoint_id = d.id 
+            SELECT SUM(v.score_awarded) AS total
+            FROM visits v
+            JOIN dashpoints d ON v.dashpoint_id = d.id
             WHERE v.user_id = :uid AND d.game_id = :game_id AND v.status = 'approved'
         ";
         $stmtScoreGame = $this->db->prepare($scoreGameQuery);
@@ -157,9 +161,9 @@ class ProfileService
 
         $huntsGameParams = [':uid' => $userId, ':game_id' => $gameId];
         $huntsGameQuery = "
-            SELECT COUNT(v.id) AS previous_hunts 
-            FROM visits v 
-            JOIN dashpoints d ON v.dashpoint_id = d.id 
+            SELECT COUNT(v.id) AS previous_hunts
+            FROM visits v
+            JOIN dashpoints d ON v.dashpoint_id = d.id
             WHERE v.user_id = :uid AND d.game_id = :game_id AND v.status = 'approved'
         ";
         if ($beforeTime !== null) {

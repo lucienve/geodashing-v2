@@ -18,16 +18,31 @@ use Throwable;
  */
 class GoogleGroupService
 {
+    /**
+     * @var Google_Service_Directory|null Google Workspace Directory API service client.
+     */
     private ?Google_Service_Directory $directory;
+
+    /**
+     * @var string Target Google Group email address.
+     */
     private string $groupKey;
+
+    /**
+     * @var string Impersonated Google Workspace admin email.
+     */
     private string $adminUser;
+
+    /**
+     * @var string|null Path to the IAM Service Account JSON key file.
+     */
     private ?string $credentialsPath;
 
     /**
      * GoogleGroupService constructor.
      *
      * @param Google_Service_Directory|null $directory Optional injected directory service for unit testing.
-     * @param array|null $config Optional injected configuration array.
+     * @param array<string, mixed>|null $config Optional injected configuration array.
      */
     public function __construct(?Google_Service_Directory $directory = null, ?array $config = null)
     {
@@ -35,7 +50,9 @@ class GoogleGroupService
 
         if ($config === null) {
             $configPath = __DIR__ . '/../config.ini';
-            $parsed = file_exists($configPath) ? @parse_ini_file($configPath) : false;
+            $parsed = (file_exists($configPath) && is_readable($configPath))
+                ? parse_ini_file($configPath)
+                : false;
             $config = $parsed !== false ? $parsed : [];
         }
 
@@ -63,7 +80,8 @@ class GoogleGroupService
         }
 
         if (!$this->credentialsPath || !file_exists($this->credentialsPath)) {
-            error_log("GoogleGroupService: Credentials path not found or unreadable: " . ($this->credentialsPath ?? 'null'));
+            $credDesc = $this->credentialsPath ?? 'null';
+            error_log("GoogleGroupService: Credentials path not found or unreadable: {$credDesc}");
             return false;
         }
 

@@ -14,14 +14,18 @@
     "autoload": {
         "psr-4": {
             "App\\": "backend/",
-            "App\\Services\\": "backend/services/",
+            "App\\Services\\": "backend/services/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
             "App\\Tests\\": "backend/tests/"
         }
     },
     "scripts": {
         "test": "phpunit backend/tests/",
         "lint:syntax": "find backend/ public/api/ e2e/ -type f -name '*.php' -exec php -l {} + > /dev/null",
-        "lint": "phpcs --standard=phpcs.xml backend/",
-        "lint:fix": "phpcbf --standard=phpcs.xml backend/"
+        "lint": "phpcs --standard=phpcs.xml backend/ public/api/ e2e/router.php",
+        "lint:fix": "phpcbf --standard=phpcs.xml backend/ public/api/ e2e/router.php"
     }
 }

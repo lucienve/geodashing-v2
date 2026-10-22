@@ -19,8 +19,15 @@ use InvalidArgumentException;
 #[CoversClass(ExportService::class)]
 class ExportServiceTest extends TestCase
 {
+    /**
+     * @var ExportService
+     */
     private ExportService $exportService;
 
+    /**
+     * Sets up the test fixtures.
+     */
+    #[\Override]
     protected function setUp(): void
     {
         $this->exportService = new ExportService();
@@ -31,7 +38,7 @@ class ExportServiceTest extends TestCase
      * for a valid array of dashpoints.
      */
     #[Test]
-    public function processesGpxFormatCorrectlyWithDashpoints()
+    public function processesGpxFormatCorrectlyWithDashpoints(): void
     {
         $points = [
             ['id' => 'GD001-AAAA', 'lat' => 45.0, 'lon' => -70.0],
@@ -72,7 +79,7 @@ class ExportServiceTest extends TestCase
      * when no dashpoints are provided.
      */
     #[Test]
-    public function processesGpxFormatCorrectlyWithNoDashpoints()
+    public function processesGpxFormatCorrectlyWithNoDashpoints(): void
     {
         $points = [];
 
@@ -92,7 +99,7 @@ class ExportServiceTest extends TestCase
      * for a valid array of dashpoints.
      */
     #[Test]
-    public function processesLocFormatCorrectlyWithDashpoints()
+    public function processesLocFormatCorrectlyWithDashpoints(): void
     {
         $points = [
             ['id' => 'GD001-AAAA', 'lat' => 45.0, 'lon' => -70.0]
@@ -108,7 +115,10 @@ class ExportServiceTest extends TestCase
         $this->assertStringContainsString('<name id="GD001-AAAA">GD001-AAAA</name>', $xml);
         $this->assertStringContainsString('<coord lat="45" lon="-70"/>', $xml);
         $this->assertStringContainsString('<type>Dashpoint</type>', $xml);
-        $this->assertStringContainsString('<link text="View on Geodashing">https://www.geodashing.org/#dashpoint?id=GD001-AAAA</link>', $xml);
+        $this->assertStringContainsString(
+            '<link text="View on Geodashing">https://www.geodashing.org/#dashpoint?id=GD001-AAAA</link>',
+            $xml
+        );
 
         $this->assertStringContainsString('</loc>', $xml);
     }
@@ -118,7 +128,7 @@ class ExportServiceTest extends TestCase
      * when no dashpoints are provided.
      */
     #[Test]
-    public function processesLocFormatCorrectlyWithNoDashpoints()
+    public function processesLocFormatCorrectlyWithNoDashpoints(): void
     {
         $points = [];
 
@@ -134,7 +144,7 @@ class ExportServiceTest extends TestCase
      * for a valid array of dashpoints.
      */
     #[Test]
-    public function processesKmlFormatCorrectlyWithDashpoints()
+    public function processesKmlFormatCorrectlyWithDashpoints(): void
     {
         $points = [
             ['id' => 'GD001-AAAA', 'lat' => 45.0, 'lon' => -70.0],
@@ -150,14 +160,22 @@ class ExportServiceTest extends TestCase
         // Assert first point
         $this->assertStringContainsString('<Placemark>', $xml);
         $this->assertStringContainsString('<name>GD001-AAAA</name>', $xml);
-        $this->assertStringContainsString('<description><![CDATA[Dashpoint: GD001-AAAA<br><a href="https://www.geodashing.org/#dashpoint?id=GD001-AAAA">View on Geodashing</a>]]></description>', $xml);
+        $this->assertStringContainsString(
+            '<description><![CDATA[Dashpoint: GD001-AAAA<br>'
+            . '<a href="https://www.geodashing.org/#dashpoint?id=GD001-AAAA">View on Geodashing</a>]]></description>',
+            $xml
+        );
         $this->assertStringContainsString('<Point>', $xml);
         $this->assertStringContainsString('<altitudeMode>clampToGround</altitudeMode>', $xml);
         $this->assertStringContainsString('<coordinates>-70,45,0</coordinates>', $xml);
 
         // Assert second point
         $this->assertStringContainsString('<name>GD001-BBBB</name>', $xml);
-        $this->assertStringContainsString('<description><![CDATA[Dashpoint: GD001-BBBB<br><a href="https://www.geodashing.org/#dashpoint?id=GD001-BBBB">View on Geodashing</a>]]></description>', $xml);
+        $this->assertStringContainsString(
+            '<description><![CDATA[Dashpoint: GD001-BBBB<br>'
+            . '<a href="https://www.geodashing.org/#dashpoint?id=GD001-BBBB">View on Geodashing</a>]]></description>',
+            $xml
+        );
         $this->assertStringContainsString('<coordinates>-71,46,0</coordinates>', $xml);
 
         $this->assertStringContainsString('</Document>', $xml);
@@ -169,7 +187,7 @@ class ExportServiceTest extends TestCase
      * when no dashpoints are provided.
      */
     #[Test]
-    public function processesKmlFormatCorrectlyWithNoDashpoints()
+    public function processesKmlFormatCorrectlyWithNoDashpoints(): void
     {
         $points = [];
 
@@ -185,7 +203,7 @@ class ExportServiceTest extends TestCase
      * Verifies that injecting an invalid format securely throws an exception.
      */
     #[Test]
-    public function blocksUnsupportedFormatStrictly()
+    public function blocksUnsupportedFormatStrictly(): void
     {
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Error: Unsupported document format structure securely rejected.');

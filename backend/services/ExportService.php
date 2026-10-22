@@ -11,21 +11,21 @@ use InvalidArgumentException;
  * ExportService
  *
  * Exposes a structured DOMDocument renderer formatting bounding box subsets
- * purely into GPS-compatible schema wrappers (.gpx, .loc).
+ * into GPS-compatible schema wrappers (.gpx, .loc, .kml).
  */
 class ExportService
 {
     /**
      * Generates an XML string in the specified format for the given dashpoints.
      *
-     * @param array $points The array of dashpoints to format.
-     * @param string $format The export format ('gpx' or 'loc').
+     * @param array<int, array<string, mixed>> $points The array of dashpoints to format.
+     * @param string $format The export format ('gpx', 'loc', or 'kml').
      * @return string The generated XML string.
      * @throws InvalidArgumentException If the format is not supported.
      */
     public function generateXml(array $points, string $format): string
     {
-        // Bootstrap the XML layout builder blocking syntax exploits
+        // Bootstrap the XML layout builder
         $dom = new DOMDocument('1.0', 'UTF-8');
         $dom->formatOutput = true; // Maps clean indentation
 
@@ -37,7 +37,7 @@ class ExportService
             $dom->appendChild($gpx);
 
             foreach ($points as $pt) {
-                // Strict WP bounds
+                // Create waypoint element
                 $wpt = $dom->createElement('wpt');
                 $wpt->setAttribute('lat', (string)$pt['lat']);
                 $wpt->setAttribute('lon', (string)$pt['lon']);
@@ -116,7 +116,8 @@ class ExportService
                 $placemark->appendChild($name);
 
                 // Build CDATA description
-                $descContent = "Dashpoint: {$idSafe}<br><a href=\"https://www.geodashing.org/#dashpoint?id={$idSafe}\">View on Geodashing</a>";
+                $descContent = "Dashpoint: {$idSafe}<br>"
+                    . "<a href=\"https://www.geodashing.org/#dashpoint?id={$idSafe}\">View on Geodashing</a>";
                 $cdata = $dom->createCDATASection($descContent);
                 $desc = $dom->createElement('description');
                 $desc->appendChild($cdata);
@@ -140,6 +141,6 @@ class ExportService
             throw new InvalidArgumentException("Error: Unsupported document format structure securely rejected.");
         }
 
-        return $dom->saveXML();
+        return $dom->saveXML() ?: '';
     }
 }

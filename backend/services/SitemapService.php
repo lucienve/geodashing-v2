@@ -12,13 +12,31 @@ declare(strict_types=1);
 namespace App\Services;
 
 use PDO;
-use Exception;
 
+/**
+ * Class SitemapService
+ *
+ * Generates dynamic XML sitemaps exposing logged Dashpoints and game summaries
+ * to search engine crawlers.
+ */
 class SitemapService
 {
+    /**
+     * @var PDO The configured database connection.
+     */
     private PDO $pdo;
+
+    /**
+     * @var string Base site URL used to build sitemap locations.
+     */
     private string $baseUrl;
 
+    /**
+     * Constructor.
+     *
+     * @param PDO    $pdo     The PDO connection.
+     * @param string $baseUrl Base site URL.
+     */
     public function __construct(PDO $pdo, string $baseUrl = "https://www.geodashing.org")
     {
         $this->pdo = $pdo;
@@ -63,6 +81,9 @@ class SitemapService
 
     /**
      * Internal helper to register the primary Single Page App views.
+     *
+     * @param \XMLWriter $xml XMLWriter instance.
+     * @return void
      */
     private function addStaticUrls(\XMLWriter $xml): void
     {
@@ -79,6 +100,12 @@ class SitemapService
 
     /**
      * Injects a standard <url> block into the XML tree.
+     *
+     * @param \XMLWriter $xml        XMLWriter instance.
+     * @param string     $loc        Target URL location.
+     * @param string     $changefreq Change frequency hint.
+     * @param string     $priority   Relative priority value.
+     * @return void
      */
     private function addUrl(\XMLWriter $xml, string $loc, string $changefreq, string $priority): void
     {
@@ -91,11 +118,13 @@ class SitemapService
 
     /**
      * Retrieves all Dashpoint IDs that have at least one approved visit log.
+     *
+     * @return array<int, string>
      */
     public function getLoggedDashpointIds(): array
     {
         $stmt = $this->pdo->prepare("
-            SELECT DISTINCT d.id 
+            SELECT DISTINCT d.id
             FROM dashpoints d
             INNER JOIN visits v ON d.id = v.dashpoint_id
             WHERE v.status = 'approved'
@@ -109,13 +138,13 @@ class SitemapService
     /**
      * Retrieves all Game IDs that have a populated summary.
      *
-     * @return array Array of game IDs
+     * @return array<int, int|string> Array of game IDs.
      */
     public function getGamesWithSummaries(): array
     {
         $stmt = $this->pdo->prepare("
-            SELECT id 
-            FROM games 
+            SELECT id
+            FROM games
             WHERE summary IS NOT NULL AND summary != ''
             ORDER BY id DESC
         ");

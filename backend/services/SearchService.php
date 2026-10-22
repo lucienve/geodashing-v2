@@ -14,9 +14,11 @@ use PDOException;
  * MySQL 8 engine, routing frontend coordinates reliably
  * across boundaries like the International Date Line.
  */
-
 class SearchService
 {
+    /**
+     * @var PDO
+     */
     private PDO $db;
 
     /**
@@ -45,7 +47,8 @@ class SearchService
     {
         // 1. Base Query ensuring we actively process points that belong to the specified or LIVE Game State Month.
         $baseQuery = "
-            SELECT d.id, ST_Latitude(d.location) AS lat, ST_Longitude(d.location) AS lon, COUNT(v.id) AS visit_count 
+            SELECT d.id, ST_Latitude(d.location) AS lat,
+                   ST_Longitude(d.location) AS lon, COUNT(v.id) AS visit_count 
             FROM dashpoints d
             JOIN games g ON d.game_id = g.id
             LEFT JOIN visits v ON d.id = v.dashpoint_id AND v.status = 'approved'
@@ -55,10 +58,32 @@ class SearchService
         // 2. International Date Line Router Algorithm
         if ($east < $west) {
             // Box mathematically crossed the Anti-Meridian -> Break query into two global polygons
-            $polyWest = sprintf('POLYGON((%F %F, %F %F, %F 180.0, %F 180.0, %F %F))', $south, $west, $north, $west, $north, $south, $south, $west);
-            $polyEast = sprintf('POLYGON((%F -180.0, %F -180.0, %F %F, %F %F, %F -180.0))', $south, $north, $north, $east, $south, $east, $south);
+            $polyWest = sprintf(
+                'POLYGON((%F %F, %F %F, 180.0 %F, 180.0 %F, %F %F))',
+                $west,
+                $south,
+                $west,
+                $north,
+                $north,
+                $south,
+                $west,
+                $south
+            );
+            $polyEast = sprintf(
+                'POLYGON((-180.0 %F, -180.0 %F, %F %F, %F %F, -180.0 %F))',
+                $south,
+                $north,
+                $east,
+                $north,
+                $east,
+                $south,
+                $south
+            );
 
-            $sql = $baseQuery . " AND (MBRContains(ST_GeomFromText(:poly_west, 4326), d.location) OR MBRContains(ST_GeomFromText(:poly_east, 4326), d.location)) GROUP BY d.id";
+            $sql = $baseQuery
+                . " AND (MBRContains(ST_GeomFromText(:poly_west, 4326, 'axis-order=long-lat'), d.location)"
+                . " OR MBRContains(ST_GeomFromText(:poly_east, 4326, 'axis-order=long-lat'), d.location))"
+                . " GROUP BY d.id";
             $params = [
                 ':poly_west' => $polyWest,
                 ':poly_east' => $polyEast,
@@ -66,8 +91,21 @@ class SearchService
             ];
         } else {
             // Standard Bounding Box mapping utilizing MySQL SPATIAL INDEX
-            $poly = sprintf('POLYGON((%F %F, %F %F, %F %F, %F %F, %F %F))', $south, $west, $north, $west, $north, $east, $south, $east, $south, $west);
-            $sql = $baseQuery . " AND MBRContains(ST_GeomFromText(:poly, 4326), d.location) GROUP BY d.id";
+            $poly = sprintf(
+                'POLYGON((%F %F, %F %F, %F %F, %F %F, %F %F))',
+                $west,
+                $south,
+                $west,
+                $north,
+                $east,
+                $north,
+                $east,
+                $south,
+                $west,
+                $south
+            );
+            $sql = $baseQuery
+                . " AND MBRContains(ST_GeomFromText(:poly, 4326, 'axis-order=long-lat'), d.location) GROUP BY d.id";
             $params = [
                 ':poly' => $poly,
                 ':game_id' => $gameId
@@ -110,18 +148,52 @@ class SearchService
         ";
 
         if ($east < $west) {
-            $polyWest = sprintf('POLYGON((%F %F, %F %F, %F 180.0, %F 180.0, %F %F))', $south, $west, $north, $west, $north, $south, $south, $west);
-            $polyEast = sprintf('POLYGON((%F -180.0, %F -180.0, %F %F, %F %F, %F -180.0))', $south, $north, $north, $east, $south, $east, $south);
+            $polyWest = sprintf(
+                'POLYGON((%F %F, %F %F, 180.0 %F, 180.0 %F, %F %F))',
+                $west,
+                $south,
+                $west,
+                $north,
+                $north,
+                $south,
+                $west,
+                $south
+            );
+            $polyEast = sprintf(
+                'POLYGON((-180.0 %F, -180.0 %F, %F %F, %F %F, -180.0 %F))',
+                $south,
+                $north,
+                $east,
+                $north,
+                $east,
+                $south,
+                $south
+            );
 
-            $sql = $baseQuery . " AND (MBRContains(ST_GeomFromText(:poly_west, 4326), v.reported_location) OR MBRContains(ST_GeomFromText(:poly_east, 4326), v.reported_location))";
+            $sql = $baseQuery
+                . " AND (MBRContains(ST_GeomFromText(:poly_west, 4326, 'axis-order=long-lat'), v.reported_location)"
+                . " OR MBRContains(ST_GeomFromText(:poly_east, 4326, 'axis-order=long-lat'), v.reported_location))";
             $params = [
                 ':poly_west' => $polyWest,
                 ':poly_east' => $polyEast,
                 ':game_id' => $gameId
             ];
         } else {
-            $poly = sprintf('POLYGON((%F %F, %F %F, %F %F, %F %F, %F %F))', $south, $west, $north, $west, $north, $east, $south, $east, $south, $west);
-            $sql = $baseQuery . " AND MBRContains(ST_GeomFromText(:poly, 4326), v.reported_location)";
+            $poly = sprintf(
+                'POLYGON((%F %F, %F %F, %F %F, %F %F, %F %F))',
+                $west,
+                $south,
+                $west,
+                $north,
+                $east,
+                $north,
+                $east,
+                $south,
+                $west,
+                $south
+            );
+            $sql = $baseQuery
+                . " AND MBRContains(ST_GeomFromText(:poly, 4326, 'axis-order=long-lat'), v.reported_location)";
             $params = [
                 ':poly' => $poly,
                 ':game_id' => $gameId

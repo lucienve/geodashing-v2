@@ -44,10 +44,14 @@ class ReportService
         $this->db = $db;
         if ($geoService === null) {
             $configPath = __DIR__ . '/../config.ini';
-            $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
+            $config = (file_exists($configPath) && is_readable($configPath))
+                ? (parse_ini_file($configPath) ?: [])
+                : [];
             $apiKey = $config['GOOGLE_MAPS_API_KEY'] ?? '';
-            $apiBaseUrl = $config['GOOGLE_MAPS_API_BASE_URL']
-                ?? ((getenv('APP_ENV') === 'testing') ? 'http://127.0.0.1:8081/api/mock_maps.php?' : 'https://maps.googleapis.com');
+            $defaultMapsUrl = (getenv('APP_ENV') === 'testing')
+                ? 'http://127.0.0.1:8081/api/mock_maps.php?'
+                : 'https://maps.googleapis.com';
+            $apiBaseUrl = $config['GOOGLE_MAPS_API_BASE_URL'] ?? $defaultMapsUrl;
             $this->geoService = new GeoContextService($this->db, $apiKey, $apiBaseUrl);
         } else {
             $this->geoService = $geoService;
@@ -58,34 +62,46 @@ class ReportService
     /**
      * Processes a user's location claim against a specific Dashpoint.
      *
-     * @param int|string  $userId       The ID of the user submitting the visit.
-     * @param string      $dashpointId  The unique ID target Dashpoint.
-     * @param float       $lat          The user's reported latitude.
-     * @param float       $lon          The user's reported longitude.
-     * @param bool        $isAttempt    Whether this is logged as a 0-point attempt.
-     * @param string|null $notes        Optional narrative submitted by the user.
-     * @param string|null $photosJson   Optional pre-compiled JSON string array of valid GCS image paths.
-     * @param bool        $suppressEmail Optional boolean to bypass the initial email notification to the mailing list.
+     * @param int|string  $userId        The ID of the user submitting the visit.
+     * @param string      $dashpointId   The unique ID target Dashpoint.
+     * @param float       $lat           The user's reported latitude.
+     * @param float       $lon           The user's reported longitude.
+     * @param bool        $isAttempt     Whether this is logged as a 0-point attempt.
+     * @param string|null $notes         Optional narrative submitted by the user.
+     * @param string|null $photosJson    Optional pre-compiled JSON string array of valid GCS image paths.
+     * @param bool        $suppressEmail Optional boolean to bypass the initial email notification.
      *
-     * @return array Associative array containing the JSON-ready API response.
+     * @return array<string, mixed> Associative array containing the JSON-ready API response.
      * @throws PDOException If the database connection fails.
      */
-    public function processVisit($userId, string $dashpointId, float $lat, float $lon, bool $isAttempt = false, ?string $notes = null, ?string $photosJson = null, bool $suppressEmail = false): array
-    {
+    public function processVisit(
+        int|string $userId,
+        string $dashpointId,
+        float $lat,
+        float $lon,
+        bool $isAttempt = false,
+        ?string $notes = null,
+        ?string $photosJson = null,
+        bool $suppressEmail = false
+    ): array {
         $userStmt = $this->db->prepare("SELECT is_verified FROM users WHERE id = :user_id LIMIT 1");
         $userStmt->execute([':user_id' => $userId]);
         $userCheck = $userStmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$userCheck || $userCheck['is_verified'] == 0) {
-            return ["status" => "error", "message" => "Account not verified. Please check your email to activate your account before logging Dashpoints."];
+            return [
+                "status" => "error",
+                "message" => "Account not verified. Please check your email "
+                    . "to activate your account before logging Dashpoints."
+            ];
         }
 
         // 3. Proximity Calculation utilizing MySQL native ST_Distance_Sphere
-        $wkt = "POINT($lat $lon)";
+        $wkt = sprintf("POINT(%F %F)", $lat, $lon);
 
         $distStmt = $this->db->prepare("
-            SELECT 
-                ST_Distance_Sphere(d.location, ST_GeomFromText(:wkt, 4326)) AS distance_meters, 
+            SELECT
+                ST_Distance_Sphere(d.location, ST_GeomFromText(:wkt, 4326)) AS distance_meters,
                 g.is_active,
                 g.id AS game_id,
                 ST_Latitude(d.location) as dp_lat,
@@ -95,7 +111,7 @@ class ReportService
                 d.elevation
             FROM dashpoints d
             JOIN games g ON d.game_id = g.id
-            WHERE d.id = :id 
+            WHERE d.id = :id
             LIMIT 1
         ");
         $distStmt->execute([':wkt' => $wkt, ':id' => $dashpointId]);
@@ -130,12 +146,16 @@ class ReportService
         if (!$isAttempt && $distance > 100) {
             return [
                 "status" => "error",
-                "message" => "Visit rejected. You must be within 100 meters to claim this point. Calculated distance: {$distance}m."
+                "message" => "Visit rejected. You must be within 100 meters to claim this point. "
+                    . "Calculated distance: {$distance}m."
             ];
         }
 
         // 5. Verify Anti-Cheat: User hasn't already claimed a successful visit for this dashpoint
-        $checkStmt = $this->db->prepare("SELECT id FROM visits WHERE user_id = :uid AND dashpoint_id = :dpid AND is_attempt = FALSE LIMIT 1");
+        $checkStmt = $this->db->prepare(
+            "SELECT id FROM visits "
+            . "WHERE user_id = :uid AND dashpoint_id = :dpid AND is_attempt = FALSE LIMIT 1"
+        );
         $checkStmt->execute([':uid' => $userId, ':dpid' => $dashpointId]);
         if (!$isAttempt && $checkStmt->fetch()) {
             return ["status" => "error", "message" => "You have already claimed this dashpoint."];
@@ -159,14 +179,17 @@ class ReportService
         // - 1 previous claim before today: 2 points (second claim)
         // - 2+ previous claims before today: 1 point (subsequent claims)
         $scoreCheckStmt = $this->db->prepare("
-            SELECT COUNT(id) AS previous_claims 
-            FROM visits 
-            WHERE dashpoint_id = :dpid 
-              AND is_attempt = FALSE 
-              AND DATE(DATE_ADD(reported_time, INTERVAL {$tzOffsetSeconds} SECOND)) < DATE(DATE_ADD(CURRENT_TIMESTAMP, INTERVAL {$tzOffsetSeconds} SECOND))
+            SELECT COUNT(id) AS previous_claims
+            FROM visits
+            WHERE dashpoint_id = :dpid
+              AND is_attempt = FALSE
+              AND DATE(DATE_ADD(reported_time, INTERVAL :tz_offset_1 SECOND))
+                  < DATE(DATE_ADD(CURRENT_TIMESTAMP, INTERVAL :tz_offset_2 SECOND))
         ");
         $scoreCheckStmt->execute([
-            ':dpid' => $dashpointId
+            ':dpid' => $dashpointId,
+            ':tz_offset_1' => $tzOffsetSeconds,
+            ':tz_offset_2' => $tzOffsetSeconds
         ]);
         $previousClaims = (int) $scoreCheckStmt->fetch(PDO::FETCH_ASSOC)['previous_claims'];
 
@@ -179,17 +202,23 @@ class ReportService
             $scoreAwarded = 2; // Second claim
         }
 
-        $gameId = $result['game_id'];
+        $gameId = (int) $result['game_id'];
 
         // 8. Fetch player mail statistics before insert (gets hunts counts before this visit)
-        $stats = $this->profileService->getPlayerMailStats($userId, $gameId);
+        $stats = $this->profileService->getPlayerMailStats((int) $userId, $gameId);
         $previousHuntsAllGames = $stats['previous_hunts_all_games'];
         $previousHuntsGame = $stats['previous_hunts_game'];
 
         // 9. Log the Visit and Secure the Calculated Score Automatically alongside bounded JSON image paths
         $insertStmt = $this->db->prepare("
-            INSERT INTO visits (dashpoint_id, user_id, team_id, reported_location, distance_meters, score_awarded, is_attempt, notes, photos)
-            VALUES (:dpid, :uid, :tid, ST_GeomFromText(:wkt, 4326), :dist, :score, :is_attempt, :notes, :photos)
+            INSERT INTO visits (
+                dashpoint_id, user_id, team_id, reported_location,
+                distance_meters, score_awarded, is_attempt, notes, photos
+            )
+            VALUES (
+                :dpid, :uid, :tid, ST_GeomFromText(:wkt, 4326),
+                :dist, :score, :is_attempt, :notes, :photos
+            )
         ");
 
         $insertStmt->execute([
@@ -218,14 +247,35 @@ class ReportService
         // Calculate extremes if valid province is set AND it was a successful claim (not an attempt)
         if (!$isAttempt && !empty($dpState) && !empty($dpCountry)) {
             $visitYear = (int) date('Y');
-            $extremeAnnotations = $this->geoService->evaluateAndGetExtremeAnnotations($dashpointId, $dpLat, $dpLon, $dpElevation, $dpState, $dpCountry, $visitYear);
+            $extremeAnnotations = $this->geoService->evaluateAndGetExtremeAnnotations(
+                $dashpointId,
+                $dpLat,
+                $dpLon,
+                $dpElevation,
+                $dpState,
+                $dpCountry,
+                $visitYear
+            );
             if (!empty($extremeAnnotations)) {
                 $geoContext .= $extremeAnnotations;
             }
         }
 
         if (!$suppressEmail) {
-            $this->sendVisitReportEmail($username, $dashpointId, $distance, $scoreAwarded, $totalPointsAllGames, $totalPointsGame, $isAttempt, $notes, $photosJson, $previousHuntsAllGames, $previousHuntsGame, $geoContext);
+            $this->sendVisitReportEmail(
+                $username,
+                $dashpointId,
+                $distance,
+                $scoreAwarded,
+                $totalPointsAllGames,
+                $totalPointsGame,
+                $isAttempt,
+                $notes,
+                $photosJson,
+                $previousHuntsAllGames,
+                $previousHuntsGame,
+                $geoContext
+            );
         }
 
         $action = $isAttempt ? "Attempt logged" : "Dashpoint successfully claimed";

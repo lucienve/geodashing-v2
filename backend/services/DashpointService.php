@@ -13,6 +13,9 @@ use PDO;
  */
 class DashpointService
 {
+    /**
+     * @var PDO The configured database connection.
+     */
     private PDO $db;
 
     /**
@@ -30,7 +33,7 @@ class DashpointService
      * Resolves metadata for a Dashpoint alongside globally joined visit data.
      *
      * @param string $dashpointId The unique dashpoint ID.
-     * @return array|null The dashpoint details and visit list, or null if not found.
+     * @return array<string, mixed>|null The dashpoint details and visit list, or null if not found.
      */
     public function getDashpointDetails(string $dashpointId): ?array
     {
@@ -50,19 +53,22 @@ class DashpointService
             return null;
         }
 
-        // 2. Query precisely all approved Historical Visits mapped to this exact dashpoint
+        // 2. Query approved historical visits mapped to this dashpoint
         $vStmt = $this->db->prepare("
-            SELECT v.id AS visit_id, u.username, v.reported_time, v.edited_at, v.score_awarded, v.is_attempt, v.notes, v.photos,
-                   ST_Latitude(v.reported_location) AS reported_lat, ST_Longitude(v.reported_location) AS reported_lon, v.distance_meters 
-            FROM visits v 
-            JOIN users u ON v.user_id = u.id 
+            SELECT v.id AS visit_id, u.username, v.reported_time, v.edited_at,
+                   v.score_awarded, v.is_attempt, v.notes, v.photos,
+                   ST_Latitude(v.reported_location) AS reported_lat,
+                   ST_Longitude(v.reported_location) AS reported_lon,
+                   v.distance_meters
+            FROM visits v
+            JOIN users u ON v.user_id = u.id
             WHERE v.dashpoint_id = :id AND v.status = 'approved'
             ORDER BY v.reported_time ASC
         ");
         $vStmt->execute(['id' => $dashpointId]);
         $visits = $vStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // 3. Decode the raw JSON photographic arrays safely for the UI Carousel parser statically
+        // 3. Decode the JSON photo arrays for UI rendering
         foreach ($visits as &$v) {
             $v['photos'] = json_decode($v['photos'] ?? '[]', true) ?: [];
         }
@@ -71,7 +77,6 @@ class DashpointService
         $isGameActive = (bool) ($dashpoint['is_active'] ?? false);
         $isGamePreview = (!$isGameActive && $startTime > time());
         $isRerolled = ((int) ($dashpoint['reroll_count'] ?? 0)) > 0;
-
 
         return [
             "id" => $dashpoint['id'],

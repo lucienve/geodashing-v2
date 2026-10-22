@@ -11,9 +11,11 @@ use PDO;
  *
  * Aggregates and ranks active player scores utilizing SQL GROUP BY projections.
  */
-
 class LeaderboardService
 {
+    /**
+     * @var PDO The configured database connection.
+     */
     private PDO $db;
 
     /**
@@ -33,13 +35,13 @@ class LeaderboardService
      *
      * @param int $gameId The Monthly game ID.
      * @param int $limit Limits the SQL loop for structural safety (Default: 100 players).
-     * @return array Ranked struct mapping [`rank`, `username`, `total_score`, `total_finds`, `last_find_time`]
+     * @return array<int, array<string, mixed>> Ranked player records.
      */
     public function getSoloRankings(int $gameId, int $limit = 100): array
     {
-        // Execute structural aggregation calculating standard sums, filtering explicitly for the dashpoint game array.
+        // Aggregate total scores and finds for the specified game.
         $sql = "
-            SELECT 
+            SELECT
                 u.id AS user_id,
                 u.username,
                 SUM(v.score_awarded) AS total_score,
@@ -76,9 +78,7 @@ class LeaderboardService
             $rowScore = (int) $row['total_score'];
 
             // Enforce standard competition tie-breaking (Rank 1, 1, 3, 4) if points are identical.
-            if ($prevScore !== null && $rowScore === $prevScore) {
-                // Exact identical score. Holds the current rank mapping.
-            } else {
+            if ($prevScore === null || $rowScore !== $prevScore) {
                 $currentRank = $idx;
             }
 

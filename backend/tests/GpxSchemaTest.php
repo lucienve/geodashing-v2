@@ -19,8 +19,15 @@ use DOMDocument;
 #[CoversClass(ExportService::class)]
 class GpxSchemaTest extends TestCase
 {
+    /**
+     * @var ExportService
+     */
     private ExportService $exportService;
 
+    /**
+     * Sets up the test fixtures.
+     */
+    #[\Override]
     protected function setUp(): void
     {
         $this->exportService = new ExportService();
@@ -30,7 +37,7 @@ class GpxSchemaTest extends TestCase
      * Asserts that a populated GPX document cleanly passes XSD validation.
      */
     #[Test]
-    public function generatedGpxStrictlyAdheresToSchemaDefinition()
+    public function generatedGpxStrictlyAdheresToSchemaDefinition(): void
     {
         $points = [
             ['id' => 'GD001-AAAA', 'lat' => 45.0, 'lon' => -70.0],

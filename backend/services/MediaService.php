@@ -16,17 +16,30 @@ use Google\Cloud\Storage\StorageClient;
  */
 class MediaService
 {
+    /**
+     * @var StorageClient Google Cloud Storage client instance.
+     */
     private StorageClient $storage;
+
+    /**
+     * @var string Google Cloud Storage bucket name.
+     */
     private string $bucketName;
 
     /**
-     * @param string $projectId  The GCP Architecture Project ID.
-     * @param string $bucketName The dedicated GS blob storage pool name.
-     * @param string $keyFilePath Absolute disk path referencing the IAM Service Account JSON key.
-     * @param StorageClient|null $storage Optional dependency injection override for PHPUnit mocks.
+     * Constructor.
+     *
+     * @param string             $projectId   The GCP Architecture Project ID.
+     * @param string             $bucketName  The dedicated GS blob storage pool name.
+     * @param string|null        $keyFilePath Absolute disk path referencing the IAM Service Account JSON key.
+     * @param StorageClient|null $storage     Optional dependency injection override for PHPUnit mocks.
      */
-    public function __construct(string $projectId, string $bucketName, ?string $keyFilePath = null, ?StorageClient $storage = null)
-    {
+    public function __construct(
+        string $projectId,
+        string $bucketName,
+        ?string $keyFilePath = null,
+        ?StorageClient $storage = null
+    ) {
         $this->bucketName = $bucketName;
 
         if ($storage !== null) {
@@ -46,15 +59,36 @@ class MediaService
                 // Neutralize auth by supplying a dummy credentials fetcher. This prevents
                 // the SDK from eagerly loading developer Application Default Credentials and hitting OAuth.
                 $config['credentialsFetcher'] = new class implements \Google\Auth\FetchAuthTokenInterface {
-                    public function fetchAuthToken(?callable $httpHandler = null)
+                    /**
+                     * Returns a mock auth token for the local GCS emulator.
+                     *
+                     * @param callable|null $httpHandler Optional HTTP handler.
+                     * @return array<string, mixed>
+                     */
+                    #[\Override]
+                    public function fetchAuthToken(?callable $httpHandler = null): array
                     {
                         return ['access_token' => 'mock-token-for-emulator', 'expires_in' => 3600];
                     }
-                    public function getCacheKey()
+
+                    /**
+                     * Returns a mock cache key for the local GCS emulator.
+                     *
+                     * @return string
+                     */
+                    #[\Override]
+                    public function getCacheKey(): string
                     {
                         return 'mock-key';
                     }
-                    public function getLastReceivedToken()
+
+                    /**
+                     * Returns the last received mock token for the local GCS emulator.
+                     *
+                     * @return array<string, mixed>|null
+                     */
+                    #[\Override]
+                    public function getLastReceivedToken(): ?array
                     {
                         return ['access_token' => 'mock-token-for-emulator', 'expires_in' => 3600];
                     }
@@ -69,14 +103,14 @@ class MediaService
     /**
      * Normalizes and uploads an array of raw PHP files to Google Cloud Storage.
      *
-     * @param array $files The raw $_FILES['photos'] multidimensional array dump.
-     * @param string $dashpointId The target dashpoint enforcing hierarchical naming.
-     * @param int|string $userId The uploader identity bounding scope.
-     * @param array $captions Optional array of captions mapped to original photo indexes.
-     * @return array Array of public GCS URLs mapping directly to the successfully stored images.
+     * @param array<string, mixed>       $files       The raw $_FILES['photos'] multidimensional array dump.
+     * @param string                     $dashpointId The target dashpoint enforcing hierarchical naming.
+     * @param int|string                 $userId      The uploader identity bounding scope.
+     * @param array<int|string, string>  $captions    Optional array of captions mapped to original photo indexes.
+     * @return array<int, array<string, mixed>> Array of public GCS URLs and metadata for stored images.
      * @throws Exception If an upload logically fails or hits invalid mime blocks.
      */
-    public function uploadPhotos(array $files, string $dashpointId, $userId, array $captions = []): array
+    public function uploadPhotos(array $files, string $dashpointId, int|string $userId, array $captions = []): array
     {
         $urls = [];
         $bucket = $this->storage->bucket($this->bucketName);
@@ -97,7 +131,8 @@ class MediaService
             // Intercept upload errors cleanly routing the failure to the UI
             if ($file['error'] !== UPLOAD_ERR_OK) {
                 $errMap = [
-                    UPLOAD_ERR_INI_SIZE => "Payload exceeds PHP 'upload_max_filesize' limits (Current default is likely 2MB).",
+                    UPLOAD_ERR_INI_SIZE =>
+                        "Payload exceeds PHP 'upload_max_filesize' limits (Current default is likely 2MB).",
                     UPLOAD_ERR_FORM_SIZE => "File exceeds MAX_FILE_SIZE form limit.",
                     UPLOAD_ERR_PARTIAL => "File was only partially uploaded over the network.",
                     UPLOAD_ERR_NO_TMP_DIR => "Disk error: Missing temporary tracking directory.",
@@ -110,11 +145,11 @@ class MediaService
             // Server-side strict MIME validation preventing remote exploits
             $finfo = new finfo(FILEINFO_MIME_TYPE);
             $mime = $finfo->file($file['tmp_name']);
-            if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'])) {
+            if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true)) {
                 throw new Exception("Invalid file type. Only JPEG, PNG, and WebP assets are allowed.");
             }
 
-            // Generate a secure unique mathematical path map locking the object structure securely in the bucket
+            // Map MIME type to canonical file extension
             $mimeToExt = [
                 'image/jpeg' => 'jpg',
                 'image/png'  => 'png',
@@ -126,9 +161,9 @@ class MediaService
             $safeDashpointId = preg_replace('/[^a-zA-Z0-9_-]/', '', $dashpointId);
 
             $objectName = sprintf(
-                "visits/%s/%d_%s_%d.%s",
+                "visits/%s/%s_%s_%d.%s",
                 $safeDashpointId,
-                $userId,
+                (string) $userId,
                 date('YmdHis'),
                 $index,
                 $extension
@@ -151,7 +186,7 @@ class MediaService
                 fopen($file['tmp_name'], 'r'),
                 [
                     'name' => $objectName,
-                    'resumable' => false             // Bypass chunked background uploads
+                    'resumable' => false
                 ]
             );
 
@@ -163,22 +198,27 @@ class MediaService
             $thumbPath = $this->generateThumbnail($file['tmp_name'], $mime);
             if ($thumbPath) {
                 $thumbObjectName = sprintf(
-                    "visits/%s/%d_%s_%d_thumb.%s",
+                    "visits/%s/%s_%s_%d_thumb.%s",
                     $safeDashpointId,
-                    $userId,
+                    (string) $userId,
                     date('YmdHis'),
                     $index,
                     $extension
                 );
-                $bucket->upload(
-                    fopen($thumbPath, 'r'),
-                    [
-                        'name' => $thumbObjectName,
-                        'resumable' => false
-                    ]
-                );
-                @unlink($thumbPath); // Clean up the temp file
-                $thumbUrl = "{$publicDomain}/{$this->bucketName}/{$thumbObjectName}";
+                try {
+                    $bucket->upload(
+                        fopen($thumbPath, 'r'),
+                        [
+                            'name' => $thumbObjectName,
+                            'resumable' => false
+                        ]
+                    );
+                    $thumbUrl = "{$publicDomain}/{$this->bucketName}/{$thumbObjectName}";
+                } finally {
+                    if (file_exists($thumbPath)) {
+                        unlink($thumbPath);
+                    }
+                }
             }
 
             // Construct standard GS public URL path resolving identically via HTTP
@@ -196,9 +236,10 @@ class MediaService
 
     /**
      * Parses public Google URLs routing them back into internal object paths
-     * and deletes the object strictly inside the bucket.
+     * and deletes the object inside the bucket.
      *
      * @param string[] $urls An array of raw Google Cloud Storage URL strings.
+     * @return void
      */
     public function deletePhotos(array $urls): void
     {
@@ -211,7 +252,7 @@ class MediaService
 
         foreach ($urls as $url) {
             // Strip the public HTTP prefix to isolate the internal Object mapping (e.g. 'visits/GD01/1_pic.jpg')
-            if (strpos($url, $prefix) === 0) {
+            if (str_starts_with($url, $prefix)) {
                 $objectName = substr($url, strlen($prefix));
 
                 // Execute the explicit REST deletion hook synchronously
@@ -240,6 +281,23 @@ class MediaService
     }
 
     /**
+     * Executes a GD/EXIF/IPTC binary parsing callback while suppressing non-fatal PHP warnings
+     * emitted on truncated or malformed image streams.
+     *
+     * @param callable $callback The binary image operation to execute.
+     * @return mixed
+     */
+    private function runWithoutWarnings(callable $callback): mixed
+    {
+        set_error_handler(static fn(): bool => true);
+        try {
+            return $callback();
+        } finally {
+            restore_error_handler();
+        }
+    }
+
+    /**
      * Generates a temporary thumbnail file proportional to an 800px max dimension.
      *
      * @param string $sourcePath The absolute path to the uploaded image.
@@ -254,13 +312,13 @@ class MediaService
 
         switch ($mime) {
             case 'image/jpeg':
-                $image = @imagecreatefromjpeg($sourcePath);
+                $image = $this->runWithoutWarnings(static fn() => imagecreatefromjpeg($sourcePath));
                 break;
             case 'image/png':
-                $image = @imagecreatefrompng($sourcePath);
+                $image = $this->runWithoutWarnings(static fn() => imagecreatefrompng($sourcePath));
                 break;
             case 'image/webp':
-                $image = @imagecreatefromwebp($sourcePath);
+                $image = $this->runWithoutWarnings(static fn() => imagecreatefromwebp($sourcePath));
                 break;
             default:
                 return null;
@@ -279,7 +337,7 @@ class MediaService
                     imageflip($image, IMG_FLIP_HORIZONTAL);
                     break;
                 case 3:
-                    $rotated = @imagerotate($image, 180, 0);
+                    $rotated = $this->runWithoutWarnings(static fn() => imagerotate($image, 180, 0));
                     if ($rotated !== false) {
                         $image = $rotated;
                     }
@@ -289,26 +347,26 @@ class MediaService
                     break;
                 case 5:
                     imageflip($image, IMG_FLIP_VERTICAL);
-                    $rotated = @imagerotate($image, 270, 0);
+                    $rotated = $this->runWithoutWarnings(static fn() => imagerotate($image, 270, 0));
                     if ($rotated !== false) {
                         $image = $rotated;
                     }
                     break;
                 case 6:
-                    $rotated = @imagerotate($image, 270, 0);
+                    $rotated = $this->runWithoutWarnings(static fn() => imagerotate($image, 270, 0));
                     if ($rotated !== false) {
                         $image = $rotated;
                     }
                     break;
                 case 7:
                     imageflip($image, IMG_FLIP_HORIZONTAL);
-                    $rotated = @imagerotate($image, 270, 0);
+                    $rotated = $this->runWithoutWarnings(static fn() => imagerotate($image, 270, 0));
                     if ($rotated !== false) {
                         $image = $rotated;
                     }
                     break;
                 case 8:
-                    $rotated = @imagerotate($image, 90, 0);
+                    $rotated = $this->runWithoutWarnings(static fn() => imagerotate($image, 90, 0));
                     if ($rotated !== false) {
                         $image = $rotated;
                     }
@@ -344,6 +402,9 @@ class MediaService
         imagecopyresampled($thumbnail, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
 
         $tempFile = tempnam(sys_get_temp_dir(), 'gd_thumb_');
+        if ($tempFile === false) {
+            return null;
+        }
         $success = false;
 
         switch ($mime) {
@@ -359,7 +420,9 @@ class MediaService
         }
 
         if (!$success) {
-            @unlink($tempFile);
+            if (file_exists($tempFile)) {
+                unlink($tempFile);
+            }
             return null;
         }
 
@@ -370,12 +433,18 @@ class MediaService
      * Extracts and calculates EXIF GPS data from an image file.
      *
      * @param string $path Local absolute path to the uploaded image binary.
-     * @return array|null Null if no EXIF exists or if coordinates are missing.
+     * @return array{lat: float, lon: float}|null Null if no EXIF exists or if coordinates are missing.
      */
     private function parseExifGPS(string $path): ?array
     {
         $exif = $this->readExifData($path);
-        if (!$exif || !isset($exif['GPSLatitude'], $exif['GPSLongitude'], $exif['GPSLatitudeRef'], $exif['GPSLongitudeRef'])) {
+        $hasGps = $exif && isset(
+            $exif['GPSLatitude'],
+            $exif['GPSLongitude'],
+            $exif['GPSLatitudeRef'],
+            $exif['GPSLongitudeRef']
+        );
+        if (!$hasGps) {
             return null;
         }
 
@@ -390,7 +459,11 @@ class MediaService
     }
 
     /**
-     * Converts raw EXIF DMS fraction arrays into a strict Decimal Degree.
+     * Converts raw EXIF DMS fraction arrays into a Decimal Degree float.
+     *
+     * @param array<int, string|int|float> $exifCoord EXIF DMS coordinate array.
+     * @param string                       $hemi      Hemisphere reference ('N', 'S', 'E', 'W').
+     * @return float|null
      */
     private function convertGpsToDecimal(array $exifCoord, string $hemi): ?float
     {
@@ -410,25 +483,32 @@ class MediaService
 
     /**
      * Evaluates PHP's standard EXIF integer fractions (e.g. "42/1") cleanly.
+     *
+     * @param string|int|float $fraction Raw EXIF rational value.
+     * @return float
      */
-    private function evalExifFraction($fraction): float
+    private function evalExifFraction(string|int|float $fraction): float
     {
         $parts = explode('/', (string)$fraction);
         if (count($parts) <= 0) {
             return 0.0;
         }
-        if (count($parts) == 1) {
+        if (count($parts) === 1) {
             return (float)$parts[0];
         }
-        if ($parts[1] == 0) {
+        $denominator = (float)$parts[1];
+        if ($denominator === 0.0) {
             return 0.0;
         }
-        return (float)$parts[0] / (float)$parts[1];
+        return (float)$parts[0] / $denominator;
     }
 
     /**
      * Cleans the legacy `$_FILES` structure into a standard iterative matrix mapping
      * fields uniformly across multiple HTTP-uploaded binary payload arrays.
+     *
+     * @param array<string, mixed> $files Raw `$_FILES` entry.
+     * @return array<int, array<string, mixed>>
      */
     private function normalizeFilesArray(array $files): array
     {
@@ -460,22 +540,23 @@ class MediaService
      * Reads EXIF data from an image file path.
      *
      * @param string $path Local absolute path to the image file.
-     * @return array|null
+     * @return array<string, mixed>|null
      */
     protected function readExifData(string $path): ?array
     {
-        if (!function_exists('exif_read_data')) {
+        if (!function_exists('exif_read_data') || !file_exists($path)) {
             return null;
         }
-        $data = @exif_read_data($path);
-        return $data === false ? null : $data;
+        $data = $this->runWithoutWarnings(static fn() => exif_read_data($path));
+        return is_array($data) ? $data : null;
     }
 
     /**
-     * Embeds a caption into the physical JPEG image using native IPTC headers.
+     * Embeds a caption into the local JPEG image using native IPTC headers.
      *
      * @param string $filePath The absolute path to the local file.
      * @param string $caption The caption string to embed.
+     * @return void
      */
     private function embedIptcCaption(string $filePath, string $caption): void
     {
@@ -501,18 +582,23 @@ class MediaService
         $data = $this->iptcMakeTag(1, 90, $utf8Seq) . $this->iptcMakeTag(2, 120, $caption);
 
         // Inject standard IPTC markers into the JPEG stream
-        $content = @iptcembed($data, $filePath);
-        if ($content !== false) {
-            $fp = @fopen($filePath, 'wb');
-            if ($fp) {
-                @fwrite($fp, $content);
-                @fclose($fp);
+        $content = $this->runWithoutWarnings(static fn() => iptcembed($data, $filePath));
+        if (is_string($content) && is_writable($filePath)) {
+            $fp = fopen($filePath, 'wb');
+            if ($fp !== false) {
+                fwrite($fp, $content);
+                fclose($fp);
             }
         }
     }
 
     /**
      * Helper to construct a single IPTC binary tag structure.
+     *
+     * @param int    $rec   IPTC record number.
+     * @param int    $data  IPTC dataset tag number.
+     * @param string $value Raw binary tag value.
+     * @return string
      */
     private function iptcMakeTag(int $rec, int $data, string $value): string
     {

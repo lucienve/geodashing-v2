@@ -4,19 +4,31 @@ declare(strict_types=1);
 
 namespace App\Tests;
 
-use PHPUnit\Framework\TestCase;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\Attributes\CoversClass;
-use App\Services\RerollService;
 use App\Services\GeoContextService;
+use App\Services\RerollService;
+use Exception;
 use PDO;
 use PDOStatement;
-use Exception;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
 
+/**
+ * RerollServiceTest
+ *
+ * Verifies dashpoint reroll eligibility, preview game checks, and UV command formatting.
+ */
 #[CoversClass(RerollService::class)]
 class RerollServiceTest extends TestCase
 {
-    private $pdoMock;
+    /**
+     * @var PDO
+     */
+    private PDO $pdoMock;
+
+    /**
+     * @var array<string, mixed>
+     */
     private array $testConfig = [
         'reroll' => [
             'REROLL_ENABLED' => true,
@@ -26,6 +38,10 @@ class RerollServiceTest extends TestCase
         ],
     ];
 
+    /**
+     * Sets up the test fixtures.
+     */
+    #[\Override]
     protected function setUp(): void
     {
         putenv('APP_ENV=testing');
@@ -220,6 +236,7 @@ class RerollServiceTest extends TestCase
         $geoMock->method('getDashpointContext')->willReturn('Mocked GeoContext');
 
         $service = new class ($this->pdoMock, $geoMock, $this->testConfig) extends RerollService {
+            #[\Override]
             protected function executePythonRerollScript(float $origLat, float $origLon, float $maxRadiusKm): array
             {
                 return [

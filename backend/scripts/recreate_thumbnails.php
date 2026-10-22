@@ -18,19 +18,21 @@ use App\Services\MediaService;
 
 try {
     $configPath = __DIR__ . '/../config.ini';
-    $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
+    $config = (file_exists($configPath) && is_readable($configPath))
+        ? (parse_ini_file($configPath) ?: [])
+        : [];
     $keyPath = $config['GOOGLE_APPLICATION_CREDENTIALS'] ?? getenv('GOOGLE_APPLICATION_CREDENTIALS');
 
-    if (!$keyPath || !file_exists($keyPath)) {
+    if (!$keyPath || !file_exists((string) $keyPath)) {
         throw new Exception("Server configuration error: GOOGLE_APPLICATION_CREDENTIALS not found.");
     }
 
     $db = Database::getConnection();
 
-    // Instantiate MediaService using production project and bucket names (defaulting to standard ones if not in config)
+    // Instantiate MediaService using production project and bucket names
     $projectId = $config['GEMINI_PROJECT_ID'] ?? 'geodashing-v2';
     $bucketName = 'geodashing-v2-blobs'; // Standard bucket name from API handlers
-    $mediaService = new MediaService($projectId, $bucketName, $keyPath);
+    $mediaService = new MediaService((string) $projectId, $bucketName, (string) $keyPath);
 
     // Reflect MediaService to access private methods and properties
     $reflection = new \ReflectionClass(MediaService::class);
@@ -41,12 +43,14 @@ try {
     $storageClient = $storageProp->getValue($mediaService);
 
     $bucketNameProp = $reflection->getProperty('bucketName');
-    $realBucketName = $bucketNameProp->getValue($mediaService);
+    $realBucketName = (string) $bucketNameProp->getValue($mediaService);
 
     $bucket = $storageClient->bucket($realBucketName);
 
     // Fetch visits containing photos
-    $stmt = $db->query("SELECT id, photos FROM visits WHERE photos IS NOT NULL AND photos != '' AND photos != '[]'");
+    $stmt = $db->query(
+        "SELECT id, photos FROM visits WHERE photos IS NOT NULL AND photos != '' AND photos != '[]'"
+    );
     $visits = $stmt->fetchAll();
 
     if (!$visits) {
@@ -56,12 +60,14 @@ try {
 
     echo "Found " . count($visits) . " visits to process.\n";
 
-    $publicDomain = "https://storage.googleapis.com";
+    $publicDomain = (getenv('APP_ENV') === 'testing' && getenv('GCS_EMULATOR_HOST'))
+        ? (string) getenv('GCS_EMULATOR_HOST')
+        : "https://storage.googleapis.com";
     $prefix = "{$publicDomain}/{$realBucketName}/";
     $count = 0;
 
     foreach ($visits as $visit) {
-        $photos = json_decode($visit['photos'], true);
+        $photos = json_decode((string) $visit['photos'], true);
         if (!is_array($photos)) {
             continue;
         }
@@ -71,11 +77,11 @@ try {
                 continue;
             }
 
-            $url = $photo['url'];
-            $thumbUrl = $photo['thumb_url'];
+            $url = (string) $photo['url'];
+            $thumbUrl = (string) $photo['thumb_url'];
 
             // Strip the prefix to isolate GCS object names
-            if (strpos($url, $prefix) !== 0 || strpos($thumbUrl, $prefix) !== 0) {
+            if (!str_starts_with($url, $prefix) || !str_starts_with($thumbUrl, $prefix)) {
                 continue;
             }
 
@@ -84,31 +90,46 @@ try {
 
             echo "Checking: {$fullSizeObjectName}...\n";
 
-            $object = $bucket->object($fullSizeObjectName);
-            if (!$object->exists()) {
-                echo "  -> Full-size image object does not exist on GCS. Skipping.\n";
+            // Download full-size image via standard HTTP GET request for GCS portability
+            $tempFile = tempnam(sys_get_temp_dir(), 'gd_full_');
+            if ($tempFile === false) {
+                echo "  -> Failed to create temporary file. Skipping.\n";
                 continue;
             }
 
-            // Download full-size image to temp file
-            $tempFile = tempnam(sys_get_temp_dir(), 'gd_full_');
+            $httpCtx = stream_context_create(['http' => ['timeout' => 15]]);
+            set_error_handler(static fn(): bool => true);
             try {
-                $object->downloadToFile($tempFile);
-            } catch (Exception $e) {
-                echo "  -> Failed to download file: " . $e->getMessage() . "\n";
-                @unlink($tempFile);
+                $imageBytes = file_get_contents($url, false, $httpCtx);
+            } finally {
+                restore_error_handler();
+            }
+
+            if ($imageBytes === false || file_put_contents($tempFile, $imageBytes) === false) {
+                echo "  -> Failed to download file via HTTP GET. Skipping.\n";
+                if (file_exists($tempFile)) {
+                    unlink($tempFile);
+                }
                 continue;
             }
 
             // Check if the image has EXIF Orientation metadata
-            $exif = @exif_read_data($tempFile);
-            if (!$exif || empty($exif['Orientation']) || (int)$exif['Orientation'] <= 1) {
+            set_error_handler(static fn(): bool => true);
+            try {
+                $exif = exif_read_data($tempFile);
+            } finally {
+                restore_error_handler();
+            }
+
+            if (!$exif || empty($exif['Orientation']) || (int) $exif['Orientation'] <= 1) {
                 // Already correct orientation or no EXIF tag, skip
-                @unlink($tempFile);
+                if (file_exists($tempFile)) {
+                    unlink($tempFile);
+                }
                 continue;
             }
 
-            $orientation = (int)$exif['Orientation'];
+            $orientation = (int) $exif['Orientation'];
             echo "  -> Found EXIF Orientation: {$orientation}. Recreating thumbnail...\n";
 
             // Determine mime type
@@ -117,16 +138,22 @@ try {
 
             // Generate corrected thumbnail
             $newThumbPath = $generateThumbnailMethod->invoke($mediaService, $tempFile, $mime);
-            if (!$newThumbPath) {
+            if (!is_string($newThumbPath) || $newThumbPath === '') {
                 echo "  -> Failed to generate thumbnail. Skipping.\n";
-                @unlink($tempFile);
+                if (file_exists($tempFile)) {
+                    unlink($tempFile);
+                }
                 continue;
             }
 
             // Upload the new thumbnail overwriting the old one
             try {
+                $stream = fopen($newThumbPath, 'r');
+                if ($stream === false) {
+                    throw new Exception("Unable to open generated thumbnail stream.");
+                }
                 $bucket->upload(
-                    fopen($newThumbPath, 'r'),
+                    $stream,
                     [
                         'name' => $thumbObjectName,
                         'resumable' => false
@@ -137,13 +164,17 @@ try {
             } catch (Exception $e) {
                 echo "  -> Upload failed: " . $e->getMessage() . "\n";
             } finally {
-                @unlink($tempFile);
-                @unlink($newThumbPath);
+                if (file_exists($tempFile)) {
+                    unlink($tempFile);
+                }
+                if (file_exists($newThumbPath)) {
+                    unlink($newThumbPath);
+                }
             }
         }
     }
 
-    echo "Completed! Recreated {$count} thumbnails.\n";
+    echo "Completed. Recreated {$count} thumbnails.\n";
 } catch (Exception $e) {
     echo "Fatal Error: " . $e->getMessage() . "\n";
 }

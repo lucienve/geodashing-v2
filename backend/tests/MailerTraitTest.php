@@ -2,14 +2,25 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Services;
+namespace App\Tests;
 
 use App\Services\MailerTrait;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\CoversTrait;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
 
+/**
+ * MailerTraitTest
+ *
+ * Verifies the MailerTrait email construction and testing-mode bypass.
+ */
+#[CoversTrait(MailerTrait::class)]
 class MailerTraitTest extends TestCase
 {
+    /**
+     * Sets up the test fixtures.
+     */
+    #[\Override]
     protected function setUp(): void
     {
         // Force the testing environment variable just in case
@@ -17,8 +28,11 @@ class MailerTraitTest extends TestCase
         $_ENV['APP_ENV'] = 'testing';
     }
 
+    /**
+     * Verifies that executeMail returns true without calling Google APIs when APP_ENV=testing.
+     */
     #[Test]
-    public function testExecuteMailBypassesApiInTestingEnv()
+    public function testExecuteMailBypassesApiInTestingEnv(): void
     {
         // Anonymous class to expose the trait
         $mailer = new class {
@@ -34,20 +48,27 @@ class MailerTraitTest extends TestCase
         $this->assertTrue($result, "Expected executeMail to return true immediately when APP_ENV=testing");
     }
 
+    /**
+     * Verifies that sendVisitReportEmail constructs expected HTML content and subject.
+     */
     #[Test]
-    public function testSendVisitReportConstructsProperHtml()
+    public function testSendVisitReportConstructsProperHtml(): void
     {
         // Anonymous class to intercept executeMail
         $mailer = new class {
             use MailerTrait;
 
-            public $lastTo = null;
-            public $lastSubject = null;
-            public $lastHtmlMessage = null;
-            public $lastTextMessage = null;
+            public ?string $lastTo = null;
+            public ?string $lastSubject = null;
+            public ?string $lastHtmlMessage = null;
+            public ?string $lastTextMessage = null;
 
-            protected function executeMail(string $to, string $subject, string $htmlMessage, ?string $textMessage = null): bool
-            {
+            protected function executeMail(
+                string $to,
+                string $subject,
+                string $htmlMessage,
+                ?string $textMessage = null
+            ): bool {
                 $this->lastTo = $to;
                 $this->lastSubject = $subject;
                 $this->lastHtmlMessage = $htmlMessage;
@@ -55,9 +76,36 @@ class MailerTraitTest extends TestCase
                 return true;
             }
 
-            public function publicSendVisitReportEmail(string $username, string $dashpointId, int $distance, int $points, int $totalPointsAllGames, int $totalPointsGame, bool $isAttempt, ?string $notes, ?string $photosJson, int $previousHuntsAllGames = 0, int $previousHuntsGame = 0, ?string $geoContext = null, bool $isEdit = false): void
-            {
-                $this->sendVisitReportEmail($username, $dashpointId, $distance, $points, $totalPointsAllGames, $totalPointsGame, $isAttempt, $notes, $photosJson, $previousHuntsAllGames, $previousHuntsGame, $geoContext, $isEdit);
+            public function publicSendVisitReportEmail(
+                string $username,
+                string $dashpointId,
+                int $distance,
+                int $points,
+                int $totalPointsAllGames,
+                int $totalPointsGame,
+                bool $isAttempt,
+                ?string $notes,
+                ?string $photosJson,
+                int $previousHuntsAllGames = 0,
+                int $previousHuntsGame = 0,
+                ?string $geoContext = null,
+                bool $isEdit = false
+            ): void {
+                $this->sendVisitReportEmail(
+                    $username,
+                    $dashpointId,
+                    $distance,
+                    $points,
+                    $totalPointsAllGames,
+                    $totalPointsGame,
+                    $isAttempt,
+                    $notes,
+                    $photosJson,
+                    $previousHuntsAllGames,
+                    $previousHuntsGame,
+                    $geoContext,
+                    $isEdit
+                );
             }
         };
 
@@ -73,8 +121,10 @@ class MailerTraitTest extends TestCase
             100,
             20,
             false,
-            "Found it!",
-            json_encode([["url" => "http://example.com/photo.jpg", "thumb_url" => "http://example.com/photo_thumb.jpg"]]),
+            "Found it.",
+            (string)json_encode([
+                ["url" => "http://example.com/photo.jpg", "thumb_url" => "http://example.com/photo_thumb.jpg"]
+            ]),
             123,
             2,
             "Forest"
@@ -82,16 +132,23 @@ class MailerTraitTest extends TestCase
 
         $this->assertEquals("dashers@geodashing.org", $mailer->lastTo);
         $this->assertEquals("New Dashpoint Log: Lucien claimed DP123", $mailer->lastSubject);
+        $this->assertNotNull($mailer->lastHtmlMessage);
 
         // Validate HTML content
         $this->assertStringContainsString("<h2>New Dashpoint Log</h2>", $mailer->lastHtmlMessage);
         $this->assertStringContainsString("Lucien", $mailer->lastHtmlMessage);
         $this->assertStringContainsString("DP123", $mailer->lastHtmlMessage);
         $this->assertStringContainsString("5000 meters", $mailer->lastHtmlMessage);
-        $this->assertStringContainsString("Found it!", $mailer->lastHtmlMessage);
-        $this->assertStringContainsString("<a href='http://example.com/photo.jpg' target='_blank'><img src='http://example.com/photo_thumb.jpg'", $mailer->lastHtmlMessage);
+        $this->assertStringContainsString("Found it.", $mailer->lastHtmlMessage);
+        $this->assertStringContainsString(
+            "<a href='http://example.com/photo.jpg' target='_blank'><img src='http://example.com/photo_thumb.jpg'",
+            $mailer->lastHtmlMessage
+        );
         $this->assertStringContainsString("Total lifetime hunts by Lucien:</strong> 123", $mailer->lastHtmlMessage);
-        $this->assertStringContainsString("Previous hunts in this game by Lucien:</strong> 2", $mailer->lastHtmlMessage);
+        $this->assertStringContainsString(
+            "Previous hunts in this game by Lucien:</strong> 2",
+            $mailer->lastHtmlMessage
+        );
         $this->assertStringContainsString("Points in this game:</strong> 20", $mailer->lastHtmlMessage);
         $this->assertStringContainsString("Lifetime points:</strong> 100", $mailer->lastHtmlMessage);
 
@@ -109,7 +166,10 @@ class MailerTraitTest extends TestCase
             0,
             0
         );
-        $this->assertStringContainsString("First dashpoint found by user - welcome to geodashing!", $mailer->lastHtmlMessage);
+        $this->assertStringContainsString(
+            "First dashpoint found by user - welcome to geodashing!",
+            $mailer->lastHtmlMessage
+        );
         $this->assertStringContainsString("First dashpoint this game!", $mailer->lastHtmlMessage);
     }
 }

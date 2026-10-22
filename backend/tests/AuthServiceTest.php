@@ -20,15 +20,32 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(AuthService::class)]
 class AuthServiceTest extends TestCase
 {
-    private $pdoMock;
-    private $authService;
+    /**
+     * @var PDO
+     */
+    private PDO $pdoMock;
 
+    /**
+     * @var AuthService
+     */
+    private AuthService $authService;
+
+    /**
+     * Sets up the test fixtures.
+     */
+    #[\Override]
     protected function setUp(): void
     {
         $this->pdoMock = $this->createStub(PDO::class);
         $this->authService = $this->createAuthServiceWithPdo($this->pdoMock);
     }
 
+    /**
+     * Creates an AuthService partial stub that bypasses executeMail.
+     *
+     * @param PDO $pdo The PDO stub or mock.
+     * @return AuthService
+     */
     private function createAuthServiceWithPdo(PDO $pdo): AuthService
     {
         $authService = $this->getStubBuilder(AuthService::class)
@@ -39,16 +56,22 @@ class AuthServiceTest extends TestCase
         return $authService;
     }
 
+    /**
+     * Verifies signup rejects empty fields.
+     */
     #[Test]
-    public function signupRejectsEmptyFields()
+    public function signupRejectsEmptyFields(): void
     {
         $result = $this->authService->signup('', 'test@test.com', 'pass');
         $this->assertEquals('error', $result['status']);
         $this->assertEquals('All fields are required', $result['message']);
     }
 
+    /**
+     * Verifies signup handles duplicate users gracefully.
+     */
     #[Test]
-    public function signupHandlesDuplicateUsersSafely()
+    public function signupHandlesDuplicateUsersSafely(): void
     {
         $stmtMock = $this->createStub(PDOStatement::class);
         // Feed the constraint violation error artificially
@@ -63,8 +86,11 @@ class AuthServiceTest extends TestCase
         $this->assertEquals('That username or email already exists', $result['message']);
     }
 
+    /**
+     * Verifies login rejects invalid passwords.
+     */
     #[Test]
-    public function loginRejectsInvalidPasswords()
+    public function loginRejectsInvalidPasswords(): void
     {
         $stmtMock = $this->createStub(PDOStatement::class);
         // Feed the mock an active user record attached to a standard bcrypt hash to test password_verify
@@ -85,8 +111,11 @@ class AuthServiceTest extends TestCase
         $this->assertEquals('Invalid credentials', $result['message']);
     }
 
+    /**
+     * Verifies login accepts valid credentials.
+     */
     #[Test]
-    public function loginAcceptsCorrectCredentials()
+    public function loginAcceptsCorrectCredentials(): void
     {
         $stmtMock = $this->createStub(PDOStatement::class);
 
@@ -108,8 +137,11 @@ class AuthServiceTest extends TestCase
         $this->assertEquals(0, $result['is_verified']);
     }
 
+    /**
+     * Verifies resendVerification rejects already verified users.
+     */
     #[Test]
-    public function resendVerificationRejectsAlreadyVerifiedUsers()
+    public function resendVerificationRejectsAlreadyVerifiedUsers(): void
     {
         $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetch')->willReturn([
@@ -126,8 +158,11 @@ class AuthServiceTest extends TestCase
         $this->assertEquals('Account is already verified.', $result['message']);
     }
 
+    /**
+     * Verifies resendVerification succeeds for unverified users.
+     */
     #[Test]
-    public function resendVerificationSucceedsForUnverifiedUsers()
+    public function resendVerificationSucceedsForUnverifiedUsers(): void
     {
         $this->pdoMock = $this->createMock(PDO::class);
         $this->authService = $this->createAuthServiceWithPdo($this->pdoMock);
@@ -152,13 +187,16 @@ class AuthServiceTest extends TestCase
         $this->assertEquals('Verification email resent successfully.', $result['message']);
     }
 
+    /**
+     * Verifies signup saves the subscribe_group preference.
+     */
     #[Test]
-    public function signupSavesSubscribeGroupPreference()
+    public function signupSavesSubscribeGroupPreference(): void
     {
         $stmtMock = $this->createMock(PDOStatement::class);
         $stmtMock->expects($this->once())
             ->method('execute')
-            ->with($this->callback(function ($params) {
+            ->with($this->callback(function (array $params): bool {
                 return $params[':subscribe_group'] === 1;
             }))
             ->willReturn(true);
@@ -169,8 +207,11 @@ class AuthServiceTest extends TestCase
         $this->assertEquals('success', $result['status']);
     }
 
+    /**
+     * Verifies verifyEmail returns the subscribe_group preference.
+     */
     #[Test]
-    public function verifyEmailReturnsSubscribeGroupPreference()
+    public function verifyEmailReturnsSubscribeGroupPreference(): void
     {
         $this->pdoMock = $this->createMock(PDO::class);
         $this->authService = $this->createAuthServiceWithPdo($this->pdoMock);

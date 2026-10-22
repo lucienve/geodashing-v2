@@ -7,9 +7,17 @@ namespace App;
 use PDO;
 use Exception;
 
+/**
+ * Database connection manager implementing a singleton PDO instance.
+ */
 class Database
 {
-    private static $pdo = null;
+    /**
+     * Shared PDO database connection instance.
+     *
+     * @var PDO|null
+     */
+    private static ?PDO $pdo = null;
 
     /**
      * Initializes and returns the PDO connection to MySQL.
@@ -18,7 +26,7 @@ class Database
      * @return PDO
      * @throws Exception If connection fails or config is missing.
      */
-    public static function getConnection()
+    public static function getConnection(): PDO
     {
         if (self::$pdo === null) {
             $configPath = __DIR__ . '/config.ini';
@@ -51,9 +59,12 @@ class Database
             $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=$charset";
 
             $options = [
-                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION, // Throw exceptions on SQL errors
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,       // Return associative arrays by default
-                PDO::ATTR_EMULATE_PREPARES   => false,                  // Use native prepared statements for security
+                // Throw exceptions on SQL errors
+                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                // Return associative arrays by default
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                // Use native prepared statements for security
+                PDO::ATTR_EMULATE_PREPARES   => false,
             ];
 
             try {

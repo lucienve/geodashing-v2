@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Tests;
 
-use PHPUnit\Framework\TestCase;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\Attributes\CoversClass;
 use App\Services\SearchService;
 use PDO;
 use PDOStatement;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
 
 /**
  * SearchServiceTest
@@ -20,9 +21,20 @@ use PDOStatement;
 #[CoversClass(SearchService::class)]
 class SearchServiceTest extends TestCase
 {
-    private $pdoMock;
-    private $searchService;
+    /**
+     * @var PDO&MockObject
+     */
+    private PDO $pdoMock;
 
+    /**
+     * @var SearchService
+     */
+    private SearchService $searchService;
+
+    /**
+     * Sets up the test fixtures.
+     */
+    #[\Override]
     protected function setUp(): void
     {
         // Mock the PDO object mimicking the MySQL environment
@@ -35,7 +47,7 @@ class SearchServiceTest extends TestCase
      * directly into the default BETWEEN clauses.
      */
     #[Test]
-    public function processesStandardBoundingBoxQuery()
+    public function processesStandardBoundingBoxQuery(): void
     {
         $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetchAll')->willReturn([
@@ -45,7 +57,7 @@ class SearchServiceTest extends TestCase
         $this->pdoMock->expects($this->once())
             ->method('prepare')
             ->with($this->logicalAnd(
-                $this->stringContains('MBRContains(ST_GeomFromText(:poly, 4326), d.location)'),
+                $this->stringContains("MBRContains(ST_GeomFromText(:poly, 4326, 'axis-order=long-lat'), d.location)"),
                 $this->stringContains('g.id = :game_id')
             ))
             ->willReturn($stmtMock);
@@ -62,7 +74,7 @@ class SearchServiceTest extends TestCase
      * crossings and splits the boundary checking bounds.
      */
     #[Test]
-    public function processesAntiMeridianDateLineOverflow()
+    public function processesAntiMeridianDateLineOverflow(): void
     {
         $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetchAll')->willReturn([
@@ -73,7 +85,10 @@ class SearchServiceTest extends TestCase
         $this->pdoMock->expects($this->once())
             ->method('prepare')
             ->with($this->logicalAnd(
-                $this->stringContains('MBRContains(ST_GeomFromText(:poly_west, 4326), d.location) OR MBRContains(ST_GeomFromText(:poly_east, 4326), d.location)'),
+                $this->stringContains(
+                    "MBRContains(ST_GeomFromText(:poly_west, 4326, 'axis-order=long-lat'), d.location)"
+                    . " OR MBRContains(ST_GeomFromText(:poly_east, 4326, 'axis-order=long-lat'), d.location)"
+                ),
                 $this->stringContains('g.id = :game_id')
             ))
             ->willReturn($stmtMock);
@@ -94,17 +109,28 @@ class SearchServiceTest extends TestCase
      * directly into MBRContains clauses for visits.
      */
     #[Test]
-    public function searchVisitsProcessesStandardBoundingBoxQuery()
+    public function searchVisitsProcessesStandardBoundingBoxQuery(): void
     {
         $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetchAll')->willReturn([
-            ['id' => 1, 'dashpoint_id' => 'GD001-AAAA', 'username' => 'testuser', 'lat' => 45.0, 'lon' => -70.0, 'is_attempt' => 0, 'score_awarded' => 3, 'reported_time' => '2026-07-01 12:00:00']
+            [
+                'id' => 1,
+                'dashpoint_id' => 'GD001-AAAA',
+                'username' => 'testuser',
+                'lat' => 45.0,
+                'lon' => -70.0,
+                'is_attempt' => 0,
+                'score_awarded' => 3,
+                'reported_time' => '2026-07-01 12:00:00'
+            ]
         ]);
 
         $this->pdoMock->expects($this->once())
             ->method('prepare')
             ->with($this->logicalAnd(
-                $this->stringContains('MBRContains(ST_GeomFromText(:poly, 4326), v.reported_location)'),
+                $this->stringContains(
+                    "MBRContains(ST_GeomFromText(:poly, 4326, 'axis-order=long-lat'), v.reported_location)"
+                ),
                 $this->stringContains('d.game_id = :game_id')
             ))
             ->willReturn($stmtMock);
@@ -123,18 +149,39 @@ class SearchServiceTest extends TestCase
      * crossings and splits the boundary checking bounds.
      */
     #[Test]
-    public function searchVisitsProcessesAntiMeridianDateLineOverflow()
+    public function searchVisitsProcessesAntiMeridianDateLineOverflow(): void
     {
         $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetchAll')->willReturn([
-            ['id' => 1, 'dashpoint_id' => 'GD001-FIJI', 'username' => 'testuser1', 'lat' => -18.0, 'lon' => 179.9, 'is_attempt' => 0, 'score_awarded' => 3, 'reported_time' => '2026-07-01 12:00:00'],
-            ['id' => 2, 'dashpoint_id' => 'GD001-SAMO', 'username' => 'testuser2', 'lat' => -13.0, 'lon' => -171.0, 'is_attempt' => 1, 'score_awarded' => 0, 'reported_time' => '2026-07-01 13:00:00']
+            [
+                'id' => 1,
+                'dashpoint_id' => 'GD001-FIJI',
+                'username' => 'testuser1',
+                'lat' => -18.0,
+                'lon' => 179.9,
+                'is_attempt' => 0,
+                'score_awarded' => 3,
+                'reported_time' => '2026-07-01 12:00:00'
+            ],
+            [
+                'id' => 2,
+                'dashpoint_id' => 'GD001-SAMO',
+                'username' => 'testuser2',
+                'lat' => -13.0,
+                'lon' => -171.0,
+                'is_attempt' => 1,
+                'score_awarded' => 0,
+                'reported_time' => '2026-07-01 13:00:00'
+            ]
         ]);
 
         $this->pdoMock->expects($this->once())
             ->method('prepare')
             ->with($this->logicalAnd(
-                $this->stringContains('MBRContains(ST_GeomFromText(:poly_west, 4326), v.reported_location) OR MBRContains(ST_GeomFromText(:poly_east, 4326), v.reported_location)'),
+                $this->stringContains(
+                    "MBRContains(ST_GeomFromText(:poly_west, 4326, 'axis-order=long-lat'), v.reported_location)"
+                    . " OR MBRContains(ST_GeomFromText(:poly_east, 4326, 'axis-order=long-lat'), v.reported_location)"
+                ),
                 $this->stringContains('d.game_id = :game_id')
             ))
             ->willReturn($stmtMock);

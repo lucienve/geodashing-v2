@@ -74,20 +74,20 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             session_destroy();
             echo json_encode(["status" => "success", "message" => "Logged out successfully"]);
         } elseif ($action === 'resend_verification') {
-            // Securely demand a populated active session dynamically preventing spam hooks
+            // Require an active authenticated session
             if (!isset($_SESSION['user_id'])) {
                 http_response_code(401);
                 echo json_encode(["status" => "error", "message" => "Unauthorized access."]);
                 exit;
             }
 
-            // Check if they are already formally verified preventing mail relays
+            // Skip sending if the account is already verified
             if (isset($_SESSION['is_verified']) && $_SESSION['is_verified']) {
                 echo json_encode(["status" => "error", "message" => "Account is already verified."]);
                 exit;
             }
 
-            // Ping the AuthService to fire the relay
+            // Trigger verification email resend
             $result = $authService->resendVerification((int) $_SESSION['user_id']);
             if ($result['status'] !== 'success') {
                 http_response_code(500);
@@ -120,7 +120,9 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             echo json_encode($result);
         } elseif ($action === 'session') {
             $configPath = __DIR__ . '/../../backend/config.ini';
-            $config = file_exists($configPath) ? parse_ini_file($configPath, true) : [];
+            $config = (file_exists($configPath) && is_readable($configPath))
+                ? (parse_ini_file($configPath, true) ?: [])
+                : [];
             $rerollSection = $config['reroll'] ?? [];
             $rerollEnabled = filter_var($rerollSection['REROLL_ENABLED'] ?? true, FILTER_VALIDATE_BOOLEAN);
             $rerollMaxRadius = (float) ($rerollSection['REROLL_MAX_RADIUS_KM'] ?? 10.0);
@@ -132,11 +134,12 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             $rerollsUsed = 0;
             $gameId = isset($_GET['game_id']) ? (int) $_GET['game_id'] : null;
 
-            // Native session state retrieval explicitly mapping memory back to the SPA
+            // Return current session state to the SPA
             if (isset($_SESSION['user_id']) && isset($_SESSION['username'])) {
                 if ($gameId !== null) {
                     $stmtRerolls = $db->prepare(
-                        "SELECT COUNT(*) AS user_reroll_count FROM dashpoint_rerolls WHERE user_id = :user_id AND game_id = :game_id"
+                        "SELECT COUNT(*) AS user_reroll_count "
+                        . "FROM dashpoint_rerolls WHERE user_id = :user_id AND game_id = :game_id"
                     );
                     $stmtRerolls->execute(['user_id' => $_SESSION['user_id'], 'game_id' => $gameId]);
                     $rerollsUsed = (int) ($stmtRerolls->fetch()['user_reroll_count'] ?? 0);
@@ -148,7 +151,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
                     "username" => $_SESSION['username'],
                     "is_verified" => $_SESSION['is_verified'] ?? 0,
                     "post_max_size" => ini_get('post_max_size'),
-                    "post_max_size_bytes" => getPostMaxSizeInBytes(),
+                    "post_max_size_bytes" => $postMaxSizeBytes ?? 0,
                     "reroll_enabled" => $rerollEnabled,
                     "reroll_max_radius_km" => $rerollMaxRadius,
                     "reroll_max_per_player" => $rerollMaxPerPlayer,
@@ -159,7 +162,6 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
                 http_response_code(401);
                 echo json_encode(["status" => "error", "message" => "No active session"]);
             }
-
         } else {
             http_response_code(400);
             echo json_encode(["status" => "error", "message" => "Invalid action specified."]);

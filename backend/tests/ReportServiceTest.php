@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Tests;
 
-use PHPUnit\Framework\TestCase;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\Attributes\CoversClass;
+use App\Services\GeoContextService;
 use App\Services\ReportService;
 use PDO;
 use PDOStatement;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
 
 /**
  * ReportServiceTest
@@ -19,10 +21,25 @@ use PDOStatement;
 #[CoversClass(ReportService::class)]
 class ReportServiceTest extends TestCase
 {
-    private $pdoMock;
-    private $geoMock;
-    private $reportService;
+    /**
+     * @var PDO&MockObject
+     */
+    private PDO $pdoMock;
 
+    /**
+     * @var GeoContextService
+     */
+    private GeoContextService $geoMock;
+
+    /**
+     * @var ReportService
+     */
+    private ReportService $reportService;
+
+    /**
+     * Sets up the test fixtures.
+     */
+    #[\Override]
     protected function setUp(): void
     {
         // Force the testing environment variable to prevent physical email dispatches
@@ -33,7 +50,7 @@ class ReportServiceTest extends TestCase
         $this->pdoMock = $this->createMock(PDO::class);
 
         // Stub GeoContextService to prevent real Google Maps API calls during tests
-        $this->geoMock = $this->createStub(\App\Services\GeoContextService::class);
+        $this->geoMock = $this->createStub(GeoContextService::class);
         $this->geoMock->method('getTimezoneOffset')->willReturn(0);
         $this->geoMock->method('getDashpointContext')->willReturn('Mocked GeoContext');
 
@@ -44,7 +61,7 @@ class ReportServiceTest extends TestCase
      * Verifies that the service immediately returns an error if the user is unverified.
      */
     #[Test]
-    public function processVisitRejectsUnverifiedUsers()
+    public function processVisitRejectsUnverifiedUsers(): void
     {
         $userMock = $this->createStub(PDOStatement::class);
         $userMock->method('fetch')->willReturn(['is_verified' => 0]);
@@ -53,14 +70,17 @@ class ReportServiceTest extends TestCase
         $result = $this->reportService->processVisit(1, 'GD001-XXXX', 40.0, -75.0);
 
         $this->assertEquals('error', $result['status']);
-        $this->assertEquals('Account not verified. Please check your email to activate your account before logging Dashpoints.', $result['message']);
+        $this->assertEquals(
+            'Account not verified. Please check your email to activate your account before logging Dashpoints.',
+            $result['message']
+        );
     }
 
     /**
      * Verifies that the service immediately returns an error if the dashpoint is completely invalid/missing.
      */
     #[Test]
-    public function processVisitRejectsInvalidDashpoint()
+    public function processVisitRejectsInvalidDashpoint(): void
     {
         $userMock = $this->createStub(PDOStatement::class);
         $userMock->method('fetch')->willReturn(['is_verified' => 1]);
@@ -82,14 +102,21 @@ class ReportServiceTest extends TestCase
      * Verifies that the service rejects a coordinate claim mathematically resolved by MySQL to be >100 meters away.
      */
     #[Test]
-    public function processVisitRejectsDistanceOver100Meters()
+    public function processVisitRejectsDistanceOver100Meters(): void
     {
         $userMock = $this->createStub(PDOStatement::class);
         $userMock->method('fetch')->willReturn(['is_verified' => 1]);
 
         $distMock = $this->createStub(PDOStatement::class);
         // Simulates MySQL ST_Distance_Sphere returning exactly 101 meters
-        $distMock->method('fetch')->willReturn(['distance_meters' => 101.5, 'is_active' => 1, 'dp_lat' => 40.0, 'dp_lon' => -75.0, 'game_id' => 1, 'elevation' => null]);
+        $distMock->method('fetch')->willReturn([
+            'distance_meters' => 101.5,
+            'is_active' => 1,
+            'dp_lat' => 40.0,
+            'dp_lon' => -75.0,
+            'game_id' => 1,
+            'elevation' => null
+        ]);
 
         $this->pdoMock->expects($this->exactly(2))
             ->method('prepare')
@@ -105,7 +132,7 @@ class ReportServiceTest extends TestCase
      * Verifies that the system safely processes and successfully logs a visit if the user is 99 meters away.
      */
     #[Test]
-    public function processVisitAcceptsDistanceUnder100Meters()
+    public function processVisitAcceptsDistanceUnder100Meters(): void
     {
         // 0. Stub the user verification check
         $userMock = $this->createStub(PDOStatement::class);
@@ -113,7 +140,14 @@ class ReportServiceTest extends TestCase
 
         // 1. Stub the Distance Calculation (Returns 45 meters)
         $distMock = $this->createStub(PDOStatement::class);
-        $distMock->method('fetch')->willReturn(['distance_meters' => 45.0, 'is_active' => 1, 'dp_lat' => 40.0, 'dp_lon' => -75.0, 'game_id' => 1, 'elevation' => null]);
+        $distMock->method('fetch')->willReturn([
+            'distance_meters' => 45.0,
+            'is_active' => 1,
+            'dp_lat' => 40.0,
+            'dp_lon' => -75.0,
+            'game_id' => 1,
+            'elevation' => null
+        ]);
 
         // 2. Stub the Duplicate Check (Returns false, meaning no existing visit)
         $duplicateMock = $this->createStub(PDOStatement::class);
@@ -152,7 +186,19 @@ class ReportServiceTest extends TestCase
         // Chain the PDO prepares to return the distinct statements sequentially in order
         $this->pdoMock->expects($this->exactly(11))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $totalScoreMock, $totalScoreGameMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock);
+            ->willReturnOnConsecutiveCalls(
+                $userMock,
+                $distMock,
+                $duplicateMock,
+                $teamMock,
+                $scoreMock,
+                $totalScoreMock,
+                $totalScoreGameMock,
+                $huntsMock,
+                $huntsGameMock,
+                $insertMock,
+                $usernameMock
+            );
 
         $result = $this->reportService->processVisit(1, 'GD001-AAAA', 40.0, -75.0);
 
@@ -165,14 +211,21 @@ class ReportServiceTest extends TestCase
      * Verifies that the service rejects logging to an inactive game dashpoint.
      */
     #[Test]
-    public function processVisitRejectsInactiveGame()
+    public function processVisitRejectsInactiveGame(): void
     {
         $userMock = $this->createStub(PDOStatement::class);
         $userMock->method('fetch')->willReturn(['is_verified' => 1]);
 
         $distMock = $this->createStub(PDOStatement::class);
         // Simulates returning 45 meters but belongs to inactive game
-        $distMock->method('fetch')->willReturn(['distance_meters' => 45.0, 'is_active' => 0, 'dp_lat' => 40.0, 'dp_lon' => -75.0, 'game_id' => 1, 'elevation' => null]);
+        $distMock->method('fetch')->willReturn([
+            'distance_meters' => 45.0,
+            'is_active' => 0,
+            'dp_lat' => 40.0,
+            'dp_lon' => -75.0,
+            'game_id' => 1,
+            'elevation' => null
+        ]);
 
         $this->pdoMock->expects($this->exactly(2))
             ->method('prepare')
@@ -188,13 +241,20 @@ class ReportServiceTest extends TestCase
      * Verifies that the service accepts an attempt even if the distance is > 100 meters, awarding 0 points.
      */
     #[Test]
-    public function processVisitAcceptsAttemptOver100Meters()
+    public function processVisitAcceptsAttemptOver100Meters(): void
     {
         $userMock = $this->createStub(PDOStatement::class);
         $userMock->method('fetch')->willReturn(['is_verified' => 1]);
 
         $distMock = $this->createStub(PDOStatement::class);
-        $distMock->method('fetch')->willReturn(['distance_meters' => 150.0, 'is_active' => 1, 'dp_lat' => 40.0, 'dp_lon' => -75.0, 'game_id' => 1, 'elevation' => null]);
+        $distMock->method('fetch')->willReturn([
+            'distance_meters' => 150.0,
+            'is_active' => 1,
+            'dp_lat' => 40.0,
+            'dp_lon' => -75.0,
+            'game_id' => 1,
+            'elevation' => null
+        ]);
 
         $duplicateMock = $this->createStub(PDOStatement::class);
         // Duplicate check query shouldn't fail attempt anyway because of !$isAttempt in logic
@@ -226,7 +286,19 @@ class ReportServiceTest extends TestCase
 
         $this->pdoMock->expects($this->exactly(11))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $totalScoreMock, $totalScoreGameMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock);
+            ->willReturnOnConsecutiveCalls(
+                $userMock,
+                $distMock,
+                $duplicateMock,
+                $teamMock,
+                $scoreMock,
+                $totalScoreMock,
+                $totalScoreGameMock,
+                $huntsMock,
+                $huntsGameMock,
+                $insertMock,
+                $usernameMock
+            );
 
         $result = $this->reportService->processVisit(1, 'GD001-AAAA', 40.0, -75.0, true);
 
@@ -241,13 +313,20 @@ class ReportServiceTest extends TestCase
      * (Mocking previous_claims = 0 simulates the DATE(...) < DATE(CURRENT_TIMESTAMP) SQL logic for same-day claims)
      */
     #[Test]
-    public function processVisitAwardsSamePointsForSameDayClaims()
+    public function processVisitAwardsSamePointsForSameDayClaims(): void
     {
         $userMock = $this->createStub(PDOStatement::class);
         $userMock->method('fetch')->willReturn(['is_verified' => 1]);
 
         $distMock = $this->createStub(PDOStatement::class);
-        $distMock->method('fetch')->willReturn(['distance_meters' => 45.0, 'is_active' => 1, 'dp_lat' => 40.0, 'dp_lon' => -75.0, 'game_id' => 1, 'elevation' => null]);
+        $distMock->method('fetch')->willReturn([
+            'distance_meters' => 45.0,
+            'is_active' => 1,
+            'dp_lat' => 40.0,
+            'dp_lon' => -75.0,
+            'game_id' => 1,
+            'elevation' => null
+        ]);
 
         $duplicateMock = $this->createStub(PDOStatement::class);
         $duplicateMock->method('fetch')->willReturn(false);
@@ -279,25 +358,48 @@ class ReportServiceTest extends TestCase
 
         $this->pdoMock->expects($this->exactly(11))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $totalScoreMock, $totalScoreGameMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock);
+            ->willReturnOnConsecutiveCalls(
+                $userMock,
+                $distMock,
+                $duplicateMock,
+                $teamMock,
+                $scoreMock,
+                $totalScoreMock,
+                $totalScoreGameMock,
+                $huntsMock,
+                $huntsGameMock,
+                $insertMock,
+                $usernameMock
+            );
 
         $result = $this->reportService->processVisit(2, 'GD001-SAME', 40.0, -75.0);
 
         $this->assertEquals('success', $result['status']);
-        $this->assertEquals(3, $result['points'], "Secondary claims on the same day should still award 3 points.");
+        $this->assertEquals(
+            3,
+            $result['points'],
+            "Secondary claims on the same day should still award 3 points."
+        );
     }
 
     /**
      * Verifies that the service assigns 2 points if exactly one prior claim exists on an earlier day.
      */
     #[Test]
-    public function processVisitAwardsTwoPointsForSecondDayClaim()
+    public function processVisitAwardsTwoPointsForSecondDayClaim(): void
     {
         $userMock = $this->createStub(PDOStatement::class);
         $userMock->method('fetch')->willReturn(['is_verified' => 1]);
 
         $distMock = $this->createStub(PDOStatement::class);
-        $distMock->method('fetch')->willReturn(['distance_meters' => 45.0, 'is_active' => 1, 'dp_lat' => 40.0, 'dp_lon' => -75.0, 'game_id' => 1, 'elevation' => null]);
+        $distMock->method('fetch')->willReturn([
+            'distance_meters' => 45.0,
+            'is_active' => 1,
+            'dp_lat' => 40.0,
+            'dp_lon' => -75.0,
+            'game_id' => 1,
+            'elevation' => null
+        ]);
 
         $duplicateMock = $this->createStub(PDOStatement::class);
         $duplicateMock->method('fetch')->willReturn(false);
@@ -329,25 +431,48 @@ class ReportServiceTest extends TestCase
 
         $this->pdoMock->expects($this->exactly(11))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $totalScoreMock, $totalScoreGameMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock);
+            ->willReturnOnConsecutiveCalls(
+                $userMock,
+                $distMock,
+                $duplicateMock,
+                $teamMock,
+                $scoreMock,
+                $totalScoreMock,
+                $totalScoreGameMock,
+                $huntsMock,
+                $huntsGameMock,
+                $insertMock,
+                $usernameMock
+            );
 
         $result = $this->reportService->processVisit(3, 'GD001-NEXT', 40.0, -75.0);
 
         $this->assertEquals('success', $result['status']);
-        $this->assertEquals(2, $result['points'], "Claims on a subsequent day with 1 prior-day claim should award 2 points.");
+        $this->assertEquals(
+            2,
+            $result['points'],
+            "Claims on a subsequent day with 1 prior-day claim should award 2 points."
+        );
     }
 
     /**
      * Verifies that processVisit sends email by default (when $suppressEmail is false).
      */
     #[Test]
-    public function processVisitSendsEmailByDefault()
+    public function processVisitSendsEmailByDefault(): void
     {
         $userMock = $this->createStub(PDOStatement::class);
         $userMock->method('fetch')->willReturn(['is_verified' => 1]);
 
         $distMock = $this->createStub(PDOStatement::class);
-        $distMock->method('fetch')->willReturn(['distance_meters' => 45.0, 'is_active' => 1, 'dp_lat' => 40.0, 'dp_lon' => -75.0, 'game_id' => 1, 'elevation' => null]);
+        $distMock->method('fetch')->willReturn([
+            'distance_meters' => 45.0,
+            'is_active' => 1,
+            'dp_lat' => 40.0,
+            'dp_lon' => -75.0,
+            'game_id' => 1,
+            'elevation' => null
+        ]);
 
         $duplicateMock = $this->createStub(PDOStatement::class);
         $duplicateMock->method('fetch')->willReturn(false);
@@ -378,13 +503,39 @@ class ReportServiceTest extends TestCase
 
         $this->pdoMock->expects($this->exactly(11))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $totalScoreMock, $totalScoreGameMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock);
+            ->willReturnOnConsecutiveCalls(
+                $userMock,
+                $distMock,
+                $duplicateMock,
+                $teamMock,
+                $scoreMock,
+                $totalScoreMock,
+                $totalScoreGameMock,
+                $huntsMock,
+                $huntsGameMock,
+                $insertMock,
+                $usernameMock
+            );
 
         $testableService = new class ($this->pdoMock, $this->geoMock) extends ReportService {
             public bool $emailSent = false;
 
-            protected function sendVisitReportEmail(string $username, string $dashpointId, int $distance, int $points, int $totalPointsAllGames, int $totalPointsGame, bool $isAttempt, ?string $notes, ?string $photosJson, int $previousHuntsAllGames = 0, int $previousHuntsGame = 0, ?string $geoContext = null, bool $isEdit = false): void
-            {
+            #[\Override]
+            protected function sendVisitReportEmail(
+                string $username,
+                string $dashpointId,
+                int $distance,
+                int $points,
+                int $totalPointsAllGames,
+                int $totalPointsGame,
+                bool $isAttempt,
+                ?string $notes,
+                ?string $photosJson,
+                int $previousHuntsAllGames = 0,
+                int $previousHuntsGame = 0,
+                ?string $geoContext = null,
+                bool $isEdit = false
+            ): void {
                 $this->emailSent = true;
             }
         };
@@ -399,13 +550,20 @@ class ReportServiceTest extends TestCase
      * Verifies that processVisit suppresses email notification when $suppressEmail is true.
      */
     #[Test]
-    public function processVisitSuppressesEmailWhenFlagged()
+    public function processVisitSuppressesEmailWhenFlagged(): void
     {
         $userMock = $this->createStub(PDOStatement::class);
         $userMock->method('fetch')->willReturn(['is_verified' => 1]);
 
         $distMock = $this->createStub(PDOStatement::class);
-        $distMock->method('fetch')->willReturn(['distance_meters' => 45.0, 'is_active' => 1, 'dp_lat' => 40.0, 'dp_lon' => -75.0, 'game_id' => 1, 'elevation' => null]);
+        $distMock->method('fetch')->willReturn([
+            'distance_meters' => 45.0,
+            'is_active' => 1,
+            'dp_lat' => 40.0,
+            'dp_lon' => -75.0,
+            'game_id' => 1,
+            'elevation' => null
+        ]);
 
         $duplicateMock = $this->createStub(PDOStatement::class);
         $duplicateMock->method('fetch')->willReturn(false);
@@ -436,13 +594,39 @@ class ReportServiceTest extends TestCase
 
         $this->pdoMock->expects($this->exactly(11))
             ->method('prepare')
-            ->willReturnOnConsecutiveCalls($userMock, $distMock, $duplicateMock, $teamMock, $scoreMock, $totalScoreMock, $totalScoreGameMock, $huntsMock, $huntsGameMock, $insertMock, $usernameMock);
+            ->willReturnOnConsecutiveCalls(
+                $userMock,
+                $distMock,
+                $duplicateMock,
+                $teamMock,
+                $scoreMock,
+                $totalScoreMock,
+                $totalScoreGameMock,
+                $huntsMock,
+                $huntsGameMock,
+                $insertMock,
+                $usernameMock
+            );
 
         $testableService = new class ($this->pdoMock, $this->geoMock) extends ReportService {
             public bool $emailSent = false;
 
-            protected function sendVisitReportEmail(string $username, string $dashpointId, int $distance, int $points, int $totalPointsAllGames, int $totalPointsGame, bool $isAttempt, ?string $notes, ?string $photosJson, int $previousHuntsAllGames = 0, int $previousHuntsGame = 0, ?string $geoContext = null, bool $isEdit = false): void
-            {
+            #[\Override]
+            protected function sendVisitReportEmail(
+                string $username,
+                string $dashpointId,
+                int $distance,
+                int $points,
+                int $totalPointsAllGames,
+                int $totalPointsGame,
+                bool $isAttempt,
+                ?string $notes,
+                ?string $photosJson,
+                int $previousHuntsAllGames = 0,
+                int $previousHuntsGame = 0,
+                ?string $geoContext = null,
+                bool $isEdit = false
+            ): void {
                 $this->emailSent = true;
             }
         };

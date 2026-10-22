@@ -2,14 +2,16 @@
 
 /**
  * Playwright E2E Testing Router
- * 
+ *
  * This router is ONLY used by the local PHP development server (`php -S`) during E2E testing.
- * It intercepts static file requests, injects the security headers that are normally 
+ * It intercepts static file requests, injects the security headers that are normally
  * set by Apache in `public/.htaccess`, and serves the file contents.
- * 
- * This ensures that Lighthouse audits run via Playwright see the correct production-parity 
+ *
+ * This ensures that Lighthouse audits run via Playwright see the correct production-parity
  * security headers and pass successfully.
  */
+
+declare(strict_types=1);
 
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 if ($path === '/') {
@@ -21,7 +23,7 @@ $absolutePath = __DIR__ . '/../public' . $path;
 if (file_exists($absolutePath) && !is_dir($absolutePath)) {
     // Determine the correct MIME type
     $ext = pathinfo($absolutePath, PATHINFO_EXTENSION);
-    
+
     // If it's a PHP file, let the built-in server handle it
     if (strtolower($ext) === 'php') {
         return false;
@@ -41,14 +43,14 @@ if (file_exists($absolutePath) && !is_dir($absolutePath)) {
     if ($mime) {
         header("Content-Type: $mime");
     }
-    
+
     // Inject Production-Parity Security Headers
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: SAMEORIGIN');
     header('Strict-Transport-Security: max-age=2592000');
     header('Cross-Origin-Opener-Policy: same-origin-allow-popups');
     header("Content-Security-Policy: frame-ancestors 'self';");
-    
+
     // Output the static file
     readfile($absolutePath);
     return true; // Tells PHP built-in server we handled it

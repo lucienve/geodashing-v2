@@ -8,11 +8,11 @@
 
 declare(strict_types=1);
 
+use App\Services\ProfileService;
+
 require_once __DIR__ . '/../../backend/session.php';
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/../../backend/Database.php';
-
-use App\Services\ProfileService;
 
 if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     header('Content-Type: application/json');

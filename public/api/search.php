@@ -9,9 +9,9 @@
 
 declare(strict_types=1);
 
-header('Content-Type: application/json');
-
 use App\Services\SearchService;
+
+header('Content-Type: application/json');
 
 // If HTTP executes directly (no require)
 if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {

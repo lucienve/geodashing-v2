@@ -4,7 +4,7 @@
  * Post-Log Editing API Endpoint
  *
  * Allows authenticated users to safely modify their Field Notes or append/delete
- * physical tracking photos without triggering or modifying the 100m Geolocation
+ * visit photos without triggering or modifying the 100m Geolocation
  * bounds locked during the initial claim.
  *
  * @package Geodashing\API
@@ -39,7 +39,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     $dashpoint_id = $_POST['dashpoint_id'] ?? '';
     $notes = trim($_POST['notes'] ?? '');
 
-    // `kept_photos` arrives as a strict JSON string array of public URLs the user explicitly chose NOT to click [X] on
+    // `kept_photos` arrives as a JSON string array of public URLs retained by the user
     $keptPhotosRaw = $_POST['kept_photos'] ?? '[]';
     $keptPhotos = json_decode($keptPhotosRaw, true);
     if (!is_array($keptPhotos)) {
@@ -51,7 +51,10 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     // Validate Log Narrative Boundaries
     if (empty($notes) || strlen($notes) > 10000) {
         http_response_code(400);
-        echo json_encode(["status" => "error", "message" => "Field observations are mandatory and must not exceed 10,000 characters."]);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Field observations are mandatory and must not exceed 10,000 characters."
+        ]);
         exit;
     }
 
@@ -64,13 +67,19 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     try {
         $db = \App\Database::getConnection();
         $configPath = __DIR__ . '/../../backend/config.ini';
-        $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
+        $config = (file_exists($configPath) && is_readable($configPath))
+            ? (parse_ini_file($configPath) ?: [])
+            : [];
         $keyPath = $config['GOOGLE_APPLICATION_CREDENTIALS'] ?? getenv('GOOGLE_APPLICATION_CREDENTIALS');
 
         $isTesting = getenv('APP_ENV') === 'testing';
         $mediaService = null;
-        if ($isTesting || ($keyPath && file_exists($keyPath))) {
-            $mediaService = new MediaService('geodashing-v2', 'geodashing-v2-blobs', $isTesting ? null : $keyPath);
+        if ($isTesting || ($keyPath && file_exists((string) $keyPath))) {
+            $mediaService = new MediaService(
+                'geodashing-v2',
+                'geodashing-v2-blobs',
+                $isTesting ? null : (string) $keyPath
+            );
         }
 
         $newCaptions = $_POST['new_captions'] ?? [];
@@ -79,7 +88,15 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         }
 
         $editService = new EditService($db, $mediaService);
-        $result = $editService->processEdit($_SESSION['user_id'], $dashpoint_id, $notes, $keptPhotosRaw, $_FILES['photos'] ?? null, $sendEmail, $newCaptions);
+        $result = $editService->processEdit(
+            (int) $_SESSION['user_id'],
+            $dashpoint_id,
+            $notes,
+            $keptPhotosRaw,
+            $_FILES['photos'] ?? null,
+            $sendEmail,
+            $newCaptions
+        );
 
         if ($result['status'] === 'success') {
             echo json_encode($result);

@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests;
 
-use Exception;
 use App\Services\MediaService;
-use PHPUnit\Framework\TestCase;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\Attributes\CoversClass;
-use Google\Cloud\Storage\StorageClient;
+use Exception;
 use Google\Cloud\Storage\Bucket;
+use Google\Cloud\Storage\StorageClient;
+use Google\Cloud\Storage\StorageObject;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
 
 /**
  * MediaServiceTest
@@ -21,9 +23,20 @@ use Google\Cloud\Storage\Bucket;
 #[CoversClass(MediaService::class)]
 class MediaServiceTest extends TestCase
 {
-    private $storageMock;
-    private $bucketMock;
+    /**
+     * @var StorageClient
+     */
+    private StorageClient $storageMock;
 
+    /**
+     * @var Bucket&MockObject
+     */
+    private Bucket $bucketMock;
+
+    /**
+     * Sets up the test fixtures.
+     */
+    #[\Override]
     protected function setUp(): void
     {
         // Mock the native Google Cloud Bucket Object
@@ -39,7 +52,7 @@ class MediaServiceTest extends TestCase
      * massive memory block arrays overriding the Google pipeline constraints.
      */
     #[Test]
-    public function processUploadBlocksMoreThan10Images()
+    public function processUploadBlocksMoreThan10Images(): void
     {
         // Inject the Google Mocks safely wrapping the logic
         $service = new MediaService('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock);
@@ -68,7 +81,7 @@ class MediaServiceTest extends TestCase
      * the pipeline fails and routes the failure back to the UI.
      */
     #[Test]
-    public function processUploadCatchesPhpIniSizeLimits()
+    public function processUploadCatchesPhpIniSizeLimits(): void
     {
         $service = new MediaService('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock);
 
@@ -93,13 +106,13 @@ class MediaServiceTest extends TestCase
      * Asserts that successfully validated uploads return an associative array.
      */
     #[Test]
-    public function processUploadReturnsAssociatedObjectArrays()
+    public function processUploadReturnsAssociatedObjectArrays(): void
     {
         $service = new MediaService('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock);
 
         // Construct a raw mock JPEG using magic hex bytes.
         // This ensures finfo(FILEINFO_MIME_TYPE) identifies it as 'image/jpeg' without requiring ext-gd rendering.
-        $tempFile = tempnam(sys_get_temp_dir(), 'fktst');
+        $tempFile = (string)tempnam(sys_get_temp_dir(), 'fktst');
         file_put_contents($tempFile, "\xFF\xD8\xFF\xE0\x00\x10\x4A\x46\x49\x46\x00\x01\x01\x01");
 
         $fakeFiles = [
@@ -136,22 +149,22 @@ class MediaServiceTest extends TestCase
      * objects uniquely isolating the structural deletions correctly.
      */
     #[Test]
-    public function processDeleteIsolatesGcsObjectPrefix()
+    public function processDeleteIsolatesGcsObjectPrefix(): void
     {
         $service = new MediaService('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock);
 
-        $fakeMainObject = $this->createMock(\Google\Cloud\Storage\StorageObject::class);
+        $fakeMainObject = $this->createMock(StorageObject::class);
         $fakeMainObject->expects($this->once())->method('exists')->willReturn(true);
         $fakeMainObject->expects($this->once())->method('delete');
 
-        $fakeThumbObject = $this->createMock(\Google\Cloud\Storage\StorageObject::class);
+        $fakeThumbObject = $this->createMock(StorageObject::class);
         $fakeThumbObject->expects($this->once())->method('exists')->willReturn(true);
         $fakeThumbObject->expects($this->once())->method('delete');
 
         // Assert that both the main image and companion thumbnail are requested for deletion
         $this->bucketMock->expects($this->exactly(2))
             ->method('object')
-            ->willReturnCallback(function (string $name) use ($fakeMainObject, $fakeThumbObject) {
+            ->willReturnCallback(function (string $name) use ($fakeMainObject, $fakeThumbObject): StorageObject {
                 if ($name === 'visits/GD001/my_pic.jpg') {
                     return $fakeMainObject;
                 }
@@ -169,15 +182,25 @@ class MediaServiceTest extends TestCase
      * Verifies that the thumbnail generator correctly rotates the image based on EXIF orientation.
      */
     #[Test]
-    public function processUploadRotatesThumbnailBasedOnExif()
+    public function processUploadRotatesThumbnailBasedOnExif(): void
     {
         if (!extension_loaded('gd')) {
             $this->markTestSkipped('GD extension not loaded');
         }
 
         // Construct our custom testable media service with mocked EXIF reader
-        $service = new class ('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock) extends MediaService {
+        $service = new class (
+            'geodashing-unit',
+            'geodashing-test-blobs',
+            'dummy.json',
+            $this->storageMock
+        ) extends MediaService {
+            /**
+             * @var array<string, mixed>|null
+             */
             public ?array $mockExif = null;
+
+            #[\Override]
             protected function readExifData(string $path): ?array
             {
                 return $this->mockExif;
@@ -188,7 +211,7 @@ class MediaServiceTest extends TestCase
         $service->mockExif = ['Orientation' => 6];
 
         // Construct a valid tiny 10x20 JPEG image (width 10, height 20)
-        $tempFile = tempnam(sys_get_temp_dir(), 'fktst');
+        $tempFile = (string)tempnam(sys_get_temp_dir(), 'fktst');
         $img = imagecreatetruecolor(10, 20);
         imagejpeg($img, $tempFile);
 
@@ -208,9 +231,9 @@ class MediaServiceTest extends TestCase
 
         $this->bucketMock->expects($this->exactly(2))
             ->method('upload')
-            ->willReturnCallback(function ($resource, $options) use (&$thumbWidth, &$thumbHeight) {
+            ->willReturnCallback(function ($resource, array $options) use (&$thumbWidth, &$thumbHeight): StorageObject {
                 // If it's the thumbnail, the object name ends with '_thumb.jpg'
-                if (isset($options['name']) && strpos($options['name'], '_thumb.jpg') !== false) {
+                if (isset($options['name']) && strpos((string)$options['name'], '_thumb.jpg') !== false) {
                     $meta = stream_get_meta_data($resource);
                     $path = $meta['uri'];
                     $size = getimagesize($path);
@@ -219,7 +242,7 @@ class MediaServiceTest extends TestCase
                         $thumbHeight = $size[1];
                     }
                 }
-                return $this->createStub(\Google\Cloud\Storage\StorageObject::class);
+                return $this->createStub(StorageObject::class);
             });
 
         $service->uploadPhotos($fakeFiles, 'GD-TEST', 1);
@@ -237,11 +260,11 @@ class MediaServiceTest extends TestCase
      * returned in the uploaded photo object mapping.
      */
     #[Test]
-    public function processUploadEmbedsIptcCaption()
+    public function processUploadEmbedsIptcCaption(): void
     {
         $service = new MediaService('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock);
 
-        $tempFile = tempnam(sys_get_temp_dir(), 'fktst');
+        $tempFile = (string)tempnam(sys_get_temp_dir(), 'fktst');
         file_put_contents($tempFile, "\xFF\xD8\xFF\xE0\x00\x10\x4A\x46\x49\x46\x00\x01\x01\x01");
 
         $fakeFiles = [
@@ -267,21 +290,21 @@ class MediaServiceTest extends TestCase
      * Asserts that deleting photos deletes both the master image and companion thumbnail.
      */
     #[Test]
-    public function testDeletePhotosDeletesMainAndThumbnailObjects()
+    public function testDeletePhotosDeletesMainAndThumbnailObjects(): void
     {
         $service = new MediaService('geodashing-unit', 'geodashing-test-blobs', 'dummy.json', $this->storageMock);
 
-        $mainObjectMock = $this->createMock(\Google\Cloud\Storage\StorageObject::class);
+        $mainObjectMock = $this->createMock(StorageObject::class);
         $mainObjectMock->expects($this->once())->method('exists')->willReturn(true);
         $mainObjectMock->expects($this->once())->method('delete');
 
-        $thumbObjectMock = $this->createMock(\Google\Cloud\Storage\StorageObject::class);
+        $thumbObjectMock = $this->createMock(StorageObject::class);
         $thumbObjectMock->expects($this->once())->method('exists')->willReturn(true);
         $thumbObjectMock->expects($this->once())->method('delete');
 
         $this->bucketMock->expects($this->exactly(2))
             ->method('object')
-            ->willReturnCallback(function (string $name) use ($mainObjectMock, $thumbObjectMock) {
+            ->willReturnCallback(function (string $name) use ($mainObjectMock, $thumbObjectMock): StorageObject {
                 if ($name === 'visits/GD-TEST/1_20260401000000_0.jpg') {
                     return $mainObjectMock;
                 }

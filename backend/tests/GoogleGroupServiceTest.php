@@ -5,20 +5,38 @@ declare(strict_types=1);
 namespace App\Tests;
 
 use App\Services\GoogleGroupService;
+use Exception;
 use Google\Service\Directory\Resource\Members as DirectoryMembersResource;
 use Google_Service_Directory;
 use Google_Service_Directory_Member;
 use Google_Service_Directory_Members;
 use Google_Service_Exception;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
-use Exception;
+use PHPUnit\Framework\TestCase;
 
+/**
+ * GoogleGroupServiceTest
+ *
+ * Verifies Google Group membership addition, removal, pagination, and testing bypasses.
+ */
+#[CoversClass(GoogleGroupService::class)]
 class GoogleGroupServiceTest extends TestCase
 {
-    private object $directoryStub;
+    /**
+     * @var Google_Service_Directory
+     */
+    private Google_Service_Directory $directoryStub;
+
+    /**
+     * @var array<string, string>
+     */
     private array $defaultConfig;
 
+    /**
+     * Sets up the test fixtures.
+     */
+    #[\Override]
     protected function setUp(): void
     {
         $this->directoryStub = $this->createStub(Google_Service_Directory::class);
@@ -30,7 +48,13 @@ class GoogleGroupServiceTest extends TestCase
         ];
     }
 
-    private function createServiceWithMembersMock(object $membersMock): GoogleGroupService
+    /**
+     * Creates a GoogleGroupService with a mocked DirectoryMembersResource.
+     *
+     * @param DirectoryMembersResource $membersMock The mocked members resource.
+     * @return GoogleGroupService
+     */
+    private function createServiceWithMembersMock(DirectoryMembersResource $membersMock): GoogleGroupService
     {
         $this->directoryStub->members = $membersMock;
         return new GoogleGroupService($this->directoryStub, $this->defaultConfig);

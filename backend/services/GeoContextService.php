@@ -75,8 +75,16 @@ class GeoContextService
 
         if ($region) {
             return sprintf("%s is in %s, %s%s", $dashpointId, $region['province'], $region['country'], $cityContext);
-        } else if ($nearestCity) {
-            return sprintf("%s is %d miles %s of %s, %s, %s", $dashpointId, $distanceMiles ?? 0, strtolower($bearingStr ?? ''), $nearestCity['name'], $nearestCity['admin_name'], $nearestCity['country_name']);
+        } elseif ($nearestCity) {
+            return sprintf(
+                "%s is %d miles %s of %s, %s, %s",
+                $dashpointId,
+                $distanceMiles ?? 0,
+                strtolower($bearingStr ?? ''),
+                $nearestCity['name'],
+                $nearestCity['admin_name'],
+                $nearestCity['country_name']
+            );
         }
 
         return sprintf("%s is at coordinates %f, %f", $dashpointId, $lat, $lon);
@@ -128,9 +136,9 @@ class GeoContextService
     /**
      * Retrieves the state/province and country using Google Maps Reverse Geocoding API.
      *
-     * @param float $lat
-     * @param float $lon
-     * @return array|null An array containing 'province' and 'country', or null on failure.
+     * @param float $lat Latitude in decimal degrees.
+     * @param float $lon Longitude in decimal degrees.
+     * @return array{province: string, country: string}|null Province and country, or null on failure.
      */
     protected function getProvinceAndCountry(float $lat, float $lon): ?array
     {
@@ -138,7 +146,13 @@ class GeoContextService
             return null;
         }
 
-        $url = sprintf("%s/maps/api/geocode/json?latlng=%f,%f&key=%s", $this->apiBaseUrl, $lat, $lon, urlencode($this->apiKey));
+        $url = sprintf(
+            "%s/maps/api/geocode/json?latlng=%f,%f&key=%s",
+            $this->apiBaseUrl,
+            $lat,
+            $lon,
+            urlencode($this->apiKey)
+        );
 
         $response = $this->makeApiCall($url);
         if ($response === null) {
@@ -172,10 +186,10 @@ class GeoContextService
     /**
      * Retrieves the largest city within roughly 100 miles using spatial queries.
      *
-     * @param float $lat
-     * @param float $lon
-     * @param int $radiusMiles
-     * @return array|null Array containing city details and distance, or null if none found.
+     * @param float $lat Latitude in decimal degrees.
+     * @param float $lon Longitude in decimal degrees.
+     * @param int $radiusMiles Search radius in miles.
+     * @return array<string, mixed>|null Array containing city details and distance, or null if none found.
      */
     protected function getLargestNearbyCity(float $lat, float $lon, int $radiusMiles = 100): ?array
     {
@@ -183,11 +197,11 @@ class GeoContextService
         $radiusMeters = $radiusMiles * 1609.344;
 
         $sql = "
-            SELECT 
-                name, 
-                admin_name, 
-                country_name, 
-                ST_Latitude(location) as lat, 
+            SELECT
+                name,
+                admin_name,
+                country_name,
+                ST_Latitude(location) as lat,
                 ST_Longitude(location) as lon,
                 ST_Distance_Sphere(location, ST_GeomFromText(:point, 4326)) as distance_meters
             FROM major_cities
@@ -198,7 +212,7 @@ class GeoContextService
 
         try {
             $stmt = $this->db->prepare($sql);
-            $wkt = sprintf("POINT(%f %f)", $lat, $lon);
+            $wkt = sprintf("POINT(%F %F)", $lat, $lon);
             $stmt->execute([
                 'point' => $wkt,
                 'point_filter' => $wkt,
@@ -282,7 +296,8 @@ class GeoContextService
         $data = json_decode($response, true);
         if (!isset($data['status']) || $data['status'] !== 'OK' || empty($data['results'])) {
             $errorMessage = $data['errorMessage'] ?? 'Unknown Error';
-            error_log("GeoContextService getElevation API Error: {$errorMessage} (Status: " . ($data['status'] ?? 'None') . ")");
+            $statusStr = $data['status'] ?? 'None';
+            error_log("GeoContextService getElevation API Error: {$errorMessage} (Status: {$statusStr})");
             return null;
         }
 
@@ -290,7 +305,7 @@ class GeoContextService
     }
 
     /**
-     * Evaluates whether the given dashpoint is a new geographical extreme and returns an annotation string if so.
+     * Evaluates whether the given dashpoint is a new geographical extreme and returns an annotation string.
      *
      * @param string $dashpointId
      * @param float $lat
@@ -301,8 +316,15 @@ class GeoContextService
      * @param int $visitYear
      * @return string
      */
-    public function evaluateAndGetExtremeAnnotations(string $dashpointId, float $lat, float $lon, ?float $elevation, string $stateProvince, string $countryCode, int $visitYear): string
-    {
+    public function evaluateAndGetExtremeAnnotations(
+        string $dashpointId,
+        float $lat,
+        float $lon,
+        ?float $elevation,
+        string $stateProvince,
+        string $countryCode,
+        int $visitYear
+    ): string {
         $annotations = [];
 
         $metrics = [
@@ -325,17 +347,18 @@ class GeoContextService
             foreach ([null, $visitYear] as $year) {
                 $timeScope = ($year === null) ? 'all-time' : "{$year}";
 
-                $yearCondition = ($year === null) ? "year IS NULL" : "year = :year";
                 $params = [
                     'cc' => $countryCode,
                     'sp' => $stateProvince,
+                    'year' => $year,
                     'type' => $type
                 ];
-                if ($year !== null) {
-                    $params['year'] = $year;
-                }
 
-                $stmt = $this->db->prepare("SELECT id, dashpoint_id, coordinate_value FROM regional_extremes WHERE country_code = :cc AND state_province = :sp AND $yearCondition AND extreme_type = :type LIMIT 1");
+                $stmt = $this->db->prepare(
+                    "SELECT id, dashpoint_id, coordinate_value FROM regional_extremes "
+                    . "WHERE country_code = :cc AND state_province = :sp "
+                    . "AND year <=> :year AND extreme_type = :type LIMIT 1"
+                );
                 $stmt->execute($params);
                 $currentRecord = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -352,11 +375,15 @@ class GeoContextService
                 }
 
                 if ($isNewRecord) {
-                    // It's a new record!
+                    // Record new extreme annotation and update regional_extremes
                     $annotations[] = "the {$timeScope} {$type} dashpoint found in {$stateProvince}";
 
                     if ($currentRecord) {
-                        $updateStmt = $this->db->prepare("UPDATE regional_extremes SET dashpoint_id = :dpid, coordinate_value = :val, created_at = NOW() WHERE id = :id");
+                        $updateStmt = $this->db->prepare(
+                            "UPDATE regional_extremes "
+                            . "SET dashpoint_id = :dpid, coordinate_value = :val, created_at = NOW() "
+                            . "WHERE id = :id"
+                        );
                         $updateStmt->execute([
                             'dpid' => $dashpointId,
                             'val' => $value,
@@ -371,7 +398,11 @@ class GeoContextService
                             'dpid' => $dashpointId,
                             'val' => $value
                         ];
-                        $insertStmt = $this->db->prepare("INSERT INTO regional_extremes (country_code, state_province, year, extreme_type, dashpoint_id, coordinate_value) VALUES (:cc, :sp, :year, :type, :dpid, :val)");
+                        $insertStmt = $this->db->prepare(
+                            "INSERT INTO regional_extremes "
+                            . "(country_code, state_province, year, extreme_type, dashpoint_id, coordinate_value) "
+                            . "VALUES (:cc, :sp, :year, :type, :dpid, :val)"
+                        );
                         $insertStmt->execute($insertParams);
                     }
                 }

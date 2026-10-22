@@ -97,10 +97,10 @@ if (strpos($requestUri, 'timezone') !== false) {
         'rawOffset' => -18000,
         'dstOffset' => 0
     ]);
-// 2. Elevation API Mock
-// Emulates the elevation data in meters above sea level for specific coordinates.
-// Reference: https://developers.google.com/maps/documentation/elevation/overview
 } elseif (strpos($requestUri, 'elevation') !== false) {
+    // 2. Elevation API Mock
+    // Emulates the elevation data in meters above sea level for specific coordinates.
+    // Reference: https://developers.google.com/maps/documentation/elevation/overview
     $allowedParams = ['locations', 'key'];
     $actualParams = array_keys($params);
     $invalidParams = array_diff($actualParams, $allowedParams);
@@ -141,7 +141,8 @@ if (strpos($requestUri, 'timezone') !== false) {
             http_response_code(400);
             echo json_encode([
                 'status' => 'INVALID_REQUEST',
-                'errorMessage' => 'Invalid locations format. Expected "latitude,longitude" separated by pipe symbols.'
+                'errorMessage' => 'Invalid locations format. '
+                    . 'Expected "latitude,longitude" separated by pipe symbols.'
             ]);
             exit;
         }
@@ -155,10 +156,10 @@ if (strpos($requestUri, 'timezone') !== false) {
             ]
         ]
     ]);
-// 3. Geocoding API Mock
-// Emulates reverse geocoding address components containing state/province and country details.
-// Reference: https://developers.google.com/maps/documentation/geocoding/overview
 } elseif (strpos($requestUri, 'geocode') !== false) {
+    // 3. Geocoding API Mock
+    // Emulates reverse geocoding address components containing state/province and country details.
+    // Reference: https://developers.google.com/maps/documentation/geocoding/overview
     $allowedParams = ['latlng', 'key'];
     $actualParams = array_keys($params);
     $invalidParams = array_diff($actualParams, $allowedParams);

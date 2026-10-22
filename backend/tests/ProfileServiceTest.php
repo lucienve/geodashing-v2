@@ -4,35 +4,56 @@ declare(strict_types=1);
 
 namespace App\Tests;
 
-use PHPUnit\Framework\TestCase;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\Attributes\CoversClass;
 use App\Services\ProfileService;
 use PDO;
 use PDOStatement;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
 
 /**
  * ProfileServiceTest
+ *
+ * Verifies user profile aggregation, privacy filtering, and player mail stats.
  */
 #[CoversClass(ProfileService::class)]
 class ProfileServiceTest extends TestCase
 {
-    private $pdoMock;
-    private $profileService;
+    /**
+     * @var PDO&MockObject
+     */
+    private PDO $pdoMock;
 
+    /**
+     * @var ProfileService
+     */
+    private ProfileService $profileService;
+
+    /**
+     * Sets up the test fixtures.
+     */
+    #[\Override]
     protected function setUp(): void
     {
         $this->pdoMock = $this->createMock(PDO::class);
         $this->profileService = new ProfileService($this->pdoMock);
     }
 
+    /**
+     * Cleans up session state after each test.
+     */
+    #[\Override]
     protected function tearDown(): void
     {
         $_SESSION = [];
     }
 
+    /**
+     * Verifies getProfileSettings returns null when user is not found.
+     */
     #[Test]
-    public function getProfileSettingsReturnsNullIfUserNotFound()
+    public function getProfileSettingsReturnsNullIfUserNotFound(): void
     {
         $stmtMock = $this->createStub(PDOStatement::class);
         $stmtMock->method('fetch')->willReturn(false);
@@ -42,8 +63,11 @@ class ProfileServiceTest extends TestCase
         $this->assertNull($result);
     }
 
+    /**
+     * Verifies getProfileSettings returns formatted profile and game data.
+     */
     #[Test]
-    public function getProfileSettingsReturnsFormattedData()
+    public function getProfileSettingsReturnsFormattedData(): void
     {
         $stmtUserMock = $this->createStub(PDOStatement::class);
         $stmtUserMock->method('fetch')->willReturn([
@@ -97,8 +121,11 @@ class ProfileServiceTest extends TestCase
         $this->assertCount(2, $result['games'][0]['visits']);
     }
 
+    /**
+     * Verifies getProfileSettings includes subscribe_group when viewing own profile.
+     */
     #[Test]
-    public function getProfileSettingsIncludesSubscribeGroupForSelf()
+    public function getProfileSettingsIncludesSubscribeGroupForSelf(): void
     {
         $_SESSION['username'] = 'testuser';
 
@@ -126,8 +153,11 @@ class ProfileServiceTest extends TestCase
         unset($_SESSION['username']);
     }
 
+    /**
+     * Verifies getPlayerMailStats returns aggregated player statistics.
+     */
     #[Test]
-    public function getPlayerMailStatsReturnsAggregatedStats()
+    public function getPlayerMailStatsReturnsAggregatedStats(): void
     {
         $stmtScoreMock = $this->createStub(PDOStatement::class);
         $stmtScoreMock->method('fetch')->willReturn(['total' => 15]);

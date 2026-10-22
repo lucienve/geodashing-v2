@@ -2,20 +2,34 @@
 
 declare(strict_types=1);
 
-namespace Tests;
+namespace App\Tests;
 
-use PHPUnit\Framework\TestCase;
 use App\Services\GeoContextService;
 use PDO;
 use PDOStatement;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\MockObject\Stub;
+use PHPUnit\Framework\TestCase;
 
+/**
+ * GeoContextServiceTest
+ *
+ * Verifies reverse geocoding context formatting, bearing math, timezone offsets,
+ * and geographic extreme annotations.
+ */
+#[CoversClass(GeoContextService::class)]
 class GeoContextServiceTest extends TestCase
 {
     /**
-     * @var GeoContextService&\PHPUnit\Framework\MockObject\Stub
+     * @var GeoContextService&Stub
      */
-    private $service;
+    private GeoContextService $service;
 
+    /**
+     * Sets up the test fixtures.
+     */
+    #[\Override]
     protected function setUp(): void
     {
         $pdoMock = $this->createStub(PDO::class);
@@ -28,7 +42,11 @@ class GeoContextServiceTest extends TestCase
             ->getStub();
     }
 
-    public function testGetDashpointContextWithBothRegionAndCity()
+    /**
+     * Verifies context string when both region and nearby city are present.
+     */
+    #[Test]
+    public function testGetDashpointContextWithBothRegionAndCity(): void
     {
         $this->service->method('getProvinceAndCountry')
             ->willReturn(['province' => 'Maine', 'country' => 'United States']);
@@ -54,7 +72,11 @@ class GeoContextServiceTest extends TestCase
         );
     }
 
-    public function testGetDashpointContextWithOnlyRegion()
+    /**
+     * Verifies context string when only region is present.
+     */
+    #[Test]
+    public function testGetDashpointContextWithOnlyRegion(): void
     {
         $this->service->method('getProvinceAndCountry')
             ->willReturn(['province' => 'Quebec', 'country' => 'Canada']);
@@ -70,7 +92,11 @@ class GeoContextServiceTest extends TestCase
         );
     }
 
-    public function testGetDashpointContextWithOnlyCity()
+    /**
+     * Verifies context string when only nearby city is present.
+     */
+    #[Test]
+    public function testGetDashpointContextWithOnlyCity(): void
     {
         $this->service->method('getProvinceAndCountry')
             ->willReturn(null);
@@ -94,7 +120,11 @@ class GeoContextServiceTest extends TestCase
         );
     }
 
-    public function testGetDashpointContextWithNothing()
+    /**
+     * Verifies fallback context string when neither region nor city is found.
+     */
+    #[Test]
+    public function testGetDashpointContextWithNothing(): void
     {
         $this->service->method('getProvinceAndCountry')
             ->willReturn(null);
@@ -111,9 +141,10 @@ class GeoContextServiceTest extends TestCase
     }
 
     /**
-     * Use Reflection to test the protected calculateBearing method directly
+     * Uses reflection to test the protected calculateBearing method directly.
      */
-    public function testCalculateBearing()
+    #[Test]
+    public function testCalculateBearing(): void
     {
         $pdoMock = $this->createStub(PDO::class);
         $service = new GeoContextService($pdoMock, 'fake_api_key');
@@ -122,22 +153,26 @@ class GeoContextServiceTest extends TestCase
         $method = $reflection->getMethod('calculateBearing');
 
         // From Null Island (0,0) to North (1,0)
-        $this->assertEquals("North", $method->invoke($service, 0, 0, 1, 0));
+        $this->assertEquals("North", $method->invoke($service, 0.0, 0.0, 1.0, 0.0));
 
         // From Null Island (0,0) to South (-1,0)
-        $this->assertEquals("South", $method->invoke($service, 0, 0, -1, 0));
+        $this->assertEquals("South", $method->invoke($service, 0.0, 0.0, -1.0, 0.0));
 
         // From Null Island (0,0) to East (0,1)
-        $this->assertEquals("East", $method->invoke($service, 0, 0, 0, 1));
+        $this->assertEquals("East", $method->invoke($service, 0.0, 0.0, 0.0, 1.0));
 
         // From Null Island (0,0) to West (0,-1)
-        $this->assertEquals("West", $method->invoke($service, 0, 0, 0, -1));
+        $this->assertEquals("West", $method->invoke($service, 0.0, 0.0, 0.0, -1.0));
 
         // From Null Island to NE (1,1)
-        $this->assertEquals("Northeast", $method->invoke($service, 0, 0, 1, 1));
+        $this->assertEquals("Northeast", $method->invoke($service, 0.0, 0.0, 1.0, 1.0));
     }
 
-    public function testGetTimezoneOffsetEmptyApiKey()
+    /**
+     * Verifies getTimezoneOffset returns 0 when the API key is empty.
+     */
+    #[Test]
+    public function testGetTimezoneOffsetEmptyApiKey(): void
     {
         $pdoMock = $this->createStub(PDO::class);
         $service = new GeoContextService($pdoMock, ''); // Empty API key
@@ -147,7 +182,11 @@ class GeoContextServiceTest extends TestCase
         $this->assertEquals(0, $offset);
     }
 
-    public function testEvaluateAndGetExtremeAnnotations()
+    /**
+     * Verifies evaluateAndGetExtremeAnnotations returns expected annotations when no records exist.
+     */
+    #[Test]
+    public function testEvaluateAndGetExtremeAnnotations(): void
     {
         $pdoMock = $this->createStub(PDO::class);
         $stmtMock = $this->createStub(PDOStatement::class);

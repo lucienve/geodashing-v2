@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use PDO;
+use DomainException;
 use Exception;
+use PDO;
 
 /**
  * Service handling preview game dashpoint relocation (rerolling).
@@ -14,16 +15,36 @@ class RerollService
 {
     use MailerTrait;
 
+    /**
+     * @var PDO The configured database connection.
+     */
     private PDO $db;
+
+    /**
+     * @var GeoContextService Geographical context service.
+     */
     private GeoContextService $geoService;
+
+    /**
+     * @var array<string, mixed> Parsed configuration array.
+     */
     private array $config;
 
+    /**
+     * Constructor.
+     *
+     * @param PDO                    $db         The PDO connection.
+     * @param GeoContextService|null $geoService Optional injected GeoContextService.
+     * @param array<string, mixed>|null $config  Optional injected configuration array.
+     */
     public function __construct(PDO $db, ?GeoContextService $geoService = null, ?array $config = null)
     {
         $this->db = $db;
         if ($config === null) {
             $configPath = __DIR__ . '/../config.ini';
-            $this->config = file_exists($configPath) ? (parse_ini_file($configPath, true) ?: []) : [];
+            $this->config = (file_exists($configPath) && is_readable($configPath))
+                ? (parse_ini_file($configPath, true) ?: [])
+                : [];
         } else {
             $this->config = $config;
         }
@@ -31,9 +52,11 @@ class RerollService
         if ($geoService === null) {
             $apiKey = $this->config['google']['GOOGLE_MAPS_API_KEY']
                 ?? ($this->config['GOOGLE_MAPS_API_KEY'] ?? '');
+            $defaultMapsUrl = (getenv('APP_ENV') === 'testing')
+                ? 'http://127.0.0.1:8081/api/mock_maps.php?'
+                : 'https://maps.googleapis.com';
             $apiBaseUrl = $this->config['google']['GOOGLE_MAPS_API_BASE_URL']
-                ?? ($this->config['GOOGLE_MAPS_API_BASE_URL']
-                ?? ((getenv('APP_ENV') === 'testing') ? 'http://127.0.0.1:8081/api/mock_maps.php?' : 'https://maps.googleapis.com'));
+                ?? ($this->config['GOOGLE_MAPS_API_BASE_URL'] ?? $defaultMapsUrl);
             $this->geoService = new GeoContextService($this->db, $apiKey, $apiBaseUrl);
         } else {
             $this->geoService = $geoService;
@@ -43,20 +66,20 @@ class RerollService
     /**
      * Rerolls a preview dashpoint within land constraints and configurable radius.
      *
-     * @param int $userId
-     * @param string $dashpointId
-     * @param string|null $reason
-     * @return array
-     * @throws Exception
+     * @param int         $userId      Authenticated user ID.
+     * @param string      $dashpointId Dashpoint identifier.
+     * @param string|null $reason      Reason for relocating the dashpoint.
+     * @return array<string, mixed>
+     * @throws DomainException|Exception
      */
     public function rerollDashpoint(int $userId, string $dashpointId, ?string $reason = null): array
     {
         $reason = $reason !== null ? trim($reason) : '';
         if ($reason === '') {
-            throw new Exception("Reroll reason is required.");
+            throw new DomainException("Reroll reason is required.");
         }
         if (mb_strlen($reason) >= 100) {
-            throw new Exception("Reroll reason must be less than 100 characters.");
+            throw new DomainException("Reroll reason must be less than 100 characters.");
         }
 
         $rerollSection = $this->config['reroll'] ?? $this->config;
@@ -66,7 +89,7 @@ class RerollService
         $maxRerolls = (int) ($rerollSection['REROLL_MAX_PER_PLAYER'] ?? 3);
 
         if (!$rerollEnabled) {
-            throw new Exception("Dashpoint rerolling is currently disabled.");
+            throw new DomainException("Dashpoint rerolling is currently disabled.");
         }
 
         // 1. Fetch User details and verify finds count
@@ -76,18 +99,19 @@ class RerollService
         $stmtUser->execute(['user_id' => $userId]);
         $userRow = $stmtUser->fetch();
         if (!$userRow) {
-            throw new Exception("User not found.");
+            throw new DomainException("User not found.");
         }
         $username = $userRow['username'];
 
         $stmtFinds = $this->db->prepare(
-            "SELECT COUNT(*) AS find_count FROM visits WHERE user_id = :user_id AND is_attempt = FALSE AND status = 'approved'"
+            "SELECT COUNT(*) AS find_count FROM visits "
+            . "WHERE user_id = :user_id AND is_attempt = FALSE AND status = 'approved'"
         );
         $stmtFinds->execute(['user_id' => $userId]);
         $findsCount = (int) ($stmtFinds->fetch()['find_count'] ?? 0);
 
         if ($findsCount < 1) {
-            throw new Exception("You must have logged at least 1 verified find to reroll a dashpoint.");
+            throw new DomainException("You must have logged at least 1 verified find to reroll a dashpoint.");
         }
 
         // 2. Fetch Dashpoint info and game preview status
@@ -102,7 +126,7 @@ class RerollService
         $dp = $stmtDp->fetch();
 
         if (!$dp) {
-            throw new Exception("Dashpoint not found.");
+            throw new DomainException("Dashpoint not found.");
         }
 
         $gameId = (int) $dp['game_id'];
@@ -112,7 +136,7 @@ class RerollService
         $startTime = strtotime($dp['start_time']);
 
         if ($isActive || $startTime <= time()) {
-            throw new Exception("Dashpoints can only be rerolled while the game is in preview.");
+            throw new DomainException("Dashpoints can only be rerolled while the game is in preview.");
         }
 
         // 3. Verify point has not already been rerolled
@@ -123,18 +147,21 @@ class RerollService
         $dpRerollCount = (int) ($stmtDpRerolls->fetch()['reroll_count'] ?? 0);
 
         if ($dpRerollCount > 0) {
-            throw new Exception("This dashpoint has already been rerolled during preview.");
+            throw new DomainException("This dashpoint has already been rerolled during preview.");
         }
 
         // 4. Verify user quota
         $stmtUserRerolls = $this->db->prepare(
-            "SELECT COUNT(*) AS user_reroll_count FROM dashpoint_rerolls WHERE user_id = :user_id AND game_id = :game_id"
+            "SELECT COUNT(*) AS user_reroll_count "
+            . "FROM dashpoint_rerolls WHERE user_id = :user_id AND game_id = :game_id"
         );
         $stmtUserRerolls->execute(['user_id' => $userId, 'game_id' => $gameId]);
         $userRerollCount = (int) ($stmtUserRerolls->fetch()['user_reroll_count'] ?? 0);
 
         if ($userRerollCount >= $maxRerolls) {
-            throw new Exception("You have reached your maximum reroll limit of {$maxRerolls} for this game.");
+            throw new DomainException(
+                "You have reached your maximum reroll limit of {$maxRerolls} for this game."
+            );
         }
 
         // 5. Execute Python spatial helper script
@@ -145,18 +172,20 @@ class RerollService
         // 6. Transactional Database Update
         $this->db->beginTransaction();
         try {
-            $wktNew = "POINT({$newLat} {$newLon})";
+            $wktNew = sprintf("POINT(%F %F)", $newLat, $newLon);
             $stmtUpdate = $this->db->prepare(
-                "UPDATE dashpoints 
-                 SET location = ST_GeomFromText(:wkt, 4326), country_code = NULL, state_province = NULL 
+                "UPDATE dashpoints
+                 SET location = ST_GeomFromText(:wkt, 4326), country_code = NULL, state_province = NULL
                  WHERE id = :dashpoint_id"
             );
             $stmtUpdate->execute(['wkt' => $wktNew, 'dashpoint_id' => $dashpointId]);
 
-            $wktOld = "POINT({$origLat} {$origLon})";
+            $wktOld = sprintf("POINT(%F %F)", $origLat, $origLon);
             $stmtInsertLog = $this->db->prepare(
-                "INSERT INTO dashpoint_rerolls (dashpoint_id, game_id, user_id, old_location, new_location, reason)
-                 VALUES (:dashpoint_id, :game_id, :user_id, ST_GeomFromText(:old_wkt, 4326), ST_GeomFromText(:new_wkt, 4326), :reason)"
+                "INSERT INTO dashpoint_rerolls "
+                . "(dashpoint_id, game_id, user_id, old_location, new_location, reason) "
+                . "VALUES (:dashpoint_id, :game_id, :user_id, "
+                . "ST_GeomFromText(:old_wkt, 4326), ST_GeomFromText(:new_wkt, 4326), :reason)"
             );
             $stmtInsertLog->execute([
                 'dashpoint_id' => $dashpointId,
@@ -230,7 +259,6 @@ class RerollService
         }
 
         $candidates = [
-            '/home/lucienve/.local/bin/uv',
             '/usr/local/bin/uv',
             '/usr/bin/uv',
         ];
@@ -251,10 +279,10 @@ class RerollService
     /**
      * Builds the execution command for relocating a dashpoint.
      *
-     * @param float $origLat
-     * @param float $origLon
-     * @param float $maxRadiusKm
-     * @param string $tempFile
+     * @param float  $origLat     Original latitude.
+     * @param float  $origLon     Original longitude.
+     * @param float  $maxRadiusKm Maximum relocation radius in kilometers.
+     * @param string $tempFile    Temporary output JSON file path.
      * @return string
      */
     public function buildRerollCommand(
@@ -297,7 +325,8 @@ class RerollService
         }
 
         return sprintf(
-            'PYTHONPATH=%s %s %s --lat %F --lon %F --max-radius-km %F --land-zip %s --lakes-zip %s --output-file %s 2>&1',
+            'PYTHONPATH=%s %s %s --lat %F --lon %F --max-radius-km %F '
+            . '--land-zip %s --lakes-zip %s --output-file %s 2>&1',
             escapeshellarg($projectRoot),
             escapeshellarg($pythonBin),
             escapeshellarg($scriptPath),
@@ -313,10 +342,10 @@ class RerollService
     /**
      * Executes the Python reroll CLI script. Protected for unit test overriding.
      *
-     * @param float $origLat
-     * @param float $origLon
-     * @param float $maxRadiusKm
-     * @return array
+     * @param float $origLat     Original latitude.
+     * @param float $origLon     Original longitude.
+     * @param float $maxRadiusKm Maximum relocation radius in kilometers.
+     * @return array<string, mixed>
      * @throws Exception
      */
     protected function executePythonRerollScript(float $origLat, float $origLon, float $maxRadiusKm): array
@@ -367,7 +396,7 @@ class RerollService
             return $result;
         } finally {
             if (file_exists($tempFile)) {
-                @unlink($tempFile);
+                unlink($tempFile);
             }
         }
     }

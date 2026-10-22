@@ -3,7 +3,7 @@
 /**
  * Email Verification Endpoint
  *
- * Intercepts the GET payload shipped via the PHP mail() engine.
+ * Intercepts the GET verification token link sent via email.
  */
 
 declare(strict_types=1);
@@ -18,7 +18,7 @@ require_once __DIR__ . '/../../backend/Database.php';
 $token = $_GET['token'] ?? '';
 
 if (empty($token)) {
-    // Graceful routing logic dumping bad actors
+    // Redirect to home when token is missing
     header("Location: ../index.html#home");
     exit;
 }

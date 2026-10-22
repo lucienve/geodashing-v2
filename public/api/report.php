@@ -3,7 +3,7 @@
 /**
  * Reporting API Endpoint
  *
- * Processes spatial dashpoint claims by evaluating the user's submitted physical
+ * Processes spatial dashpoint claims by evaluating the user's submitted
  * coordinates against the Dashpoint's master coordinates.
  *
  * @package Geodashing\API
@@ -44,35 +44,59 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     // Phase 5 Validation: Strict Field Log Text Constraints
     if (empty($notes) || strlen($notes) > 10000) {
         http_response_code(400);
-        echo json_encode(["status" => "error", "message" => "Field observations are mandatory and must not exceed 10,000 characters."]);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Field observations are mandatory and must not exceed 10,000 characters."
+        ]);
         exit;
     }
     $photosJson = null;
 
     // 2.5 Optional Media Processing Pipeline
-    if (!empty($_FILES['photos']) && (is_array($_FILES['photos']['error']) ? $_FILES['photos']['error'][0] : $_FILES['photos']['error']) !== UPLOAD_ERR_NO_FILE) {
+    $photoErr = !empty($_FILES['photos'])
+        ? (is_array($_FILES['photos']['error']) ? $_FILES['photos']['error'][0] : $_FILES['photos']['error'])
+        : UPLOAD_ERR_NO_FILE;
+    if (!empty($_FILES['photos']) && $photoErr !== UPLOAD_ERR_NO_FILE) {
         $configPath = __DIR__ . '/../../backend/config.ini';
-        $config = file_exists($configPath) ? parse_ini_file($configPath) : [];
+        $config = (file_exists($configPath) && is_readable($configPath))
+            ? (parse_ini_file($configPath) ?: [])
+            : [];
         $keyPath = $config['GOOGLE_APPLICATION_CREDENTIALS'] ?? getenv('GOOGLE_APPLICATION_CREDENTIALS');
         $isTesting = getenv('APP_ENV') === 'testing';
 
-        if (!$isTesting && (!$keyPath || !file_exists($keyPath))) {
+        if (!$isTesting && (!$keyPath || !file_exists((string) $keyPath))) {
             http_response_code(500);
-            echo json_encode(["status" => "error", "message" => "Server configuration error blocking media uploads."]);
+            echo json_encode([
+                "status" => "error",
+                "message" => "Server configuration error blocking media uploads."
+            ]);
             exit;
         }
 
         try {
-            // Instantiate securely with user's explicitly provided Geodashing GCP identifiers
-            $mediaService = new MediaService('geodashing-v2', 'geodashing-v2-blobs', $isTesting ? null : $keyPath);
+            // Instantiate MediaService with Geodashing GCP identifiers
+            $mediaService = new MediaService(
+                'geodashing-v2',
+                'geodashing-v2-blobs',
+                $isTesting ? null : (string) $keyPath
+            );
             $captions = $_POST['captions'] ?? [];
             if (!is_array($captions)) {
                 $captions = [];
             }
-            $urls = $mediaService->uploadPhotos($_FILES['photos'], $dashpoint_id, $_SESSION['user_id'], $captions);
+            $urls = $mediaService->uploadPhotos(
+                $_FILES['photos'],
+                $dashpoint_id,
+                (int) $_SESSION['user_id'],
+                $captions
+            );
             if (!empty($urls)) {
                 $photosJson = json_encode($urls);
             }
+        } catch (InvalidArgumentException | DomainException $e) {
+            http_response_code(400);
+            echo json_encode(["status" => "error", "message" => "Image upload failed: " . $e->getMessage()]);
+            exit;
         } catch (Exception $e) {
             error_log("GCP Upload Error: " . $e->getMessage());
             http_response_code(400);
@@ -84,7 +108,11 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     if (empty($dashpoint_id) || $lat === false || $lon === false) {
         if (!empty($urls) && isset($mediaService)) {
             $rawUrls = array_column($urls, 'url');
-            $mediaService->deletePhotos($rawUrls);
+            try {
+                $mediaService->deletePhotos($rawUrls);
+            } catch (Throwable $cleanupErr) {
+                error_log("Media cleanup failed: " . $cleanupErr->getMessage());
+            }
         }
         http_response_code(400);
         echo json_encode(["status" => "error", "message" => "Invalid or missing required location data."]);
@@ -96,12 +124,25 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         $service = new ReportService($db);
         $is_attempt = filter_var($_POST['is_attempt'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $suppress_email = filter_var($_POST['suppress_email'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        $result = $service->processVisit($_SESSION['user_id'], $dashpoint_id, $lat, $lon, $is_attempt, $notes, $photosJson, $suppress_email);
+        $result = $service->processVisit(
+            (int) $_SESSION['user_id'],
+            $dashpoint_id,
+            $lat,
+            $lon,
+            $is_attempt,
+            $notes,
+            $photosJson,
+            $suppress_email
+        );
 
         if ($result['status'] === 'error') {
             if (!empty($urls) && isset($mediaService)) {
                 $rawUrls = array_column($urls, 'url');
-                $mediaService->deletePhotos($rawUrls);
+                try {
+                    $mediaService->deletePhotos($rawUrls);
+                } catch (Throwable $cleanupErr) {
+                    error_log("Media cleanup failed: " . $cleanupErr->getMessage());
+                }
             }
             http_response_code(400);
         }
@@ -109,7 +150,11 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     } catch (Exception $e) {
         if (!empty($urls) && isset($mediaService)) {
             $rawUrls = array_column($urls, 'url');
-            $mediaService->deletePhotos($rawUrls);
+            try {
+                $mediaService->deletePhotos($rawUrls);
+            } catch (Throwable $cleanupErr) {
+                error_log("Media cleanup failed: " . $cleanupErr->getMessage());
+            }
         }
         error_log("Report API Error: " . $e->getMessage());
         http_response_code(500);

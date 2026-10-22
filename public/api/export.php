@@ -19,7 +19,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     require_once __DIR__ . '/../../backend/session.php';
     require_once __DIR__ . '/../../backend/Database.php';
 
-    // Securely demand a populated active session dynamically
+    // Require an active authenticated session
     if (!isset($_SESSION['user_id'])) {
         http_response_code(401);
         exit('Error: Unauthorized. You must be logged in to export dashpoint data.');
@@ -31,15 +31,15 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
     $e = filter_var($_GET['e'] ?? '', FILTER_VALIDATE_FLOAT);
     $w = filter_var($_GET['w'] ?? '', FILTER_VALIDATE_FLOAT);
 
-    // Parse the game_id constraint dynamically
+    // Parse the game_id constraint
     $gameId = filter_var($_GET['game_id'] ?? null, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
 
-    // Default the payload syntax to GPX architectures dynamically
+    // Default the export format to GPX
     $format = $_GET['format'] ?? 'gpx';
 
     if ($n === false || $s === false || $e === false || $w === false) {
         http_response_code(400);
-        exit('Error: Invalid spatial boundaries completely disrupting parsing.');
+        exit('Error: Invalid spatial boundaries.');
     }
 
     if ($gameId === null || $gameId === false) {
@@ -58,7 +58,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         $filenameSuffix = "_game_{$gameId}";
 
         if ($format === 'gpx') {
-            // Force strict caching overrides tricking browser into saving files
+            // Set GPX attachment headers for browser download
             header('Content-Type: application/gpx+xml');
             header("Content-Disposition: attachment; filename=\"geodashing_v2{$filenameSuffix}_export.gpx\"");
         } elseif ($format === 'loc') {
@@ -71,7 +71,7 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
             header("Content-Disposition: attachment; filename=\"geodashing_v2{$filenameSuffix}_export.kml\"");
         }
 
-        // Output raw buffer bytes mapping HTTP stream correctly
+        // Output XML response body
         echo $xmlOutput;
     } catch (InvalidArgumentException $e) {
         http_response_code(400);

@@ -13,6 +13,9 @@ use PDO;
  */
 class SummaryService
 {
+    /**
+     * @var PDO The configured database connection.
+     */
     private PDO $db;
 
     /**

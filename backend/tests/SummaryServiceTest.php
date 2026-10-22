@@ -4,22 +4,36 @@ declare(strict_types=1);
 
 namespace App\Tests;
 
-use PHPUnit\Framework\TestCase;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\Attributes\CoversClass;
 use App\Services\SummaryService;
 use PDO;
 use PDOStatement;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
 
 /**
- * Summary Service Unit Tests
+ * SummaryServiceTest
+ *
+ * Verifies SummaryService game summary HTML retrieval.
  */
 #[CoversClass(SummaryService::class)]
 class SummaryServiceTest extends TestCase
 {
-    private $pdoMock;
-    private $summaryService;
+    /**
+     * @var PDO&MockObject
+     */
+    private PDO $pdoMock;
 
+    /**
+     * @var SummaryService
+     */
+    private SummaryService $summaryService;
+
+    /**
+     * Sets up the test fixtures.
+     */
+    #[\Override]
     protected function setUp(): void
     {
         $this->pdoMock = $this->createMock(PDO::class);

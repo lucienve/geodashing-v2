@@ -34,8 +34,8 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         }
 
         echo json_encode([
-        "status" => "success",
-        "data" => $data
+            "status" => "success",
+            "data" => $data
         ]);
     } catch (Exception $e) {
         error_log("Dashpoint API Error: " . $e->getMessage());

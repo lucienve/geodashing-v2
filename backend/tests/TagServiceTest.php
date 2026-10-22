@@ -12,11 +12,23 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * TagServiceTest
+ *
+ * Verifies TagService feature flags, ETag determinism, and dashpoint tag CRUD.
+ */
 #[CoversClass(TagService::class)]
 class TagServiceTest extends TestCase
 {
-    private $pdoMock;
+    /**
+     * @var PDO
+     */
+    private PDO $pdoMock;
 
+    /**
+     * Sets up the test fixtures.
+     */
+    #[\Override]
     protected function setUp(): void
     {
         putenv('APP_ENV=testing');
@@ -24,6 +36,10 @@ class TagServiceTest extends TestCase
         $this->pdoMock = $this->createStub(PDO::class);
     }
 
+    /**
+     * Cleans up environment overrides after each test.
+     */
+    #[\Override]
     protected function tearDown(): void
     {
         putenv('TAGS_ENABLED');
