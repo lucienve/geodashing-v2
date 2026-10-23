@@ -70,7 +70,7 @@ resource "google_project_iam_member" "uploader_aiplatform_user" {
 resource "google_apikeys_key" "backend_processing" {
   name         = "a7f2aab3-6a7b-448b-92b0-c14afcf65fe4"
   display_name = "Backend processing"
-  project      = var.project_id
+  project      = var.project_number
 
   restrictions {
     api_targets {
@@ -83,7 +83,7 @@ resource "google_apikeys_key" "backend_processing" {
 resource "google_apikeys_key" "backend_api_key" {
   name         = "02c51582-f7d5-4b90-ade8-bfb3a1eb652c"
   display_name = "Backend API Key"
-  project      = var.project_id
+  project      = var.project_number
 
   restrictions {
     api_targets {
@@ -108,7 +108,7 @@ resource "google_apikeys_key" "backend_api_key" {
 resource "google_apikeys_key" "ui_api_key" {
   name         = "5b387efe-d0ea-4246-b7cf-09193bff1dea"
   display_name = "UI API Key"
-  project      = var.project_id
+  project      = var.project_number
 
   restrictions {
     api_targets {
