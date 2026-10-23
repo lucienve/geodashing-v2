@@ -10,8 +10,8 @@ terraform {
 
   # Remote backend configuration template. Uncomment and configure after provisioning
   # a dedicated GCS state bucket (e.g., geodashing-v2-tfstate) with versioning enabled.
-  # backend "gcs" {
-  #   bucket = "geodashing-v2-tfstate"
-  #   prefix = "terraform/state"
-  # }
+  backend "gcs" {
+    bucket = "geodashing-v2-tfstate"
+    prefix = "terraform/state"
+  }
 }
