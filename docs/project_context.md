@@ -2073,9 +2073,10 @@ geographic games where they are tasked with reaching randomly generated
 - Created a flat Terraform root configuration within `terraform/` complying with
   strict scope constriction and anti-abstraction directives:
   - [versions.tf](../terraform/versions.tf): Pinned Terraform `>= 1.7.0` and
-    Google provider `~> 6.0`.
+    Google provider `~> 6.0`, configured with remote state storage in GCS bucket
+    `geodashing-v2-tfstate` under prefix `terraform/state`.
   - [providers.tf](../terraform/providers.tf): Standard provider block scoped to
-    project and region variables.
+    project and region variables with user project and billing overrides.
   - [variables.tf](../terraform/variables.tf) and
     [outputs.tf](../terraform/outputs.tf): Typed input variables and resource
     output attributes.
