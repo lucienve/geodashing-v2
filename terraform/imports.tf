@@ -10,13 +10,14 @@ import {
 
 import {
   to = google_storage_bucket_iam_member.blobs_public_viewer
-  id = "b/geodashing-v2-blobs/roles/storage.objectViewer/allUsers"
+  id = "b/geodashing-v2-blobs roles/storage.objectViewer allUsers"
 }
 
 import {
   to = google_storage_bucket_iam_member.uploader_admin
-  id = "b/geodashing-v2-blobs/roles/storage.objectAdmin/serviceAccount:geodashing-uploader@geodashing-v2.iam.gserviceaccount.com"
+  id = "b/geodashing-v2-blobs roles/storage.objectAdmin serviceAccount:geodashing-uploader@geodashing-v2.iam.gserviceaccount.com"
 }
+
 
 import {
   to = google_service_account.geodashing_uploader

@@ -9,6 +9,10 @@ resource "google_storage_bucket" "blobs" {
   uniform_bucket_level_access = true
   force_destroy               = false
 
+  hierarchical_namespace {
+    enabled = true
+  }
+
   autoclass {
     enabled                = true
     terminal_storage_class = "ARCHIVE"

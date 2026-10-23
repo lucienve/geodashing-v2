@@ -62,6 +62,9 @@ test-results/
 *.tfstate
 *.tfstate.*
 crash.log
+*.tfplan*
+tfplan*
 *.tfvars
 !terraform.tfvars.example
+
 
