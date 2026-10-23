@@ -2057,3 +2057,38 @@ geographic games where they are tasked with reaching randomly generated
       formatted all Markdown files to 80 characters with Prettier, and
       synchronized [.pre-commit-config.yaml](../.pre-commit-config.yaml) and
       [.github/workflows/ci-e2e.yml](../.github/workflows/ci-e2e.yml).
+
+### 51. Google Cloud Asset Audit & Terraform Infrastructure Management
+
+- Audited all existing Google Cloud infrastructure assets for project
+  `geodashing-v2` (project number `927002408097`). Identified active assets
+  including Cloud Storage media bucket `geodashing-v2-blobs` in `US-EAST1`
+  (Autoclass enabled, UBLA enabled, 7-day soft delete), public viewer and
+  uploader service account IAM bindings, custom service account
+  `geodashing-uploader@geodashing-v2.iam.gserviceaccount.com` with project-level
+  `roles/aiplatform.user` binding, and three Google API keys
+  (`Backend processing` for Gemini, `Backend API Key` for Maps
+  geocoding/timezone/elevation restricted by host IP, and `UI API Key` for
+  client Maps UI restricted by HTTP referrers).
+- Created a flat Terraform root configuration within `terraform/` complying with
+  strict scope constriction and anti-abstraction directives:
+  - [versions.tf](../terraform/versions.tf): Pinned Terraform `>= 1.7.0` and
+    Google provider `~> 6.0`.
+  - [providers.tf](../terraform/providers.tf): Standard provider block scoped to
+    project and region variables.
+  - [variables.tf](../terraform/variables.tf) and
+    [outputs.tf](../terraform/outputs.tf): Typed input variables and resource
+    output attributes.
+  - [main.tf](../terraform/main.tf): Explicit non-abstracted resource
+    definitions with deletion safeguards (`prevent_destroy = true` and
+    `force_destroy = false` on storage bucket) and non-authoritative IAM
+    bindings.
+  - [imports.tf](../terraform/imports.tf): Declarative Terraform 1.5+ `import`
+    blocks mapping all existing GCP resources to prevent destructive recreation.
+  - [terraform.tfvars.example](../terraform/terraform.tfvars.example): Sample
+    input variables file.
+- Updated [.gitignore](../.gitignore) to exclude Terraform runtime directories
+  (`.terraform/`), state files (`*.tfstate`), and secret variables while
+  explicitly tracking [.terraform.lock.hcl](../terraform/.terraform.lock.hcl).
+- Verified configuration using `terraform fmt`, `terraform init -backend=false`,
+  `terraform validate`, and the unified `pre-commit` verification suite.
