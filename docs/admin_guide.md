@@ -83,18 +83,36 @@ database.
 
 #### Command Line Arguments (`generate_game.py`)
 
-| Flag | Long Form   |  Type  | Description                                                                                                   |
-| :--- | :---------- | :----: | :------------------------------------------------------------------------------------------------------------ |
-| `-t` | `--title`   | `str`  | **Required.** Brief descriptive title of the game (maximum 40 characters).                                    |
-| `-c` | `--count`   | `int`  | Total number of dashpoints to randomly distribute globally. Defaults to `31000`.                              |
-| `-m` | `--month`   | `int`  | Optional month (1–12) for the game schedule. Defaults to the current month.                                   |
-| `-y` | `--year`    | `int`  | Optional year for the game schedule. Defaults to the current year.                                            |
-|      | `--preview` | `flag` | Generates the game in an inactive "preview" state (`is_active = FALSE`) instead of immediately activating it. |
+| Flag | Long Form     |  Type   | Description                                                                                                   |
+| :--- | :------------ | :-----: | :------------------------------------------------------------------------------------------------------------ |
+| `-t` | `--title`     |  `str`  | **Required.** Brief descriptive title of the game (maximum 40 characters).                                    |
+| `-c` | `--count`     |  `int`  | Total number of dashpoints to randomly distribute globally under `--algorithm random`. Defaults to `35000`.   |
+| `-m` | `--month`     |  `int`  | Optional month (1–12) for the game schedule. Defaults to the current month.                                   |
+| `-y` | `--year`      |  `int`  | Optional year for the game schedule. Defaults to the current year.                                            |
+|      | `--preview`   | `flag`  | Generates the game in an inactive "preview" state (`is_active = FALSE`) instead of immediately activating it. |
+|      | `--algorithm` |  `str`  | Generation strategy: `random` (default) or `grid`.                                                            |
+|      | `--grid-size` | `float` | Grid cell size in km when using `--algorithm grid`. Defaults to `50.0`.                                       |
 
 #### Internal Mechanics
 
-1. **Spherical Coordinate Generation**: Generates raw global points utilizing a
-   uniform spherical distribution (equal density per unit area).
+1. **Algorithm Strategies**:
+   - **`random` (Default)**: Generates raw global coordinates utilizing uniform
+     spherical distribution (Poisson sampling) until `--count` valid dry-land
+     dashpoints are placed.
+   - **`grid` (Staggered Spherical Trapezoid Grid)**: Tiles the globe from
+     $-90^\circ$ to $+90^\circ$ into staggered latitude bands of spherical
+     trapezoids of roughly `--grid-size` km with randomized latitude and
+     longitude origin shifts. Executes two sampling passes:
+     - **Pass 1 (Base Darts)**: Samples 1 random candidate coordinate per cell
+       globally and validates dry land.
+     - **Pass 2 (Cardinal Water Redistribution)**: For cells whose Pass 1 dart
+       hit water, throws 1 additional bonus dart into each of its 4 cardinal
+       neighbor cells (North, South, East, West) and keeps those landing on dry
+       land (non-cascading).
+     - **12 km Minimum Distance Check**: Every dry-land candidate must be at
+       least 12 km from all existing dashpoints. If a candidate collides within
+       12 km, up to 50 replacement attempts are drawn inside the cell before
+       giving up.
 2. **Landmass Filtering (EPSG:6933)**:
    - Loads complex shapefiles for global landmasses (`data/ne_10m_land.zip`) and
      major lakes (`data/ne_10m_lakes.zip`).

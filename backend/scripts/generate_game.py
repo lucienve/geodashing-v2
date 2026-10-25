@@ -2,7 +2,10 @@
 
 import argparse
 import calendar
+import dataclasses
 import datetime
+import itertools
+import math
 import os
 import sys
 import typing
@@ -16,6 +19,198 @@ import shapely.geometry.base
 import shapely.strtree
 
 import backend.scripts.db_utils
+
+EARTH_RADIUS_KM: float = 6371.0088
+MIN_NEIGHBOR_DISTANCE_KM: float = 12.0
+MAX_CELL_ATTEMPTS: int = 50
+
+
+@dataclasses.dataclass(frozen=True)
+class LatitudeBand:
+    """Represents a discrete latitudinal band on the globe."""
+    band_idx: int
+    lat_min: float
+    lat_max: float
+    lon_offset: float
+    num_cells: int
+    dlon: float
+
+
+class SphereNeighborGrid:
+    """3D unit-sphere spatial hash grid for enforcing minimum great-circle spacing."""
+
+    def __init__(self,
+                 min_distance_km: float = MIN_NEIGHBOR_DISTANCE_KM,
+                 earth_radius_km: float = EARTH_RADIUS_KM) -> None:
+        """Initializes the spatial hash grid with chord distance buckets."""
+        if min_distance_km <= 0:
+            raise ValueError(
+                f"min_distance_km must be positive, got {min_distance_km}")
+        self._min_distance_km = min_distance_km
+        self._earth_radius_km = earth_radius_km
+        # Great circle distance d to 3D unit chord length: c = 2 * sin(d / (2 * R))
+        self._chord_dist = 2.0 * math.sin(min_distance_km /
+                                          (2.0 * earth_radius_km))
+        self._chord_dist_sq = self._chord_dist**2
+        self._cell_size = self._chord_dist
+        self._grid: dict[tuple[int, int, int], list[tuple[float, float,
+                                                          float]]] = {}
+        self._count = 0
+
+    def _to_unit_vector(self, lon: float,
+                        lat: float) -> tuple[float, float, float]:
+        """Converts (longitude, latitude) in degrees to 3D unit coordinates (x, y, z)."""
+        lat_rad = math.radians(lat)
+        lon_rad = math.radians(lon)
+        cos_lat = math.cos(lat_rad)
+        x = cos_lat * math.cos(lon_rad)
+        y = cos_lat * math.sin(lon_rad)
+        z = math.sin(lat_rad)
+        return x, y, z
+
+    def _get_key(self, x: float, y: float, z: float) -> tuple[int, int, int]:
+        """Maps 3D coordinates to a discrete bucket key."""
+        return (math.floor(x / self._cell_size),
+                math.floor(y / self._cell_size),
+                math.floor(z / self._cell_size))
+
+    def _is_too_close(self, x: float, y: float, z: float,
+                      pts: list[tuple[float, float, float]]) -> bool:
+        """Determines if (x, y, z) is within chord distance of any stored points."""
+        for ox, oy, oz in pts:
+            dist_sq = (x - ox)**2 + (y - oy)**2 + (z - oz)**2
+            if dist_sq < self._chord_dist_sq:
+                return True
+        return False
+
+    def can_place(self, lon: float, lat: float) -> bool:
+        """Checks if a point is at least min_distance_km from all stored points."""
+        x, y, z = self._to_unit_vector(lon, lat)
+        bx, by, bz = self._get_key(x, y, z)
+
+        for dx, dy, dz in itertools.product((-1, 0, 1), repeat=3):
+            stored_pts = self._grid.get((bx + dx, by + dy, bz + dz))
+            if stored_pts and self._is_too_close(x, y, z, stored_pts):
+                return False
+        return True
+
+    def insert(self, lon: float, lat: float) -> bool:
+        """Inserts a point if it meets the minimum distance constraint."""
+        if not self.can_place(lon, lat):
+            return False
+        x, y, z = self._to_unit_vector(lon, lat)
+        key = self._get_key(x, y, z)
+        self._grid.setdefault(key, []).append((x, y, z))
+        self._count += 1
+        return True
+
+    def count(self) -> int:
+        """Returns the number of accepted points in the grid."""
+        return self._count
+
+
+def build_spherical_grid(
+        grid_size_km: float = 50.0,
+        earth_radius_km: float = EARTH_RADIUS_KM) -> list[LatitudeBand]:
+    """Divides the globe into staggered spherical trapezoids of approximately grid_size_km."""
+    if grid_size_km <= 0:
+        raise ValueError(f"grid_size_km must be positive, got {grid_size_km}")
+
+    dlat = math.degrees(grid_size_km / earth_radius_km)
+    lat_shift = float(np.random.uniform(0.0, dlat))
+
+    bands: list[LatitudeBand] = []
+    lat_cursor = -90.0
+    band_idx = 0
+
+    while lat_cursor < 90.0:
+        if band_idx == 0 and lat_shift > 0.0:
+            lat_next = min(90.0, -90.0 + lat_shift)
+        else:
+            lat_next = min(90.0, lat_cursor + dlat)
+
+        if lat_next - lat_cursor > 1e-6:
+            lat_center = 0.5 * (lat_cursor + lat_next)
+            circumference = 2.0 * math.pi * earth_radius_km * math.cos(
+                math.radians(lat_center))
+            num_cells = max(1, round(circumference / grid_size_km))
+            dlon = 360.0 / num_cells
+            lon_offset = -180.0 + float(np.random.uniform(0.0, dlon))
+
+            bands.append(
+                LatitudeBand(band_idx=band_idx,
+                             lat_min=lat_cursor,
+                             lat_max=lat_next,
+                             lon_offset=lon_offset,
+                             num_cells=num_cells,
+                             dlon=dlon))
+            band_idx += 1
+
+        lat_cursor = lat_next
+
+    return bands
+
+
+def get_cardinal_neighbors(band: LatitudeBand, cell_idx: int,
+                           bands: list[LatitudeBand]) -> list[tuple[int, int]]:
+    """Identifies the 4 cardinal neighbor cells (East, West, North, South) for a grid cell."""
+    neighbors: list[tuple[int, int]] = []
+
+    # East and West within the same latitude band
+    neighbors.append((band.band_idx, (cell_idx + 1) % band.num_cells))
+    neighbors.append((band.band_idx, (cell_idx - 1) % band.num_cells))
+
+    # Longitude center of current cell normalized to [-180.0, 180.0)
+    lon_start = band.lon_offset + cell_idx * band.dlon
+    lon_center = ((lon_start + 0.5 * band.dlon + 180.0) % 360.0) - 180.0
+
+    # North neighbor (if not the northernmost band)
+    if band.band_idx + 1 < len(bands):
+        north_band = bands[band.band_idx + 1]
+        north_j = int(((lon_center - north_band.lon_offset) % 360.0) //
+                      north_band.dlon) % north_band.num_cells
+        neighbors.append((north_band.band_idx, north_j))
+
+    # South neighbor (if not the southernmost band)
+    if band.band_idx - 1 >= 0:
+        south_band = bands[band.band_idx - 1]
+        south_j = int(((lon_center - south_band.lon_offset) % 360.0) //
+                      south_band.dlon) % south_band.num_cells
+        neighbors.append((south_band.band_idx, south_j))
+
+    return neighbors
+
+
+def sample_point_in_cell(band: LatitudeBand,
+                         cell_idx: int) -> shapely.geometry.Point:
+    """Samples a single uniform random geographic point inside a spherical trapezoid cell."""
+    sin_min = math.sin(math.radians(band.lat_min))
+    sin_max = math.sin(math.radians(band.lat_max))
+    u = float(np.random.uniform(sin_min, sin_max))
+    lat = math.degrees(math.asin(max(-1.0, min(1.0, u))))
+
+    v = float(np.random.uniform(0.0, 1.0))
+    raw_lon = band.lon_offset + (cell_idx + v) * band.dlon
+    lon = ((raw_lon + 180.0) % 360.0) - 180.0
+
+    return shapely.geometry.Point(lon, lat)
+
+
+def _find_valid_cell_point(
+        band: LatitudeBand, cell_idx: int, initial_pt: shapely.geometry.Point,
+        spatial_filter: 'SpatialFilter',
+        neighbor_grid: SphereNeighborGrid) -> shapely.geometry.Point | None:
+    """Finds a non-colliding dry-land point in the cell, retrying up to MAX_CELL_ATTEMPTS."""
+    if neighbor_grid.insert(initial_pt.x, initial_pt.y):
+        return initial_pt
+
+    for _ in range(MAX_CELL_ATTEMPTS):
+        cand = sample_point_in_cell(band, cell_idx)
+        if neighbor_grid.can_place(cand.x, cand.y):
+            if spatial_filter.filter_valid_indices([cand]):
+                neighbor_grid.insert(cand.x, cand.y)
+                return cand
+    return None
 
 
 def load_blocklist(bad_words_path: str) -> set[str]:
@@ -315,6 +510,46 @@ class SpatialFilter:
 
         return valid
 
+    def _filter_batch_indices(
+            self, batch_points: list[shapely.geometry.Point]) -> set[int]:
+        """Filters a single batch of points and returns the valid local indices."""
+        proj_geoms = gpd.GeoDataFrame(
+            geometry=batch_points,
+            crs="EPSG:4326").to_crs(epsg=6933).geometry.tolist()
+
+        land_contains = self.tree_land.query(proj_geoms, predicate="contains")
+        on_land = set(land_contains[0])
+        lake_contains = self.tree_lakes.query(proj_geoms, predicate="contains")
+        in_lakes = set(lake_contains[0])
+
+        valid = on_land - in_lakes
+        remaining = [i for i in range(len(batch_points)) if i not in valid]
+        if remaining:
+            remaining_buffers = shapely.buffer(
+                [proj_geoms[i] for i in remaining], 100)
+            land_map, lake_map = self.get_candidate_matches(remaining_buffers)
+            for buf_idx, lands in land_map.items():
+                if self.eval_boundary_point(remaining_buffers[buf_idx], lands,
+                                            lake_map.get(buf_idx, [])):
+                    valid.add(remaining[buf_idx])
+
+        return valid
+
+    def filter_valid_indices(
+            self, raw_points: list[shapely.geometry.Point]) -> set[int]:
+        """Identifies indices of points situated on dry land or within 100m offshore."""
+        if not raw_points:
+            return set()
+
+        batch_size = 50000
+        valid_indices: set[int] = set()
+        for offset in range(0, len(raw_points), batch_size):
+            batch = raw_points[offset:offset + batch_size]
+            batch_valid = self._filter_batch_indices(batch)
+            valid_indices.update(offset + idx for idx in batch_valid)
+
+        return valid_indices
+
 
 def build_spatial_filter(land_zip_path: str,
                          lakes_zip_path: str,
@@ -386,38 +621,131 @@ def generate_valid_dashpoints(
     print("Generating valid dashpoints...")
     while len(valid_points) < target_count:
         raw_points = generate_spherical_points(batch_size)
-        proj_geoms = gpd.GeoDataFrame(
-            geometry=raw_points,
-            crs="EPSG:4326").to_crs(epsg=6933).geometry.tolist()
+        valid_indices = spatial_filter.filter_valid_indices(raw_points)
+        valid_points.extend(raw_points[i] for i in sorted(valid_indices))
 
-        # Step 1: Fast Point-in-Polygon (PIP) check
-        land_contains = spatial_filter.tree_land.query(proj_geoms,
-                                                       predicate="contains")
-        on_land_indices = set(land_contains[0])
-
-        lake_contains = spatial_filter.tree_lakes.query(proj_geoms,
-                                                        predicate="contains")
-        in_lake_indices = set(lake_contains[0])
-
-        # Dry land points are directly on land and not in a lake
-        immediate_valid = on_land_indices - in_lake_indices
-        valid_points.extend(raw_points[i] for i in immediate_valid)
-
-        # Step 2: Buffer remaining points and do local checks
-        remaining_indices = [
-            i for i in range(len(raw_points)) if i not in immediate_valid
-        ]
-        if remaining_indices:
-            valid_points.extend(
-                spatial_filter.filter_boundary_candidates(
-                    raw_points, proj_geoms, remaining_indices))
-
-        # Print progress
         if len(valid_points) % 1000 == 0 or len(valid_points) >= target_count:
             print(f"Generated {min(len(valid_points), target_count)} / "
                   f"{target_count} valid dashpoints...")
 
     return valid_points[:target_count]
+
+
+def _collect_all_grid_cells(
+        bands: list[LatitudeBand]) -> list[tuple[LatitudeBand, int]]:
+    """Flattens all bands into a list of (band, cell_idx) coordinate cells."""
+    return [(band, cell_idx) for band in bands
+            for cell_idx in range(band.num_cells)]
+
+
+def _place_shuffled_darts(
+        darts: list[tuple[LatitudeBand, int, shapely.geometry.Point]],
+        spatial_filter: SpatialFilter, neighbor_grid: SphereNeighborGrid,
+        accepted_points: list[shapely.geometry.Point]) -> None:
+    """Places darts in random order, retrying any 12km collisions."""
+    rng = np.random.default_rng()
+    for i in rng.permutation(len(darts)):
+        b, c, pt = darts[i]
+        placed = _find_valid_cell_point(b, c, pt, spatial_filter,
+                                        neighbor_grid)
+        if placed is not None:
+            accepted_points.append(placed)
+
+
+def _execute_pass1(
+    bands: list[LatitudeBand], spatial_filter: SpatialFilter,
+    neighbor_grid: SphereNeighborGrid,
+    accepted_points: list[shapely.geometry.Point]
+) -> list[tuple[LatitudeBand, int]]:
+    """Executes Pass 1 base grid sampling, returning the cells whose initial dart hit water."""
+    all_cells = _collect_all_grid_cells(bands)
+
+    print(f"Generated {len(all_cells)} grid cells. Running Pass 1...")
+    pass1_points = [sample_point_in_cell(b, c) for b, c in all_cells]
+    valid_indices = spatial_filter.filter_valid_indices(pass1_points)
+
+    water_cells: list[tuple[LatitudeBand, int]] = []
+    land_darts: list[tuple[LatitudeBand, int, shapely.geometry.Point]] = []
+    for idx, (b, c) in enumerate(all_cells):
+        if idx in valid_indices:
+            land_darts.append((b, c, pass1_points[idx]))
+        else:
+            water_cells.append((b, c))
+
+    _place_shuffled_darts(land_darts, spatial_filter, neighbor_grid,
+                          accepted_points)
+    return water_cells
+
+
+def _collect_cardinal_candidates(
+    water_cells: list[tuple[LatitudeBand, int]], bands: list[LatitudeBand]
+) -> list[tuple[LatitudeBand, int, shapely.geometry.Point]]:
+    """Generates candidate darts in all cardinal neighbors of water cells."""
+    candidates: list[tuple[LatitudeBand, int, shapely.geometry.Point]] = []
+    for b, c in water_cells:
+        for nb_band_idx, nb_cell_idx in get_cardinal_neighbors(b, c, bands):
+            nb_band = bands[nb_band_idx]
+            cand = sample_point_in_cell(nb_band, nb_cell_idx)
+            candidates.append((nb_band, nb_cell_idx, cand))
+    return candidates
+
+
+def _execute_pass2(water_cells: list[tuple[LatitudeBand, int]],
+                   bands: list[LatitudeBand], spatial_filter: SpatialFilter,
+                   neighbor_grid: SphereNeighborGrid,
+                   accepted_points: list[shapely.geometry.Point]) -> None:
+    """Executes Pass 2 non-cascading cardinal water redistribution."""
+    candidates = _collect_cardinal_candidates(water_cells, bands)
+    pts = [item[2] for item in candidates]
+    valid_indices = spatial_filter.filter_valid_indices(pts)
+    valid_darts = [candidates[i] for i in sorted(valid_indices)]
+    _place_shuffled_darts(valid_darts, spatial_filter, neighbor_grid,
+                          accepted_points)
+
+
+def generate_grid_dashpoints(
+    grid_size_km: float = 50.0,
+    land_zip_path: str = '../../data/ne_10m_land.zip',
+    lakes_zip_path: str = '../../data/ne_10m_lakes.zip'
+) -> list[shapely.geometry.Point]:
+    """Generates globally distributed dashpoints using a staggered spherical trapezoid grid.
+
+    Algorithm (Two-Pass Point Darts):
+        1. Tiles the globe into staggered spherical trapezoid bands of height grid_size_km.
+        2. Pass 1: Samples 1 random candidate point per cell.
+        3. Identifies dry-land points via SpatialFilter and inserts into SphereNeighborGrid,
+           retrying up to MAX_CELL_ATTEMPTS times if a 12 km collision occurs.
+        4. Pass 2: For cells whose Pass 1 point landed in water, throws 1 additional bonus dart
+           in each of their 4 cardinal neighbor cells (strictly 1-hop, non-cascading).
+        5. Validates Pass 2 points on dry land and inserts with the 12 km check and retry loop.
+
+    Args:
+        grid_size_km (float): Desired grid cell size in kilometers (default: 50.0).
+        land_zip_path (str): Path to Natural Earth land zip file.
+        lakes_zip_path (str): Path to Natural Earth lakes zip file.
+
+    Returns:
+        list[shapely.geometry.Point]: A list of accepted Point geometries.
+    """
+    spatial_filter = build_spatial_filter(land_zip_path, lakes_zip_path)
+    bands = build_spherical_grid(grid_size_km)
+    neighbor_grid = SphereNeighborGrid()
+    accepted_points: list[shapely.geometry.Point] = []
+
+    water_cells = _execute_pass1(bands, spatial_filter, neighbor_grid,
+                                 accepted_points)
+    print(f"Pass 1 placed {len(accepted_points)} points. "
+          f"Running Pass 2 with {len(water_cells)} water cells...")
+
+    _execute_pass2(water_cells, bands, spatial_filter, neighbor_grid,
+                   accepted_points)
+    print(
+        f"Grid generation completed: {len(accepted_points)} total dashpoints placed."
+    )
+
+    rng = np.random.default_rng()
+    rng.shuffle(accepted_points)
+    return accepted_points
 
 
 def main() -> None:
@@ -457,6 +785,21 @@ def main() -> None:
         help=
         "Generate the game in an inactive preview state instead of immediately activating it"
     )
+    parser.add_argument(
+        '--algorithm',
+        type=str,
+        choices=['random', 'grid'],
+        default='random',
+        help=
+        "Dashpoint distribution algorithm to use: 'random' or 'grid' (default: random)"
+    )
+    parser.add_argument(
+        '--grid-size',
+        type=float,
+        default=50.0,
+        help=
+        "Cell width/height in km when --algorithm grid is used (default: 50.0)"
+    )
     args = parser.parse_args()
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -466,12 +809,19 @@ def main() -> None:
     bad_words_path = os.path.join(current_dir, '../../data/bad_words.txt')
 
     try:
-        # 1. Generate Points dynamically bound to the user's explicit CLI count
-        target = args.count
-        print(f"Generating {target} dashpoints...")
-        points = generate_valid_dashpoints(target_count=target,
-                                           land_zip_path=zip_path,
-                                           lakes_zip_path=lakes_zip)
+        if args.algorithm == 'grid':
+            print(
+                f"Generating dashpoints using grid algorithm (size: {args.grid_size} km)..."
+            )
+            points = generate_grid_dashpoints(grid_size_km=args.grid_size,
+                                              land_zip_path=zip_path,
+                                              lakes_zip_path=lakes_zip)
+        else:
+            target = args.count
+            print(f"Generating {target} dashpoints using random algorithm...")
+            points = generate_valid_dashpoints(target_count=target,
+                                               land_zip_path=zip_path,
+                                               lakes_zip_path=lakes_zip)
 
         # 2. Upload to MySQL
         seed_database(points,
