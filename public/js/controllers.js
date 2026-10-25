@@ -524,7 +524,13 @@ document.addEventListener('routeLoaded', (e) => {
                         return;
                       }
 
-                      const newTag = { color: color, shape: shape, name: name };
+                      const newTag = {
+                        color: color,
+                        shape: shape,
+                        name: name,
+                        lat: Number(dp.lat),
+                        lon: Number(dp.lon),
+                      };
                       window.currentUserTags[dp.id] = newTag;
                       updateTagUI(newTag);
                       if (typeof window.updateMarkerTag === 'function') {
@@ -533,6 +539,14 @@ document.addEventListener('routeLoaded', (e) => {
 
                       const saveRes = await API.setUserTag(dp.id, color, shape);
                       if (saveRes.status === 'success') {
+                        if (
+                          saveRes.data &&
+                          saveRes.data.lat !== undefined &&
+                          saveRes.data.lon !== undefined
+                        ) {
+                          newTag.lat = Number(saveRes.data.lat);
+                          newTag.lon = Number(saveRes.data.lon);
+                        }
                         showToast('Saved');
                       } else {
                         // Rollback on failure

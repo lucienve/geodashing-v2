@@ -108,8 +108,20 @@ class TagServiceTest extends TestCase
             ->method('fetchAll')
             ->with(PDO::FETCH_ASSOC)
             ->willReturn([
-                ['dashpoint_id' => 'GD001-AAAA', 'color_code' => '#1a73e8', 'shape' => 'star'],
-                ['dashpoint_id' => 'GD001-AAAB', 'color_code' => '#e64a19', 'shape' => 'triangle']
+                [
+                    'dashpoint_id' => 'GD001-AAAA',
+                    'color_code' => '#1a73e8',
+                    'shape' => 'star',
+                    'lat' => '43.0851',
+                    'lon' => '-88.0412'
+                ],
+                [
+                    'dashpoint_id' => 'GD001-AAAB',
+                    'color_code' => '#e64a19',
+                    'shape' => 'triangle',
+                    'lat' => '43.1420',
+                    'lon' => '-87.9810'
+                ]
             ]);
 
         $this->pdoMock->expects($this->once())
@@ -120,8 +132,16 @@ class TagServiceTest extends TestCase
         $tags = $service->getTagsForUserAndGame(1, 2);
 
         $this->assertCount(2, $tags);
-        $this->assertEquals(['color' => '#1a73e8', 'shape' => 'star'], $tags['GD001-AAAA']);
-        $this->assertEquals(['color' => '#e64a19', 'shape' => 'triangle'], $tags['GD001-AAAB']);
+        $this->assertEquals(
+            ['color' => '#1a73e8', 'shape' => 'star', 'lat' => 43.0851, 'lon' => -88.0412],
+            $tags['GD001-AAAA']
+        );
+        $this->assertEquals(
+            ['color' => '#e64a19', 'shape' => 'triangle', 'lat' => 43.1420, 'lon' => -87.9810],
+            $tags['GD001-AAAB']
+        );
+        $this->assertSame(43.0851, $tags['GD001-AAAA']['lat']);
+        $this->assertSame(-88.0412, $tags['GD001-AAAA']['lon']);
     }
 
     #[Test]
@@ -196,7 +216,9 @@ class TagServiceTest extends TestCase
         $checkStmt->method('fetch')->willReturn([
             'id' => 'GD001-AAAA',
             'is_active' => true,
-            'start_time' => date('Y-m-d H:i:s', strtotime('-2 days'))
+            'start_time' => date('Y-m-d H:i:s', strtotime('-2 days')),
+            'lat' => 43.1234,
+            'lon' => -88.5678
         ]);
 
         $insertStmt = $this->createMock(PDOStatement::class);
@@ -213,6 +235,8 @@ class TagServiceTest extends TestCase
         $this->assertEquals('GD001-AAAA', $result['dashpoint_id']);
         $this->assertEquals('#1a73e8', $result['color']);
         $this->assertEquals('star', $result['shape']);
+        $this->assertSame(43.1234, $result['lat']);
+        $this->assertSame(-88.5678, $result['lon']);
     }
 
     #[Test]
@@ -223,7 +247,9 @@ class TagServiceTest extends TestCase
         $checkStmt->method('fetch')->willReturn([
             'id' => 'GD002-AAAA',
             'is_active' => false,
-            'start_time' => date('Y-m-d H:i:s', strtotime('+15 days'))
+            'start_time' => date('Y-m-d H:i:s', strtotime('+15 days')),
+            'lat' => 43.9876,
+            'lon' => -88.1234
         ]);
 
         $insertStmt = $this->createMock(PDOStatement::class);
@@ -240,6 +266,8 @@ class TagServiceTest extends TestCase
         $this->assertEquals('GD002-AAAA', $result['dashpoint_id']);
         $this->assertEquals('#8e24aa', $result['color']);
         $this->assertEquals('diamond', $result['shape']);
+        $this->assertSame(43.9876, $result['lat']);
+        $this->assertSame(-88.1234, $result['lon']);
     }
 
     #[Test]
@@ -250,7 +278,9 @@ class TagServiceTest extends TestCase
         $checkStmt->method('fetch')->willReturn([
             'id' => 'GD000-AAAA',
             'is_active' => false,
-            'start_time' => date('Y-m-d H:i:s', strtotime('-40 days'))
+            'start_time' => date('Y-m-d H:i:s', strtotime('-40 days')),
+            'lat' => 43.0,
+            'lon' => -88.0
         ]);
 
         $this->pdoMock->expects($this->once())
@@ -273,7 +303,9 @@ class TagServiceTest extends TestCase
         $checkStmt->method('fetch')->willReturn([
             'id' => 'GD001-AAAA',
             'is_active' => true,
-            'start_time' => date('Y-m-d H:i:s', strtotime('-2 days'))
+            'start_time' => date('Y-m-d H:i:s', strtotime('-2 days')),
+            'lat' => 43.1234,
+            'lon' => -88.5678
         ]);
 
         $deleteStmt = $this->createMock(PDOStatement::class);

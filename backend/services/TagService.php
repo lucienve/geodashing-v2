@@ -99,12 +99,14 @@ class TagService
      *
      * @param int $userId The ID of the authenticated user.
      * @param int $gameId The ID of the target game.
-     * @return array<string, array{color: string, shape: string}> Map of dashpoint_id => [color, shape].
+     * @return array<string, array{color: string, shape: string, lat: float, lon: float}>
+     *         Map of dashpoint_id => details.
      */
     public function getTagsForUserAndGame(int $userId, int $gameId): array
     {
         $stmt = $this->db->prepare(
-            "SELECT udt.dashpoint_id, udt.color_code, udt.shape
+            "SELECT udt.dashpoint_id, udt.color_code, udt.shape,
+                    ST_Latitude(d.location) AS lat, ST_Longitude(d.location) AS lon
              FROM user_dashpoint_tags udt
              JOIN dashpoints d ON udt.dashpoint_id = d.id
              WHERE udt.user_id = :user_id AND d.game_id = :game_id
@@ -121,7 +123,9 @@ class TagService
         foreach ($rows as $row) {
             $tags[$row['dashpoint_id']] = [
                 'color' => $row['color_code'],
-                'shape' => $row['shape']
+                'shape' => $row['shape'],
+                'lat' => (float) $row['lat'],
+                'lon' => (float) $row['lon']
             ];
         }
 
@@ -131,7 +135,8 @@ class TagService
     /**
      * Generates a deterministic, stable HTTP ETag for a set of tags.
      *
-     * @param array<string, array{color: string, shape: string}> $tags Map of dashpoint_id => [color, shape].
+     * @param array<string, array{color: string, shape: string, lat?: float, lon?: float}> $tags
+     *        Map of dashpoint_id => details.
      * @return string Quoted MD5 checksum string suitable for the ETag header.
      */
     public static function generateETag(array $tags): string
@@ -147,7 +152,8 @@ class TagService
      * @param string $dashpointId The dashpoint identifier.
      * @param string $colorCode The hex color code.
      * @param string $shape The shape identifier.
-     * @return array{status: string, dashpoint_id: string, color: string, shape: string} Result details.
+     * @return array{status: string, dashpoint_id: string, color: string, shape: string, lat: float, lon: float}
+     *         Result details.
      * @throws InvalidArgumentException When inputs are invalid or game is completed.
      */
     public function setTag(int $userId, string $dashpointId, string $colorCode, string $shape): array
@@ -159,7 +165,7 @@ class TagService
             throw new InvalidArgumentException("Invalid color code or shape specified.");
         }
 
-        $this->assertDashpointModifiable($dashpointId);
+        $coords = $this->assertDashpointModifiable($dashpointId);
 
         $stmt = $this->db->prepare(
             "INSERT INTO user_dashpoint_tags (user_id, dashpoint_id, color_code, shape)
@@ -180,7 +186,9 @@ class TagService
             'status' => 'success',
             'dashpoint_id' => $dashpointId,
             'color' => $colorCode,
-            'shape' => $shape
+            'shape' => $shape,
+            'lat' => $coords['lat'],
+            'lon' => $coords['lon']
         ];
     }
 
@@ -246,12 +254,14 @@ class TagService
      * Rejects modifications for completed past games.
      *
      * @param string $dashpointId The dashpoint identifier.
+     * @return array{lat: float, lon: float} The coordinates of the dashpoint.
      * @throws InvalidArgumentException If dashpoint is not found or belongs to a past game.
      */
-    private function assertDashpointModifiable(string $dashpointId): void
+    private function assertDashpointModifiable(string $dashpointId): array
     {
         $stmt = $this->db->prepare(
-            "SELECT d.id, g.is_active, g.start_time
+            "SELECT d.id, g.is_active, g.start_time,
+                    ST_Latitude(d.location) AS lat, ST_Longitude(d.location) AS lon
              FROM dashpoints d
              JOIN games g ON d.game_id = g.id
              WHERE d.id = :dashpoint_id"
@@ -270,5 +280,10 @@ class TagService
         if ($isPast) {
             throw new InvalidArgumentException("Tags cannot be modified for completed games.");
         }
+
+        return [
+            'lat' => (float) $row['lat'],
+            'lon' => (float) $row['lon']
+        ];
     }
 }

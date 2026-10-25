@@ -369,11 +369,26 @@ window.API = {
 
     window.currentUserTags = window.currentUserTags || {};
     if (action === 'SET_TAG' && tag && typeof tag === 'object') {
-      window.currentUserTags[dashpointId] = {
+      const tagEntry = {
         color: String(tag.color || ''),
         shape: String(tag.shape || ''),
         name: String(tag.name || ''),
       };
+      if (
+        tag.lat !== undefined &&
+        tag.lat !== null &&
+        !isNaN(Number(tag.lat))
+      ) {
+        tagEntry.lat = Number(tag.lat);
+      }
+      if (
+        tag.lon !== undefined &&
+        tag.lon !== null &&
+        !isNaN(Number(tag.lon))
+      ) {
+        tagEntry.lon = Number(tag.lon);
+      }
+      window.currentUserTags[dashpointId] = tagEntry;
       if (typeof window.updateMarkerTag === 'function') {
         window.updateMarkerTag(
           dashpointId,
@@ -629,10 +644,26 @@ window.API = {
         const currentGameId = window.currentGameContext
           ? window.currentGameContext.id
           : null;
-        this._broadcastTagChange('SET_TAG', currentGameId, dashpointId, {
+        const tagPayload = {
           color,
           shape,
-        });
+        };
+        if (
+          json.data &&
+          json.data.lat !== undefined &&
+          json.data.lon !== undefined &&
+          !isNaN(Number(json.data.lat)) &&
+          !isNaN(Number(json.data.lon))
+        ) {
+          tagPayload.lat = Number(json.data.lat);
+          tagPayload.lon = Number(json.data.lon);
+        }
+        this._broadcastTagChange(
+          'SET_TAG',
+          currentGameId,
+          dashpointId,
+          tagPayload,
+        );
         if (currentGameId && this._userTagsMeta[currentGameId]) {
           this._userTagsMeta[currentGameId].loadedAt = Date.now();
         }
