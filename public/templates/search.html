@@ -55,4 +55,66 @@
             *Downloads map data enclosed by the boundaries above.
         </small>
     </div>
+
+    <div class="dash-block export-block export-route-block d-none" id="export-route-block">
+        <h3 class="export-heading">GOOGLE MAPS MULTI-STOP ROUTE</h3>
+
+        <div class="route-top-grid">
+            <div class="route-control-card">
+                <div class="route-card-header">
+                    <span class="export-label">1. PRIVATE MARK</span>
+                    <span id="route-mark-count-label" class="route-mark-count-label">Blue Star (0)</span>
+                </div>
+                <div class="route-mark-bar" id="route-mark-bar">
+                    <button type="button" class="route-mark-btn swatch-google-blue active" data-color="#1a73e8" data-shape="star" data-name="Blue Star" aria-label="Blue Star" aria-pressed="true">
+                        <svg class="route-tag-svg-icon" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    </button>
+                    <button type="button" class="route-mark-btn swatch-google-purple" data-color="#8e24aa" data-shape="diamond" data-name="Purple Diamond" aria-label="Purple Diamond" aria-pressed="false">
+                        <svg class="route-tag-svg-icon" viewBox="0 0 24 24"><path d="M12 2L2 12l10 10 10-10L12 2z"/></svg>
+                    </button>
+                    <button type="button" class="route-mark-btn swatch-google-orange" data-color="#e64a19" data-shape="triangle" data-name="Orange Triangle" aria-label="Orange Triangle" aria-pressed="false">
+                        <svg class="route-tag-svg-icon" viewBox="0 0 24 24"><path d="M12 3L2 21h20L12 3z"/></svg>
+                    </button>
+                    <button type="button" class="route-mark-btn swatch-google-magenta" data-color="#d81b60" data-shape="square" data-name="Magenta Square" aria-label="Magenta Square" aria-pressed="false">
+                        <svg class="route-tag-svg-icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                    </button>
+                    <button type="button" class="route-mark-any" data-color="any" data-name="Any Mark" aria-label="Any Mark" aria-pressed="false">
+                        ANY
+                    </button>
+                </div>
+            </div>
+
+            <div class="route-control-card">
+                <div class="route-card-header">
+                    <span class="export-label">2. REGION &amp; ORIGIN</span>
+                </div>
+                <div class="route-scope-grid">
+                    <button type="button" id="btn-route-scope-game" class="route-scope-btn active" aria-pressed="true">Entire Game</button>
+                    <button type="button" id="btn-route-scope-bounds" class="route-scope-btn" aria-pressed="false">Visible Bounds</button>
+                </div>
+                <div class="route-origin-row">
+                    <label for="route-origin-select" class="route-origin-label">Origin:</label>
+                    <select id="route-origin-select" class="data-input route-origin-select" aria-label="Route Starting Point">
+                        <option value="gps">📍 Current GPS</option>
+                        <option value="first">🏁 1st Marked Point</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="route-gps-notice" class="alert alert-info route-banner d-none"></div>
+        <div id="route-cap-warning" class="alert alert-info route-cap-warning d-none"></div>
+
+        <div class="route-stops-card">
+            <div class="route-card-header">
+                <span class="export-label">NEAREST-NEIGHBOR ORDERED STOPS</span>
+                <span id="route-stops-summary" class="route-stops-summary">0 Stops</span>
+            </div>
+            <div id="route-stops-list" class="route-stops-list"></div>
+        </div>
+
+        <a id="btn-open-gmaps-route" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-gmaps-route disabled" aria-disabled="true">
+            🗺️ OPEN MULTI-STOP ROUTE IN GOOGLE MAPS ↗
+        </a>
+    </div>
 </div>

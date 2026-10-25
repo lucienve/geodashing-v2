@@ -2093,3 +2093,38 @@ geographic games where they are tasked with reaching randomly generated
   explicitly tracking [.terraform.lock.hcl](../terraform/.terraform.lock.hcl).
 - Verified configuration using `terraform fmt`, `terraform init -backend=false`,
   `terraform validate`, and the unified `pre-commit` verification suite.
+
+### 52. Multi-Stop Google Maps Route Export by Private Mark (Issue #132)
+
+- Implemented client-side multi-stop Google Maps route generation
+  (`https://www.google.com/maps/dir/?api=1&...`) inside the `#search` (Export
+  Game Data) view, allowing authenticated players with private tagging enabled
+  to generate driving routes for dashpoints tagged with specific marks
+  (`⭐ Blue Star`, `♦️ Purple Diamond`, `▲ Deep Orange Triangle`,
+  `■ Magenta Square`, or `ANY` mark).
+- **Spatial Coordinates Enrichment**:
+  - Extended [TagService.php](../backend/services/TagService.php)
+    (`getTagsForUserAndGame` and `assertDashpointModifiable`) to fetch
+    `ST_Latitude(d.location) AS lat, ST_Longitude(d.location) AS lon` per MySQL
+    8.4 SRID 4326 directives with canonical `(float)` casting and ETag cache
+    invalidation.
+  - Updated [api.js](../public/js/api.js) and
+    [controllers.js](../public/js/controllers.js) (`#dashpoint`) to preserve
+    numeric `lat` and `lon` in client tag caches and across peer tab broadcasts.
+  - Verified with comprehensive PHPUnit tests in
+    [TagServiceTest.php](../backend/tests/TagServiceTest.php).
+- **Route Optimization & Client UI**:
+  - Because Google Maps URLs visit waypoints strictly in the sequence passed in
+    the URL, implemented a free client-side Nearest-Neighbor (Haversine) greedy
+    sequencing algorithm in [controllers.js](../public/js/controllers.js)
+    starting from either `Current GPS` or the `1st Marked Point`.
+  - Capped routes at the Google Maps URL limit of 10 stops (1 destination + up
+    to 9 intermediate waypoints), displaying an inline warning banner when more
+    than 10 marked points match.
+  - Added responsive UI in [search.html](../public/templates/search.html) and
+    [index.css](../public/css/index.css) featuring a 2-column desktop grid
+    collapsing to a single-column mobile stack (`@media (max-width: 768px)`),
+    44px touch swatches, `<select id="route-origin-select">` origin selector,
+    and ordered stop list (`1 (A). GD...` through `10 (J). GD...`).
+  - Added comprehensive Playwright E2E coverage in
+    [export.spec.js](../e2e/export.spec.js).

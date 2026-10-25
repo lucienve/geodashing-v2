@@ -2731,5 +2731,388 @@ document.addEventListener('routeLoaded', (e) => {
     if (btnGPX) btnGPX.addEventListener('click', () => downloadPayload('gpx'));
     if (btnLOC) btnLOC.addEventListener('click', () => downloadPayload('loc'));
     if (btnKML) btnKML.addEventListener('click', () => downloadPayload('kml'));
+
+    // ==========================================================
+    // Multi-Stop Google Maps Route Planner (Issue #132)
+    // ==========================================================
+    const initRoutePlanner = async () => {
+      const exportRouteBlock = document.getElementById('export-route-block');
+      if (!exportRouteBlock) return;
+
+      const enforceTagsAccess = async () => {
+        if (!window.currentUser || window.currentUser.status !== 'success') {
+          try {
+            const res = await API.checkSession();
+            if (res.status === 'success') {
+              window.currentUser = res;
+            }
+          } catch (_e) {
+            return false;
+          }
+        }
+        return (
+          window.currentUser &&
+          window.currentUser.status === 'success' &&
+          Boolean(window.currentUser.tags_enabled)
+        );
+      };
+
+      const hasTags = await enforceTagsAccess();
+      if (!hasTags) {
+        return;
+      }
+
+      exportRouteBlock.classList.remove('d-none');
+
+      if (
+        window.gameContextLoaded &&
+        (!window.currentGameContext || !window.currentGameContext.id)
+      ) {
+        await window.gameContextLoaded;
+      }
+
+      const currentGameId = window.currentGameContext
+        ? window.currentGameContext.id
+        : null;
+      if (currentGameId) {
+        await API.loadUserTags(currentGameId);
+      }
+
+      let selectedMarkColor = '#1a73e8';
+      let scopeMode = 'game';
+      let originMode = 'gps';
+
+      const markBtns = exportRouteBlock.querySelectorAll(
+        '.route-mark-btn, .route-mark-any',
+      );
+      const markCountLabel = document.getElementById('route-mark-count-label');
+      const btnScopeGame = document.getElementById('btn-route-scope-game');
+      const btnScopeBounds = document.getElementById('btn-route-scope-bounds');
+      const originSelect = document.getElementById('route-origin-select');
+      const gpsNotice = document.getElementById('route-gps-notice');
+      const capWarning = document.getElementById('route-cap-warning');
+      const stopsSummary = document.getElementById('route-stops-summary');
+      const stopsList = document.getElementById('route-stops-list');
+      const btnOpenRoute = document.getElementById('btn-open-gmaps-route');
+
+      const getGpsPosition = () => {
+        if (
+          window.currentUserPosition &&
+          Number.isFinite(window.currentUserPosition.lat) &&
+          Number.isFinite(
+            window.currentUserPosition.lng ?? window.currentUserPosition.lon,
+          )
+        ) {
+          return {
+            lat: Number(window.currentUserPosition.lat),
+            lon: Number(
+              window.currentUserPosition.lng ?? window.currentUserPosition.lon,
+            ),
+          };
+        }
+        return null;
+      };
+
+      if (originSelect) {
+        originMode = getGpsPosition() ? 'gps' : 'first';
+        originSelect.value = originMode;
+      }
+
+      const updateRoute = () => {
+        const userTags = window.currentUserTags || {};
+        const b = getBounds();
+        const candidatePoints = [];
+
+        for (const [dpId, tag] of Object.entries(userTags)) {
+          if (!tag) continue;
+          const tagColor = (tag.color || '').toLowerCase();
+          if (
+            selectedMarkColor !== 'any' &&
+            tagColor !== selectedMarkColor.toLowerCase()
+          ) {
+            continue;
+          }
+          const lat = Number(tag.lat);
+          const lon = Number(tag.lon);
+          if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+
+          if (scopeMode === 'bounds') {
+            if (
+              Number.isFinite(b.n) &&
+              Number.isFinite(b.s) &&
+              Number.isFinite(b.e) &&
+              Number.isFinite(b.w)
+            ) {
+              const minLat = Math.min(b.s, b.n);
+              const maxLat = Math.max(b.s, b.n);
+              if (lat < minLat || lat > maxLat) continue;
+              if (b.w <= b.e) {
+                if (lon < b.w || lon > b.e) continue;
+              } else {
+                if (lon < b.w && lon > b.e) continue;
+              }
+            }
+          }
+
+          candidatePoints.push({
+            id: dpId,
+            lat,
+            lon,
+            name: tag.name || dpId,
+          });
+        }
+
+        candidatePoints.sort((p1, p2) => p1.id.localeCompare(p2.id));
+
+        const activeMarkBtn = exportRouteBlock.querySelector(
+          '.route-mark-btn.active, .route-mark-any.active',
+        );
+        const markDisplayName = activeMarkBtn
+          ? activeMarkBtn.dataset.name
+          : 'Mark';
+        if (markCountLabel) {
+          markCountLabel.textContent = `${markDisplayName} (${candidatePoints.length})`;
+        }
+
+        if (stopsList) {
+          stopsList.replaceChildren();
+        }
+
+        if (candidatePoints.length === 0) {
+          if (capWarning) capWarning.classList.add('d-none');
+          if (gpsNotice) gpsNotice.classList.add('d-none');
+          if (stopsSummary) stopsSummary.textContent = '0 Stops';
+          if (stopsList) {
+            const emptyEl = document.createElement('div');
+            emptyEl.className = 'route-stops-empty';
+            emptyEl.textContent =
+              'No dashpoints tagged with this mark in the selected scope.';
+            stopsList.appendChild(emptyEl);
+          }
+          if (btnOpenRoute) {
+            btnOpenRoute.classList.add('disabled');
+            btnOpenRoute.setAttribute('aria-disabled', 'true');
+            btnOpenRoute.href = '#';
+          }
+          return;
+        }
+
+        let startCoord;
+        let effectiveOriginMode = originMode;
+
+        if (originMode === 'gps') {
+          const gpsPos = getGpsPosition();
+          if (gpsPos) {
+            startCoord = gpsPos;
+            if (gpsNotice) gpsNotice.classList.add('d-none');
+          } else {
+            effectiveOriginMode = 'first';
+            startCoord = candidatePoints[0];
+            if (gpsNotice) {
+              gpsNotice.textContent =
+                '⚠️ GPS location unavailable; starting from 1st marked point instead.';
+              gpsNotice.classList.remove('d-none');
+            }
+          }
+        } else {
+          startCoord = candidatePoints[0];
+          if (gpsNotice) gpsNotice.classList.add('d-none');
+        }
+
+        const remaining = [...candidatePoints];
+        const sorted = [];
+        let curr = startCoord;
+
+        if (effectiveOriginMode === 'first') {
+          const firstPt = remaining.shift();
+          sorted.push({ ...firstPt, legKm: 0 });
+          curr = firstPt;
+        }
+
+        while (remaining.length > 0) {
+          let bestIdx = 0;
+          let bestDist = Infinity;
+          for (let i = 0; i < remaining.length; i++) {
+            const distMeters =
+              window.calculateDistance(
+                curr.lat,
+                curr.lon,
+                remaining[i].lat,
+                remaining[i].lon,
+              ) || 0;
+            const distKm = distMeters / 1000;
+            if (distKm < bestDist) {
+              bestDist = distKm;
+              bestIdx = i;
+            }
+          }
+          const nextPt = remaining.splice(bestIdx, 1)[0];
+          sorted.push({ ...nextPt, legKm: bestDist });
+          curr = nextPt;
+        }
+
+        const capped = sorted.slice(0, 10);
+        const omitted = sorted.length - capped.length;
+
+        if (capWarning) {
+          if (omitted > 0) {
+            capWarning.textContent = `⚠️ Capped at 10 nearest stops (${omitted} additional omitted).`;
+            capWarning.classList.remove('d-none');
+          } else {
+            capWarning.classList.add('d-none');
+          }
+        }
+
+        const letters = 'ABCDEFGHIJ';
+        let totalKm = 0;
+
+        capped.forEach((pt, idx) => {
+          totalKm += pt.legKm;
+          if (stopsList) {
+            const row = document.createElement('div');
+            row.className = 'route-stop-item';
+
+            const left = document.createElement('span');
+            left.className = 'route-stop-name';
+            left.textContent = `${idx + 1} (${letters[idx]}). ${pt.id}`;
+
+            const right = document.createElement('span');
+            right.className = 'route-stop-dist';
+            right.textContent =
+              idx === 0 && effectiveOriginMode === 'first'
+                ? 'Origin'
+                : `+${pt.legKm.toFixed(1)} km`;
+
+            row.appendChild(left);
+            row.appendChild(right);
+            stopsList.appendChild(row);
+          }
+        });
+
+        if (stopsSummary) {
+          stopsSummary.textContent = `${capped.length} Stop${capped.length > 1 ? 's' : ''} • ~${totalKm.toFixed(1)} km`;
+        }
+
+        const dest = capped[capped.length - 1];
+        let gmapsUrl;
+
+        if (effectiveOriginMode === 'first' && capped.length === 1) {
+          gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${dest.lat.toFixed(5)},${dest.lon.toFixed(5)}&travelmode=driving`;
+        } else {
+          const originCoord =
+            effectiveOriginMode === 'gps' ? startCoord : capped[0];
+          const waypoints =
+            effectiveOriginMode === 'gps'
+              ? capped.slice(0, -1)
+              : capped.slice(1, -1);
+          const wpParam =
+            waypoints.length > 0
+              ? `&waypoints=${waypoints.map((p) => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`).join('%7C')}`
+              : '';
+          gmapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originCoord.lat.toFixed(5)},${originCoord.lon.toFixed(5)}&destination=${dest.lat.toFixed(5)},${dest.lon.toFixed(5)}${wpParam}&travelmode=driving`;
+        }
+
+        if (btnOpenRoute) {
+          btnOpenRoute.href = gmapsUrl;
+          btnOpenRoute.classList.remove('disabled');
+          btnOpenRoute.removeAttribute('aria-disabled');
+        }
+      };
+
+      markBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          markBtns.forEach((b) => {
+            b.classList.remove('active');
+            b.setAttribute('aria-pressed', 'false');
+          });
+          btn.classList.add('active');
+          btn.setAttribute('aria-pressed', 'true');
+          selectedMarkColor = btn.dataset.color || '#1a73e8';
+          updateRoute();
+        });
+      });
+
+      if (btnScopeGame) {
+        btnScopeGame.addEventListener('click', () => {
+          scopeMode = 'game';
+          btnScopeGame.classList.add('active');
+          btnScopeGame.setAttribute('aria-pressed', 'true');
+          if (btnScopeBounds) {
+            btnScopeBounds.classList.remove('active');
+            btnScopeBounds.setAttribute('aria-pressed', 'false');
+          }
+          updateRoute();
+        });
+      }
+
+      if (btnScopeBounds) {
+        btnScopeBounds.addEventListener('click', () => {
+          scopeMode = 'bounds';
+          btnScopeBounds.classList.add('active');
+          btnScopeBounds.setAttribute('aria-pressed', 'true');
+          if (btnScopeGame) {
+            btnScopeGame.classList.remove('active');
+            btnScopeGame.setAttribute('aria-pressed', 'false');
+          }
+          updateRoute();
+        });
+      }
+
+      if (originSelect) {
+        originSelect.addEventListener('change', (e) => {
+          originMode = e.target.value;
+          if (originMode === 'gps' && !getGpsPosition()) {
+            const geo = window.mockGeolocation || navigator.geolocation;
+            if (geo && typeof geo.getCurrentPosition === 'function') {
+              geo.getCurrentPosition(
+                (pos) => {
+                  window.currentUserPosition = {
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude,
+                  };
+                  updateRoute();
+                },
+                (_err) => {
+                  updateRoute();
+                },
+              );
+            }
+          }
+          updateRoute();
+        });
+      }
+
+      const boundInputs = [
+        document.getElementById('search-n'),
+        document.getElementById('search-s'),
+        document.getElementById('search-e'),
+        document.getElementById('search-w'),
+      ];
+      boundInputs.forEach((input) => {
+        if (input) {
+          input.addEventListener('input', () => {
+            if (scopeMode === 'bounds') updateRoute();
+          });
+        }
+      });
+
+      if (btnGrabBounds) {
+        btnGrabBounds.addEventListener('click', () => {
+          if (scopeMode === 'bounds') {
+            setTimeout(updateRoute, 50);
+          }
+        });
+      }
+
+      const onTagsChanged = () => updateRoute();
+      document.addEventListener('userTagsChanged', onTagsChanged);
+      activeRouteCleanups.push(() => {
+        document.removeEventListener('userTagsChanged', onTagsChanged);
+      });
+
+      updateRoute();
+    };
+
+    initRoutePlanner();
   }
 });

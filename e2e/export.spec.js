@@ -230,4 +230,187 @@ test.describe('Export Functionality', () => {
     expect(fileContent).toContain('<name>GD000-AAAA</name>');
     expect(fileContent).toContain('</gpx>');
   });
+
+  test('Multi-Stop Route Planner UI Visibility and Swatches', async ({
+    page,
+  }) => {
+    const routeBlock = page.locator('#export-route-block');
+    await expect(routeBlock).toBeVisible({ timeout: 10000 });
+
+    const markBar = page.locator('#route-mark-bar');
+    await expect(markBar).toBeVisible();
+
+    const blueBtn = page.locator('.route-mark-btn.swatch-google-blue');
+    const purpleBtn = page.locator('.route-mark-btn.swatch-google-purple');
+    const anyBtn = page.locator('.route-mark-any');
+
+    await expect(blueBtn).toHaveAttribute('aria-pressed', 'true');
+    await expect(blueBtn).toHaveClass(/active/);
+    await expect(purpleBtn).toHaveAttribute('aria-pressed', 'false');
+    await expect(anyBtn).toHaveAttribute('aria-pressed', 'false');
+
+    await expect(page.locator('#btn-route-scope-game')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(page.locator('#route-origin-select')).toBeVisible();
+    await expect(page.locator('#btn-open-gmaps-route')).toBeVisible();
+  });
+
+  test('Generates Multi-Stop Route with Nearest-Neighbor Stops and Google Maps URL', async ({
+    page,
+  }) => {
+    // Inject mock user tags with spatial coordinates
+    await page.evaluate(() => {
+      window.currentUserPosition = { lat: 40.7128, lng: -74.006 };
+      window.currentUserTags = {
+        'GD001-AAAA': {
+          color: '#1a73e8',
+          shape: 'star',
+          name: 'Blue Star',
+          lat: 40.7128,
+          lon: -74.006,
+        },
+        'GD001-AAAB': {
+          color: '#1a73e8',
+          shape: 'star',
+          name: 'Blue Star',
+          lat: 40.6782,
+          lon: -73.9442,
+        },
+        'GD001-AAAC': {
+          color: '#1a73e8',
+          shape: 'star',
+          name: 'Blue Star',
+          lat: 40.7282,
+          lon: -73.7949,
+        },
+      };
+      document.dispatchEvent(
+        new CustomEvent('userTagsChanged', {
+          detail: { action: 'SET_TAG' },
+        }),
+      );
+    });
+
+    await expect(page.locator('#route-mark-count-label')).toHaveText(
+      'Blue Star (3)',
+    );
+    await expect(page.locator('#route-stops-summary')).toContainText('3 Stops');
+
+    const stopItems = page.locator('#route-stops-list .route-stop-item');
+    await expect(stopItems).toHaveCount(3);
+    await expect(stopItems.nth(0)).toContainText('1 (A).');
+    await expect(stopItems.nth(1)).toContainText('2 (B).');
+    await expect(stopItems.nth(2)).toContainText('3 (C).');
+
+    const gmapsBtn = page.locator('#btn-open-gmaps-route');
+    await expect(gmapsBtn).not.toHaveClass(/disabled/);
+    const href = await gmapsBtn.getAttribute('href');
+    expect(href).toContain('https://www.google.com/maps/dir/?api=1');
+    expect(href).toContain('destination=');
+    expect(href).toContain('travelmode=driving');
+  });
+
+  test('Enforces 10-Stop Cap and Displays Warning Banner', async ({ page }) => {
+    // Inject 13 mock points for Purple Diamond
+    await page.evaluate(() => {
+      window.currentUserPosition = { lat: 40.7128, lng: -74.006 };
+      const tags = {};
+      for (let i = 1; i <= 13; i++) {
+        const id = `GD001-PR${String(i).padStart(2, '0')}`;
+        tags[id] = {
+          color: '#8e24aa',
+          shape: 'diamond',
+          name: 'Purple Diamond',
+          lat: 40.7128 + i * 0.01,
+          lon: -74.006 - i * 0.01,
+        };
+      }
+      window.currentUserTags = tags;
+      document.dispatchEvent(
+        new CustomEvent('userTagsChanged', {
+          detail: { action: 'SET_TAG' },
+        }),
+      );
+    });
+
+    // Select Purple Diamond swatch
+    await page.click('.route-mark-btn.swatch-google-purple');
+
+    await expect(page.locator('#route-mark-count-label')).toHaveText(
+      'Purple Diamond (13)',
+    );
+    const capWarning = page.locator('#route-cap-warning');
+    await expect(capWarning).toBeVisible();
+    await expect(capWarning).toContainText('Capped at 10 nearest stops');
+    await expect(capWarning).toContainText('3 additional omitted');
+
+    const stopItems = page.locator('#route-stops-list .route-stop-item');
+    await expect(stopItems).toHaveCount(10);
+    await expect(stopItems.nth(9)).toContainText('10 (J).');
+
+    const gmapsBtn = page.locator('#btn-open-gmaps-route');
+    const href = await gmapsBtn.getAttribute('href');
+    expect(href).toContain('waypoints=');
+  });
+
+  test('Filters Stops by Visible Bounds Scope and Toggles Origin Mode', async ({
+    page,
+  }) => {
+    await page.evaluate(() => {
+      window.currentUserPosition = { lat: 40.7128, lng: -74.006 };
+      window.currentUserTags = {
+        'GD001-AAAA': {
+          color: '#1a73e8',
+          shape: 'star',
+          name: 'Blue Star',
+          lat: 40.7128,
+          lon: -74.006,
+        },
+        'GD001-AAAB': {
+          color: '#1a73e8',
+          shape: 'star',
+          name: 'Blue Star',
+          lat: 40.6782,
+          lon: -73.9442,
+        },
+      };
+      document.dispatchEvent(
+        new CustomEvent('userTagsChanged', {
+          detail: { action: 'SET_TAG' },
+        }),
+      );
+    });
+
+    // Constrain bounding box inputs to only enclose GD001-AAAA
+    await page.fill('#search-n', '40.72');
+    await page.fill('#search-s', '40.70');
+    await page.fill('#search-e', '-74.00');
+    await page.fill('#search-w', '-74.02');
+
+    // Switch to Visible Bounds
+    await page.click('#btn-route-scope-bounds');
+    await expect(page.locator('#btn-route-scope-bounds')).toHaveClass(/active/);
+
+    const stopItems = page.locator('#route-stops-list .route-stop-item');
+    await expect(stopItems).toHaveCount(1);
+    await expect(stopItems.nth(0)).toContainText('GD001-AAAA');
+
+    // Switch Origin to 1st Marked Point
+    await page.selectOption('#route-origin-select', 'first');
+    await expect(stopItems.nth(0)).toContainText('Origin');
+
+    // Single point in first mode produces direct destination URL without origin
+    const gmapsBtn = page.locator('#btn-open-gmaps-route');
+    const href = await gmapsBtn.getAttribute('href');
+    expect(href).toContain('destination=40.71280,-74.00600');
+    expect(href).not.toContain('origin=');
+
+    // Switch back to Entire Game scope
+    await page.click('#btn-route-scope-game');
+    await expect(
+      page.locator('#route-stops-list .route-stop-item'),
+    ).toHaveCount(2);
+  });
 });
