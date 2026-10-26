@@ -119,6 +119,28 @@ resource "google_storage_bucket" "map_data" {
     }
   }
 
+  lifecycle_rule {
+    action {
+      type = "Delete"
+    }
+    condition {
+      age            = 7
+      matches_prefix = ["cache/"]
+      with_state     = "LIVE"
+    }
+  }
+
+  lifecycle_rule {
+    action {
+      type = "Delete"
+    }
+    condition {
+      days_since_noncurrent_time = 1
+      matches_prefix             = ["cache/"]
+      with_state                 = "ARCHIVED"
+    }
+  }
+
   lifecycle {
     prevent_destroy = true
   }

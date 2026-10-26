@@ -63,7 +63,13 @@ Storage or build it from `planet-latest.osm.pbf`:
 # Option 1: Download pre-built GeoPackage from Google Cloud Storage
 uv run python -m backend.scripts.prepare_roads --download-gcs
 
-# Option 2: Build directly from an OSM PBF file
+# Option 2: Fetch planet-latest.osm.pbf (from 7-day GCS cache or multi-source OSM mirrors) and build
+uv run python -m backend.scripts.prepare_roads \
+  --download-planet-osm \
+  --input data/planet-latest.osm.pbf \
+  --output data/world_drivable_roads.gpkg
+
+# Option 3: Build directly from a local OSM PBF file
 uv run python -m backend.scripts.prepare_roads \
   --input data/planet-latest.osm.pbf \
   --output data/world_drivable_roads.gpkg

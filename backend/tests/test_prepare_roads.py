@@ -1,5 +1,6 @@
 """Unit tests for the road network preparation and filtering utility."""
 
+import datetime
 import json
 import math
 import os
@@ -385,3 +386,150 @@ def test_batch_bundle_packaging_simulation(tmp_path: pathlib.Path) -> None:
         unpacked_file = unpack_dir / rel_path
         assert unpacked_file.exists()
         assert unpacked_file.stat().st_size > 0
+
+
+def test_fetch_or_cache_planet_pbf_cache_hit(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verifies fresh <=7-day GCS cache is used without downloading from OSM mirrors."""
+    dest_pbf = tmp_path / 'planet-latest.osm.pbf'
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    mock_session = unittest.mock.MagicMock(
+        spec=google.auth.transport.requests.AuthorizedSession)
+    meta_resp = unittest.mock.MagicMock()
+    meta_resp.status_code = 200
+    meta_resp.json.return_value = {'size': '12', 'updated': now_iso}
+    mock_session.get.return_value = meta_resp
+
+    monkeypatch.setattr(
+        backend.scripts.prepare_roads,
+        'get_gcs_session',
+        lambda creds: (mock_session, 'test-project'),
+    )
+
+    def fake_download_gcs(
+        local_path: str,
+        bucket_name: str,
+        credentials_path: str | None = None,
+        object_name: str = '',
+    ) -> None:
+        del bucket_name, credentials_path
+        assert object_name == backend.scripts.prepare_roads.PLANET_PBF_CACHE_OBJECT
+        pathlib.Path(local_path).write_bytes(b'cached-bytes')
+
+    monkeypatch.setattr(backend.scripts.prepare_roads,
+                        'download_roads_from_gcs', fake_download_gcs)
+    mirror_called = False
+
+    def fail_mirror(_dest: str) -> None:
+        nonlocal mirror_called
+        mirror_called = True
+
+    monkeypatch.setattr(backend.scripts.prepare_roads,
+                        '_download_planet_from_mirrors', fail_mirror)
+
+    res = backend.scripts.prepare_roads.fetch_or_cache_planet_pbf(
+        str(dest_pbf), 'test-bucket')
+    assert res == str(dest_pbf)
+    assert dest_pbf.read_bytes() == b'cached-bytes'
+    assert not mirror_called
+
+
+def test_fetch_or_cache_planet_pbf_expired_cache_downloads_and_caches(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verifies expired >7-day GCS cache triggers multi-mirror download and re-caches."""
+    dest_pbf = tmp_path / 'planet-latest.osm.pbf'
+    old_dt = datetime.datetime.now(
+        datetime.timezone.utc) - datetime.timedelta(days=8)
+
+    mock_session = unittest.mock.MagicMock(
+        spec=google.auth.transport.requests.AuthorizedSession)
+    meta_resp = unittest.mock.MagicMock()
+    meta_resp.status_code = 200
+    meta_resp.json.return_value = {'size': '16', 'updated': old_dt.isoformat()}
+    mock_session.get.return_value = meta_resp
+
+    monkeypatch.setattr(
+        backend.scripts.prepare_roads,
+        'get_gcs_session',
+        lambda creds: (mock_session, 'test-project'),
+    )
+    monkeypatch.setattr(backend.scripts.prepare_roads,
+                        '_get_expected_planet_size', lambda: 16)
+    monkeypatch.setattr('shutil.which', lambda name: f'/usr/bin/{name}')
+
+    ran_cmds: list[list[str]] = []
+
+    def fake_run(cmd: list[str], **kwargs: object) -> None:
+        del kwargs
+        ran_cmds.append(cmd)
+        if cmd[0] == 'aria2c':
+            part_file = tmp_path / 'planet-latest.osm.pbf.part'
+            part_file.write_bytes(b'0123456789abcdef')
+
+    monkeypatch.setattr('subprocess.run', fake_run)
+    uploaded_objects: list[str] = []
+
+    def fake_upload(
+        local_path: str,
+        bucket_name: str,
+        credentials_path: str | None = None,
+        object_name: str = '',
+    ) -> None:
+        del bucket_name, credentials_path
+        assert os.path.getsize(local_path) == 16
+        uploaded_objects.append(object_name)
+
+    monkeypatch.setattr(backend.scripts.prepare_roads, 'upload_roads_to_gcs',
+                        fake_upload)
+
+    res = backend.scripts.prepare_roads.fetch_or_cache_planet_pbf(
+        str(dest_pbf), 'test-bucket')
+    assert res == str(dest_pbf)
+    assert dest_pbf.exists()
+    assert any(cmd[0] == 'aria2c' for cmd in ran_cmds)
+    assert any(cmd[:2] == ['osmium', 'fileinfo'] for cmd in ran_cmds)
+    assert uploaded_objects == [
+        backend.scripts.prepare_roads.PLANET_PBF_CACHE_OBJECT
+    ]
+
+
+def test_download_planet_rejects_incomplete_and_never_caches(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verifies incomplete download (size mismatch or .aria2 file) fails and is not cached."""
+    dest_pbf = tmp_path / 'planet-latest.osm.pbf'
+    monkeypatch.setattr(backend.scripts.prepare_roads,
+                        '_check_gcs_planet_cache', lambda *a, **kw: None)
+    monkeypatch.setattr(backend.scripts.prepare_roads,
+                        '_get_expected_planet_size', lambda: 1000)
+    monkeypatch.setattr('shutil.which', lambda name: '/usr/bin/aria2c')
+
+    def fake_run(cmd: list[str], **kwargs: object) -> None:
+        del kwargs
+        if cmd[0] == 'aria2c':
+            part_file = tmp_path / 'planet-latest.osm.pbf.part'
+            part_file.write_bytes(b'truncated')
+
+    monkeypatch.setattr('subprocess.run', fake_run)
+    upload_called = False
+
+    def fail_upload(*_args: object, **_kwargs: object) -> None:
+        nonlocal upload_called
+        upload_called = True
+
+    monkeypatch.setattr(backend.scripts.prepare_roads, 'upload_roads_to_gcs',
+                        fail_upload)
+
+    with pytest.raises(RuntimeError, match='Size mismatch'):
+        backend.scripts.prepare_roads.fetch_or_cache_planet_pbf(
+            str(dest_pbf), 'test-bucket')
+
+    assert not dest_pbf.exists()
+    assert not (tmp_path / 'planet-latest.osm.pbf.part').exists()
+    assert not upload_called

@@ -2205,13 +2205,19 @@ geographic games where they are tasked with reaching randomly generated
     and `ogr2ogr`.
   - Resumable 32 MiB chunked GCS upload/download utilities
     (`upload_roads_to_gcs`, `download_roads_from_gcs`, `resolve_roads_gpkg`)
-    with Application Default Credentials (ADC) fallback.
+    with Application Default Credentials (ADC) fallback, plus 7-day GCS caching
+    (`cache/planet-latest.osm.pbf`) and multi-connection `aria2c` mirror
+    downloads (`fetch_or_cache_planet_pbf`, `--download-planet-osm`) with US
+    East/Central mirror priority (`ftpmirror.your.org`) and strict completeness
+    verification (`Content-Length` match, `.aria2` absence, and
+    `osmium fileinfo` validation).
   - Cell bounding box splitting at poles and antimeridian (`get_cell_bboxes`),
     dry-land vs. water-only cell classification (`classify_grid_cells`), and
     road candidate sampling (`sample_cell_road_candidates`) with
     `shapely.clip_by_rect` and latitude-cosine metric weighting.
-- Provisioned dedicated Cloud Storage bucket `geodashing-v2-map-data`, enabled
-  required GCP APIs (`compute.googleapis.com`, `batch.googleapis.com`,
+- Provisioned dedicated Cloud Storage bucket `geodashing-v2-map-data` (including
+  a 7-day lifecycle deletion rule for `cache/` objects), enabled required GCP
+  APIs (`compute.googleapis.com`, `batch.googleapis.com`,
   `logging.googleapis.com`, `monitoring.googleapis.com`,
   `storage.googleapis.com`), granted Cloud Batch IAM roles
   (`roles/batch.agentReporter`, `roles/logging.logWriter`,
@@ -2221,8 +2227,9 @@ geographic games where they are tasked with reaching randomly generated
   Terraform (`terraform/main.tf`, `terraform/outputs.tf`) for compiling global
   `planet-latest.osm.pbf` into `world_drivable_roads.gpkg` (using a hermetic
   local GCS code bundle upload, strict POSIX `/bin/sh` syntax, direct
-  `/usr/local/bin` tool installation, and immediate post-`osmium` PBF deletion
-  via `--delete-input`).
+  `/usr/local/bin` tool installation, `aria2c` multi-source downloads, 7-day GCS
+  planet PBF caching, and immediate post-`osmium` local PBF deletion via
+  `--delete-input`).
 - Integrated road-proximity generation in
   [generate_game.py](../backend/scripts/generate_game.py) with two-pass
   placement:
@@ -2233,10 +2240,11 @@ geographic games where they are tasked with reaching randomly generated
   - Enforces minimum 12 km unit-sphere chord spacing via `SphereNeighborGrid`
     with up to 50 replacement retries per cell.
 - Added comprehensive unit tests in
-  [test_prepare_roads.py](../backend/tests/test_prepare_roads.py) (17 tests
-  including POSIX `/bin/sh` validation, ShellCheck analysis, and bundle
-  packaging simulation) and
-  [test_generate_game.py](../backend/tests/test_generate_game.py) (19 tests).
+  [test_prepare_roads.py](../backend/tests/test_prepare_roads.py) (20 tests
+  including POSIX `/bin/sh` validation, ShellCheck analysis, bundle packaging
+  simulation, 7-day GCS cache hit/miss/expiration, and incomplete download
+  rejection) and [test_generate_game.py](../backend/tests/test_generate_game.py)
+  (19 tests).
 - Documented CLI arguments and dataset instructions in
   [README.md](../data/README.md) and [admin_guide.md](admin_guide.md).
 - Verified that all Python unit tests, linters (Pylint 10.00/10 with zero

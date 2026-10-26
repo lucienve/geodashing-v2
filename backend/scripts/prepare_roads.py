@@ -3,6 +3,7 @@
 import argparse
 import configparser
 import dataclasses
+import datetime
 import math
 import os
 import shutil
@@ -10,6 +11,7 @@ import subprocess
 import sys
 import typing
 import urllib.parse
+import urllib.request
 
 import geopandas as gpd
 import google.auth
@@ -26,26 +28,22 @@ EARTH_RADIUS_KM: float = 6371.0088
 DEFAULT_ROADS_GPKG_PATH: str = 'data/world_drivable_roads.gpkg'
 DEFAULT_MAP_BUCKET_NAME: str = 'geodashing-v2-map-data'
 RESUMABLE_CHUNK_SIZE: int = 32 * 1024 * 1024  # 32 MiB chunks
+PLANET_PBF_CACHE_OBJECT: str = 'cache/planet-latest.osm.pbf'
+PLANET_PBF_CACHE_MAX_AGE_S: int = 7 * 24 * 3600
+PLANET_OSM_MIRRORS: tuple[str, ...] = (
+    'https://ftpmirror.your.org/pub/openstreetmap/pbf/planet-latest.osm.pbf',
+    'https://planet.openstreetmap.org/pbf/planet-latest.osm.pbf',
+    'https://ftp.osuosl.org/pub/openstreetmap/pbf/planet-latest.osm.pbf',
+)
 
 QUALIFYING_HIGHWAY_TYPES: set[str] = {
-    'primary',
-    'secondary',
-    'tertiary',
-    'unclassified',
-    'residential',
-    'primary_link',
-    'secondary_link',
-    'tertiary_link',
+    'primary', 'secondary', 'tertiary', 'unclassified', 'residential',
+    'primary_link', 'secondary_link', 'tertiary_link'
 }
 
 EXCLUDED_ACCESS_VALUES: set[str] = {
-    'private',
-    'no',
-    'customers',
-    'military',
-    'permit',
-    'agricultural',
-    'forestry',
+    'private', 'no', 'customers', 'military', 'permit', 'agricultural',
+    'forestry'
 }
 
 
@@ -385,6 +383,130 @@ def download_roads_from_gcs(
 
     file_size_mb = os.path.getsize(local_path) / (1024 * 1024)
     print(f'Downloaded {file_size_mb:.1f} MB successfully.')
+
+
+def _check_gcs_planet_cache(
+    bucket_name: str,
+    credentials_path: str | None = None,
+    object_name: str = PLANET_PBF_CACHE_OBJECT,
+) -> int | None:
+    """Returns cached GCS object byte size if it exists and is <= 7 days old."""
+    session, _ = get_gcs_session(credentials_path)
+    encoded = urllib.parse.quote(object_name, safe='')
+    url = f'https://storage.googleapis.com/storage/v1/b/{bucket_name}/o/{encoded}'
+    resp = session.get(url, timeout=60)
+    if resp.status_code != 200:
+        return None
+    data = resp.json()
+    size = int(data.get('size', 0))
+    ts_str = data.get('updated') or data.get('timeCreated')
+    if size <= 0 or not ts_str:
+        return None
+    updated_dt = datetime.datetime.fromisoformat(ts_str.replace('Z', '+00:00'))
+    age_s = (datetime.datetime.now(datetime.timezone.utc) -
+             updated_dt).total_seconds()
+    if age_s > PLANET_PBF_CACHE_MAX_AGE_S:
+        print(f'GCS cache gs://{bucket_name}/{object_name} expired '
+              f'({age_s / 86400:.1f} days old).')
+        return None
+    return size
+
+
+def _get_expected_planet_size() -> int:
+    """Queries remote HTTP HEAD Content-Length across configured OSM mirrors."""
+    for url in PLANET_OSM_MIRRORS:
+        req = urllib.request.Request(url, method='HEAD')
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                length = int(resp.headers.get('Content-Length', 0))
+                if length > 0:
+                    return length
+        except (OSError, ValueError):
+            continue
+    return 0
+
+
+def _verify_planet_download(part_path: str, expected_size: int) -> None:
+    """Verifies downloaded PBF completeness, absence of .aria2 file, and header."""
+    if not os.path.exists(part_path):
+        raise RuntimeError(f'Downloaded file missing: {part_path}')
+    if os.path.exists(f'{part_path}.aria2'):
+        raise RuntimeError('Incomplete aria2 download (.aria2 file present)')
+    actual_size = os.path.getsize(part_path)
+    if actual_size <= 0 or (expected_size > 0
+                            and actual_size != expected_size):
+        raise RuntimeError(
+            f'Size mismatch: got {actual_size} bytes, expected {expected_size}'
+        )
+    if shutil.which('osmium'):
+        subprocess.run(['osmium', 'fileinfo', part_path], check=True)
+
+
+def _download_planet_from_mirrors(dest_path: str) -> None:
+    """Downloads planet-latest.osm.pbf via aria2c multi-source mirrors and verifies."""
+    work_dir = os.path.dirname(os.path.abspath(dest_path))
+    os.makedirs(work_dir, exist_ok=True)
+    part_name = f'{os.path.basename(dest_path)}.part'
+    part_path = os.path.join(work_dir, part_name)
+    for stale in (part_path, f'{part_path}.aria2'):
+        if os.path.exists(stale):
+            os.remove(stale)
+    expected_size = _get_expected_planet_size()
+    if shutil.which('aria2c'):
+        cmd = [
+            'aria2c', '--max-connection-per-server=8', '--split=16',
+            '--min-split-size=64M', '--file-allocation=falloc',
+            '--continue=true', '--max-tries=10', '--retry-wait=5',
+            '--summary-interval=30', '--allow-overwrite=true',
+            '--auto-file-renaming=false', '--dir', work_dir, '--out',
+            part_name, *PLANET_OSM_MIRRORS
+        ]
+    else:
+        cmd = [
+            'curl', '-L', '--fail', '--retry', '5', '--retry-delay', '5',
+            PLANET_OSM_MIRRORS[0], '-o', part_path
+        ]
+    try:
+        subprocess.run(cmd, check=True)
+        _verify_planet_download(part_path, expected_size)
+        os.replace(part_path, dest_path)
+    except (subprocess.CalledProcessError, OSError, RuntimeError) as exc:
+        for stale in (part_path, f'{part_path}.aria2'):
+            if os.path.exists(stale):
+                os.remove(stale)
+        raise RuntimeError(f'Planet OSM download failed: {exc}') from exc
+
+
+def fetch_or_cache_planet_pbf(
+    dest_path: str,
+    bucket_name: str,
+    credentials_path: str | None = None,
+) -> str:
+    """Fetches planet-latest.osm.pbf from 7-day GCS cache or OSM mirrors."""
+    cached_size = _check_gcs_planet_cache(bucket_name, credentials_path)
+    if cached_size is not None:
+        print(f'Found fresh GCS cache gs://{bucket_name}/'
+              f'{PLANET_PBF_CACHE_OBJECT} ({cached_size} bytes).')
+        try:
+            download_roads_from_gcs(dest_path,
+                                    bucket_name,
+                                    credentials_path,
+                                    object_name=PLANET_PBF_CACHE_OBJECT)
+            if os.path.exists(dest_path) and os.path.getsize(
+                    dest_path) == cached_size:
+                return dest_path
+        except (OSError, RuntimeError) as exc:
+            print(f'Warning: GCS cache download failed ({exc}); '
+                  'falling back to OSM mirrors.')
+    print('Downloading planet-latest.osm.pbf from OpenStreetMap mirrors...')
+    _download_planet_from_mirrors(dest_path)
+    print(f'Caching verified PBF to gs://{bucket_name}/'
+          f'{PLANET_PBF_CACHE_OBJECT}...')
+    upload_roads_to_gcs(dest_path,
+                        bucket_name,
+                        credentials_path,
+                        object_name=PLANET_PBF_CACHE_OBJECT)
+    return dest_path
 
 
 def resolve_roads_gpkg(
@@ -800,44 +922,19 @@ def main() -> None:
     """CLI entry point for road data preparation and GCS synchronization."""
     parser = argparse.ArgumentParser(
         description='Filter and synchronize global drivable road network data')
-    parser.add_argument(
-        '--input',
-        '-i',
-        type=str,
-        help=
-        'Path to raw input roads dataset (.osm.pbf, .gpkg, .shp, .geojson)',
-    )
-    parser.add_argument(
-        '--output',
-        '-o',
-        type=str,
-        default=DEFAULT_ROADS_GPKG_PATH,
-        help=
-        f'Path to destination .gpkg file (default: {DEFAULT_ROADS_GPKG_PATH})',
-    )
-    parser.add_argument(
-        '--delete-input',
-        action='store_true',
-        help='Delete the raw input OSM PBF immediately after osmium filtering',
-    )
-    parser.add_argument(
-        '--upload-gcs',
-        action='store_true',
-        help='Upload the output file to Google Cloud Storage',
-    )
-    parser.add_argument(
-        '--download-gcs',
-        action='store_true',
-        help=
-        'Download the road dataset from Google Cloud Storage to local disk',
-    )
-    parser.add_argument(
-        '--config',
-        '-c',
-        type=str,
-        default='backend/config.ini',
-        help='Path to backend config.ini (default: backend/config.ini)',
-    )
+    parser.add_argument('-i', '--input', type=str, help='Input roads path')
+    parser.add_argument('-o',
+                        '--output',
+                        type=str,
+                        default=DEFAULT_ROADS_GPKG_PATH)
+    parser.add_argument('--delete-input', action='store_true')
+    parser.add_argument('--upload-gcs', action='store_true')
+    parser.add_argument('--download-gcs', action='store_true')
+    parser.add_argument('--download-planet-osm', action='store_true')
+    parser.add_argument('-c',
+                        '--config',
+                        type=str,
+                        default='backend/config.ini')
     args = parser.parse_args()
 
     cfg = configparser.ConfigParser()
@@ -859,6 +956,9 @@ def main() -> None:
         if not args.input:
             print('Error: --input is required when preparing road data.')
             sys.exit(1)
+
+        if args.download_planet_osm:
+            fetch_or_cache_planet_pbf(args.input, bucket_name, cred_clean)
 
         _compile_roads_dataset(args.input,
                                args.output,
