@@ -327,7 +327,7 @@ def test_main_cli_algorithm_routing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr('backend.scripts.generate_game.seed_database',
                         mock_seed)
 
-    # Test grid algorithm routing
+    # Test grid algorithm routing with explicit grid size
     monkeypatch.setattr('sys.argv', [
         'generate_game.py', '-t', 'Grid Test', '--algorithm', 'grid',
         '--grid-size', '2000'
@@ -340,6 +340,18 @@ def test_main_cli_algorithm_routing(monkeypatch: pytest.MonkeyPatch) -> None:
 
     backend.scripts.generate_game.main()
     mock_grid.assert_called_once_with(grid_size_km=2000.0,
+                                      land_zip_path=unittest.mock.ANY,
+                                      lakes_zip_path=unittest.mock.ANY)
+    mock_seed.assert_called_once()
+
+    # Test grid algorithm routing with default grid size (60.05 km)
+    mock_seed.reset_mock()
+    mock_grid.reset_mock()
+    monkeypatch.setattr(
+        'sys.argv',
+        ['generate_game.py', '-t', 'Grid Default Test', '--algorithm', 'grid'])
+    backend.scripts.generate_game.main()
+    mock_grid.assert_called_once_with(grid_size_km=60.05,
                                       land_zip_path=unittest.mock.ANY,
                                       lakes_zip_path=unittest.mock.ANY)
     mock_seed.assert_called_once()

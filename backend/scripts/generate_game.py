@@ -21,6 +21,7 @@ import shapely.strtree
 import backend.scripts.db_utils
 
 EARTH_RADIUS_KM: float = 6371.0088
+DEFAULT_GRID_SIZE_KM: float = 60.05
 MIN_NEIGHBOR_DISTANCE_KM: float = 12.0
 MAX_CELL_ATTEMPTS: int = 50
 
@@ -110,7 +111,7 @@ class SphereNeighborGrid:
 
 
 def build_spherical_grid(
-        grid_size_km: float = 50.0,
+        grid_size_km: float = DEFAULT_GRID_SIZE_KM,
         earth_radius_km: float = EARTH_RADIUS_KM) -> list[LatitudeBand]:
     """Divides the globe into staggered spherical trapezoids of approximately grid_size_km."""
     if grid_size_km <= 0:
@@ -704,7 +705,7 @@ def _execute_pass2(water_cells: list[tuple[LatitudeBand, int]],
 
 
 def generate_grid_dashpoints(
-    grid_size_km: float = 50.0,
+    grid_size_km: float = DEFAULT_GRID_SIZE_KM,
     land_zip_path: str = '../../data/ne_10m_land.zip',
     lakes_zip_path: str = '../../data/ne_10m_lakes.zip'
 ) -> list[shapely.geometry.Point]:
@@ -720,7 +721,7 @@ def generate_grid_dashpoints(
         5. Validates Pass 2 points on dry land and inserts with the 12 km check and retry loop.
 
     Args:
-        grid_size_km (float): Desired grid cell size in kilometers (default: 50.0).
+        grid_size_km (float): Desired grid cell size in kilometers (default: 60.05).
         land_zip_path (str): Path to Natural Earth land zip file.
         lakes_zip_path (str): Path to Natural Earth lakes zip file.
 
@@ -796,9 +797,9 @@ def main() -> None:
     parser.add_argument(
         '--grid-size',
         type=float,
-        default=50.0,
+        default=DEFAULT_GRID_SIZE_KM,
         help=
-        "Cell width/height in km when --algorithm grid is used (default: 50.0)"
+        "Cell width/height in km when --algorithm grid is used (default: 60.05)"
     )
     args = parser.parse_args()
 

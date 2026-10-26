@@ -2099,7 +2099,8 @@ geographic games where they are tasked with reaching randomly generated
 - Implemented an optional, grid-based dashpoint generation algorithm in
   [generate_game.py](../backend/scripts/generate_game.py) inspired by Scout's
   original 2005 algorithm, selectable via `--algorithm {random,grid}` (default:
-  `random`) and `--grid-size <km>` (default: `50.0` km).
+  `random`) and `--grid-size <km>` (default: `60.05` km, matching the
+  $0.54^\circ$ / $37.31$-mile cells of the 2005 script).
 - Tiled the globe from $-90^\circ$ to $+90^\circ$ into staggered latitude bands
   of spherical trapezoids (`LatitudeBand`) of approximately `--grid-size` km
   with a random latitude origin shift and independent per-band random longitude

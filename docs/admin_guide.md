@@ -91,7 +91,7 @@ database.
 | `-y` | `--year`      |  `int`  | Optional year for the game schedule. Defaults to the current year.                                            |
 |      | `--preview`   | `flag`  | Generates the game in an inactive "preview" state (`is_active = FALSE`) instead of immediately activating it. |
 |      | `--algorithm` |  `str`  | Generation strategy: `random` (default) or `grid`.                                                            |
-|      | `--grid-size` | `float` | Grid cell size in km when using `--algorithm grid`. Defaults to `50.0`.                                       |
+|      | `--grid-size` | `float` | Grid cell size in km when using `--algorithm grid`. Defaults to `60.05`.                                      |
 
 #### Internal Mechanics
 
