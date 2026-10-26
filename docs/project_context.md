@@ -2220,8 +2220,9 @@ geographic games where they are tasked with reaching randomly generated
   [submit_roads_batch_job.sh](../backend/scripts/submit_roads_batch_job.sh) in
   Terraform (`terraform/main.tf`, `terraform/outputs.tf`) for compiling global
   `planet-latest.osm.pbf` into `world_drivable_roads.gpkg` (using a hermetic
-  local GCS code bundle upload and immediate post-`osmium` PBF deletion via
-  `--delete-input`).
+  local GCS code bundle upload, strict POSIX `/bin/sh` syntax, direct
+  `/usr/local/bin` tool installation, and immediate post-`osmium` PBF deletion
+  via `--delete-input`).
 - Integrated road-proximity generation in
   [generate_game.py](../backend/scripts/generate_game.py) with two-pass
   placement:
@@ -2232,7 +2233,9 @@ geographic games where they are tasked with reaching randomly generated
   - Enforces minimum 12 km unit-sphere chord spacing via `SphereNeighborGrid`
     with up to 50 replacement retries per cell.
 - Added comprehensive unit tests in
-  [test_prepare_roads.py](../backend/tests/test_prepare_roads.py) (13 tests) and
+  [test_prepare_roads.py](../backend/tests/test_prepare_roads.py) (17 tests
+  including POSIX `/bin/sh` validation, ShellCheck analysis, and bundle
+  packaging simulation) and
   [test_generate_game.py](../backend/tests/test_generate_game.py) (19 tests).
 - Documented CLI arguments and dataset instructions in
   [README.md](../data/README.md) and [admin_guide.md](admin_guide.md).
