@@ -2216,10 +2216,12 @@ geographic games where they are tasked with reaching randomly generated
   `storage.googleapis.com`), granted Cloud Batch IAM roles
   (`roles/batch.agentReporter`, `roles/logging.logWriter`,
   `roles/monitoring.metricWriter`), and configured Cloud Batch job spec
-  [batch_prepare_roads.json](../backend/scripts/batch_prepare_roads.json) in
+  [batch_prepare_roads.json](../backend/scripts/batch_prepare_roads.json) and
+  [submit_roads_batch_job.sh](../backend/scripts/submit_roads_batch_job.sh) in
   Terraform (`terraform/main.tf`, `terraform/outputs.tf`) for compiling global
-  `planet-latest.osm.pbf` into `world_drivable_roads.gpkg` (with immediate
-  post-`osmium` PBF deletion via `--delete-input`).
+  `planet-latest.osm.pbf` into `world_drivable_roads.gpkg` (using a hermetic
+  local GCS code bundle upload and immediate post-`osmium` PBF deletion via
+  `--delete-input`).
 - Integrated road-proximity generation in
   [generate_game.py](../backend/scripts/generate_game.py) with two-pass
   placement:
