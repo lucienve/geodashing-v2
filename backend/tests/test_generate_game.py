@@ -371,3 +371,74 @@ def test_main_cli_algorithm_routing(monkeypatch: pytest.MonkeyPatch) -> None:
                                         land_zip_path=unittest.mock.ANY,
                                         lakes_zip_path=unittest.mock.ANY)
     mock_seed.assert_called_once()
+
+
+def test_resolve_lake_zip_paths() -> None:
+    """Verify that default ne_10m_lakes.zip expands to include regional supplements."""
+    expanded = backend.scripts.generate_game.resolve_lake_zip_paths(
+        'data/ne_10m_lakes.zip')
+    assert expanded == [
+        'data/ne_10m_lakes.zip',
+        'data/ne_10m_lakes_australia.zip',
+        'data/ne_10m_lakes_europe.zip',
+        'data/ne_10m_lakes_north_america.zip',
+    ]
+
+    custom_expanded = backend.scripts.generate_game.resolve_lake_zip_paths(
+        '/var/data/ne_10m_lakes.zip')
+    assert custom_expanded == [
+        '/var/data/ne_10m_lakes.zip',
+        '/var/data/ne_10m_lakes_australia.zip',
+        '/var/data/ne_10m_lakes_europe.zip',
+        '/var/data/ne_10m_lakes_north_america.zip',
+    ]
+
+    single = backend.scripts.generate_game.resolve_lake_zip_paths(
+        'mock_lakes.zip')
+    assert single == ['mock_lakes.zip']
+
+
+def test_supplemental_lakes_exclusion(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify that points inside Australia, Europe, and NA lake supplements are excluded."""
+    land_polygon = shapely.geometry.box(-20, -20, 20, 20)
+    base_lake = shapely.geometry.box(-2, -2, -1, -1)
+    aus_lake = shapely.geometry.box(1, 1, 2, 2)
+    eur_lake = shapely.geometry.box(3, 3, 4, 4)
+    na_lake = shapely.geometry.box(5, 5, 6, 6)
+
+    def read_file_side_effect(path: str) -> gpd.GeoDataFrame:
+        if 'land' in path:
+            return gpd.GeoDataFrame(geometry=[land_polygon], crs="EPSG:4326")
+        if 'australia' in path:
+            return gpd.GeoDataFrame(geometry=[aus_lake], crs="EPSG:4326")
+        if 'europe' in path:
+            return gpd.GeoDataFrame(geometry=[eur_lake], crs="EPSG:4326")
+        if 'north_america' in path:
+            return gpd.GeoDataFrame(geometry=[na_lake], crs="EPSG:4326")
+        if 'lakes' in path:
+            return gpd.GeoDataFrame(geometry=[base_lake], crs="EPSG:4326")
+        return gpd.GeoDataFrame()
+
+    monkeypatch.setattr('backend.scripts.generate_game.gpd.read_file',
+                        read_file_side_effect)
+
+    test_points = [
+        shapely.geometry.Point(-1.5, -1.5),  # in base lake -> exclude
+        shapely.geometry.Point(1.5, 1.5),  # in Australia supplement -> exclude
+        shapely.geometry.Point(3.5, 3.5),  # in Europe supplement -> exclude
+        shapely.geometry.Point(5.5, 5.5),  # in NA supplement -> exclude
+        shapely.geometry.Point(10.0, 10.0),  # dry land -> keep
+    ]
+
+    monkeypatch.setattr(
+        'backend.scripts.generate_game.generate_spherical_points',
+        lambda *args, **kwargs: test_points)
+
+    valid_points = backend.scripts.generate_game.generate_valid_dashpoints(
+        target_count=1,
+        land_zip_path="data/ne_10m_land.zip",
+        lakes_zip_path="data/ne_10m_lakes.zip")
+
+    assert len(valid_points) == 1
+    assert valid_points[0].x == 10.0
+    assert valid_points[0].y == 10.0

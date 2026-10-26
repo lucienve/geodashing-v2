@@ -41,6 +41,9 @@ words list. You can download them using the following commands:
 # Natural Earth datasets for geographical boundaries
 wget https://naciscdn.org/naturalearth/10m/physical/ne_10m_land.zip
 wget https://naciscdn.org/naturalearth/10m/physical/ne_10m_lakes.zip
+wget https://naciscdn.org/naturalearth/10m/physical/ne_10m_lakes_australia.zip
+wget https://naciscdn.org/naturalearth/10m/physical/ne_10m_lakes_europe.zip
+wget https://naciscdn.org/naturalearth/10m/physical/ne_10m_lakes_north_america.zip
 
 # List of dirty/bad words for filtering generated dashpoint IDs
 curl -s "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en" | grep -xE '.{4}' | tr '[:lower:]' '[:upper:]' | sort > bad_words.txt

@@ -24,6 +24,11 @@ EARTH_RADIUS_KM: float = 6371.0088
 DEFAULT_GRID_SIZE_KM: float = 60.05
 MIN_NEIGHBOR_DISTANCE_KM: float = 12.0
 MAX_CELL_ATTEMPTS: int = 50
+LAKE_SUPPLEMENT_FILENAMES: tuple[str, ...] = (
+    'ne_10m_lakes_australia.zip',
+    'ne_10m_lakes_europe.zip',
+    'ne_10m_lakes_north_america.zip',
+)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -416,20 +421,36 @@ def subdivide_geometry(
     return subdivided
 
 
+def resolve_lake_zip_paths(lakes_zip_path: str) -> list[str]:
+    """Resolves lake shapefile paths, expanding default ne_10m_lakes.zip with supplements."""
+    if os.path.basename(lakes_zip_path) == 'ne_10m_lakes.zip':
+        base_dir = os.path.dirname(lakes_zip_path)
+        return [lakes_zip_path] + [
+            os.path.join(base_dir, name) for name in LAKE_SUPPLEMENT_FILENAMES
+        ]
+    return [lakes_zip_path]
+
+
 def _load_and_project_geometries(
         land_zip_path: str,
         lakes_zip_path: str,
         verbose: bool = True) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """Loads and projects the land and lake shapefiles to EPSG:6933."""
+    lake_paths = resolve_lake_zip_paths(lakes_zip_path)
     try:
         land_gdf = gpd.read_file(f"zip://{land_zip_path}")
-        lakes_gdf = gpd.read_file(f"zip://{lakes_zip_path}")
+        lake_gdfs = [gpd.read_file(f"zip://{path}") for path in lake_paths]
     except Exception as e:
         raise FileNotFoundError(f"Failed to read shapefiles: {e}") from e
 
     if verbose:
         print("Projecting land and lakes geometries to EPSG:6933...")
-    return land_gdf.to_crs(epsg=6933), lakes_gdf.to_crs(epsg=6933)
+    land_proj = land_gdf.to_crs(epsg=6933)
+    lake_geoms: list[shapely.geometry.base.BaseGeometry] = []
+    for gdf in lake_gdfs:
+        lake_geoms.extend(gdf.to_crs(epsg=6933).geometry.tolist())
+    lakes_proj = gpd.GeoDataFrame(geometry=lake_geoms, crs="EPSG:6933")
+    return land_proj, lakes_proj
 
 
 class SpatialFilter:

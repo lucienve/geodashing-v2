@@ -115,11 +115,17 @@ database.
        giving up.
 2. **Landmass Filtering (EPSG:6933)**:
    - Loads complex shapefiles for global landmasses (`data/ne_10m_land.zip`) and
-     major lakes (`data/ne_10m_lakes.zip`).
-   - Projects both datasets to a Cylindrical Equal-Area coordinate system
-     (`EPSG:6933`) and subdivides them using a grid-based approach
-     (`subdivide_geometry` with a max size of 1,000,000m) to minimize vertex
-     complexity per feature.
+     major lakes (`data/ne_10m_lakes.zip`). When targeting `ne_10m_lakes.zip`,
+     the engine automatically resolves and loads regional lake supplements
+     located in `data/`:
+     - `ne_10m_lakes_australia.zip` (Australia supplement)
+     - `ne_10m_lakes_europe.zip` (Europe supplement)
+     - `ne_10m_lakes_north_america.zip` (North America supplement, providing
+       higher feature density including Lake Washington and regional reservoirs)
+   - Projects both land and combined lake datasets to a Cylindrical Equal-Area
+     coordinate system (`EPSG:6933`) and subdivides them using a grid-based
+     approach (`subdivide_geometry` with a max size of 1,000,000m) to minimize
+     vertex complexity per feature.
    - Performs a fast **Point-in-Polygon (PIP)** vectorized check using prepared
      geometries to immediately accept dry land coordinates (about 30% of
      points), avoiding buffering for 99% of valid points.

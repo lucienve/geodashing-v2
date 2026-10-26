@@ -2162,3 +2162,27 @@ geographic games where they are tasked with reaching randomly generated
   [admin_guide.md](admin_guide.md) and [game_rollover.md](game_rollover.md).
 - Verified that all Python unit tests, linters (Pylint 10.00/10 with zero
   suppressions), and type checkers (Mypy, Pyright) pass with zero errors.
+
+### 88. Supplemental Natural Earth 1:10m Lake Exclusions (Issue #143)
+
+- Integrated Natural Earth's 1:10m regional lake and reservoir supplemental
+  datasets (`ne_10m_lakes_australia.zip`, `ne_10m_lakes_europe.zip`, and
+  `ne_10m_lakes_north_america.zip`) into the spatial filter engine
+  [generate_game.py](../backend/scripts/generate_game.py).
+- Added `LAKE_SUPPLEMENT_FILENAMES` and the public helper
+  `resolve_lake_zip_paths` to automatically expand references to
+  `ne_10m_lakes.zip` to include all sibling supplemental lake archives in the
+  same directory while preserving single custom paths.
+- Updated `_load_and_project_geometries` to load and project all resolved lake
+  datasets to EPSG:6933, uniting all lake geometries into a single
+  `GeoDataFrame` for spatial indexing and point-in-polygon filtering. This
+  automatically benefits `generate_game.py` (both `random` and `grid`),
+  `game_utils.py` (`--rollover`), and `reroll_dashpoint.py` (and the web UI
+  `RerollService.php`) without requiring CLI argument changes.
+- Added comprehensive unit tests in
+  [test_generate_game.py](../backend/tests/test_generate_game.py) testing path
+  expansion and multi-supplement lake exclusion.
+- Documented download commands and storage instructions in
+  [README.md](../data/README.md) and [admin_guide.md](admin_guide.md).
+- Verified that all Python unit tests, linters (Pylint 10.00/10 with zero
+  suppressions), and type checkers pass with zero errors.
