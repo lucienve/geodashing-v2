@@ -5,7 +5,7 @@
         "runnables": [
           {
             "script": {
-              "text": "set -e\napt-get update && apt-get install -y osmium-tool gdal-bin curl git\ncurl -LsSf https://astral.sh/uv/install.sh | sh\nexport PATH=\"$HOME/.local/bin:$PATH\"\nmkdir -p /mnt/disks/batch-disk/geodashing-work\ncd /mnt/disks/batch-disk/geodashing-work\ncurl -L https://planet.openstreetmap.org/pbf/planet-latest.osm.pbf -o planet-latest.osm.pbf\ngit clone https://github.com/lucienve/geodashing-v2.git repo\ncd repo\nuv sync\nuv run python -m backend.scripts.prepare_roads --input /mnt/disks/batch-disk/geodashing-work/planet-latest.osm.pbf --output /mnt/disks/batch-disk/geodashing-work/world_drivable_roads.gpkg --upload-gcs\n"
+              "text": "set -euxo pipefail\napt-get update && apt-get install -y osmium-tool gdal-bin curl git ca-certificates\ncurl -LsSf https://astral.sh/uv/install.sh | sh\nexport PATH=\"$HOME/.local/bin:$PATH\"\nmkdir -p /var/tmp/geodashing-work\ncd /var/tmp/geodashing-work\ngit clone --branch feat/new-road-algo --single-branch https://github.com/lucienve/geodashing-v2.git repo || git clone https://github.com/lucienve/geodashing-v2.git repo\ncd repo\nuv sync --no-dev\ncurl -L --fail --retry 5 --retry-delay 5 https://planet.openstreetmap.org/pbf/planet-latest.osm.pbf -o /var/tmp/geodashing-work/planet-latest.osm.pbf\nuv run --no-sync python -m backend.scripts.prepare_roads --input /var/tmp/geodashing-work/planet-latest.osm.pbf --output /var/tmp/geodashing-work/world_drivable_roads.gpkg --delete-input --upload-gcs\n"
             }
           }
         ],
@@ -32,7 +32,10 @@
       }
     ],
     "serviceAccount": {
-      "email": "geodashing-uploader@geodashing-v2.iam.gserviceaccount.com"
+      "email": "geodashing-uploader@geodashing-v2.iam.gserviceaccount.com",
+      "scopes": [
+        "https://www.googleapis.com/auth/cloud-platform"
+      ]
     }
   },
   "logsPolicy": {

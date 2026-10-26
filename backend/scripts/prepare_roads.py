@@ -171,6 +171,8 @@ def process_osm_pbf_to_gpkg(
             ]
             subprocess.run(cmd_osmium, check=True)
             source_pbf = filtered_pbf
+            if delete_input and os.path.exists(input_pbf):
+                os.remove(input_pbf)
 
         _write_osmconf_ini(osmconf_path)
 
@@ -770,11 +772,17 @@ def place_shuffled_road_cells(
     return placed_count
 
 
-def _compile_roads_dataset(input_path: str, output_path: str) -> None:
+def _compile_roads_dataset(
+    input_path: str,
+    output_path: str,
+    delete_input: bool = False,
+) -> None:
     """Processes input PBF or vector road dataset into target GeoPackage."""
     if input_path.lower().endswith('.osm.pbf') or input_path.lower().endswith(
             '.pbf'):
-        process_osm_pbf_to_gpkg(input_path, output_path)
+        process_osm_pbf_to_gpkg(input_path,
+                                output_path,
+                                delete_input=delete_input)
         return
 
     print(f'Reading raw road data from {input_path}...')
@@ -806,6 +814,11 @@ def main() -> None:
         default=DEFAULT_ROADS_GPKG_PATH,
         help=
         f'Path to destination .gpkg file (default: {DEFAULT_ROADS_GPKG_PATH})',
+    )
+    parser.add_argument(
+        '--delete-input',
+        action='store_true',
+        help='Delete the raw input OSM PBF immediately after osmium filtering',
     )
     parser.add_argument(
         '--upload-gcs',
@@ -847,7 +860,9 @@ def main() -> None:
             print('Error: --input is required when preparing road data.')
             sys.exit(1)
 
-        _compile_roads_dataset(args.input, args.output)
+        _compile_roads_dataset(args.input,
+                               args.output,
+                               delete_input=args.delete_input)
 
         if args.upload_gcs:
             upload_roads_to_gcs(args.output, bucket_name, cred_clean)

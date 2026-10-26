@@ -1,4 +1,42 @@
 # -----------------------------------------------------------------------------
+# Google Cloud Project Services (APIs)
+# -----------------------------------------------------------------------------
+
+resource "google_project_service" "compute" {
+  project            = var.project_id
+  service            = "compute.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "batch" {
+  project            = var.project_id
+  service            = "batch.googleapis.com"
+  disable_on_destroy = false
+
+  depends_on = [
+    google_project_service.compute,
+  ]
+}
+
+resource "google_project_service" "logging" {
+  project            = var.project_id
+  service            = "logging.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "monitoring" {
+  project            = var.project_id
+  service            = "monitoring.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "storage" {
+  project            = var.project_id
+  service            = "storage.googleapis.com"
+  disable_on_destroy = false
+}
+
+# -----------------------------------------------------------------------------
 # Google Cloud Storage - Media Assets Bucket
 # -----------------------------------------------------------------------------
 
@@ -139,6 +177,13 @@ resource "google_project_iam_member" "uploader_batch_reporter" {
 resource "google_project_iam_member" "uploader_log_writer" {
   project = var.project_id
   role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.geodashing_uploader.email}"
+}
+
+# Cloud Monitoring metric writer role for Cloud Batch VM telemetry
+resource "google_project_iam_member" "uploader_metric_writer" {
+  project = var.project_id
+  role    = "roles/monitoring.metricWriter"
   member  = "serviceAccount:${google_service_account.geodashing_uploader.email}"
 }
 

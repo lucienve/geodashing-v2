@@ -274,3 +274,29 @@ def test_get_roads_total_bounds_empty_dataset() -> None:
                                  crs='EPSG:4326')
     bounds = backend.scripts.prepare_roads.get_roads_total_bounds(empty_gdf)
     assert bounds == (-180.0, -90.0, 180.0, 90.0)
+
+
+def test_process_osm_pbf_to_gpkg_deletes_input_after_osmium(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verifies delete_input removes input PBF before ogr2ogr executes."""
+    input_pbf = tmp_path / 'planet.osm.pbf'
+    input_pbf.write_bytes(b'fake-pbf')
+    output_gpkg = tmp_path / 'out.gpkg'
+    input_existed_during_ogr = True
+
+    def fake_run(cmd: list[str], **kwargs: object) -> None:
+        nonlocal input_existed_during_ogr
+        del kwargs
+        if cmd[0] == 'ogr2ogr':
+            input_existed_during_ogr = input_pbf.exists()
+
+    monkeypatch.setattr('shutil.which', lambda name: '/usr/bin/osmium')
+    monkeypatch.setattr('subprocess.run', fake_run)
+
+    backend.scripts.prepare_roads.process_osm_pbf_to_gpkg(str(input_pbf),
+                                                          str(output_gpkg),
+                                                          delete_input=True)
+    assert not input_existed_during_ogr
+    assert not input_pbf.exists()

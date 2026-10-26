@@ -2210,11 +2210,16 @@ geographic games where they are tasked with reaching randomly generated
     dry-land vs. water-only cell classification (`classify_grid_cells`), and
     road candidate sampling (`sample_cell_road_candidates`) with
     `shapely.clip_by_rect` and latitude-cosine metric weighting.
-- Provisioned dedicated Cloud Storage bucket `geodashing-v2-map-data` and Cloud
-  Batch job spec
+- Provisioned dedicated Cloud Storage bucket `geodashing-v2-map-data`, enabled
+  required GCP APIs (`compute.googleapis.com`, `batch.googleapis.com`,
+  `logging.googleapis.com`, `monitoring.googleapis.com`,
+  `storage.googleapis.com`), granted Cloud Batch IAM roles
+  (`roles/batch.agentReporter`, `roles/logging.logWriter`,
+  `roles/monitoring.metricWriter`), and configured Cloud Batch job spec
   [batch_prepare_roads.json](../backend/scripts/batch_prepare_roads.json) in
   Terraform (`terraform/main.tf`, `terraform/outputs.tf`) for compiling global
-  `planet-latest.osm.pbf` into `world_drivable_roads.gpkg`.
+  `planet-latest.osm.pbf` into `world_drivable_roads.gpkg` (with immediate
+  post-`osmium` PBF deletion via `--delete-input`).
 - Integrated road-proximity generation in
   [generate_game.py](../backend/scripts/generate_game.py) with two-pass
   placement:
