@@ -439,7 +439,8 @@ def _verify_planet_download(part_path: str, expected_size: int) -> None:
             f'Size mismatch: got {actual_size} bytes, expected {expected_size}'
         )
     if shutil.which('osmium'):
-        subprocess.run(['osmium', 'fileinfo', part_path], check=True)
+        subprocess.run(['osmium', 'fileinfo', '--input-format=pbf', part_path],
+                       check=True)
 
 
 def _download_planet_from_mirrors(dest_path: str) -> None:

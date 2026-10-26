@@ -470,6 +470,9 @@ def test_fetch_or_cache_planet_pbf_expired_cache_downloads_and_caches(
         if cmd[0] == 'aria2c':
             part_file = tmp_path / 'planet-latest.osm.pbf.part'
             part_file.write_bytes(b'0123456789abcdef')
+        elif cmd[:2] == ['osmium', 'fileinfo']:
+            if cmd[-1].endswith('.part') and '--input-format=pbf' not in cmd:
+                raise subprocess.CalledProcessError(1, cmd)
 
     monkeypatch.setattr('subprocess.run', fake_run)
     uploaded_objects: list[str] = []
@@ -492,7 +495,8 @@ def test_fetch_or_cache_planet_pbf_expired_cache_downloads_and_caches(
     assert res == str(dest_pbf)
     assert dest_pbf.exists()
     assert any(cmd[0] == 'aria2c' for cmd in ran_cmds)
-    assert any(cmd[:2] == ['osmium', 'fileinfo'] for cmd in ran_cmds)
+    assert any(cmd[:3] == ['osmium', 'fileinfo', '--input-format=pbf']
+               for cmd in ran_cmds)
     assert uploaded_objects == [
         backend.scripts.prepare_roads.PLANET_PBF_CACHE_OBJECT
     ]
