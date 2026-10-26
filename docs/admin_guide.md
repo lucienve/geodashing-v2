@@ -83,15 +83,16 @@ database.
 
 #### Command Line Arguments (`generate_game.py`)
 
-| Flag | Long Form     |  Type   | Description                                                                                                   |
-| :--- | :------------ | :-----: | :------------------------------------------------------------------------------------------------------------ |
-| `-t` | `--title`     |  `str`  | **Required.** Brief descriptive title of the game (maximum 40 characters).                                    |
-| `-c` | `--count`     |  `int`  | Total number of dashpoints to randomly distribute globally under `--algorithm random`. Defaults to `35000`.   |
-| `-m` | `--month`     |  `int`  | Optional month (1–12) for the game schedule. Defaults to the current month.                                   |
-| `-y` | `--year`      |  `int`  | Optional year for the game schedule. Defaults to the current year.                                            |
-|      | `--preview`   | `flag`  | Generates the game in an inactive "preview" state (`is_active = FALSE`) instead of immediately activating it. |
-|      | `--algorithm` |  `str`  | Generation strategy: `random` (default) or `grid`.                                                            |
-|      | `--grid-size` | `float` | Grid cell size in km when using `--algorithm grid`. Defaults to `60.05`.                                      |
+| Flag | Long Form      |  Type   | Description                                                                                                     |
+| :--- | :------------- | :-----: | :-------------------------------------------------------------------------------------------------------------- |
+| `-t` | `--title`      |  `str`  | **Required.** Brief descriptive title of the game (maximum 40 characters).                                      |
+| `-c` | `--count`      |  `int`  | Total number of dashpoints to randomly distribute globally under `--algorithm random`. Defaults to `35000`.     |
+| `-m` | `--month`      |  `int`  | Optional month (1–12) for the game schedule. Defaults to the current month.                                     |
+| `-y` | `--year`       |  `int`  | Optional year for the game schedule. Defaults to the current year.                                              |
+|      | `--preview`    | `flag`  | Generates the game in an inactive "preview" state (`is_active = FALSE`) instead of immediately activating it.   |
+|      | `--algorithm`  |  `str`  | Generation strategy: `random` (default), `grid`, or `road-proximity`.                                           |
+|      | `--grid-size`  | `float` | Grid cell size in km when using `grid` or `road-proximity`. Defaults to `60.05`.                                |
+|      | `--roads-gpkg` |  `str`  | Optional path to road GeoPackage for `road-proximity` (defaults to config or `data/world_drivable_roads.gpkg`). |
 
 #### Internal Mechanics
 
@@ -113,6 +114,20 @@ database.
        least 12 km from all existing dashpoints. If a candidate collides within
        12 km, up to 50 replacement attempts are drawn inside the cell before
        giving up.
+   - **`road-proximity` (Spherical Grid with Road Proximity)**: Uses the same
+     spherical grid decomposition and two-pass water-only cardinal neighbor
+     bonus logic as `grid`, but instead of selecting random land points, samples
+     candidates strictly within $\le 50\text{ m}$ of a qualifying drivable road
+     from OpenStreetMap (`world_drivable_roads.gpkg`).
+     - **Pass 1 (Base Road Darts)**: Shuffles all dry land cells and samples 1
+       candidate within 50 m of a qualifying road in that cell.
+     - **Pass 2 (Water-Only Cardinal Redistribution)**: For water-only cells (0%
+       dry land), attempts 1 bonus road dart in each cardinal neighbor cell that
+       contains land (non-cascading).
+     - **12 km Spacing Enforcement**: Enforces a minimum 12 km spacing between
+       all placed points on the unit sphere, retrying up to 50 times per cell.
+       Cells without roads or where all candidates collide yield 0 points and do
+       not trigger cardinal redistribution.
 2. **Landmass Filtering (EPSG:6933)**:
    - Loads complex shapefiles for global landmasses (`data/ne_10m_land.zip`) and
      major lakes (`data/ne_10m_lakes.zip`). When targeting `ne_10m_lakes.zip`,

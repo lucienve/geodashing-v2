@@ -48,3 +48,23 @@ wget https://naciscdn.org/naturalearth/10m/physical/ne_10m_lakes_north_america.z
 # List of dirty/bad words for filtering generated dashpoint IDs
 curl -s "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en" | grep -xE '.{4}' | tr '[:lower:]' '[:upper:]' | sort > bad_words.txt
 ```
+
+## Road Proximity Datasets
+
+The `--algorithm road-proximity` generator mode requires an indexed
+OpenStreetMap GeoPackage file (`data/world_drivable_roads.gpkg`) containing
+qualifying public drivable roads (`primary`, `secondary`, `tertiary`,
+`unclassified`, `residential`, and links).
+
+You can synchronize the pre-compiled global road network from Google Cloud
+Storage or build it from `planet-latest.osm.pbf`:
+
+```bash
+# Option 1: Download pre-built GeoPackage from Google Cloud Storage
+uv run python -m backend.scripts.prepare_roads --download-gcs
+
+# Option 2: Build directly from an OSM PBF file
+uv run python -m backend.scripts.prepare_roads \
+  --input data/planet-latest.osm.pbf \
+  --output data/world_drivable_roads.gpkg
+```

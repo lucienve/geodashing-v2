@@ -8,6 +8,7 @@ import pytest
 import shapely.geometry
 
 import backend.scripts.generate_game
+import backend.scripts.prepare_roads
 
 
 def test_generate_spherical_points() -> None:
@@ -372,6 +373,51 @@ def test_main_cli_algorithm_routing(monkeypatch: pytest.MonkeyPatch) -> None:
                                         lakes_zip_path=unittest.mock.ANY)
     mock_seed.assert_called_once()
 
+    # Test road-proximity algorithm routing
+    mock_seed.reset_mock()
+    monkeypatch.setattr('sys.argv', [
+        'generate_game.py', '-t', 'Road Test', '--algorithm', 'road-proximity',
+        '--roads-gpkg', 'test_roads.gpkg'
+    ])
+    mock_road = unittest.mock.create_autospec(
+        backend.scripts.generate_game.generate_road_proximity_dashpoints,
+        return_value=[shapely.geometry.Point(0, 0)])
+    monkeypatch.setattr(
+        'backend.scripts.generate_game.generate_road_proximity_dashpoints',
+        mock_road)
+    monkeypatch.setattr('backend.scripts.prepare_roads.resolve_roads_gpkg',
+                        lambda path, config_path: 'resolved_roads.gpkg')
+
+    backend.scripts.generate_game.main()
+    mock_road.assert_called_once_with(
+        grid_size_km=backend.scripts.generate_game.DEFAULT_GRID_SIZE_KM,
+        land_zip_path=unittest.mock.ANY,
+        lakes_zip_path=unittest.mock.ANY,
+        roads_input='resolved_roads.gpkg')
+    mock_seed.assert_called_once()
+
+    # Test road-proximity algorithm routing when --roads-gpkg is omitted
+    mock_seed.reset_mock()
+    mock_road.reset_mock()
+    monkeypatch.setattr('sys.argv', [
+        'generate_game.py', '-t', 'Road Test Default Path', '--algorithm',
+        'road-proximity'
+    ])
+    mock_resolve = unittest.mock.create_autospec(
+        backend.scripts.prepare_roads.resolve_roads_gpkg,
+        return_value='default_resolved_roads.gpkg')
+    monkeypatch.setattr('backend.scripts.prepare_roads.resolve_roads_gpkg',
+                        mock_resolve)
+
+    backend.scripts.generate_game.main()
+    mock_resolve.assert_called_once_with(None, config_path=unittest.mock.ANY)
+    mock_road.assert_called_once_with(
+        grid_size_km=backend.scripts.generate_game.DEFAULT_GRID_SIZE_KM,
+        land_zip_path=unittest.mock.ANY,
+        lakes_zip_path=unittest.mock.ANY,
+        roads_input='default_resolved_roads.gpkg')
+    mock_seed.assert_called_once()
+
 
 def test_resolve_lake_zip_paths() -> None:
     """Verify that default ne_10m_lakes.zip expands to include regional supplements."""
@@ -442,3 +488,118 @@ def test_supplemental_lakes_exclusion(monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(valid_points) == 1
     assert valid_points[0].x == 10.0
     assert valid_points[0].y == 10.0
+
+
+def test_get_cell_bboxes() -> None:
+    """Verifies bounding box calculation and antimeridian/polar splitting."""
+    # Standard cell
+    band_std = backend.scripts.generate_game.LatitudeBand(band_idx=1,
+                                                          lat_min=10.0,
+                                                          lat_max=20.0,
+                                                          lon_offset=-100.0,
+                                                          num_cells=36,
+                                                          dlon=10.0)
+    boxes = backend.scripts.generate_game.get_cell_bboxes(band_std, 2)
+    assert boxes == [(-80.0, 10.0, -70.0, 20.0)]
+
+    # Antimeridian crossing cell: raw_min_lon = 175.0, raw_max_lon = 185.0
+    band_anti = backend.scripts.generate_game.LatitudeBand(band_idx=2,
+                                                           lat_min=0.0,
+                                                           lat_max=10.0,
+                                                           lon_offset=175.0,
+                                                           num_cells=36,
+                                                           dlon=10.0)
+    boxes_anti = backend.scripts.generate_game.get_cell_bboxes(band_anti, 0)
+    assert len(boxes_anti) == 2
+    assert boxes_anti[0] == (175.0, 0.0, 180.0, 10.0)
+    assert boxes_anti[1] == (-180.0, 0.0, -175.0, 10.0)
+
+    # Polar cell: num_cells = 1
+    band_polar = backend.scripts.generate_game.LatitudeBand(band_idx=0,
+                                                            lat_min=80.0,
+                                                            lat_max=90.0,
+                                                            lon_offset=-180.0,
+                                                            num_cells=1,
+                                                            dlon=360.0)
+    boxes_polar = backend.scripts.generate_game.get_cell_bboxes(band_polar, 0)
+    assert len(boxes_polar) == 2
+    assert boxes_polar[0] == (-180.0, 80.0, 0.0, 90.0)
+    assert boxes_polar[1] == (0.0, 80.0, 180.0, 90.0)
+
+
+def test_classify_grid_cells() -> None:
+    """Verifies partitioning into dry land cells and water-only cells."""
+    band_land = backend.scripts.generate_game.LatitudeBand(band_idx=0,
+                                                           lat_min=0.0,
+                                                           lat_max=10.0,
+                                                           lon_offset=0.0,
+                                                           num_cells=2,
+                                                           dlon=10.0)
+    bands = [band_land]
+
+    mock_filter = unittest.mock.MagicMock()
+    mock_filter.get_candidate_matches.return_value = ({
+        0: [unittest.mock.MagicMock()]
+    }, {})
+    mock_filter.eval_boundary_point.return_value = True
+
+    land_cells, water_cells = backend.scripts.generate_game.classify_grid_cells(
+        bands, mock_filter)
+    assert len(land_cells) == 1
+    assert land_cells[0] == (band_land, 0)
+    assert len(water_cells) == 1
+    assert water_cells[0] == (band_land, 1)
+
+
+def test_generate_road_proximity_dashpoints(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies road-proximity generation: <= 50m road offset and 12km spacing."""
+    band0 = backend.scripts.generate_game.LatitudeBand(band_idx=0,
+                                                       lat_min=0.0,
+                                                       lat_max=1.0,
+                                                       lon_offset=0.0,
+                                                       num_cells=2,
+                                                       dlon=1.0)
+    band1 = backend.scripts.generate_game.LatitudeBand(band_idx=1,
+                                                       lat_min=1.0,
+                                                       lat_max=2.0,
+                                                       lon_offset=0.0,
+                                                       num_cells=2,
+                                                       dlon=1.0)
+    mock_bands = [band0, band1]
+
+    monkeypatch.setattr('backend.scripts.generate_game.build_spherical_grid',
+                        lambda *args, **kwargs: mock_bands)
+
+    mock_filter = unittest.mock.MagicMock()
+    monkeypatch.setattr(
+        'backend.scripts.generate_game.classify_grid_cells', lambda bands, sf:
+        ([(band0, 0), (band0, 1)], [(band1, 0), (band1, 1)]))
+    monkeypatch.setattr('backend.scripts.generate_game.build_spatial_filter',
+                        lambda *args, **kwargs: mock_filter)
+
+    road_line = shapely.geometry.LineString([(0.1, 0.5), (1.9, 0.5)])
+    roads_gdf = gpd.GeoDataFrame(
+        geometry=[road_line],
+        data={
+            'highway': ['primary'],
+            'access': ['yes']
+        },
+        crs='EPSG:4326',
+    )
+
+    mock_filter.filter_valid_indices.side_effect = lambda pts: set(
+        range(len(pts)))
+
+    points = backend.scripts.generate_game.generate_road_proximity_dashpoints(
+        grid_size_km=50.0,
+        land_zip_path='mock_land.zip',
+        lakes_zip_path='mock_lakes.zip',
+        roads_input=roads_gdf,
+        verbose=False,
+    )
+
+    assert len(points) >= 1
+    for pt in points:
+        dist_deg = road_line.distance(pt)
+        assert dist_deg <= 0.001

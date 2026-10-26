@@ -2186,3 +2186,48 @@ geographic games where they are tasked with reaching randomly generated
   [README.md](../data/README.md) and [admin_guide.md](admin_guide.md).
 - Verified that all Python unit tests, linters (Pylint 10.00/10 with zero
   suppressions), and type checkers pass with zero errors.
+
+### 89. Road-Proximity Dashpoint Generation Algorithm (`--algorithm road-proximity`)
+
+- Implemented an alternate dashpoint generation algorithm
+  (`--algorithm road-proximity`) on branch `feat/new-road-algo` combining the
+  staggered spherical trapezoid grid decomposition and water-only cardinal
+  neighbor bonus logic of `--algorithm grid` with OpenStreetMap drivable road
+  network proximity ($\le 50\text{ m}$).
+- Built dedicated road dataset pipeline and spatial primitives in
+  [prepare_roads.py](../backend/scripts/prepare_roads.py):
+  - OpenStreetMap road filtering (`filter_drivable_roads`) retaining public
+    drivable highways (`primary`, `secondary`, `tertiary`, `unclassified`,
+    `residential`, and links) while excluding non-public access (`private`,
+    `no`, `customers`, `military`, `permit`, `agricultural`, `forestry`).
+  - Streaming GeoPackage export (`export_roads_geopackage`) with spatial R-tree
+    indexing and OSM PBF compilation (`process_osm_pbf_to_gpkg`) via `osmium`
+    and `ogr2ogr`.
+  - Resumable 32 MiB chunked GCS upload/download utilities
+    (`upload_roads_to_gcs`, `download_roads_from_gcs`, `resolve_roads_gpkg`)
+    with Application Default Credentials (ADC) fallback.
+  - Cell bounding box splitting at poles and antimeridian (`get_cell_bboxes`),
+    dry-land vs. water-only cell classification (`classify_grid_cells`), and
+    road candidate sampling (`sample_cell_road_candidates`) with
+    `shapely.clip_by_rect` and latitude-cosine metric weighting.
+- Provisioned dedicated Cloud Storage bucket `geodashing-v2-map-data` and Cloud
+  Batch job spec
+  [batch_prepare_roads.json](../backend/scripts/batch_prepare_roads.json) in
+  Terraform (`terraform/main.tf`, `terraform/outputs.tf`) for compiling global
+  `planet-latest.osm.pbf` into `world_drivable_roads.gpkg`.
+- Integrated road-proximity generation in
+  [generate_game.py](../backend/scripts/generate_game.py) with two-pass
+  placement:
+  - Pass 1: Samples 1 candidate point within 50m of a road across all dry-land
+    grid cells in randomized order.
+  - Pass 2: For water-only cells (0% dry land), attempts 1 bonus road dart in
+    each cardinal neighbor cell containing dry land (non-cascading).
+  - Enforces minimum 12 km unit-sphere chord spacing via `SphereNeighborGrid`
+    with up to 50 replacement retries per cell.
+- Added comprehensive unit tests in
+  [test_prepare_roads.py](../backend/tests/test_prepare_roads.py) (13 tests) and
+  [test_generate_game.py](../backend/tests/test_generate_game.py) (19 tests).
+- Documented CLI arguments and dataset instructions in
+  [README.md](../data/README.md) and [admin_guide.md](admin_guide.md).
+- Verified that all Python unit tests, linters (Pylint 10.00/10 with zero
+  suppressions), and type checkers (Mypy, Pyright) pass with zero errors.

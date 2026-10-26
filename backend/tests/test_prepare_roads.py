@@ -2,6 +2,7 @@
 
 import math
 import os
+import pathlib
 import tempfile
 import unittest.mock
 
@@ -256,3 +257,20 @@ def test_process_osm_pbf_to_gpkg_missing_file() -> None:
     with pytest.raises(FileNotFoundError, match='not found'):
         backend.scripts.prepare_roads.process_osm_pbf_to_gpkg(
             'nonexistent.osm.pbf', 'out.gpkg')
+
+
+def test_resolve_roads_gpkg_none_handling(tmp_path: pathlib.Path) -> None:
+    """Verifies resolve_roads_gpkg handles roads_path=None gracefully without TypeError."""
+    cfg_file = tmp_path / 'config.ini'
+    cfg_file.write_text('[gcs]\n', encoding='utf-8')
+    res = backend.scripts.prepare_roads.resolve_roads_gpkg(
+        None, config_path=str(cfg_file), allow_download=False)
+    assert res is None
+
+
+def test_get_roads_total_bounds_empty_dataset() -> None:
+    """Verifies get_roads_total_bounds returns fallback bounds for empty dataset."""
+    empty_gdf = gpd.GeoDataFrame(geometry=gpd.GeoSeries([], dtype='geometry'),
+                                 crs='EPSG:4326')
+    bounds = backend.scripts.prepare_roads.get_roads_total_bounds(empty_gdf)
+    assert bounds == (-180.0, -90.0, 180.0, 90.0)

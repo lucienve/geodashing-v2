@@ -2,11 +2,13 @@
 
 import argparse
 import configparser
+import dataclasses
 import math
 import os
 import shutil
 import subprocess
 import sys
+import typing
 import urllib.parse
 
 import geopandas as gpd
@@ -384,22 +386,23 @@ def download_roads_from_gcs(
 
 
 def resolve_roads_gpkg(
-    roads_path: str = DEFAULT_ROADS_GPKG_PATH,
+    roads_path: str | None = None,
     config_path: str = 'backend/config.ini',
     allow_download: bool = True,
 ) -> str | None:
     """Ensures the road GeoPackage is available on disk, downloading from GCS if needed.
 
     Args:
-        roads_path: Local path to check or populate.
+        roads_path: Optional local path to check or populate (defaults to DEFAULT_ROADS_GPKG_PATH).
         config_path: Path to backend config.ini.
         allow_download: If True, downloads from GCS if missing locally.
 
     Returns:
         Absolute path to the existing .gpkg file, or None if unavailable.
     """
-    if os.path.exists(roads_path) and os.path.getsize(roads_path) > 0:
-        return os.path.abspath(roads_path)
+    target_path = roads_path or DEFAULT_ROADS_GPKG_PATH
+    if os.path.exists(target_path) and os.path.getsize(target_path) > 0:
+        return os.path.abspath(target_path)
 
     target_cfg = config_path
     if not os.path.exists(target_cfg):
@@ -415,7 +418,7 @@ def resolve_roads_gpkg(
         cfg.read(target_cfg)
         configured_path = cfg.get('gcs',
                                   'ROADS_GPKG_PATH',
-                                  fallback=roads_path)
+                                  fallback=target_path)
         if os.path.exists(configured_path) and os.path.getsize(
                 configured_path) > 0:
             return os.path.abspath(configured_path)
@@ -452,12 +455,19 @@ def get_roads_total_bounds(
         Bounding box tuple in EPSG:4326.
     """
     if isinstance(roads_input, str):
-        info = pyogrio.read_info(roads_input, layer='roads')
-        tb = info['total_bounds']
-        return (float(tb[0]), float(tb[1]), float(tb[2]), float(tb[3]))
+        try:
+            info = pyogrio.read_info(roads_input, layer='roads')
+            tb = info.get('total_bounds')
+            if tb is not None and len(tb) >= 4 and not np.isnan(tb).any():
+                return (float(tb[0]), float(tb[1]), float(tb[2]), float(tb[3]))
+        except (OSError, ValueError, RuntimeError):
+            pass
+        return (-180.0, -90.0, 180.0, 90.0)
 
-    tb = roads_input.total_bounds
-    return (float(tb[0]), float(tb[1]), float(tb[2]), float(tb[3]))
+    tb = getattr(roads_input, 'total_bounds', None)
+    if tb is not None and len(tb) >= 4 and not np.isnan(tb).any():
+        return (float(tb[0]), float(tb[1]), float(tb[2]), float(tb[3]))
+    return (-180.0, -90.0, 180.0, 90.0)
 
 
 def _clip_geometry_lines(
@@ -594,11 +604,19 @@ def generate_polar_road_offset(
     return cand_lat_deg, cand_lon_deg
 
 
+def _bbox_intersects(b1: tuple[float, float, float, float],
+                     b2: tuple[float, float, float, float]) -> bool:
+    """Checks if two (minx, miny, maxx, maxy) bounding boxes intersect."""
+    return not (b1[2] < b2[0] or b1[0] > b2[2] or b1[3] < b2[1]
+                or b1[1] > b2[3])
+
+
 def sample_cell_road_candidates(
     roads_input: str | gpd.GeoDataFrame,
     bboxes: list[tuple[float, float, float, float]],
     num_candidates: int,
     max_dist_m: float = 50.0,
+    road_bounds: tuple[float, float, float, float] | None = None,
 ) -> list[shapely.geometry.Point]:
     """Queries roads in a cell once and pre-samples offset candidate Points.
 
@@ -607,12 +625,20 @@ def sample_cell_road_candidates(
         bboxes: Cell bounding boxes.
         num_candidates: Number of candidate Points to sample.
         max_dist_m: Maximum offset distance in meters.
+        road_bounds: Optional total bounds of the roads dataset for fast skipping.
 
     Returns:
         list[Point]: Sampled candidate Points in EPSG:4326.
     """
+    if num_candidates <= 0:
+        return []
+
+    if road_bounds is not None and not any(
+            _bbox_intersects(b, road_bounds) for b in bboxes):
+        return []
+
     lines, weights = query_clipped_roads_in_bboxes(roads_input, bboxes)
-    if not lines or num_candidates <= 0:
+    if not lines:
         return []
 
     candidates: list[shapely.geometry.Point] = []
@@ -625,6 +651,123 @@ def sample_cell_road_candidates(
         candidates.append(shapely.geometry.Point(c_lon, c_lat))
 
     return candidates
+
+
+def get_cell_bboxes(band: typing.Any,
+                    cell_idx: int) -> list[tuple[float, float, float, float]]:
+    """Computes bounding boxes in EPSG:4326 for a cell, splitting at antimeridian and poles."""
+    lat_min, lat_max = band.lat_min, band.lat_max
+    if band.num_cells <= 1:
+        return [(-180.0, lat_min, 0.0, lat_max),
+                (0.0, lat_min, 180.0, lat_max)]
+
+    raw_min_lon = band.lon_offset + cell_idx * band.dlon
+    raw_max_lon = raw_min_lon + band.dlon
+    if raw_max_lon > 180.0:
+        return [
+            (raw_min_lon, lat_min, 180.0, lat_max),
+            (-180.0, lat_min, raw_max_lon - 360.0, lat_max),
+        ]
+    return [(raw_min_lon, lat_min, raw_max_lon, lat_max)]
+
+
+def _build_cell_bounding_boxes(
+    bands: list[typing.Any]
+) -> tuple[list[tuple[typing.Any, int]], list[shapely.geometry.Polygon],
+           list[int]]:
+    """Builds geographic bounding boxes and mapping indices for all grid cells."""
+    flat_cells: list[tuple[typing.Any, int]] = []
+    boxes: list[shapely.geometry.Polygon] = []
+    box_to_cell: list[int] = []
+    for band in bands:
+        for cell_idx in range(band.num_cells):
+            c_idx = len(flat_cells)
+            flat_cells.append((band, cell_idx))
+            for bbox in get_cell_bboxes(band, cell_idx):
+                boxes.append(shapely.geometry.box(*bbox))
+                box_to_cell.append(c_idx)
+    return flat_cells, boxes, box_to_cell
+
+
+def classify_grid_cells(
+    bands: list[typing.Any], spatial_filter: typing.Any
+) -> tuple[list[tuple[typing.Any, int]], list[tuple[typing.Any, int]]]:
+    """Partitions grid cells into dry land cells (> 0% land) and water-only cells (0% land)."""
+    flat_cells, boxes, box_to_cell = _build_cell_bounding_boxes(bands)
+    proj_boxes = gpd.GeoSeries(boxes, crs='EPSG:4326').to_crs(epsg=6933).values
+    land_map, lake_map = spatial_filter.get_candidate_matches(proj_boxes)
+
+    land_cell_indices: set[int] = set()
+    for b_idx, lands in land_map.items():
+        geom = proj_boxes[b_idx]
+        if spatial_filter.eval_boundary_point(geom, lands,
+                                              lake_map.get(b_idx, [])):
+            land_cell_indices.add(box_to_cell[b_idx])
+
+    land_cells = [
+        c for i, c in enumerate(flat_cells) if i in land_cell_indices
+    ]
+    water_cells = [
+        c for i, c in enumerate(flat_cells) if i not in land_cell_indices
+    ]
+    return land_cells, water_cells
+
+
+@dataclasses.dataclass(frozen=True)
+class RoadPlacementContext:
+    """Encapsulates shared spatial context and state for road candidate placement."""
+    roads_input: str | gpd.GeoDataFrame
+    spatial_filter: typing.Any
+    neighbor_grid: typing.Any
+    road_bounds: tuple[float, float, float, float] | None
+    cell_candidates: dict[tuple[int, int], list[shapely.geometry.Point]]
+
+
+def find_valid_road_cell_point(
+    band: typing.Any,
+    cell_idx: int,
+    ctx: RoadPlacementContext,
+    total_attempts: int = 1,
+) -> shapely.geometry.Point | None:
+    """Finds a non-colliding road-proximity point on dry land in the cell."""
+    key = (band.band_idx, cell_idx)
+    if key not in ctx.cell_candidates:
+        bboxes = get_cell_bboxes(band, cell_idx)
+        ctx.cell_candidates[key] = sample_cell_road_candidates(
+            ctx.roads_input,
+            bboxes,
+            num_candidates=total_attempts * 50,
+            max_dist_m=50.0,
+            road_bounds=ctx.road_bounds,
+        )
+
+    candidates = ctx.cell_candidates[key]
+    while candidates:
+        cand = candidates.pop()
+        if ctx.neighbor_grid.can_place(cand.x, cand.y):
+            if ctx.spatial_filter.filter_valid_indices([cand]):
+                ctx.neighbor_grid.insert(cand.x, cand.y)
+                return cand
+    return None
+
+
+def place_shuffled_road_cells(
+    cells: list[tuple[typing.Any, int]],
+    ctx: RoadPlacementContext,
+    accepted_points: list[shapely.geometry.Point],
+    pass2_counts: dict[tuple[int, int], int],
+) -> int:
+    """Places road points for cells in shuffled order, returning count placed."""
+    rng = np.random.default_rng()
+    placed_count = 0
+    for idx in rng.permutation(len(cells)):
+        b, c = cells[idx]
+        attempts = 1 + pass2_counts.get((b.band_idx, c), 0)
+        pt = find_valid_road_cell_point(b, c, ctx, attempts)
+        if pt is not None:
+            accepted_points.append(pt)
+            placed_count += 1
+    return placed_count
 
 
 def _compile_roads_dataset(input_path: str, output_path: str) -> None:
