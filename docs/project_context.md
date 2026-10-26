@@ -2128,3 +2128,37 @@ geographic games where they are tasked with reaching randomly generated
     and ordered stop list (`1 (A). GD...` through `10 (J). GD...`).
   - Added comprehensive Playwright E2E coverage in
     [export.spec.js](../e2e/export.spec.js).
+
+### 87. Grid-Based Dashpoint Generation (Issue #142)
+
+- Implemented an optional, grid-based dashpoint generation algorithm in
+  [generate_game.py](../backend/scripts/generate_game.py) inspired by Scout's
+  original 2005 algorithm, selectable via `--algorithm {random,grid}` (default:
+  `random`) and `--grid-size <km>` (default: `60.05` km, matching the
+  $0.54^\circ$ / $37.31$-mile cells of the 2005 script).
+- Tiled the globe from $-90^\circ$ to $+90^\circ$ into staggered latitude bands
+  of spherical trapezoids (`LatitudeBand`) of approximately `--grid-size` km
+  with a random latitude origin shift and independent per-band random longitude
+  origin shifts.
+- Implemented a Two-Pass Point Dart sampling pipeline with non-cascading
+  cardinal water redistribution:
+  - **Pass 1**: Samples 1 random candidate coordinate per cell globally and
+    evaluates dry land via `SpatialFilter.filter_valid_indices()`.
+  - **Pass 2**: For cells whose Pass 1 candidate landed in water, throws 1
+    additional bonus dart into each of its 4 cardinal neighbor cells (North,
+    South, East, West) and keeps those landing on dry land (strictly 1-hop,
+    non-cascading), giving coastal regions roughly 2x point density on land.
+- Enforced a **12 km minimum neighbor distance** check across all accepted
+  dashpoints using an in-memory 3D unit-sphere Cartesian spatial hash grid
+  (`SphereNeighborGrid`), avoiding polar and antimeridian singularities. If a
+  dry-land candidate collides within 12 km of an existing point, the generator
+  retries up to 50 attempts (`MAX_CELL_ATTEMPTS = 50`) inside that cell before
+  giving up on that slot.
+- Added comprehensive unit test coverage in
+  [test_generate_game.py](../backend/tests/test_generate_game.py) covering grid
+  construction, boundary coverage, cardinal neighbor wrap-around, antimeridian
+  and polar distance checks, two-pass execution, and CLI routing.
+- Documented operational procedures and CLI arguments in
+  [admin_guide.md](admin_guide.md) and [game_rollover.md](game_rollover.md).
+- Verified that all Python unit tests, linters (Pylint 10.00/10 with zero
+  suppressions), and type checkers (Mypy, Pyright) pass with zero errors.
