@@ -1,0 +1,41 @@
+{
+  "taskGroups": [
+    {
+      "taskSpec": {
+        "runnables": [
+          {
+            "script": {
+              "text": "set -e\napt-get update && apt-get install -y osmium-tool gdal-bin curl git\ncurl -LsSf https://astral.sh/uv/install.sh | sh\nexport PATH=\"$HOME/.local/bin:$PATH\"\nmkdir -p /mnt/disks/batch-disk/geodashing-work\ncd /mnt/disks/batch-disk/geodashing-work\ncurl -L https://planet.openstreetmap.org/pbf/planet-latest.osm.pbf -o planet-latest.osm.pbf\ngit clone https://github.com/lucienve/geodashing-v2.git repo\ncd repo\nuv sync\nuv run python -m backend.scripts.prepare_roads --input /mnt/disks/batch-disk/geodashing-work/planet-latest.osm.pbf --output /mnt/disks/batch-disk/geodashing-work/world_drivable_roads.gpkg --upload-gcs\n"
+            }
+          }
+        ],
+        "computeResource": {
+          "cpuMilli": "8000",
+          "memoryMib": "32768",
+          "bootDiskMib": "256000"
+        },
+        "maxRunDuration": "14400s"
+      },
+      "taskCount": "1"
+    }
+  ],
+  "allocationPolicy": {
+    "instances": [
+      {
+        "policy": {
+          "machineType": "e2-standard-8",
+          "bootDisk": {
+            "type": "pd-ssd",
+            "sizeGb": "250"
+          }
+        }
+      }
+    ],
+    "serviceAccount": {
+      "email": "geodashing-uploader@geodashing-v2.iam.gserviceaccount.com"
+    }
+  },
+  "logsPolicy": {
+    "destination": "CLOUD_LOGGING"
+  }
+}

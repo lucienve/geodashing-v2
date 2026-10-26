@@ -28,6 +28,65 @@ resource "google_storage_bucket" "blobs" {
 }
 
 # -----------------------------------------------------------------------------
+# Google Cloud Storage - Road & Map Datasets Bucket
+# -----------------------------------------------------------------------------
+
+resource "google_storage_bucket" "map_data" {
+  name                        = "geodashing-v2-map-data"
+  location                    = "US-EAST1"
+  storage_class               = "STANDARD"
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+  force_destroy               = false
+
+  autoclass {
+    enabled                = true
+    terminal_storage_class = "ARCHIVE"
+  }
+
+  versioning {
+    enabled = true
+  }
+
+  soft_delete_policy {
+    retention_duration_seconds = 604800
+  }
+
+  lifecycle_rule {
+    action {
+      type = "Delete"
+    }
+    condition {
+      days_since_noncurrent_time = 180
+      with_state                 = "ARCHIVED"
+    }
+  }
+
+  lifecycle_rule {
+    action {
+      type = "Delete"
+    }
+    condition {
+      num_newer_versions = 2
+      with_state         = "ARCHIVED"
+    }
+  }
+
+  lifecycle_rule {
+    action {
+      type = "AbortIncompleteMultipartUpload"
+    }
+    condition {
+      age = 7
+    }
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# -----------------------------------------------------------------------------
 # Cloud Storage Bucket IAM Bindings (Non-authoritative)
 # -----------------------------------------------------------------------------
 
@@ -41,6 +100,13 @@ resource "google_storage_bucket_iam_member" "blobs_public_viewer" {
 # Full object administration for backend uploader service account
 resource "google_storage_bucket_iam_member" "uploader_admin" {
   bucket = google_storage_bucket.blobs.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.geodashing_uploader.email}"
+}
+
+# Full object administration on road/map data bucket for backend service account
+resource "google_storage_bucket_iam_member" "map_data_uploader_admin" {
+  bucket = google_storage_bucket.map_data.name
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.geodashing_uploader.email}"
 }
@@ -59,6 +125,20 @@ resource "google_service_account" "geodashing_uploader" {
 resource "google_project_iam_member" "uploader_aiplatform_user" {
   project = var.project_id
   role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.geodashing_uploader.email}"
+}
+
+# Cloud Batch agent reporter role for road dataset preparation
+resource "google_project_iam_member" "uploader_batch_reporter" {
+  project = var.project_id
+  role    = "roles/batch.agentReporter"
+  member  = "serviceAccount:${google_service_account.geodashing_uploader.email}"
+}
+
+# Cloud Logging writer role for road dataset preparation
+resource "google_project_iam_member" "uploader_log_writer" {
+  project = var.project_id
+  role    = "roles/logging.logWriter"
   member  = "serviceAccount:${google_service_account.geodashing_uploader.email}"
 }
 
