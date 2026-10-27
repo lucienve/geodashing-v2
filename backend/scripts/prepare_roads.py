@@ -186,8 +186,8 @@ def process_osm_pbf_to_gpkg(
         env = os.environ.copy()
         env['CPL_TMPDIR'] = work_dir
         env['SQLITE_TMPDIR'] = work_dir
-        env['OSM_MAX_TMPFILE_SIZE'] = '20480'
-        env['OGR_SQLITE_CACHE'] = '8192'
+        env['OSM_MAX_TMPFILE_SIZE'] = '45000'
+        env['OGR_SQLITE_CACHE'] = '10240'
         env['OGR_SQLITE_SYNCHRONOUS'] = 'OFF'
 
         cmd_ogr = [

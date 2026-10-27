@@ -2225,11 +2225,14 @@ geographic games where they are tasked with reaching randomly generated
   [batch_prepare_roads.json](../backend/scripts/batch_prepare_roads.json) and
   [submit_roads_batch_job.sh](../backend/scripts/submit_roads_batch_job.sh) in
   Terraform (`terraform/main.tf`, `terraform/outputs.tf`) for compiling global
-  `planet-latest.osm.pbf` into `world_drivable_roads.gpkg` (using a hermetic
-  local GCS code bundle upload, strict POSIX `/bin/sh` syntax, direct
-  `/usr/local/bin` tool installation, `aria2c` multi-source downloads, 7-day GCS
-  planet PBF caching, and immediate post-`osmium` local PBF deletion via
-  `--delete-input`).
+  `planet-latest.osm.pbf` into `world_drivable_roads.gpkg` on an `e2-highmem-8`
+  (8 vCPU, 64 GiB RAM, 250 GB `pd-ssd`) instance with a 45 GB in-memory GDAL
+  node cache (`OSM_MAX_TMPFILE_SIZE=45000`) and 10 GiB SQLite cache
+  (`OGR_SQLITE_CACHE=10240`) so the entire ~38 GB global road node index remains
+  in `/vsimem/` RAM without spilling to disk (using a hermetic local GCS code
+  bundle upload, strict POSIX `/bin/sh` syntax, direct `/usr/local/bin` tool
+  installation, `aria2c` multi-source downloads, 7-day GCS planet PBF caching,
+  and immediate post-`osmium` local PBF deletion via `--delete-input`).
 - Integrated road-proximity generation in
   [generate_game.py](../backend/scripts/generate_game.py) with two-pass
   placement:

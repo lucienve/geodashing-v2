@@ -11,7 +11,7 @@
         ],
         "computeResource": {
           "cpuMilli": "8000",
-          "memoryMib": "32768",
+          "memoryMib": "65536",
           "bootDiskMib": "256000"
         },
         "maxRunDuration": "43200s"
@@ -23,7 +23,7 @@
     "instances": [
       {
         "policy": {
-          "machineType": "e2-standard-8",
+          "machineType": "e2-highmem-8",
           "bootDisk": {
             "type": "pd-ssd",
             "sizeGb": "250"
