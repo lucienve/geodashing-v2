@@ -298,6 +298,7 @@ def test_process_osm_pbf_to_gpkg_deletes_input_after_osmium(
             env = kwargs.get('env')
             assert isinstance(env, dict)
             assert env.get('OSM_MAX_TMPFILE_SIZE') == '45000'
+            assert env.get('OSM_COMPRESS_NODES') == 'YES'
             assert env.get('OGR_SQLITE_CACHE') == '10240'
 
     monkeypatch.setattr('shutil.which', lambda name: '/usr/bin/osmium')
