@@ -155,22 +155,60 @@ def test_download_roads_from_gcs_success(
             assert f.read() == b'chunk1chunk2'
 
 
-def test_resolve_roads_gpkg_existing(tmp_path: pytest.TempPathFactory) -> None:
-    """Verifies that an existing non-empty file is returned immediately."""
-    fake_gpkg = os.path.join(str(tmp_path), 'roads.gpkg')
-    with open(fake_gpkg, 'wb') as f:
-        f.write(b'geopackage')
+def test_resolve_roads_gpkg_existing_and_fresh(tmp_path: pathlib.Path) -> None:
+    """Verifies existing fresh file is returned directly or resolved from config."""
+    fake_gpkg = tmp_path / 'roads.gpkg'
+    fake_gpkg.write_bytes(b'geopackage')
 
+    # Explicit path
     resolved = backend.scripts.prepare_roads.resolve_roads_gpkg(
-        roads_path=fake_gpkg, allow_download=False)
-    assert resolved == os.path.abspath(fake_gpkg)
+        roads_path=str(fake_gpkg))
+    assert resolved == os.path.abspath(str(fake_gpkg))
+
+    # Path from config with surrounding quotes
+    cfg_file = tmp_path / 'config.ini'
+    cfg_file.write_text(f'[gcs]\nROADS_GPKG_PATH = "{fake_gpkg}"\n',
+                        encoding='utf-8')
+    resolved_cfg = backend.scripts.prepare_roads.resolve_roads_gpkg(
+        roads_path=None, config_path=str(cfg_file))
+    assert resolved_cfg == os.path.abspath(str(fake_gpkg))
 
 
-def test_resolve_roads_gpkg_missing_no_download() -> None:
-    """Verifies None is returned when missing locally and allow_download is False."""
-    resolved = backend.scripts.prepare_roads.resolve_roads_gpkg(
-        roads_path='nonexistent/roads.gpkg', allow_download=False)
-    assert resolved is None
+def test_resolve_roads_gpkg_missing_or_empty_raises(
+        tmp_path: pathlib.Path) -> None:
+    """Verifies FileNotFoundError referencing data/README.md when missing or empty."""
+    # Missing file
+    with pytest.raises(FileNotFoundError, match='data/README.md') as exc_info:
+        backend.scripts.prepare_roads.resolve_roads_gpkg(
+            roads_path=str(tmp_path / 'nonexistent.gpkg'))
+    assert 'gcloud storage cp' in str(exc_info.value)
+
+    # Empty 0-byte file
+    empty_file = tmp_path / 'empty.gpkg'
+    empty_file.write_bytes(b'')
+    with pytest.raises(FileNotFoundError,
+                       match='data/README.md') as exc_info_empty:
+        backend.scripts.prepare_roads.resolve_roads_gpkg(
+            roads_path=str(empty_file))
+    assert 'gcloud storage cp' in str(exc_info_empty.value)
+
+
+def test_resolve_roads_gpkg_stale_raises(tmp_path: pathlib.Path) -> None:
+    """Verifies RuntimeError referencing data/README.md when older than 6 months."""
+    stale_file = tmp_path / 'stale.gpkg'
+    stale_file.write_bytes(b'geopackage-data')
+
+    # Set mtime to 185 days ago
+    stale_mtime = datetime.datetime.now(
+        datetime.timezone.utc).timestamp() - (185 * 24 * 3600)
+    os.utime(str(stale_file), (stale_mtime, stale_mtime))
+
+    with pytest.raises(RuntimeError,
+                       match='more than 6 months old') as exc_info:
+        backend.scripts.prepare_roads.resolve_roads_gpkg(
+            roads_path=str(stale_file))
+    assert 'data/README.md' in str(exc_info.value)
+    assert 'gcloud storage cp' in str(exc_info.value)
 
 
 def test_get_roads_total_bounds() -> None:
@@ -264,13 +302,24 @@ def test_process_osm_pbf_to_gpkg_missing_file() -> None:
             'nonexistent.osm.pbf', 'out.gpkg')
 
 
-def test_resolve_roads_gpkg_none_handling(tmp_path: pathlib.Path) -> None:
-    """Verifies resolve_roads_gpkg handles roads_path=None gracefully without TypeError."""
-    cfg_file = tmp_path / 'config.ini'
-    cfg_file.write_text('[gcs]\n', encoding='utf-8')
-    res = backend.scripts.prepare_roads.resolve_roads_gpkg(
-        None, config_path=str(cfg_file), allow_download=False)
-    assert res is None
+def test_main_cli_rejects_download_gcs_and_validates_input(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Verifies prepare_roads CLI rejects removed --download-gcs and enforces --input."""
+    # --download-gcs flag must be rejected by argparse
+    monkeypatch.setattr('sys.argv', ['prepare_roads.py', '--download-gcs'])
+    with pytest.raises(SystemExit) as exit_exc:
+        backend.scripts.prepare_roads.main()
+    assert exit_exc.value.code == 2
+
+    # Missing --input flag must exit with code 1
+    monkeypatch.setattr('sys.argv', ['prepare_roads.py'])
+    with pytest.raises(SystemExit) as exit_exc1:
+        backend.scripts.prepare_roads.main()
+    assert exit_exc1.value.code == 1
+    captured = capsys.readouterr()
+    assert 'Error: --input is required' in captured.out
 
 
 def test_get_roads_total_bounds_empty_dataset() -> None:

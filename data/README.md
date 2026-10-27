@@ -56,20 +56,47 @@ OpenStreetMap GeoPackage file (`data/world_drivable_roads.gpkg`) containing
 qualifying public drivable roads (`primary`, `secondary`, `tertiary`,
 `unclassified`, `residential`, and links).
 
-You can synchronize the pre-compiled global road network from Google Cloud
-Storage or build it from `planet-latest.osm.pbf`:
+To ensure dashpoint accessibility and account for road network evolution,
+`generate_game.py` validates that `data/world_drivable_roads.gpkg` exists, is
+non-empty, and has a file modification time within the last **6 months** (180
+days). If the file is missing or older than 6 months, execution halts with an
+instruction to download or refresh it.
+
+### Downloading the Road Dataset
+
+Download the pre-compiled global road network GeoPackage directly from Google
+Cloud Storage using `gcloud storage cp`:
 
 ```bash
-# Option 1: Download pre-built GeoPackage from Google Cloud Storage
-uv run python -m backend.scripts.prepare_roads --download-gcs
+gcloud storage cp gs://geodashing-v2-map-data/world_drivable_roads.gpkg data/world_drivable_roads.gpkg
+```
 
-# Option 2: Fetch planet-latest.osm.pbf (from 7-day GCS cache or multi-source OSM mirrors) and build
-uv run python -m backend.scripts.prepare_roads \
-  --download-planet-osm \
-  --input data/planet-latest.osm.pbf \
-  --output data/world_drivable_roads.gpkg
+### Refreshing the Road Dataset
 
-# Option 3: Build directly from a local OSM PBF file
+If the dataset in Cloud Storage is approaching or past 6 months old,
+administrators can trigger an automated Cloud Batch compilation job to rebuild
+and upload a fresh GeoPackage from the latest planet OSM PBF extract:
+
+```bash
+./backend/scripts/submit_roads_batch_job.sh
+```
+
+Monitor job status via the Cloud Batch CLI:
+
+```bash
+gcloud batch jobs list --project=geodashing-v2 --location=us-east1 --limit=5
+```
+
+Once the batch job reaches `SUCCEEDED`, re-run `gcloud storage cp` to download
+the new dataset locally.
+
+### Building Locally from OSM PBF
+
+Alternatively, administrators can compile a custom or local OSM extract using
+`prepare_roads.py`:
+
+```bash
+# Compile from an existing local OSM PBF extract
 uv run python -m backend.scripts.prepare_roads \
   --input data/planet-latest.osm.pbf \
   --output data/world_drivable_roads.gpkg

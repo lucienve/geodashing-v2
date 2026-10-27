@@ -419,6 +419,53 @@ def test_main_cli_algorithm_routing(monkeypatch: pytest.MonkeyPatch) -> None:
     mock_seed.assert_called_once()
 
 
+def test_main_cli_road_proximity_error_surfacing(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Verifies that missing or stale road dataset errors are surfaced cleanly."""
+    monkeypatch.setattr('sys.argv', [
+        'generate_game.py', '-t', 'Road Error Test', '--algorithm',
+        'road-proximity'
+    ])
+
+    # 1. Missing file error
+    def raise_missing(*_args: object, **_kwargs: object) -> str:
+        raise FileNotFoundError(
+            "Road dataset 'data/world_drivable_roads.gpkg' is missing or "
+            "empty. See data/README.md for instructions on downloading it "
+            "via 'gcloud storage cp'.")
+
+    monkeypatch.setattr('backend.scripts.prepare_roads.resolve_roads_gpkg',
+                        raise_missing)
+    with pytest.raises(SystemExit) as exit_exc1:
+        backend.scripts.generate_game.main()
+    assert exit_exc1.value.code == 1
+    out1 = capsys.readouterr().out
+    assert 'Execution Error:' in out1
+    assert 'data/README.md' in out1
+    assert 'gcloud storage cp' in out1
+
+    # 2. Stale dataset error (>6 months old)
+    def raise_stale(*_args: object, **_kwargs: object) -> str:
+        raise RuntimeError(
+            "Road dataset 'data/world_drivable_roads.gpkg' is more than "
+            "6 months old (185 days). See data/README.md for instructions on "
+            "refreshing and downloading an updated dataset via "
+            "'gcloud storage cp'.")
+
+    monkeypatch.setattr('backend.scripts.prepare_roads.resolve_roads_gpkg',
+                        raise_stale)
+    with pytest.raises(SystemExit) as exit_exc2:
+        backend.scripts.generate_game.main()
+    assert exit_exc2.value.code == 1
+    out2 = capsys.readouterr().out
+    assert 'Execution Error:' in out2
+    assert 'more than 6 months old' in out2
+    assert 'data/README.md' in out2
+    assert 'gcloud storage cp' in out2
+
+
 def test_resolve_lake_zip_paths() -> None:
     """Verify that default ne_10m_lakes.zip expands to include regional supplements."""
     expanded = backend.scripts.generate_game.resolve_lake_zip_paths(

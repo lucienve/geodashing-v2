@@ -83,16 +83,16 @@ database.
 
 #### Command Line Arguments (`generate_game.py`)
 
-| Flag | Long Form      |  Type   | Description                                                                                                     |
-| :--- | :------------- | :-----: | :-------------------------------------------------------------------------------------------------------------- |
-| `-t` | `--title`      |  `str`  | **Required.** Brief descriptive title of the game (maximum 40 characters).                                      |
-| `-c` | `--count`      |  `int`  | Total number of dashpoints to randomly distribute globally under `--algorithm random`. Defaults to `35000`.     |
-| `-m` | `--month`      |  `int`  | Optional month (1–12) for the game schedule. Defaults to the current month.                                     |
-| `-y` | `--year`       |  `int`  | Optional year for the game schedule. Defaults to the current year.                                              |
-|      | `--preview`    | `flag`  | Generates the game in an inactive "preview" state (`is_active = FALSE`) instead of immediately activating it.   |
-|      | `--algorithm`  |  `str`  | Generation strategy: `random` (default), `grid`, or `road-proximity`.                                           |
-|      | `--grid-size`  | `float` | Grid cell size in km when using `grid` or `road-proximity`. Defaults to `60.05`.                                |
-|      | `--roads-gpkg` |  `str`  | Optional path to road GeoPackage for `road-proximity` (defaults to config or `data/world_drivable_roads.gpkg`). |
+| Flag | Long Form      |  Type   | Description                                                                                                                                 |
+| :--- | :------------- | :-----: | :------------------------------------------------------------------------------------------------------------------------------------------ |
+| `-t` | `--title`      |  `str`  | **Required.** Brief descriptive title of the game (maximum 40 characters).                                                                  |
+| `-c` | `--count`      |  `int`  | Total number of dashpoints to randomly distribute globally under `--algorithm random`. Defaults to `35000`.                                 |
+| `-m` | `--month`      |  `int`  | Optional month (1–12) for the game schedule. Defaults to the current month.                                                                 |
+| `-y` | `--year`       |  `int`  | Optional year for the game schedule. Defaults to the current year.                                                                          |
+|      | `--preview`    | `flag`  | Generates the game in an inactive "preview" state (`is_active = FALSE`) instead of immediately activating it.                               |
+|      | `--algorithm`  |  `str`  | Generation strategy: `random` (default), `grid`, or `road-proximity`.                                                                       |
+|      | `--grid-size`  | `float` | Grid cell size in km when using `grid` or `road-proximity`. Defaults to `60.05`.                                                            |
+|      | `--roads-gpkg` |  `str`  | Optional path to road GeoPackage for `road-proximity` (defaults to config or `data/world_drivable_roads.gpkg`). Must be $\le 6$ months old. |
 
 #### Internal Mechanics
 
@@ -119,6 +119,13 @@ database.
      bonus logic as `grid`, but instead of selecting random land points, samples
      candidates strictly within $\le 50\text{ m}$ of a qualifying drivable road
      from OpenStreetMap (`world_drivable_roads.gpkg`).
+     - **Road Dataset Freshness Gate**: Enforces that the road GeoPackage
+       exists, is non-empty, and has an `mtime` within the last 6 months (180
+       days). If missing or older than 6 months, execution terminates with an
+       actionable error pointing the administrator to
+       [README.md](../data/README.md) to download or refresh it via
+       `gcloud storage cp` (or submit the Cloud Batch pipeline via
+       `./backend/scripts/submit_roads_batch_job.sh`).
      - **Pass 1 (Base Road Darts)**: Shuffles all dry land cells and samples 1
        candidate within 50 m of a qualifying road in that cell.
      - **Pass 2 (Water-Only Cardinal Redistribution)**: For water-only cells (0%

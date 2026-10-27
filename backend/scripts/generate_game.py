@@ -943,9 +943,6 @@ def main() -> None:
                   f"(size: {args.grid_size} km)...")
             roads_path = backend.scripts.prepare_roads.resolve_roads_gpkg(
                 args.roads_gpkg, config_path=config_path)
-            if roads_path is None:
-                raise FileNotFoundError(
-                    "Failed to locate or download road GeoPackage.")
             points = generate_road_proximity_dashpoints(
                 grid_size_km=args.grid_size,
                 land_zip_path=zip_path,

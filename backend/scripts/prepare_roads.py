@@ -28,6 +28,7 @@ EARTH_RADIUS_KM: float = 6371.0088
 DEFAULT_ROADS_GPKG_PATH: str = 'data/world_drivable_roads.gpkg'
 DEFAULT_MAP_BUCKET_NAME: str = 'geodashing-v2-map-data'
 RESUMABLE_CHUNK_SIZE: int = 128 * 1024 * 1024  # 128 MiB chunks
+ROADS_GPKG_MAX_AGE_S: int = 180 * 24 * 3600  # 180 days (~6 months)
 PLANET_PBF_CACHE_OBJECT: str = 'cache/planet-latest.osm.pbf'
 PLANET_PBF_CACHE_MAX_AGE_S: int = 7 * 24 * 3600
 PLANET_OSM_MIRRORS: tuple[str, ...] = (
@@ -516,59 +517,59 @@ def fetch_or_cache_planet_pbf(
 def resolve_roads_gpkg(
     roads_path: str | None = None,
     config_path: str = 'backend/config.ini',
-    allow_download: bool = True,
-) -> str | None:
-    """Ensures the road GeoPackage is available on disk, downloading from GCS if needed.
+    max_age_s: int = ROADS_GPKG_MAX_AGE_S,
+) -> str:
+    """Resolves and validates the local road GeoPackage path and freshness.
 
     Args:
-        roads_path: Optional local path to check or populate (defaults to DEFAULT_ROADS_GPKG_PATH).
+        roads_path: Optional explicit local path to check. If None, resolves
+            from config_path or falls back to DEFAULT_ROADS_GPKG_PATH.
         config_path: Path to backend config.ini.
-        allow_download: If True, downloads from GCS if missing locally.
+        max_age_s: Maximum allowed age of the dataset file in seconds.
 
     Returns:
-        Absolute path to the existing .gpkg file, or None if unavailable.
+        Absolute path to the existing, non-empty, and fresh .gpkg file.
+
+    Raises:
+        FileNotFoundError: If the road dataset is missing or empty.
+        RuntimeError: If the road dataset is older than max_age_s.
     """
-    target_path = roads_path or DEFAULT_ROADS_GPKG_PATH
-    if os.path.exists(target_path) and os.path.getsize(target_path) > 0:
-        return os.path.abspath(target_path)
+    if roads_path is not None:
+        target_path = roads_path
+    else:
+        target_cfg = config_path
+        if not os.path.exists(target_cfg):
+            alt_cfg = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                   '../config.ini')
+            if os.path.exists(alt_cfg):
+                target_cfg = alt_cfg
+        configured_path: str | None = None
+        if os.path.exists(target_cfg):
+            cfg = configparser.ConfigParser()
+            cfg.read(target_cfg)
+            if cfg.has_option('gcs', 'ROADS_GPKG_PATH'):
+                raw_path = cfg.get('gcs', 'ROADS_GPKG_PATH')
+                configured_path = raw_path.strip('"\'')
+        target_path = configured_path or DEFAULT_ROADS_GPKG_PATH
 
-    target_cfg = config_path
-    if not os.path.exists(target_cfg):
-        alt_cfg = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                               '../config.ini')
-        if os.path.exists(alt_cfg):
-            target_cfg = alt_cfg
-        else:
-            return None
+    if not os.path.exists(target_path) or os.path.getsize(target_path) <= 0:
+        raise FileNotFoundError(
+            f"Road dataset '{target_path}' is missing or empty. "
+            "See data/README.md for instructions on downloading it via "
+            "'gcloud storage cp'.")
 
-    try:
-        cfg = configparser.ConfigParser()
-        cfg.read(target_cfg)
-        configured_path = cfg.get('gcs',
-                                  'ROADS_GPKG_PATH',
-                                  fallback=target_path)
-        if os.path.exists(configured_path) and os.path.getsize(
-                configured_path) > 0:
-            return os.path.abspath(configured_path)
+    mtime = os.path.getmtime(target_path)
+    now_ts = datetime.datetime.now(datetime.timezone.utc).timestamp()
+    age_s = now_ts - mtime
+    if age_s > max_age_s:
+        age_days = int(age_s // 86400)
+        raise RuntimeError(
+            f"Road dataset '{target_path}' is more than 6 months old "
+            f"({age_days} days). See data/README.md for instructions on "
+            "refreshing and downloading an updated dataset via 'gcloud storage cp'."
+        )
 
-        if not allow_download:
-            return None
-
-        bucket_name = cfg.get('gcs',
-                              'GCS_MAP_DATA_BUCKET_NAME',
-                              fallback=DEFAULT_MAP_BUCKET_NAME)
-        cred_path = cfg.get('mail',
-                            'GOOGLE_APPLICATION_CREDENTIALS',
-                            fallback=None)
-        cred_clean = cred_path.strip('"\'') if cred_path else None
-
-        download_roads_from_gcs(configured_path, bucket_name, cred_clean)
-        if os.path.exists(configured_path):
-            return os.path.abspath(configured_path)
-    except (OSError, RuntimeError, ValueError, configparser.Error) as exc:
-        print(f'Warning: Could not auto-resolve road dataset from GCS: {exc}')
-
-    return None
+    return os.path.abspath(target_path)
 
 
 def get_roads_total_bounds(
@@ -933,7 +934,6 @@ def main() -> None:
                         default=DEFAULT_ROADS_GPKG_PATH)
     parser.add_argument('--delete-input', action='store_true')
     parser.add_argument('--upload-gcs', action='store_true')
-    parser.add_argument('--download-gcs', action='store_true')
     parser.add_argument('--download-planet-osm', action='store_true')
     parser.add_argument('-c',
                         '--config',
@@ -953,10 +953,6 @@ def main() -> None:
     cred_clean = cred_path.strip('"\'') if cred_path else None
 
     try:
-        if args.download_gcs:
-            download_roads_from_gcs(args.output, bucket_name, cred_clean)
-            return
-
         if not args.input:
             print('Error: --input is required when preparing road data.')
             sys.exit(1)
