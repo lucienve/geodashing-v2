@@ -2203,7 +2203,7 @@ geographic games where they are tasked with reaching randomly generated
   - Streaming GeoPackage export (`export_roads_geopackage`) with spatial R-tree
     indexing and OSM PBF compilation (`process_osm_pbf_to_gpkg`) via `osmium`
     and `ogr2ogr`.
-  - Resumable 32 MiB chunked GCS upload/download utilities
+  - Resumable 128 MiB chunked GCS upload/download utilities
     (`upload_roads_to_gcs`, `download_roads_from_gcs`, `resolve_roads_gpkg`)
     with Application Default Credentials (ADC) fallback, plus 7-day GCS caching
     (`cache/planet-latest.osm.pbf`) and multi-connection `aria2c` mirror
@@ -2225,15 +2225,16 @@ geographic games where they are tasked with reaching randomly generated
   [batch_prepare_roads.json](../backend/scripts/batch_prepare_roads.json) and
   [submit_roads_batch_job.sh](../backend/scripts/submit_roads_batch_job.sh) in
   Terraform (`terraform/main.tf`, `terraform/outputs.tf`) for compiling global
-  `planet-latest.osm.pbf` into `world_drivable_roads.gpkg` on an `e2-highmem-8`
-  (8 vCPU, 64 GiB RAM, 250 GB `pd-ssd`) instance with a 45 GB in-memory GDAL
-  node cache (`OSM_MAX_TMPFILE_SIZE=45000`), sector delta compression
-  (`OSM_COMPRESS_NODES=YES`), and 10 GiB SQLite cache (`OGR_SQLITE_CACHE=10240`)
-  so the global road node index remains in `/vsimem/` RAM without spilling to
-  disk (using a hermetic local GCS code bundle upload, strict POSIX `/bin/sh`
-  syntax, direct `/usr/local/bin` tool installation, `aria2c` multi-source
-  downloads, 7-day GCS planet PBF caching, and immediate post-`osmium` local PBF
-  deletion via `--delete-input`).
+  `planet-latest.osm.pbf` into `world_drivable_roads.gpkg` on a `SPOT`
+  `n2d-highmem-8` (8 vCPU, 64 GiB RAM, 250 GB `pd-ssd`) instance with a 45 GB
+  in-memory GDAL node cache (`OSM_MAX_TMPFILE_SIZE=45000`), sector delta
+  compression (`OSM_COMPRESS_NODES=YES`), 10 GiB SQLite cache
+  (`OGR_SQLITE_CACHE=10240`), and 64 KB SQLite page size
+  (`OGR_SQLITE_PRAGMA=page_size=65536`) so the global road node index remains in
+  `/vsimem/` RAM without spilling to disk (using a hermetic local GCS code
+  bundle upload, strict POSIX `/bin/sh` syntax, direct `/usr/local/bin` tool
+  installation, `aria2c` multi-source downloads, 7-day GCS planet PBF caching,
+  and immediate post-`osmium` local PBF deletion via `--delete-input`).
 - Integrated road-proximity generation in
   [generate_game.py](../backend/scripts/generate_game.py) with two-pass
   placement:

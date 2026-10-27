@@ -27,7 +27,7 @@ import shapely.geometry.base
 EARTH_RADIUS_KM: float = 6371.0088
 DEFAULT_ROADS_GPKG_PATH: str = 'data/world_drivable_roads.gpkg'
 DEFAULT_MAP_BUCKET_NAME: str = 'geodashing-v2-map-data'
-RESUMABLE_CHUNK_SIZE: int = 32 * 1024 * 1024  # 32 MiB chunks
+RESUMABLE_CHUNK_SIZE: int = 128 * 1024 * 1024  # 128 MiB chunks
 PLANET_PBF_CACHE_OBJECT: str = 'cache/planet-latest.osm.pbf'
 PLANET_PBF_CACHE_MAX_AGE_S: int = 7 * 24 * 3600
 PLANET_OSM_MIRRORS: tuple[str, ...] = (
@@ -189,6 +189,7 @@ def process_osm_pbf_to_gpkg(
         env['OSM_MAX_TMPFILE_SIZE'] = '45000'
         env['OSM_COMPRESS_NODES'] = 'YES'
         env['OGR_SQLITE_CACHE'] = '10240'
+        env['OGR_SQLITE_PRAGMA'] = 'page_size=65536'
         env['OGR_SQLITE_SYNCHRONOUS'] = 'OFF'
 
         cmd_ogr = [

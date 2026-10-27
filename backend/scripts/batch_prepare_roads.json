@@ -23,7 +23,8 @@
     "instances": [
       {
         "policy": {
-          "machineType": "e2-highmem-8",
+          "machineType": "n2d-highmem-8",
+          "provisioningModel": "SPOT",
           "bootDisk": {
             "type": "pd-ssd",
             "sizeGb": "250"

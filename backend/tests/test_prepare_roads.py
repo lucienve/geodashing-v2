@@ -300,6 +300,7 @@ def test_process_osm_pbf_to_gpkg_deletes_input_after_osmium(
             assert env.get('OSM_MAX_TMPFILE_SIZE') == '45000'
             assert env.get('OSM_COMPRESS_NODES') == 'YES'
             assert env.get('OGR_SQLITE_CACHE') == '10240'
+            assert env.get('OGR_SQLITE_PRAGMA') == 'page_size=65536'
 
     monkeypatch.setattr('shutil.which', lambda name: '/usr/bin/osmium')
     monkeypatch.setattr('subprocess.run', fake_run)
@@ -324,8 +325,12 @@ def test_batch_prepare_roads_json_syntax_and_shellcheck() -> None:
     assert len(task_groups) == 1
     task_spec = task_groups[0].get('taskSpec', {})
     assert task_spec.get('computeResource', {}).get('memoryMib') == '65536'
-    assert (data.get('allocationPolicy', {}).get('instances', [{}])[0].get(
-        'policy', {}).get('machineType') == 'e2-highmem-8')
+    policy = (data.get('allocationPolicy', {}).get('instances',
+                                                   [{}])[0].get('policy', {}))
+    assert policy.get('machineType') == 'n2d-highmem-8'
+    assert policy.get('provisioningModel') == 'SPOT'
+    assert (backend.scripts.prepare_roads.RESUMABLE_CHUNK_SIZE == 128 * 1024 *
+            1024)
     runnables = task_spec.get('runnables', [])
     assert len(runnables) == 1
     script_text = runnables[0].get('script', {}).get('text', '')
