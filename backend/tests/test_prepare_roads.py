@@ -293,9 +293,12 @@ def test_process_osm_pbf_to_gpkg_deletes_input_after_osmium(
 
     def fake_run(cmd: list[str], **kwargs: object) -> None:
         nonlocal input_existed_during_ogr
-        del kwargs
         if cmd[0] == 'ogr2ogr':
             input_existed_during_ogr = input_pbf.exists()
+            env = kwargs.get('env')
+            assert isinstance(env, dict)
+            assert env.get('OSM_MAX_TMPFILE_SIZE') == '20480'
+            assert env.get('OGR_SQLITE_CACHE') == '8192'
 
     monkeypatch.setattr('shutil.which', lambda name: '/usr/bin/osmium')
     monkeypatch.setattr('subprocess.run', fake_run)

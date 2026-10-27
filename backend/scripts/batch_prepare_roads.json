@@ -14,7 +14,7 @@
           "memoryMib": "32768",
           "bootDiskMib": "256000"
         },
-        "maxRunDuration": "14400s"
+        "maxRunDuration": "43200s"
       },
       "taskCount": "1"
     }

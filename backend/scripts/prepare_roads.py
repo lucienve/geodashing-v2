@@ -186,7 +186,8 @@ def process_osm_pbf_to_gpkg(
         env = os.environ.copy()
         env['CPL_TMPDIR'] = work_dir
         env['SQLITE_TMPDIR'] = work_dir
-        env['OGR_SQLITE_CACHE'] = '4096'
+        env['OSM_MAX_TMPFILE_SIZE'] = '20480'
+        env['OGR_SQLITE_CACHE'] = '8192'
         env['OGR_SQLITE_SYNCHRONOUS'] = 'OFF'
 
         cmd_ogr = [
@@ -207,7 +208,7 @@ def process_osm_pbf_to_gpkg(
             'roads',
             '-explodecollections',
             '-nlt',
-            'PROMOTE_TO_MULTI',
+            'LINESTRING',
             '-lco',
             'SPATIAL_INDEX=YES',
             '-gt',
@@ -372,7 +373,7 @@ def download_roads_from_gcs(
     temp_path = f'{local_path}.tmp'
     try:
         with open(temp_path, 'wb') as f:
-            for chunk in resp.iter_content(chunk_size=1024 * 1024):
+            for chunk in resp.iter_content(chunk_size=RESUMABLE_CHUNK_SIZE):
                 if chunk:
                     f.write(chunk)
         os.replace(temp_path, local_path)
