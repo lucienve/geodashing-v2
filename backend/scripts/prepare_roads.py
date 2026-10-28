@@ -116,15 +116,10 @@ def export_roads_geopackage(gdf: gpd.GeoDataFrame, output_path: str) -> None:
 
 def _write_osmconf_ini(conf_path: str) -> None:
     """Writes a minimal osmconf.ini extracting only highway and access columns."""
-    content = ("[lines]\n"
-               "osm_id=no\n"
-               "osm_version=no\n"
-               "osm_timestamp=no\n"
-               "osm_uid=no\n"
-               "osm_user=no\n"
-               "osm_changeset=no\n"
-               "attributes=highway,access\n"
-               "other_tags=no\n")
+    content = (
+        "[lines]\nosm_id=no\nosm_version=no\nosm_timestamp=no\nosm_uid=no\n"
+        "osm_user=no\nosm_changeset=no\nattributes=highway,access\nother_tags=no\n"
+    )
     with open(conf_path, 'w', encoding='utf-8') as f:
         f.write(content)
 
@@ -850,6 +845,14 @@ class RoadPlacementContext:
     neighbor_grid: typing.Any
     road_bounds: tuple[float, float, float, float] | None
     cell_candidates: dict[tuple[int, int], list[shapely.geometry.Point]]
+    verbose: bool = True
+    progress_interval: int = 1000
+
+    def __post_init__(self) -> None:
+        if self.progress_interval <= 0:
+            raise ValueError(
+                f"progress_interval must be greater than 0, got {self.progress_interval}"
+            )
 
 
 def find_valid_road_cell_point(
@@ -886,16 +889,32 @@ def place_shuffled_road_cells(
     accepted_points: list[shapely.geometry.Point],
     pass2_counts: dict[tuple[int, int], int],
 ) -> int:
-    """Places road points for cells in shuffled order, returning count placed."""
+    """Places road points for cells in shuffled order, returning count placed.
+
+    Args:
+        cells: List of (band, cell_idx) tuples to sample.
+        ctx: Road placement context with caches, spatial filter, and road data.
+        accepted_points: List where accepted candidate points are appended.
+        pass2_counts: Map of (band_idx, cell_idx) to bonus attempt counts.
+
+    Returns:
+        The total number of road-proximity points successfully placed.
+    """
     rng = np.random.default_rng()
     placed_count = 0
-    for idx in rng.permutation(len(cells)):
+    total_cells = len(cells)
+    for i, idx in enumerate(rng.permutation(total_cells), start=1):
         b, c = cells[idx]
         attempts = 1 + pass2_counts.get((b.band_idx, c), 0)
         pt = find_valid_road_cell_point(b, c, ctx, attempts)
         if pt is not None:
             accepted_points.append(pt)
             placed_count += 1
+        if ctx.verbose and (i % ctx.progress_interval == 0
+                            or i == total_cells):
+            print(
+                f"  Processed {i}/{total_cells} cells ({placed_count} points placed)...",
+                flush=True)
     return placed_count
 
 

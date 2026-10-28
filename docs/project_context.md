@@ -61,6 +61,9 @@ geographic games where they are tasked with reaching randomly generated
   major lakes.
 - Format of dashpoint IDs successfully transitioned from numeric to alphanumeric
   to match classical standards.
+- Added periodic progress indicators with explicit stream flushing
+  (`flush=True`) to road-proximity dashpoint placement across Pass 1 and Pass 2
+  in `backend/scripts/prepare_roads.py` and `backend/scripts/generate_game.py`.
 
 ### 2. Core API Layer & Authentication
 

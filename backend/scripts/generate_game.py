@@ -854,6 +854,7 @@ def generate_road_proximity_dashpoints(
         road_bounds=backend.scripts.prepare_roads.get_roads_total_bounds(
             roads_input),
         cell_candidates={},
+        verbose=verbose,
     )
 
     _run_road_placement_passes(land_cells, pass2_data, ctx, accepted_points,

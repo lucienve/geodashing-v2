@@ -598,3 +598,140 @@ def test_download_planet_rejects_incomplete_and_never_caches(
     assert not dest_pbf.exists()
     assert not (tmp_path / 'planet-latest.osm.pbf.part').exists()
     assert not upload_called
+
+
+def test_place_shuffled_road_cells_progress_output(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Verifies periodic progress printing with custom interval and final flush."""
+    mock_band = unittest.mock.MagicMock(band_idx=0)
+    cells = [(mock_band, i) for i in range(5)]
+    ctx = backend.scripts.prepare_roads.RoadPlacementContext(
+        roads_input='mock.gpkg',
+        spatial_filter=unittest.mock.MagicMock(),
+        neighbor_grid=unittest.mock.MagicMock(),
+        road_bounds=None,
+        cell_candidates={},
+        verbose=True,
+        progress_interval=2,
+    )
+
+    placed_points = [
+        shapely.geometry.Point(0, 0),
+        shapely.geometry.Point(1, 1),
+        None,
+        shapely.geometry.Point(3, 3),
+        None,
+    ]
+    pt_iter = iter(placed_points)
+    monkeypatch.setattr(
+        backend.scripts.prepare_roads,
+        'find_valid_road_cell_point',
+        lambda *args, **kwargs: next(pt_iter),
+    )
+
+    accepted: list[shapely.geometry.Point] = []
+    count = backend.scripts.prepare_roads.place_shuffled_road_cells(
+        cells,
+        ctx,
+        accepted,
+        pass2_counts={},
+    )
+
+    assert count == 3
+    assert len(accepted) == 3
+
+    captured = capsys.readouterr()
+    lines = [
+        line.strip() for line in captured.out.strip().splitlines() if line
+    ]
+    assert len(lines) == 3
+    assert 'Processed 2/5 cells' in lines[0]
+    assert 'Processed 4/5 cells' in lines[1]
+    assert 'Processed 5/5 cells (3 points placed)...' in lines[2]
+
+
+def test_place_shuffled_road_cells_verbose_false(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Verifies that progress messages are completely suppressed when verbose is False."""
+    mock_band = unittest.mock.MagicMock(band_idx=0)
+    cells = [(mock_band, 0), (mock_band, 1)]
+    ctx = backend.scripts.prepare_roads.RoadPlacementContext(
+        roads_input='mock.gpkg',
+        spatial_filter=unittest.mock.MagicMock(),
+        neighbor_grid=unittest.mock.MagicMock(),
+        road_bounds=None,
+        cell_candidates={},
+        verbose=False,
+    )
+    monkeypatch.setattr(
+        backend.scripts.prepare_roads,
+        'find_valid_road_cell_point',
+        lambda *args, **kwargs: shapely.geometry.Point(0, 0),
+    )
+
+    accepted: list[shapely.geometry.Point] = []
+    count = backend.scripts.prepare_roads.place_shuffled_road_cells(
+        cells,
+        ctx,
+        accepted,
+        pass2_counts={},
+    )
+
+    assert count == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+
+
+def test_place_shuffled_road_cells_invalid_interval() -> None:
+    """Verifies that non-positive progress intervals raise a ValueError."""
+    with pytest.raises(ValueError,
+                       match="progress_interval must be greater than 0"):
+        backend.scripts.prepare_roads.RoadPlacementContext(
+            roads_input='mock.gpkg',
+            spatial_filter=unittest.mock.MagicMock(),
+            neighbor_grid=unittest.mock.MagicMock(),
+            road_bounds=None,
+            cell_candidates={},
+            progress_interval=0,
+        )
+
+    with pytest.raises(ValueError,
+                       match="progress_interval must be greater than 0"):
+        backend.scripts.prepare_roads.RoadPlacementContext(
+            roads_input='mock.gpkg',
+            spatial_filter=unittest.mock.MagicMock(),
+            neighbor_grid=unittest.mock.MagicMock(),
+            road_bounds=None,
+            cell_candidates={},
+            progress_interval=-5,
+        )
+
+
+def test_place_shuffled_road_cells_empty_cells(
+    capsys: pytest.CaptureFixture[str], ) -> None:
+    """Verifies that empty cells list returns 0 and produces no stdout output."""
+    ctx = backend.scripts.prepare_roads.RoadPlacementContext(
+        roads_input='mock.gpkg',
+        spatial_filter=unittest.mock.MagicMock(),
+        neighbor_grid=unittest.mock.MagicMock(),
+        road_bounds=None,
+        cell_candidates={},
+        verbose=True,
+        progress_interval=100,
+    )
+    accepted: list[shapely.geometry.Point] = []
+    count = backend.scripts.prepare_roads.place_shuffled_road_cells(
+        [],
+        ctx,
+        accepted,
+        pass2_counts={},
+    )
+
+    assert count == 0
+    assert len(accepted) == 0
+    captured = capsys.readouterr()
+    assert captured.out == ""
