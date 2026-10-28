@@ -2352,3 +2352,28 @@ geographic games where they are tasked with reaching randomly generated
     - Replaced GCS tarball packaging with clean staging into a temporary
       context, Artifact Registry Docker credential configuration,
       `docker build`, `docker push`, and `gcloud batch jobs submit`.
+    - Added `--force` argument parsing to dynamically inject `"--force"` into
+      the container commands array within
+      `${BUILD_CTX}/batch_prepare_roads.json` without modifying tracked
+      repository configuration.
+- **Spot VM Preemption Checkpointing & Validation (`prepare_roads.py`)**:
+  - Implemented multi-stage GCS checkpointing to prevent repeated work across
+    Spot VM preemptions (`exitCode 50001`):
+    - **Stage 0 (Early Exit)**: Checks if `world_drivable_roads.gpkg` in GCS is
+      already fresh ($\le 7$ days old) and exits immediately with code `0`.
+    - **Stage 1 (Filtered PBF Cache)**: Checks for fresh, verified
+      `cache/filtered_roads.osm.pbf` in GCS. On a cache hit, bypasses the raw 84
+      GB planet PBF download and `osmium tags-filter` step completely, streaming
+      directly into `ogr2ogr`.
+    - **Stage 2 (Atomic Filtering & Checkpoint Upload)**: When filtering
+      locally, writes to `filtered_roads.osm.pbf.part`, validates header
+      integrity via `osmium fileinfo`, atomically renames to
+      `filtered_roads.osm.pbf`, deletes the raw input PBF to free Local SSD
+      space, and uploads the filtered checkpoint to
+      `cache/filtered_roads.osm.pbf` in GCS before starting `ogr2ogr`.
+    - **Integrity Validation**: Enforces exact byte-size verification against
+      GCS metadata and PBF structural checks via `osmium fileinfo` on all PBF
+      downloads, falling back cleanly to upstream mirrors if corruption occurs.
+    - **`--force` Override**: Added `--force` flag across `prepare_roads.py` and
+      `submit_roads_batch_job.sh` to bypass GCS freshness and cache checks on
+      demand.

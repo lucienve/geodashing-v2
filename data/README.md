@@ -81,10 +81,17 @@ The pipeline executes as a containerized job on Container-Optimized OS
 (`batch-cos`) in Google Cloud Batch with Image Streaming enabled from Artifact
 Registry (`us-east1-docker.pkg.dev/geodashing-v2/batch/prepare-roads:latest`),
 leveraging an attached 375 GiB Local NVMe SSD for fast intermediate indexing and
-automated retries on Spot VM preemption:
+automated retries on Spot VM preemption. The job maintains multi-stage GCS
+caching (`cache/planet-latest.osm.pbf` and `cache/filtered_roads.osm.pbf`) and
+an early-exit check on `world_drivable_roads.gpkg`, allowing preempted VMs to
+resume without repeating mirror downloads or `osmium` filtering:
 
 ```bash
+# Standard compilation with GCS checkpointing and early-exit guards
 ./backend/scripts/submit_roads_batch_job.sh
+
+# Force recompilation (bypassing GCS cache and freshness checks)
+./backend/scripts/submit_roads_batch_job.sh --force
 ```
 
 Monitor job status via the Cloud Batch CLI or Google Cloud Console:

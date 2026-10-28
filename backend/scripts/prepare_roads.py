@@ -30,6 +30,8 @@ DEFAULT_MAP_BUCKET_NAME: str = 'geodashing-v2-map-data'
 RESUMABLE_CHUNK_SIZE: int = 128 * 1024 * 1024  # 128 MiB chunks
 ROADS_GPKG_MAX_AGE_S: int = 180 * 24 * 3600  # 180 days (~6 months)
 PLANET_PBF_CACHE_OBJECT: str = 'cache/planet-latest.osm.pbf'
+FILTERED_PBF_CACHE_OBJECT: str = 'cache/filtered_roads.osm.pbf'
+ROADS_GPKG_GCS_OBJECT: str = 'world_drivable_roads.gpkg'
 PLANET_PBF_CACHE_MAX_AGE_S: int = 7 * 24 * 3600
 PLANET_OSM_MIRRORS: tuple[str, ...] = (
     'https://ftpmirror.your.org/pub/openstreetmap/pbf/planet-latest.osm.pbf',
@@ -124,17 +126,122 @@ def _write_osmconf_ini(conf_path: str) -> None:
         f.write(content)
 
 
+def _filter_and_cache_pbf_roads(
+    input_pbf: str,
+    filtered_pbf: str,
+    filtered_part_pbf: str,
+    *,
+    bucket_name: str | None = None,
+    credentials_path: str | None = None,
+    delete_input: bool = False,
+) -> None:
+    """Filters OSM highway ways using osmium and caches to GCS if configured."""
+    print(f"Running osmium tags-filter on {input_pbf}...")
+    hw_filter = ','.join(sorted(QUALIFYING_HIGHWAY_TYPES))
+    cmd_osmium = [
+        'osmium',
+        'tags-filter',
+        input_pbf,
+        f'w/highway={hw_filter}',
+        '-o',
+        filtered_part_pbf,
+        '--output-format=pbf',
+        '--overwrite',
+    ]
+    subprocess.run(cmd_osmium, check=True)
+    _verify_planet_download(filtered_part_pbf, expected_size=0)
+    os.replace(filtered_part_pbf, filtered_pbf)
+
+    if delete_input and os.path.exists(input_pbf):
+        os.remove(input_pbf)
+
+    if bucket_name:
+        print(f'Caching filtered PBF to gs://{bucket_name}/'
+              f'{FILTERED_PBF_CACHE_OBJECT}...')
+        try:
+            upload_roads_to_gcs(filtered_pbf,
+                                bucket_name,
+                                credentials_path,
+                                object_name=FILTERED_PBF_CACHE_OBJECT)
+        except (OSError, RuntimeError) as exc:
+            print(f'Warning: Caching filtered PBF to GCS failed ({exc}); '
+                  'continuing with local GeoPackage compilation.')
+
+
+def _run_ogr2ogr_roads_export(
+    source_pbf: str,
+    output_gpkg: str,
+    work_dir: str,
+    osmconf_path: str,
+) -> None:
+    """Executes ogr2ogr to compile lines into an R-tree indexed GeoPackage."""
+    _write_osmconf_ini(osmconf_path)
+
+    access_cond = ' AND '.join(f"(access IS NULL OR access != '{val}')"
+                               for val in sorted(EXCLUDED_ACCESS_VALUES))
+    hw_cond = 'highway IN (' + ','.join(
+        f"'{val}'" for val in sorted(QUALIFYING_HIGHWAY_TYPES)) + ')'
+    where_clause = f'{hw_cond} AND ({access_cond})'
+
+    if os.path.exists(output_gpkg):
+        os.remove(output_gpkg)
+
+    env = os.environ.copy()
+    env['CPL_TMPDIR'] = work_dir
+    env['SQLITE_TMPDIR'] = work_dir
+    env['OSM_MAX_TMPFILE_SIZE'] = '45000'
+    env['OSM_COMPRESS_NODES'] = 'YES'
+    env['OGR_SQLITE_CACHE'] = '10240'
+    env['OGR_SQLITE_PRAGMA'] = 'page_size=65536'
+    env['OGR_SQLITE_SYNCHRONOUS'] = 'OFF'
+
+    cmd_ogr = [
+        'ogr2ogr',
+        '-f',
+        'GPKG',
+        output_gpkg,
+        source_pbf,
+        'lines',
+        '--config',
+        'OSM_CONFIG_FILE',
+        osmconf_path,
+        '-where',
+        where_clause,
+        '-select',
+        '',
+        '-nln',
+        'roads',
+        '-explodecollections',
+        '-nlt',
+        'LINESTRING',
+        '-lco',
+        'SPATIAL_INDEX=YES',
+        '-gt',
+        '100000',
+    ]
+    print(f"Running ogr2ogr to generate {output_gpkg}...")
+    subprocess.run(cmd_ogr, check=True, env=env)
+    print("GeoPackage compilation completed successfully.")
+
+
 def process_osm_pbf_to_gpkg(
     input_pbf: str,
     output_gpkg: str,
     delete_input: bool = False,
+    bucket_name: str | None = None,
+    credentials_path: str | None = None,
+    *,
+    skip_osmium: bool = False,
 ) -> None:
     """Compiles an OSM PBF extract into a filtered, R-tree indexed GeoPackage.
 
     Args:
-        input_pbf: Path to the raw .osm.pbf file.
+        input_pbf: Path to the raw or pre-filtered .osm.pbf file.
         output_gpkg: Destination .gpkg path.
         delete_input: If True, removes input_pbf after processing.
+        bucket_name: Optional GCS bucket name to cache filtered_roads.osm.pbf.
+        credentials_path: Optional service account credentials path.
+        skip_osmium: If True, bypasses osmium tags-filter step (input is already filtered).
 
     Raises:
         FileNotFoundError: If input_pbf does not exist.
@@ -147,81 +254,31 @@ def process_osm_pbf_to_gpkg(
     os.makedirs(work_dir, exist_ok=True)
 
     filtered_pbf = os.path.join(work_dir, 'filtered_roads.osm.pbf')
+    filtered_part_pbf = f'{filtered_pbf}.part'
     osmconf_path = os.path.join(work_dir, 'osmconf.ini')
     source_pbf = input_pbf
 
     try:
-        if shutil.which('osmium'):
-            print(f"Running osmium tags-filter on {input_pbf}...")
-            hw_filter = ','.join(sorted(QUALIFYING_HIGHWAY_TYPES))
-            cmd_osmium = [
-                'osmium',
-                'tags-filter',
-                input_pbf,
-                f'w/highway={hw_filter}',
-                '-o',
-                filtered_pbf,
-                '--overwrite',
-            ]
-            subprocess.run(cmd_osmium, check=True)
+        if not skip_osmium and shutil.which('osmium'):
+            _filter_and_cache_pbf_roads(input_pbf,
+                                        filtered_pbf,
+                                        filtered_part_pbf,
+                                        bucket_name=bucket_name,
+                                        credentials_path=credentials_path,
+                                        delete_input=delete_input)
             source_pbf = filtered_pbf
-            if delete_input and os.path.exists(input_pbf):
-                os.remove(input_pbf)
 
-        _write_osmconf_ini(osmconf_path)
-
-        access_cond = ' AND '.join(f"(access IS NULL OR access != '{val}')"
-                                   for val in sorted(EXCLUDED_ACCESS_VALUES))
-        hw_cond = 'highway IN (' + ','.join(
-            f"'{val}'" for val in sorted(QUALIFYING_HIGHWAY_TYPES)) + ')'
-        where_clause = f'{hw_cond} AND ({access_cond})'
-
-        if os.path.exists(output_gpkg):
-            os.remove(output_gpkg)
-
-        env = os.environ.copy()
-        env['CPL_TMPDIR'] = work_dir
-        env['SQLITE_TMPDIR'] = work_dir
-        env['OSM_MAX_TMPFILE_SIZE'] = '45000'
-        env['OSM_COMPRESS_NODES'] = 'YES'
-        env['OGR_SQLITE_CACHE'] = '10240'
-        env['OGR_SQLITE_PRAGMA'] = 'page_size=65536'
-        env['OGR_SQLITE_SYNCHRONOUS'] = 'OFF'
-
-        cmd_ogr = [
-            'ogr2ogr',
-            '-f',
-            'GPKG',
-            output_gpkg,
-            source_pbf,
-            'lines',
-            '--config',
-            'OSM_CONFIG_FILE',
-            osmconf_path,
-            '-where',
-            where_clause,
-            '-select',
-            '',
-            '-nln',
-            'roads',
-            '-explodecollections',
-            '-nlt',
-            'LINESTRING',
-            '-lco',
-            'SPATIAL_INDEX=YES',
-            '-gt',
-            '100000',
-        ]
-        print(f"Running ogr2ogr to generate {output_gpkg}...")
-        subprocess.run(cmd_ogr, check=True, env=env)
-        print("GeoPackage compilation completed successfully.")
+        _run_ogr2ogr_roads_export(source_pbf, output_gpkg, work_dir,
+                                  osmconf_path)
 
     except subprocess.CalledProcessError as exc:
         raise RuntimeError(f"Road processing command failed: {exc}") from exc
     finally:
         if os.path.exists(osmconf_path):
             os.remove(osmconf_path)
-        if os.path.exists(filtered_pbf):
+        if os.path.exists(filtered_part_pbf):
+            os.remove(filtered_part_pbf)
+        if not skip_osmium and os.path.exists(filtered_pbf):
             os.remove(filtered_pbf)
         if delete_input and os.path.exists(input_pbf):
             os.remove(input_pbf)
@@ -425,7 +482,7 @@ def _get_expected_planet_size() -> int:
     return 0
 
 
-def _verify_planet_download(part_path: str, expected_size: int) -> None:
+def _verify_planet_download(part_path: str, expected_size: int = 0) -> None:
     """Verifies downloaded PBF completeness, absence of .aria2 file, and header."""
     if not os.path.exists(part_path):
         raise RuntimeError(f'Downloaded file missing: {part_path}')
@@ -440,6 +497,45 @@ def _verify_planet_download(part_path: str, expected_size: int) -> None:
     if shutil.which('osmium'):
         subprocess.run(['osmium', 'fileinfo', '--input-format=pbf', part_path],
                        check=True)
+
+
+def fetch_cached_filtered_pbf(
+    dest_path: str,
+    bucket_name: str,
+    credentials_path: str | None = None,
+) -> bool:
+    """Downloads and verifies 7-day cached filtered_roads.osm.pbf from GCS.
+
+    Args:
+        dest_path: Destination local path for the verified filtered PBF.
+        bucket_name: GCS bucket name.
+        credentials_path: Optional service account credentials path.
+
+    Returns:
+        bool: True if cached file exists, was downloaded, and passed verification;
+            False otherwise.
+    """
+    cached_size = _check_gcs_planet_cache(
+        bucket_name, credentials_path, object_name=FILTERED_PBF_CACHE_OBJECT)
+    if cached_size is None:
+        return False
+
+    print(f'Found fresh GCS filtered cache gs://{bucket_name}/'
+          f'{FILTERED_PBF_CACHE_OBJECT} ({cached_size} bytes).')
+    try:
+        download_roads_from_gcs(dest_path,
+                                bucket_name,
+                                credentials_path,
+                                object_name=FILTERED_PBF_CACHE_OBJECT)
+        _verify_planet_download(dest_path, expected_size=cached_size)
+        return True
+    except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:
+        print(
+            f'Warning: GCS filtered cache download or validation failed ({exc}); '
+            'falling back to raw OSM download and filtering.')
+        if os.path.exists(dest_path):
+            os.remove(dest_path)
+        return False
 
 
 def _download_planet_from_mirrors(dest_path: str) -> None:
@@ -481,23 +577,38 @@ def fetch_or_cache_planet_pbf(
     dest_path: str,
     bucket_name: str,
     credentials_path: str | None = None,
+    force: bool = False,
 ) -> str:
-    """Fetches planet-latest.osm.pbf from 7-day GCS cache or OSM mirrors."""
-    cached_size = _check_gcs_planet_cache(bucket_name, credentials_path)
-    if cached_size is not None:
-        print(f'Found fresh GCS cache gs://{bucket_name}/'
-              f'{PLANET_PBF_CACHE_OBJECT} ({cached_size} bytes).')
-        try:
-            download_roads_from_gcs(dest_path,
-                                    bucket_name,
-                                    credentials_path,
-                                    object_name=PLANET_PBF_CACHE_OBJECT)
-            if os.path.exists(dest_path) and os.path.getsize(
-                    dest_path) == cached_size:
+    """Fetches planet-latest.osm.pbf from 7-day GCS cache or OSM mirrors.
+
+    Args:
+        dest_path: Destination local path for the PBF file.
+        bucket_name: GCS bucket name.
+        credentials_path: Optional service account credentials path.
+        force: If True, bypasses GCS cache and forces fresh download.
+
+    Returns:
+        str: Path to the validated PBF file.
+    """
+    if not force:
+        cached_size = _check_gcs_planet_cache(bucket_name, credentials_path)
+        if cached_size is not None:
+            print(f'Found fresh GCS cache gs://{bucket_name}/'
+                  f'{PLANET_PBF_CACHE_OBJECT} ({cached_size} bytes).')
+            try:
+                download_roads_from_gcs(dest_path,
+                                        bucket_name,
+                                        credentials_path,
+                                        object_name=PLANET_PBF_CACHE_OBJECT)
+                _verify_planet_download(dest_path, expected_size=cached_size)
                 return dest_path
-        except (OSError, RuntimeError) as exc:
-            print(f'Warning: GCS cache download failed ({exc}); '
-                  'falling back to OSM mirrors.')
+            except (OSError, RuntimeError,
+                    subprocess.CalledProcessError) as exc:
+                print(
+                    f'Warning: GCS cache download or validation failed ({exc}); '
+                    'falling back to OSM mirrors.')
+                if os.path.exists(dest_path):
+                    os.remove(dest_path)
     print('Downloading planet-latest.osm.pbf from OpenStreetMap mirrors...')
     _download_planet_from_mirrors(dest_path)
     print(f'Caching verified PBF to gs://{bucket_name}/'
@@ -922,13 +1033,20 @@ def _compile_roads_dataset(
     input_path: str,
     output_path: str,
     delete_input: bool = False,
+    bucket_name: str | None = None,
+    credentials_path: str | None = None,
+    *,
+    skip_osmium: bool = False,
 ) -> None:
     """Processes input PBF or vector road dataset into target GeoPackage."""
     if input_path.lower().endswith('.osm.pbf') or input_path.lower().endswith(
             '.pbf'):
         process_osm_pbf_to_gpkg(input_path,
                                 output_path,
-                                delete_input=delete_input)
+                                delete_input=delete_input,
+                                bucket_name=bucket_name,
+                                credentials_path=credentials_path,
+                                skip_osmium=skip_osmium)
         return
 
     print(f'Reading raw road data from {input_path}...')
@@ -954,6 +1072,10 @@ def main() -> None:
     parser.add_argument('--delete-input', action='store_true')
     parser.add_argument('--upload-gcs', action='store_true')
     parser.add_argument('--download-planet-osm', action='store_true')
+    parser.add_argument(
+        '--force',
+        action='store_true',
+        help='Bypass GCS freshness and cache checks to recompile')
     parser.add_argument('-c',
                         '--config',
                         type=str,
@@ -976,12 +1098,43 @@ def main() -> None:
             print('Error: --input is required when preparing road data.')
             sys.exit(1)
 
-        if args.download_planet_osm:
-            fetch_or_cache_planet_pbf(args.input, bucket_name, cred_clean)
+        # Stage 0: Early-exit check if output in GCS is already fresh
+        if args.upload_gcs and not args.force:
+            cached_output_size = _check_gcs_planet_cache(
+                bucket_name, cred_clean, object_name=ROADS_GPKG_GCS_OBJECT)
+            if cached_output_size is not None:
+                print(
+                    f'Destination gs://{bucket_name}/{ROADS_GPKG_GCS_OBJECT} '
+                    f'is already fresh ({cached_output_size} bytes). Exiting early.'
+                )
+                return
 
-        _compile_roads_dataset(args.input,
-                               args.output,
-                               delete_input=args.delete_input)
+        # Stage 1 & 2: Filtered PBF cache check or raw planet download + filtering
+        skipped_osmium = False
+        work_dir = os.path.dirname(os.path.abspath(args.output))
+        filtered_cache_local = os.path.join(work_dir, 'filtered_roads.osm.pbf')
+
+        if args.download_planet_osm:
+            if not args.force and fetch_cached_filtered_pbf(
+                    filtered_cache_local, bucket_name, cred_clean):
+                print(
+                    'Using cached filtered PBF; skipping raw planet OSM download.'
+                )
+                skipped_osmium = True
+            else:
+                fetch_or_cache_planet_pbf(args.input,
+                                          bucket_name,
+                                          cred_clean,
+                                          force=args.force)
+
+        effective_input = filtered_cache_local if skipped_osmium else args.input
+        _compile_roads_dataset(
+            effective_input,
+            args.output,
+            delete_input=True if skipped_osmium else args.delete_input,
+            bucket_name=bucket_name,
+            credentials_path=cred_clean,
+            skip_osmium=skipped_osmium)
 
         if args.upload_gcs:
             upload_roads_to_gcs(args.output, bucket_name, cred_clean)

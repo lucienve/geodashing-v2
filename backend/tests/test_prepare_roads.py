@@ -341,7 +341,10 @@ def test_process_osm_pbf_to_gpkg_deletes_input_after_osmium(
 
     def fake_run(cmd: list[str], **kwargs: object) -> None:
         nonlocal input_existed_during_ogr
-        if cmd[0] == 'ogr2ogr':
+        if cmd[0] == 'osmium' and cmd[1] == 'tags-filter':
+            out_idx = cmd.index('-o') + 1
+            pathlib.Path(cmd[out_idx]).write_bytes(b'filtered-pbf')
+        elif cmd[0] == 'ogr2ogr':
             input_existed_during_ogr = input_pbf.exists()
             env = kwargs.get('env')
             assert isinstance(env, dict)
@@ -756,3 +759,328 @@ def test_place_shuffled_road_cells_empty_cells(
     assert len(accepted) == 0
     captured = capsys.readouterr()
     assert captured.out == ""
+
+
+def test_main_cli_early_exit_when_gcs_output_fresh(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Verifies that main exits early when world_drivable_roads.gpkg is fresh in GCS."""
+    monkeypatch.setattr('sys.argv', [
+        'prepare_roads.py',
+        '--input',
+        'dummy.pbf',
+        '--upload-gcs',
+    ])
+
+    def fake_cache_check(bucket_name: str,
+                         credentials_path: str | None = None,
+                         object_name: str = '') -> int | None:
+        del bucket_name, credentials_path
+        if object_name == backend.scripts.prepare_roads.ROADS_GPKG_GCS_OBJECT:
+            return 50000000
+        return None
+
+    monkeypatch.setattr(backend.scripts.prepare_roads,
+                        '_check_gcs_planet_cache', fake_cache_check)
+
+    compile_called = False
+
+    def fake_compile(input_path: str, output_path: str,
+                     **kwargs: object) -> None:
+        del input_path, output_path, kwargs
+        nonlocal compile_called
+        compile_called = True
+
+    monkeypatch.setattr(backend.scripts.prepare_roads,
+                        '_compile_roads_dataset', fake_compile)
+
+    backend.scripts.prepare_roads.main()
+
+    captured = capsys.readouterr()
+    assert 'is already fresh (50000000 bytes). Exiting early.' in captured.out
+    assert not compile_called
+
+
+def test_main_cli_force_bypasses_early_exit_and_caches(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Verifies that --force bypasses early-exit and cached filtered PBF."""
+    monkeypatch.setattr('sys.argv', [
+        'prepare_roads.py',
+        '--input',
+        'dummy.pbf',
+        '--upload-gcs',
+        '--download-planet-osm',
+        '--force',
+    ])
+    monkeypatch.setattr(
+        backend.scripts.prepare_roads,
+        '_check_gcs_planet_cache',
+        lambda *args, **kwargs: 50000000,
+    )
+
+    planet_fetched = False
+    compiled = False
+    uploaded = False
+
+    def fake_fetch_planet(dest: str,
+                          bucket: str,
+                          credentials_path: str | None = None,
+                          force: bool = False) -> str:
+        del bucket, credentials_path
+        nonlocal planet_fetched
+        assert force is True
+        planet_fetched = True
+        return dest
+
+    def fake_compile(input_path: str, output_path: str,
+                     **kwargs: object) -> None:
+        del input_path, output_path, kwargs
+        nonlocal compiled
+        compiled = True
+
+    def fake_upload(local_path: str,
+                    bucket_name: str,
+                    credentials_path: str | None = None,
+                    object_name: str = '') -> None:
+        del local_path, bucket_name, credentials_path, object_name
+        nonlocal uploaded
+        uploaded = True
+
+    monkeypatch.setattr(backend.scripts.prepare_roads,
+                        'fetch_or_cache_planet_pbf', fake_fetch_planet)
+    monkeypatch.setattr(backend.scripts.prepare_roads,
+                        '_compile_roads_dataset', fake_compile)
+    monkeypatch.setattr(backend.scripts.prepare_roads, 'upload_roads_to_gcs',
+                        fake_upload)
+
+    backend.scripts.prepare_roads.main()
+
+    captured = capsys.readouterr()
+    assert 'Exiting early' not in captured.out
+    assert planet_fetched
+    assert compiled
+    assert uploaded
+
+
+def test_main_cli_uses_cached_filtered_pbf(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Verifies that fresh cached filtered PBF is used, skipping raw planet download."""
+    monkeypatch.setattr('sys.argv', [
+        'prepare_roads.py',
+        '--input',
+        'dummy.pbf',
+        '--download-planet-osm',
+    ])
+    monkeypatch.setattr(
+        backend.scripts.prepare_roads,
+        '_check_gcs_planet_cache',
+        lambda *args, **kwargs: None,
+    )
+
+    cached_filtered_called = False
+
+    def fake_fetch_filtered(dest: str,
+                            bucket: str,
+                            credentials_path: str | None = None) -> bool:
+        del dest, bucket, credentials_path
+        nonlocal cached_filtered_called
+        cached_filtered_called = True
+        return True
+
+    planet_fetched = False
+
+    def fake_fetch_planet(dest: str,
+                          bucket: str,
+                          credentials_path: str | None = None,
+                          force: bool = False) -> str:
+        del dest, bucket, credentials_path, force
+        nonlocal planet_fetched
+        planet_fetched = True
+        return 'dummy.pbf'
+
+    compiled_input = ''
+    skip_osmium_flag = False
+
+    def fake_compile(input_path: str, output_path: str,
+                     **kwargs: object) -> None:
+        del output_path
+        nonlocal compiled_input, skip_osmium_flag
+        compiled_input = input_path
+        skip_osmium_flag = bool(kwargs.get('skip_osmium'))
+
+    monkeypatch.setattr(backend.scripts.prepare_roads,
+                        'fetch_cached_filtered_pbf', fake_fetch_filtered)
+    monkeypatch.setattr(backend.scripts.prepare_roads,
+                        'fetch_or_cache_planet_pbf', fake_fetch_planet)
+    monkeypatch.setattr(backend.scripts.prepare_roads,
+                        '_compile_roads_dataset', fake_compile)
+
+    backend.scripts.prepare_roads.main()
+
+    captured = capsys.readouterr()
+    assert 'Using cached filtered PBF; skipping raw planet OSM download.' in captured.out
+    assert cached_filtered_called
+    assert not planet_fetched
+    assert compiled_input.endswith('filtered_roads.osm.pbf')
+    assert skip_osmium_flag is True
+
+
+def test_fetch_cached_filtered_pbf_success_and_failure(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verifies fetch_cached_filtered_pbf handles cache hits and corrupted downloads."""
+    dest_file = tmp_path / 'filtered.osm.pbf'
+
+    # 1. Cache miss (None returned by _check_gcs_planet_cache)
+    monkeypatch.setattr(
+        backend.scripts.prepare_roads,
+        '_check_gcs_planet_cache',
+        lambda *args, **kwargs: None,
+    )
+    assert not backend.scripts.prepare_roads.fetch_cached_filtered_pbf(
+        str(dest_file), 'bucket')
+
+    # 2. Cache hit with successful verification
+    monkeypatch.setattr(
+        backend.scripts.prepare_roads,
+        '_check_gcs_planet_cache',
+        lambda *args, **kwargs: 1234,
+    )
+
+    def fake_download_ok(local_path: str,
+                         bucket_name: str,
+                         credentials_path: str | None = None,
+                         object_name: str = '') -> None:
+        del bucket_name, credentials_path, object_name
+        pathlib.Path(local_path).write_bytes(b'x' * 1234)
+
+    monkeypatch.setattr(backend.scripts.prepare_roads,
+                        'download_roads_from_gcs', fake_download_ok)
+    monkeypatch.setattr('shutil.which', lambda name: None)
+
+    assert backend.scripts.prepare_roads.fetch_cached_filtered_pbf(
+        str(dest_file), 'bucket')
+    assert dest_file.exists()
+
+    # 3. Cache hit with verification failure (e.g. size mismatch)
+    def fake_download_bad(local_path: str,
+                          bucket_name: str,
+                          credentials_path: str | None = None,
+                          object_name: str = '') -> None:
+        del bucket_name, credentials_path, object_name
+        pathlib.Path(local_path).write_bytes(b'x' * 999)
+
+    monkeypatch.setattr(backend.scripts.prepare_roads,
+                        'download_roads_from_gcs', fake_download_bad)
+    assert not backend.scripts.prepare_roads.fetch_cached_filtered_pbf(
+        str(dest_file), 'bucket')
+    assert not dest_file.exists()
+
+
+def test_process_osm_pbf_to_gpkg_uploads_filtered_checkpoint(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verifies process_osm_pbf_to_gpkg uploads filtered checkpoint to GCS when bucket is given."""
+    input_pbf = tmp_path / 'input.osm.pbf'
+    input_pbf.write_bytes(b'input-pbf')
+    output_gpkg = tmp_path / 'out.gpkg'
+
+    uploaded_objects: list[str] = []
+
+    def fake_upload(local_path: str,
+                    bucket_name: str,
+                    credentials_path: str | None = None,
+                    object_name: str = '') -> None:
+        del local_path, bucket_name, credentials_path
+        uploaded_objects.append(object_name)
+
+    def fake_run(cmd: list[str], **kwargs: object) -> None:
+        del kwargs
+        if cmd[0] == 'osmium' and cmd[1] == 'tags-filter':
+            out_idx = cmd.index('-o') + 1
+            pathlib.Path(cmd[out_idx]).write_bytes(b'filtered-pbf')
+
+    monkeypatch.setattr('shutil.which', lambda name: '/usr/bin/osmium')
+    monkeypatch.setattr('subprocess.run', fake_run)
+    monkeypatch.setattr(backend.scripts.prepare_roads, 'upload_roads_to_gcs',
+                        fake_upload)
+
+    backend.scripts.prepare_roads.process_osm_pbf_to_gpkg(
+        str(input_pbf),
+        str(output_gpkg),
+        delete_input=False,
+        bucket_name='test-bucket',
+    )
+
+    assert uploaded_objects == [
+        backend.scripts.prepare_roads.FILTERED_PBF_CACHE_OBJECT
+    ]
+
+
+def test_submit_roads_batch_job_force_flag_injection(
+    tmp_path: pathlib.Path, ) -> None:
+    """Verifies submit_roads_batch_job.sh handles --force and unknown arguments correctly."""
+    repo_root = pathlib.Path(__file__).resolve().parent.parent.parent
+    script_path = repo_root / 'backend' / 'scripts' / 'submit_roads_batch_job.sh'
+
+    # 1. Invalid argument returns exit code 1
+    invalid_proc = subprocess.run(
+        ['bash', str(script_path), '--invalid-flag'],
+        check=False,
+        capture_output=True,
+    )
+    assert invalid_proc.returncode == 1
+    assert b'Usage:' in invalid_proc.stderr
+
+    # 2. Verify JSON config injection with --force
+    sample_config = {
+        'taskGroups': [{
+            'taskSpec': {
+                'runnables': [{
+                    'container': {
+                        'commands': [
+                            '--download-planet-osm',
+                            '--input',
+                            'in.pbf',
+                            '--output',
+                            'out.gpkg',
+                        ]
+                    }
+                }]
+            }
+        }]
+    }
+    src_json = tmp_path / 'batch_prepare_roads.json'
+    dest_json = tmp_path / 'modified_batch_prepare_roads.json'
+    src_json.write_text(json.dumps(sample_config), encoding='utf-8')
+
+    py_cmd = (
+        'import json, sys\n'
+        'with open(sys.argv[1], "r", encoding="utf-8") as f:\n'
+        '    data = json.load(f)\n'
+        'commands = data["taskGroups"][0]["taskSpec"]["runnables"][0]["container"]["commands"]\n'
+        'if "--force" not in commands:\n'
+        '    commands.append("--force")\n'
+        'with open(sys.argv[2], "w", encoding="utf-8") as f:\n'
+        '    json.dump(data, f, indent=2)\n')
+    inject_proc = subprocess.run(
+        ['python3', '-c', py_cmd,
+         str(src_json), str(dest_json)],
+        check=True,
+    )
+    assert inject_proc.returncode == 0
+    assert dest_json.exists()
+
+    with open(dest_json, 'r', encoding='utf-8') as f:
+        mod_data = json.load(f)
+    mod_cmds = mod_data['taskGroups'][0]['taskSpec']['runnables'][0][
+        'container']['commands']
+    assert '--force' in mod_cmds
+    assert mod_cmds[-1] == '--force'
