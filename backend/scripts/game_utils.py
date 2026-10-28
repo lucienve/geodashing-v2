@@ -548,8 +548,7 @@ def _resolve_rollover_water_paths(current_dir: str) -> tuple[str, str]:
 def generate_next_preview_game(
         cursor: mysql.connector.cursor.MySQLCursor,
         conn: mysql.connector.connection.MySQLConnection,
-        target_date: tuple[int, int], dashpoint_count: int,
-        dry_run: bool) -> tuple[int, str]:
+        target_date: tuple[int, int], dry_run: bool) -> tuple[int, str]:
     """Checks and seeds the preview game for the upcoming month."""
     next_year, next_month = target_date
     next_games = get_games_for_month(cursor, next_year, next_month)
@@ -565,12 +564,12 @@ def generate_next_preview_game(
         next_year, next_month,
         os.path.join(current_dir, '../../data/game_titles.json'))
     print(f"Generating next month preview game: '{preview_title}' "
-          f"({next_year}-{next_month:02d}) with {dashpoint_count} points...")
+          f"({next_year}-{next_month:02d})...")
 
     if not dry_run:
         land_path, lakes_path = _resolve_rollover_water_paths(current_dir)
-        points = backend.scripts.generate_game.generate_valid_dashpoints(
-            target_count=dashpoint_count,
+        points = backend.scripts.generate_game.generate_grid_dashpoints(
+            grid_size_km=backend.scripts.generate_game.DEFAULT_GRID_SIZE_KM,
             land_zip_path=land_path,
             lakes_zip_path=lakes_path)
         preview_id = backend.scripts.generate_game.initialize_new_game(
@@ -585,7 +584,7 @@ def generate_next_preview_game(
     else:
         preview_id = 9999
         print(
-            f"[DRY RUN] Would generate {dashpoint_count} dashpoints and insert preview game "
+            f"[DRY RUN] Would generate grid dashpoints and insert preview game "
             f"'{preview_title}'.")
 
     return preview_id, preview_title
@@ -653,10 +652,6 @@ def execute_rollover(cursor: mysql.connector.cursor.MySQLCursor,
         overrides (dict[str, int | None] | None): Optional year, month, and count overrides.
     """
     game_config = load_game_config(config_path)
-    count_override = overrides.get('count') if overrides else None
-    dashpoint_count = count_override or game_config.get(
-        'default_dashpoint_count', 35000)
-
     tz_str = game_config.get('timezone', 'America/New_York')
     cur_date, next_date = _compute_rollover_dates(tz_str, overrides)
 
@@ -677,8 +672,7 @@ def execute_rollover(cursor: mysql.connector.cursor.MySQLCursor,
 
     # 2. Inspect & Generate Next Month Preview Game
     preview_game = generate_next_preview_game(
-        cursor, conn, (next_date.year, next_date.month), dashpoint_count,
-        dry_run)
+        cursor, conn, (next_date.year, next_date.month), dry_run)
 
     # 3. Dispatch Player Announcement Email
     if game_config.get('send_turnover_announcement', True):

@@ -2474,3 +2474,17 @@ geographic games where they are tasked with reaching randomly generated
     duration and Spot VM preemption retry window.
   - Maintained `delete-untagged` (`older_than = "0s"`) for immediate removal of
     obsolete images whenever a newer build is pushed.
+- **Default Game Generation Algorithm Transition (`grid`)**:
+  - Transitioned the default dashpoint distribution algorithm from `'random'` to
+    `'grid'` (staggered spherical trapezoid grid with 60.05 km cells and 12 km
+    minimum separation) across CLI execution
+    (`backend/scripts/generate_game.py`) and automated monthly rollover preview
+    generation (`backend/scripts/game_utils.py`).
+  - Omitting `--algorithm` in `generate_game.py` now routes to
+    `generate_grid_dashpoints` with `DEFAULT_GRID_SIZE_KM = 60.05`, generating
+    ~35,000 evenly distributed dashpoints worldwide while preserving opt-in
+    selection of the legacy `random` algorithm via `--algorithm random`.
+  - Updated automated monthly turnover in `game_utils.py`
+    (`generate_next_preview_game`) to seed upcoming preview games using the
+    `grid` algorithm while streamlining its signature to 4 parameters and
+    maintaining full Pylint design compliance.

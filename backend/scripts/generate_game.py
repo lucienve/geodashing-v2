@@ -711,9 +711,9 @@ def main() -> None:
         '--algorithm',
         type=str,
         choices=['random', 'grid', 'road-proximity'],
-        default='random',
+        default='grid',
         help=
-        "Distribution algorithm: 'random', 'grid', or 'road-proximity' (default: random)"
+        "Distribution algorithm: 'random', 'grid', or 'road-proximity' (default: grid)"
     )
     parser.add_argument(
         '--grid-size',

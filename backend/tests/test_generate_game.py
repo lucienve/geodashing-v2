@@ -345,22 +345,23 @@ def test_main_cli_algorithm_routing(monkeypatch: pytest.MonkeyPatch) -> None:
                                       lakes_zip_path=unittest.mock.ANY)
     mock_seed.assert_called_once()
 
-    # Test grid algorithm routing with default grid size (60.05 km)
+    # Test grid algorithm routing with default grid size (60.05 km) when omitted (default)
     mock_seed.reset_mock()
     mock_grid.reset_mock()
-    monkeypatch.setattr(
-        'sys.argv',
-        ['generate_game.py', '-t', 'Grid Default Test', '--algorithm', 'grid'])
+    monkeypatch.setattr('sys.argv',
+                        ['generate_game.py', '-t', 'Grid Default Test'])
     backend.scripts.generate_game.main()
     mock_grid.assert_called_once_with(grid_size_km=60.05,
                                       land_zip_path=unittest.mock.ANY,
                                       lakes_zip_path=unittest.mock.ANY)
     mock_seed.assert_called_once()
 
-    # Test random algorithm routing (default)
+    # Test random algorithm routing when explicitly requested
     mock_seed.reset_mock()
-    monkeypatch.setattr('sys.argv',
-                        ['generate_game.py', '-t', 'Random Test', '-c', '100'])
+    monkeypatch.setattr('sys.argv', [
+        'generate_game.py', '-t', 'Random Test', '--algorithm', 'random', '-c',
+        '100'
+    ])
     mock_random = unittest.mock.create_autospec(
         backend.scripts.generate_game.generate_valid_dashpoints,
         return_value=[shapely.geometry.Point(0, 0)])

@@ -459,12 +459,12 @@ class TestRolloverCLI(unittest.TestCase):
         self.mock_cursor.fetchall.return_value = [(16, "September 2026", False,
                                                    None, None)]
         preview_id, preview_title = backend.scripts.game_utils.generate_next_preview_game(
-            self.mock_cursor, self.mock_conn, (2026, 9), 35000, dry_run=False)
+            self.mock_cursor, self.mock_conn, (2026, 9), dry_run=False)
         self.assertEqual(preview_id, 16)
         self.assertEqual(preview_title, "September 2026")
 
     @unittest.mock.patch(
-        "backend.scripts.generate_game.generate_valid_dashpoints",
+        "backend.scripts.generate_game.generate_grid_dashpoints",
         autospec=True)
     @unittest.mock.patch("backend.scripts.generate_game.initialize_new_game",
                          autospec=True)
@@ -480,11 +480,14 @@ class TestRolloverCLI(unittest.TestCase):
         mock_init_game.return_value = 17
 
         preview_id, preview_title = backend.scripts.game_utils.generate_next_preview_game(
-            self.mock_cursor, self.mock_conn, (2026, 9), 35000, dry_run=False)
+            self.mock_cursor, self.mock_conn, (2026, 9), dry_run=False)
         self.assertEqual(preview_id, 17)
         self.assertEqual(preview_title,
                          "Random Destinations of Unwarranted Grandeur")
-        mock_gen_points.assert_called_once()
+        mock_gen_points.assert_called_once_with(
+            grid_size_km=60.05,
+            land_zip_path=unittest.mock.ANY,
+            lakes_zip_path=unittest.mock.ANY)
         mock_init_game.assert_called_once()
         mock_bulk_insert.assert_called_once()
         self.mock_conn.commit.assert_called_once()
@@ -527,7 +530,7 @@ class TestRolloverCLI(unittest.TestCase):
                                               (2026, 8), False)
         mock_gen_preview.assert_called_once_with(self.mock_cursor,
                                                  self.mock_conn, (2026, 9),
-                                                 35000, False)
+                                                 False)
         mock_dispatch.assert_called_once()
 
     @unittest.mock.patch("backend.scripts.game_utils.load_game_config",

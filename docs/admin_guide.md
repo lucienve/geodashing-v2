@@ -90,7 +90,7 @@ database.
 | `-m` | `--month`      |  `int`  | Optional month (1–12) for the game schedule. Defaults to the current month.                                                                 |
 | `-y` | `--year`       |  `int`  | Optional year for the game schedule. Defaults to the current year.                                                                          |
 |      | `--preview`    | `flag`  | Generates the game in an inactive "preview" state (`is_active = FALSE`) instead of immediately activating it.                               |
-|      | `--algorithm`  |  `str`  | Generation strategy: `random` (default), `grid`, or `road-proximity`.                                                                       |
+|      | `--algorithm`  |  `str`  | Generation strategy: `grid` (default), `random`, or `road-proximity`.                                                                       |
 |      | `--grid-size`  | `float` | Grid cell size in km when using `grid` or `road-proximity`. Defaults to `60.05`.                                                            |
 |      | `--roads-gpkg` |  `str`  | Optional path to road GeoPackage for `road-proximity` (defaults to config or `data/world_drivable_roads.gpkg`). Must be $\le 6$ months old. |
 |      | `--water-gpkg` |  `str`  | Optional path to water GeoPackage for dry-land filtering (defaults to config or `data/world_osm_water.gpkg`). Must be $\le 6$ months old.   |
@@ -98,13 +98,10 @@ database.
 #### Internal Mechanics
 
 1. **Algorithm Strategies**:
-   - **`random` (Default)**: Generates raw global coordinates utilizing uniform
-     spherical distribution (Poisson sampling) until `--count` valid dry-land
-     dashpoints are placed.
-   - **`grid` (Staggered Spherical Trapezoid Grid)**: Tiles the globe from
-     $-90^\circ$ to $+90^\circ$ into staggered latitude bands of spherical
-     trapezoids of roughly `--grid-size` km with randomized latitude and
-     longitude origin shifts. Executes two sampling passes:
+   - **`grid` (Default)**: Tiles the globe from $-90^\circ$ to $+90^\circ$ into
+     staggered latitude bands of spherical trapezoids of roughly `--grid-size`
+     km with randomized latitude and longitude origin shifts. Executes two
+     sampling passes:
      - **Pass 1 (Base Darts)**: Samples 1 random candidate coordinate per cell
        globally and validates dry land.
      - **Pass 2 (Cardinal Water Redistribution)**: For cells whose Pass 1 dart
@@ -115,6 +112,9 @@ database.
        least 12 km from all existing dashpoints. If a candidate collides within
        12 km, up to 50 replacement attempts are drawn inside the cell before
        giving up.
+   - **`random`**: Generates raw global coordinates utilizing uniform spherical
+     distribution (Poisson sampling) until `--count` valid dry-land dashpoints
+     are placed.
    - **`road-proximity` (Spherical Grid with Road Proximity)**: Uses the same
      spherical grid decomposition and two-pass water-only cardinal neighbor
      bonus logic as `grid`, but instead of selecting random land points, samples
