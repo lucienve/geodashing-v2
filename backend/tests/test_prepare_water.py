@@ -286,6 +286,8 @@ def test_extract_osm_water_and_land(tmp_path: pathlib.Path,
     assert not os.path.exists(water_pbf)
     assert not os.path.exists(land_zip)
     assert len(ogr_cmds) == 2
+    assert '--config' in ogr_cmds[0]
+    assert 'OSM_CONFIG_FILE' in ogr_cmds[0]
 
 
 def test_extract_osm_water_and_land_empty_layer_raises(
