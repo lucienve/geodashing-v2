@@ -15,7 +15,8 @@ ENV PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never \
-    UV_NO_DEV=1
+    UV_NO_DEV=1 \
+    PYTHONPATH=/app
 
 # Pre-install locked dependencies for build layer caching
 COPY .python-version pyproject.toml uv.lock ./
@@ -27,4 +28,4 @@ COPY backend/scripts/__init__.py backend/scripts/prepare_roads.py backend/script
 
 ENV UV_NO_SYNC=1
 
-ENTRYPOINT ["uv", "run", "--no-sync", "--no-dev", "python", "-m", "backend.scripts.prepare_roads"]
+ENTRYPOINT ["uv", "run", "--directory", "/app", "--no-sync", "--no-dev", "python", "-m", "backend.scripts.prepare_roads"]

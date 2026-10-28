@@ -13,6 +13,8 @@
               ],
               "commands": [
                 "run",
+                "--directory",
+                "/app",
                 "--no-sync",
                 "--no-dev",
                 "python",
