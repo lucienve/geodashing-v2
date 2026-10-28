@@ -27,8 +27,4 @@ dev = [
 [tool.uv]
 default-groups = ["dev"]
 
-[tool.pylint.design]
-max-module-lines = 1500
-max-args = 6
-
 

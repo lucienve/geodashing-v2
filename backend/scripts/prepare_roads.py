@@ -2,14 +2,11 @@
 
 import argparse
 import configparser
-import dataclasses
 import datetime
-import math
 import os
 import shutil
 import subprocess
 import sys
-import typing
 import urllib.parse
 import urllib.request
 
@@ -17,14 +14,7 @@ import geopandas as gpd
 import google.auth
 import google.auth.transport.requests
 import google.oauth2.service_account
-import numpy as np
-import pyogrio
-import shapely
-import shapely.affinity
-import shapely.geometry
-import shapely.geometry.base
 
-EARTH_RADIUS_KM: float = 6371.0088
 DEFAULT_ROADS_GPKG_PATH: str = 'data/world_drivable_roads.gpkg'
 DEFAULT_MAP_BUCKET_NAME: str = 'geodashing-v2-map-data'
 RESUMABLE_CHUNK_SIZE: int = 128 * 1024 * 1024  # 128 MiB chunks
@@ -129,13 +119,13 @@ def _write_osmconf_ini(conf_path: str) -> None:
 def _filter_and_cache_pbf_roads(
     input_pbf: str,
     filtered_pbf: str,
-    filtered_part_pbf: str,
     *,
     bucket_name: str | None = None,
     credentials_path: str | None = None,
     delete_input: bool = False,
 ) -> None:
     """Filters OSM highway ways using osmium and caches to GCS if configured."""
+    filtered_part_pbf = f'{filtered_pbf}.part'
     print(f"Running osmium tags-filter on {input_pbf}...")
     hw_filter = ','.join(sorted(QUALIFYING_HIGHWAY_TYPES))
     cmd_osmium = [
@@ -230,8 +220,6 @@ def process_osm_pbf_to_gpkg(
     delete_input: bool = False,
     bucket_name: str | None = None,
     credentials_path: str | None = None,
-    *,
-    skip_osmium: bool = False,
 ) -> None:
     """Compiles an OSM PBF extract into a filtered, R-tree indexed GeoPackage.
 
@@ -241,7 +229,6 @@ def process_osm_pbf_to_gpkg(
         delete_input: If True, removes input_pbf after processing.
         bucket_name: Optional GCS bucket name to cache filtered_roads.osm.pbf.
         credentials_path: Optional service account credentials path.
-        skip_osmium: If True, bypasses osmium tags-filter step (input is already filtered).
 
     Raises:
         FileNotFoundError: If input_pbf does not exist.
@@ -256,13 +243,14 @@ def process_osm_pbf_to_gpkg(
     filtered_pbf = os.path.join(work_dir, 'filtered_roads.osm.pbf')
     filtered_part_pbf = f'{filtered_pbf}.part'
     osmconf_path = os.path.join(work_dir, 'osmconf.ini')
+    is_prefiltered = os.path.abspath(input_pbf) == os.path.abspath(
+        filtered_pbf)
     source_pbf = input_pbf
 
     try:
-        if not skip_osmium and shutil.which('osmium'):
+        if not is_prefiltered and shutil.which('osmium'):
             _filter_and_cache_pbf_roads(input_pbf,
                                         filtered_pbf,
-                                        filtered_part_pbf,
                                         bucket_name=bucket_name,
                                         credentials_path=credentials_path,
                                         delete_input=delete_input)
@@ -278,7 +266,8 @@ def process_osm_pbf_to_gpkg(
             os.remove(osmconf_path)
         if os.path.exists(filtered_part_pbf):
             os.remove(filtered_part_pbf)
-        if not skip_osmium and os.path.exists(filtered_pbf):
+        if (not is_prefiltered
+                or delete_input) and os.path.exists(filtered_pbf):
             os.remove(filtered_pbf)
         if delete_input and os.path.exists(input_pbf):
             os.remove(input_pbf)
@@ -678,365 +667,12 @@ def resolve_roads_gpkg(
     return os.path.abspath(target_path)
 
 
-def get_roads_total_bounds(
-    roads_input: str | gpd.GeoDataFrame,
-) -> tuple[float, float, float, float]:
-    """Retrieves the overall (min_lon, min_lat, max_lon, max_lat) bounds of the roads dataset.
-
-    Args:
-        roads_input: Path to road GeoPackage or in-memory GeoDataFrame.
-
-    Returns:
-        Bounding box tuple in EPSG:4326.
-    """
-    if isinstance(roads_input, str):
-        try:
-            info = pyogrio.read_info(roads_input, layer='roads')
-            tb = info.get('total_bounds')
-            if tb is not None and len(tb) >= 4 and not np.isnan(tb).any():
-                return (float(tb[0]), float(tb[1]), float(tb[2]), float(tb[3]))
-        except (OSError, ValueError, RuntimeError):
-            pass
-        return (-180.0, -90.0, 180.0, 90.0)
-
-    tb = getattr(roads_input, 'total_bounds', None)
-    if tb is not None and len(tb) >= 4 and not np.isnan(tb).any():
-        return (float(tb[0]), float(tb[1]), float(tb[2]), float(tb[3]))
-    return (-180.0, -90.0, 180.0, 90.0)
-
-
-def _clip_geometry_lines(
-    geom: shapely.geometry.base.BaseGeometry | None,
-    bbox: tuple[float, float, float, float],
-    cos_lat: float,
-    all_lines: list[shapely.geometry.LineString],
-    all_weights: list[float],
-) -> None:
-    """Clips a geometry to bbox and appends scaled LineStrings with positive lengths."""
-    if geom is None or geom.is_empty:
-        return
-    min_lon, min_lat, max_lon, max_lat = bbox
-    clipped = shapely.clip_by_rect(geom, min_lon, min_lat, max_lon, max_lat)
-    for part in shapely.get_parts(clipped):
-        if (part.geom_type == 'LineString' and not part.is_empty
-                and part.length > 1e-9):
-            scaled_line = shapely.affinity.scale(part,
-                                                 xfact=cos_lat,
-                                                 yfact=1.0,
-                                                 origin=(0, 0))
-            weight = float(scaled_line.length)
-            if weight > 1e-9:
-                all_lines.append(part)
-                all_weights.append(weight)
-
-
-def query_clipped_roads_in_bboxes(
-    roads_input: str | gpd.GeoDataFrame,
-    bboxes: list[tuple[float, float, float, float]],
-) -> tuple[list[shapely.geometry.LineString], list[float]]:
-    """Queries and clips road segments across one or more bounding boxes for a cell.
-
-    Args:
-        roads_input: Path to road GeoPackage or in-memory GeoDataFrame.
-        bboxes: List of (min_lon, min_lat, max_lon, max_lat) bounding boxes.
-
-    Returns:
-        tuple[list[LineString], list[float]]: Clipped LineString segments and their
-        latitude-cosine-scaled metric weights.
-    """
-    all_lines: list[shapely.geometry.LineString] = []
-    all_weights: list[float] = []
-
-    for bbox in bboxes:
-        min_lon, min_lat, max_lon, max_lat = bbox
-        if isinstance(roads_input, str):
-            try:
-                gdf = gpd.read_file(roads_input, bbox=bbox, engine='pyogrio')
-            except (OSError, ValueError, RuntimeError):
-                continue
-        else:
-            gdf = roads_input.cx[min_lon:max_lon, min_lat:max_lat]
-
-        if gdf.empty:
-            continue
-
-        lat_center = (min_lat + max_lat) / 2.0
-        cos_lat = max(math.cos(math.radians(lat_center)), 0.01)
-
-        for geom in gdf.geometry:
-            _clip_geometry_lines(geom, bbox, cos_lat, all_lines, all_weights)
-
-    return all_lines, all_weights
-
-
-def sample_length_weighted_line_point(
-    lines: list[shapely.geometry.LineString],
-    weights: list[float],
-) -> shapely.geometry.Point | None:
-    """Samples a random Point along a random LineString weighted by segment length.
-
-    Args:
-        lines: Available LineString segments.
-        weights: Corresponding length weights.
-
-    Returns:
-        Sampled Point geometry, or None if lines is empty.
-    """
-    if not lines:
-        return None
-
-    total_weight = sum(weights)
-    if total_weight <= 0.0:
-        idx = int(np.random.randint(0, len(lines)))
-    else:
-        probs = np.array(weights, dtype=float) / total_weight
-        probs = probs / np.sum(probs)
-        idx = int(np.random.choice(len(lines), p=probs))
-
-    chosen_line = lines[idx]
-    frac = float(np.random.uniform(0.0, 1.0))
-    return chosen_line.interpolate(frac, normalized=True)
-
-
-def generate_polar_road_offset(
-    origin: tuple[float, float],
-    max_dist_m: float = 50.0,
-) -> tuple[float, float]:
-    """Generates a random coordinate offset by 0 to max_dist_m meters from origin.
-
-    Args:
-        origin: (latitude, longitude) of road origin coordinate.
-        max_dist_m: Maximum offset in meters (default: 50.0).
-
-    Returns:
-        tuple[float, float]: Offset (latitude, longitude) in degrees.
-    """
-    origin_lat_rad = math.radians(origin[0])
-    origin_lon_rad = math.radians(origin[1])
-
-    u = float(np.random.uniform(0.0, 1.0))
-    angular_dist = (math.sqrt(u) * (max_dist_m / 1000.0)) / EARTH_RADIUS_KM
-    bearing = float(np.random.uniform(0.0, 2.0 * math.pi))
-
-    cand_lat_rad = math.asin(
-        max(
-            -1.0,
-            min(
-                1.0,
-                math.sin(origin_lat_rad) * math.cos(angular_dist) +
-                math.cos(origin_lat_rad) * math.sin(angular_dist) *
-                math.cos(bearing),
-            ),
-        ))
-    cand_lon_rad = origin_lon_rad + math.atan2(
-        math.sin(bearing) * math.sin(angular_dist) * math.cos(origin_lat_rad),
-        math.cos(angular_dist) -
-        math.sin(origin_lat_rad) * math.sin(cand_lat_rad),
-    )
-
-    cand_lat_deg = math.degrees(cand_lat_rad)
-    cand_lon_deg = ((math.degrees(cand_lon_rad) + 540.0) % 360.0) - 180.0
-    return cand_lat_deg, cand_lon_deg
-
-
-def _bbox_intersects(b1: tuple[float, float, float, float],
-                     b2: tuple[float, float, float, float]) -> bool:
-    """Checks if two (minx, miny, maxx, maxy) bounding boxes intersect."""
-    return not (b1[2] < b2[0] or b1[0] > b2[2] or b1[3] < b2[1]
-                or b1[1] > b2[3])
-
-
-def sample_cell_road_candidates(
-    roads_input: str | gpd.GeoDataFrame,
-    bboxes: list[tuple[float, float, float, float]],
-    num_candidates: int,
-    max_dist_m: float = 50.0,
-    road_bounds: tuple[float, float, float, float] | None = None,
-) -> list[shapely.geometry.Point]:
-    """Queries roads in a cell once and pre-samples offset candidate Points.
-
-    Args:
-        roads_input: Path to road GeoPackage or in-memory GeoDataFrame.
-        bboxes: Cell bounding boxes.
-        num_candidates: Number of candidate Points to sample.
-        max_dist_m: Maximum offset distance in meters.
-        road_bounds: Optional total bounds of the roads dataset for fast skipping.
-
-    Returns:
-        list[Point]: Sampled candidate Points in EPSG:4326.
-    """
-    if num_candidates <= 0:
-        return []
-
-    if road_bounds is not None and not any(
-            _bbox_intersects(b, road_bounds) for b in bboxes):
-        return []
-
-    lines, weights = query_clipped_roads_in_bboxes(roads_input, bboxes)
-    if not lines:
-        return []
-
-    candidates: list[shapely.geometry.Point] = []
-    for _ in range(num_candidates):
-        pt_on_line = sample_length_weighted_line_point(lines, weights)
-        if pt_on_line is None:
-            continue
-        c_lat, c_lon = generate_polar_road_offset((pt_on_line.y, pt_on_line.x),
-                                                  max_dist_m=max_dist_m)
-        candidates.append(shapely.geometry.Point(c_lon, c_lat))
-
-    return candidates
-
-
-def get_cell_bboxes(band: typing.Any,
-                    cell_idx: int) -> list[tuple[float, float, float, float]]:
-    """Computes bounding boxes in EPSG:4326 for a cell, splitting at antimeridian and poles."""
-    lat_min, lat_max = band.lat_min, band.lat_max
-    if band.num_cells <= 1:
-        return [(-180.0, lat_min, 0.0, lat_max),
-                (0.0, lat_min, 180.0, lat_max)]
-
-    raw_min_lon = band.lon_offset + cell_idx * band.dlon
-    raw_max_lon = raw_min_lon + band.dlon
-    if raw_max_lon > 180.0:
-        return [
-            (raw_min_lon, lat_min, 180.0, lat_max),
-            (-180.0, lat_min, raw_max_lon - 360.0, lat_max),
-        ]
-    return [(raw_min_lon, lat_min, raw_max_lon, lat_max)]
-
-
-def _build_cell_bounding_boxes(
-    bands: list[typing.Any]
-) -> tuple[list[tuple[typing.Any, int]], list[shapely.geometry.Polygon],
-           list[int]]:
-    """Builds geographic bounding boxes and mapping indices for all grid cells."""
-    flat_cells: list[tuple[typing.Any, int]] = []
-    boxes: list[shapely.geometry.Polygon] = []
-    box_to_cell: list[int] = []
-    for band in bands:
-        for cell_idx in range(band.num_cells):
-            c_idx = len(flat_cells)
-            flat_cells.append((band, cell_idx))
-            for bbox in get_cell_bboxes(band, cell_idx):
-                boxes.append(shapely.geometry.box(*bbox))
-                box_to_cell.append(c_idx)
-    return flat_cells, boxes, box_to_cell
-
-
-def classify_grid_cells(
-    bands: list[typing.Any], spatial_filter: typing.Any
-) -> tuple[list[tuple[typing.Any, int]], list[tuple[typing.Any, int]]]:
-    """Partitions grid cells into dry land cells (> 0% land) and water-only cells (0% land)."""
-    flat_cells, boxes, box_to_cell = _build_cell_bounding_boxes(bands)
-    proj_boxes = gpd.GeoSeries(boxes, crs='EPSG:4326').to_crs(epsg=6933).values
-    land_map, lake_map = spatial_filter.get_candidate_matches(proj_boxes)
-
-    land_cell_indices: set[int] = set()
-    for b_idx, lands in land_map.items():
-        geom = proj_boxes[b_idx]
-        if spatial_filter.eval_boundary_point(geom, lands,
-                                              lake_map.get(b_idx, [])):
-            land_cell_indices.add(box_to_cell[b_idx])
-
-    land_cells = [
-        c for i, c in enumerate(flat_cells) if i in land_cell_indices
-    ]
-    water_cells = [
-        c for i, c in enumerate(flat_cells) if i not in land_cell_indices
-    ]
-    return land_cells, water_cells
-
-
-@dataclasses.dataclass(frozen=True)
-class RoadPlacementContext:
-    """Encapsulates shared spatial context and state for road candidate placement."""
-    roads_input: str | gpd.GeoDataFrame
-    spatial_filter: typing.Any
-    neighbor_grid: typing.Any
-    road_bounds: tuple[float, float, float, float] | None
-    cell_candidates: dict[tuple[int, int], list[shapely.geometry.Point]]
-    verbose: bool = True
-    progress_interval: int = 1000
-
-    def __post_init__(self) -> None:
-        if self.progress_interval <= 0:
-            raise ValueError(
-                f"progress_interval must be greater than 0, got {self.progress_interval}"
-            )
-
-
-def find_valid_road_cell_point(
-    band: typing.Any,
-    cell_idx: int,
-    ctx: RoadPlacementContext,
-    total_attempts: int = 1,
-) -> shapely.geometry.Point | None:
-    """Finds a non-colliding road-proximity point on dry land in the cell."""
-    key = (band.band_idx, cell_idx)
-    if key not in ctx.cell_candidates:
-        bboxes = get_cell_bboxes(band, cell_idx)
-        ctx.cell_candidates[key] = sample_cell_road_candidates(
-            ctx.roads_input,
-            bboxes,
-            num_candidates=total_attempts * 50,
-            max_dist_m=50.0,
-            road_bounds=ctx.road_bounds,
-        )
-
-    candidates = ctx.cell_candidates[key]
-    while candidates:
-        cand = candidates.pop()
-        if ctx.neighbor_grid.can_place(cand.x, cand.y):
-            if ctx.spatial_filter.filter_valid_indices([cand]):
-                ctx.neighbor_grid.insert(cand.x, cand.y)
-                return cand
-    return None
-
-
-def place_shuffled_road_cells(
-    cells: list[tuple[typing.Any, int]],
-    ctx: RoadPlacementContext,
-    accepted_points: list[shapely.geometry.Point],
-    pass2_counts: dict[tuple[int, int], int],
-) -> int:
-    """Places road points for cells in shuffled order, returning count placed.
-
-    Args:
-        cells: List of (band, cell_idx) tuples to sample.
-        ctx: Road placement context with caches, spatial filter, and road data.
-        accepted_points: List where accepted candidate points are appended.
-        pass2_counts: Map of (band_idx, cell_idx) to bonus attempt counts.
-
-    Returns:
-        The total number of road-proximity points successfully placed.
-    """
-    rng = np.random.default_rng()
-    placed_count = 0
-    total_cells = len(cells)
-    for i, idx in enumerate(rng.permutation(total_cells), start=1):
-        b, c = cells[idx]
-        attempts = 1 + pass2_counts.get((b.band_idx, c), 0)
-        pt = find_valid_road_cell_point(b, c, ctx, attempts)
-        if pt is not None:
-            accepted_points.append(pt)
-            placed_count += 1
-        if ctx.verbose and (i % ctx.progress_interval == 0
-                            or i == total_cells):
-            print(
-                f"  Processed {i}/{total_cells} cells ({placed_count} points placed)...",
-                flush=True)
-    return placed_count
-
-
 def _compile_roads_dataset(
     input_path: str,
     output_path: str,
     delete_input: bool = False,
     bucket_name: str | None = None,
     credentials_path: str | None = None,
-    *,
-    skip_osmium: bool = False,
 ) -> None:
     """Processes input PBF or vector road dataset into target GeoPackage."""
     if input_path.lower().endswith('.osm.pbf') or input_path.lower().endswith(
@@ -1045,8 +681,7 @@ def _compile_roads_dataset(
                                 output_path,
                                 delete_input=delete_input,
                                 bucket_name=bucket_name,
-                                credentials_path=credentials_path,
-                                skip_osmium=skip_osmium)
+                                credentials_path=credentials_path)
         return
 
     print(f'Reading raw road data from {input_path}...')
@@ -1133,8 +768,7 @@ def main() -> None:
             args.output,
             delete_input=True if skipped_osmium else args.delete_input,
             bucket_name=bucket_name,
-            credentials_path=cred_clean,
-            skip_osmium=skipped_osmium)
+            credentials_path=cred_clean)
 
         if args.upload_gcs:
             upload_roads_to_gcs(args.output, bucket_name, cred_clean)

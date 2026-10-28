@@ -2377,3 +2377,27 @@ geographic games where they are tasked with reaching randomly generated
     - **`--force` Override**: Added `--force` flag across `prepare_roads.py` and
       `submit_roads_batch_job.sh` to bypass GCS freshness and cache checks on
       demand.
+- **Road-Proximity Modular Refactoring & Pylint Architecture Compliance**:
+  - Decoupled road-proximity sampling and placement primitives from
+    `backend/scripts/prepare_roads.py` into a dedicated module
+    `backend/scripts/road_proximity.py` and corresponding test suite
+    `backend/tests/test_road_proximity.py`.
+  - Moved `LatitudeBand`, `SpatialFilterProtocol`, `NeighborGridProtocol`,
+    `RoadPlacementContext`, `get_roads_total_bounds`, `_clip_geometry_lines`,
+    `query_clipped_roads_in_bboxes`, `sample_length_weighted_line_point`,
+    `generate_polar_road_offset`, `_bbox_intersects`,
+    `sample_cell_road_candidates`, `get_cell_bboxes`,
+    `_build_cell_bounding_boxes`, `classify_grid_cells`,
+    `find_valid_road_cell_point`, and `place_shuffled_road_cells` into
+    `backend/scripts/road_proximity.py`.
+  - Re-exported `LatitudeBand`, `get_cell_bboxes`, and `classify_grid_cells` in
+    `backend/scripts/generate_game.py` for backward compatibility.
+  - Reduced internal helper parameter counts across `prepare_roads.py` to $\le
+    5$ arguments (`_filter_and_cache_pbf_roads`, `process_osm_pbf_to_gpkg`, and
+    `_compile_roads_dataset`) using path equality detection
+    (`is_prefiltered = os.path.abspath(input_pbf) == os.path.abspath(filtered_pbf)`).
+  - Reduced `backend/scripts/prepare_roads.py` from 1,148 to 780 lines and
+    `backend/tests/test_prepare_roads.py` from 1,087 to 894 lines, allowing the
+    temporary `[tool.pylint.design]` overrides (`max-module-lines = 1500`,
+    `max-args = 6`) in `pyproject.toml` to be permanently removed while strictly
+    satisfying default Pylint design thresholds.

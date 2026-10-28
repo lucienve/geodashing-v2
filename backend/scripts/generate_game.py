@@ -2,7 +2,6 @@
 
 import argparse
 import calendar
-import dataclasses
 import datetime
 import itertools
 import math
@@ -20,6 +19,7 @@ import shapely.strtree
 
 import backend.scripts.db_utils
 import backend.scripts.prepare_roads
+import backend.scripts.road_proximity
 
 EARTH_RADIUS_KM: float = 6371.0088
 DEFAULT_GRID_SIZE_KM: float = 60.05
@@ -32,16 +32,7 @@ LAKE_SUPPLEMENT_FILENAMES: tuple[str, ...] = (
     'ne_10m_lakes_north_america.zip',
 )
 
-
-@dataclasses.dataclass(frozen=True)
-class LatitudeBand:
-    """Represents a discrete latitudinal band on the globe."""
-    band_idx: int
-    lat_min: float
-    lat_max: float
-    lon_offset: float
-    num_cells: int
-    dlon: float
+LatitudeBand = backend.scripts.road_proximity.LatitudeBand
 
 
 class SphereNeighborGrid:
@@ -204,7 +195,7 @@ def sample_point_in_cell(band: LatitudeBand,
     return shapely.geometry.Point(lon, lat)
 
 
-get_cell_bboxes = backend.scripts.prepare_roads.get_cell_bboxes
+get_cell_bboxes = backend.scripts.road_proximity.get_cell_bboxes
 
 
 def _find_valid_cell_point(
@@ -754,7 +745,7 @@ def generate_grid_dashpoints(
     return accepted_points
 
 
-classify_grid_cells = backend.scripts.prepare_roads.classify_grid_cells
+classify_grid_cells = backend.scripts.road_proximity.classify_grid_cells
 
 
 def _collect_road_pass2_slots(
@@ -779,7 +770,7 @@ def _run_road_placement_passes(
     land_cells: list[tuple[LatitudeBand, int]],
     pass2_data: tuple[list[tuple[LatitudeBand, int]], dict[tuple[int, int],
                                                            int]],
-    ctx: backend.scripts.prepare_roads.RoadPlacementContext,
+    ctx: backend.scripts.road_proximity.RoadPlacementContext,
     accepted_points: list[shapely.geometry.Point],
     verbose: bool = True,
 ) -> None:
@@ -787,14 +778,14 @@ def _run_road_placement_passes(
     pass2_slots, pass2_counts = pass2_data
     if verbose:
         print(f"Running Pass 1 with {len(land_cells)} land cells...")
-    backend.scripts.prepare_roads.place_shuffled_road_cells(
+    backend.scripts.road_proximity.place_shuffled_road_cells(
         land_cells, ctx, accepted_points, pass2_counts)
 
     if verbose:
         print(
             f"Pass 1 placed {len(accepted_points)} points. "
             f"Running Pass 2 with {len(pass2_slots)} cardinal bonus slots...")
-    placed_bonus = backend.scripts.prepare_roads.place_shuffled_road_cells(
+    placed_bonus = backend.scripts.road_proximity.place_shuffled_road_cells(
         pass2_slots, ctx, accepted_points, pass2_counts)
 
     if verbose:
@@ -847,11 +838,11 @@ def generate_road_proximity_dashpoints(
 
     pass2_data = _collect_road_pass2_slots(water_cells, bands, land_cells)
 
-    ctx = backend.scripts.prepare_roads.RoadPlacementContext(
+    ctx = backend.scripts.road_proximity.RoadPlacementContext(
         roads_input=roads_input,
         spatial_filter=spatial_filter,
         neighbor_grid=neighbor_grid,
-        road_bounds=backend.scripts.prepare_roads.get_roads_total_bounds(
+        road_bounds=backend.scripts.road_proximity.get_roads_total_bounds(
             roads_input),
         cell_candidates={},
         verbose=verbose,

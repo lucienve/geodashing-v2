@@ -2,7 +2,6 @@
 
 import datetime
 import json
-import math
 import os
 import pathlib
 import shutil
@@ -210,90 +209,6 @@ def test_resolve_roads_gpkg_stale_raises(tmp_path: pathlib.Path) -> None:
     assert 'gcloud storage cp' in str(exc_info.value)
 
 
-def test_get_roads_total_bounds() -> None:
-    """Verifies total bounds calculation on GeoDataFrame and GeoPackage."""
-    line = shapely.geometry.LineString([(-75.5, 39.0), (-75.0, 39.5)])
-    gdf = gpd.GeoDataFrame(geometry=[line], crs='EPSG:4326')
-
-    tb = backend.scripts.prepare_roads.get_roads_total_bounds(gdf)
-    assert tb == (-75.5, 39.0, -75.0, 39.5)
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        gpkg_path = os.path.join(tmpdir, 'test_bounds.gpkg')
-        backend.scripts.prepare_roads.export_roads_geopackage(gdf, gpkg_path)
-        tb_gpkg = backend.scripts.prepare_roads.get_roads_total_bounds(
-            gpkg_path)
-        assert tb_gpkg[0] == pytest.approx(-75.5)
-        assert tb_gpkg[1] == pytest.approx(39.0)
-        assert tb_gpkg[2] == pytest.approx(-75.0)
-        assert tb_gpkg[3] == pytest.approx(39.5)
-
-
-def test_query_clipped_roads_in_bboxes() -> None:
-    """Verifies that road segments are clipped to bounding box and degenerate parts stripped."""
-    # Line crosses from inside box (0,0,10,10) to outside
-    line = shapely.geometry.LineString([(5.0, 5.0), (15.0, 5.0)])
-    gdf = gpd.GeoDataFrame(geometry=[line], crs='EPSG:4326')
-
-    lines, weights = backend.scripts.prepare_roads.query_clipped_roads_in_bboxes(
-        gdf, [(0.0, 0.0, 10.0, 10.0)])
-
-    assert len(lines) == 1
-    assert len(weights) == 1
-    # Clipped line should be from (5,5) to (10,5) -> length 5.0
-    assert lines[0].coords[0] == pytest.approx((5.0, 5.0))
-    assert lines[0].coords[-1] == pytest.approx((10.0, 5.0))
-    assert weights[0] > 0.0
-
-
-def test_sample_length_weighted_line_point() -> None:
-    """Verifies sampling along line geometries."""
-    assert (backend.scripts.prepare_roads.sample_length_weighted_line_point([],
-                                                                            [])
-            is None)
-
-    line = shapely.geometry.LineString([(0.0, 0.0), (10.0, 0.0)])
-    pt = backend.scripts.prepare_roads.sample_length_weighted_line_point(
-        [line], [10.0])
-    assert pt is not None
-    assert isinstance(pt, shapely.geometry.Point)
-    assert 0.0 <= pt.x <= 10.0
-    assert pt.y == pytest.approx(0.0)
-
-
-def test_generate_polar_road_offset() -> None:
-    """Verifies road polar offset distance constraint (<= 50m)."""
-    origin = (45.0, -75.0)
-    for _ in range(50):
-        lat, lon = backend.scripts.prepare_roads.generate_polar_road_offset(
-            origin, max_dist_m=50.0)
-        assert -90.0 <= lat <= 90.0
-        assert -180.0 <= lon <= 180.0
-
-        phi1, phi2 = math.radians(45.0), math.radians(lat)
-        dphi = math.radians(lat - 45.0)
-        dlambda = math.radians(lon - (-75.0))
-        a = (math.sin(dphi / 2.0)**2 +
-             math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2.0)**2)
-        dist_km = (2.0 * backend.scripts.prepare_roads.EARTH_RADIUS_KM *
-                   math.atan2(math.sqrt(a), math.sqrt(1.0 - a)))
-        assert dist_km <= 0.0501  # Within 50m + floating point tolerance
-
-
-def test_sample_cell_road_candidates() -> None:
-    """Verifies pre-sampling candidate points for a cell."""
-    line = shapely.geometry.LineString([(1.0, 1.0), (2.0, 2.0)])
-    gdf = gpd.GeoDataFrame(geometry=[line], crs='EPSG:4326')
-
-    candidates = backend.scripts.prepare_roads.sample_cell_road_candidates(
-        gdf, [(0.0, 0.0, 5.0, 5.0)], num_candidates=5, max_dist_m=50.0)
-    assert len(candidates) == 5
-    for cand in candidates:
-        assert isinstance(cand, shapely.geometry.Point)
-        assert 0.0 <= cand.x <= 5.0
-        assert 0.0 <= cand.y <= 5.0
-
-
 def test_process_osm_pbf_to_gpkg_missing_file() -> None:
     """Verifies FileNotFoundError on missing input file."""
     with pytest.raises(FileNotFoundError, match='not found'):
@@ -319,14 +234,6 @@ def test_main_cli_rejects_download_gcs_and_validates_input(
     assert exit_exc1.value.code == 1
     captured = capsys.readouterr()
     assert 'Error: --input is required' in captured.out
-
-
-def test_get_roads_total_bounds_empty_dataset() -> None:
-    """Verifies get_roads_total_bounds returns fallback bounds for empty dataset."""
-    empty_gdf = gpd.GeoDataFrame(geometry=gpd.GeoSeries([], dtype='geometry'),
-                                 crs='EPSG:4326')
-    bounds = backend.scripts.prepare_roads.get_roads_total_bounds(empty_gdf)
-    assert bounds == (-180.0, -90.0, 180.0, 90.0)
 
 
 def test_process_osm_pbf_to_gpkg_deletes_input_after_osmium(
@@ -624,143 +531,6 @@ def test_download_planet_rejects_incomplete_and_never_caches(
     assert not upload_called
 
 
-def test_place_shuffled_road_cells_progress_output(
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """Verifies periodic progress printing with custom interval and final flush."""
-    mock_band = unittest.mock.MagicMock(band_idx=0)
-    cells = [(mock_band, i) for i in range(5)]
-    ctx = backend.scripts.prepare_roads.RoadPlacementContext(
-        roads_input='mock.gpkg',
-        spatial_filter=unittest.mock.MagicMock(),
-        neighbor_grid=unittest.mock.MagicMock(),
-        road_bounds=None,
-        cell_candidates={},
-        verbose=True,
-        progress_interval=2,
-    )
-
-    placed_points = [
-        shapely.geometry.Point(0, 0),
-        shapely.geometry.Point(1, 1),
-        None,
-        shapely.geometry.Point(3, 3),
-        None,
-    ]
-    pt_iter = iter(placed_points)
-    monkeypatch.setattr(
-        backend.scripts.prepare_roads,
-        'find_valid_road_cell_point',
-        lambda *args, **kwargs: next(pt_iter),
-    )
-
-    accepted: list[shapely.geometry.Point] = []
-    count = backend.scripts.prepare_roads.place_shuffled_road_cells(
-        cells,
-        ctx,
-        accepted,
-        pass2_counts={},
-    )
-
-    assert count == 3
-    assert len(accepted) == 3
-
-    captured = capsys.readouterr()
-    lines = [
-        line.strip() for line in captured.out.strip().splitlines() if line
-    ]
-    assert len(lines) == 3
-    assert 'Processed 2/5 cells' in lines[0]
-    assert 'Processed 4/5 cells' in lines[1]
-    assert 'Processed 5/5 cells (3 points placed)...' in lines[2]
-
-
-def test_place_shuffled_road_cells_verbose_false(
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """Verifies that progress messages are completely suppressed when verbose is False."""
-    mock_band = unittest.mock.MagicMock(band_idx=0)
-    cells = [(mock_band, 0), (mock_band, 1)]
-    ctx = backend.scripts.prepare_roads.RoadPlacementContext(
-        roads_input='mock.gpkg',
-        spatial_filter=unittest.mock.MagicMock(),
-        neighbor_grid=unittest.mock.MagicMock(),
-        road_bounds=None,
-        cell_candidates={},
-        verbose=False,
-    )
-    monkeypatch.setattr(
-        backend.scripts.prepare_roads,
-        'find_valid_road_cell_point',
-        lambda *args, **kwargs: shapely.geometry.Point(0, 0),
-    )
-
-    accepted: list[shapely.geometry.Point] = []
-    count = backend.scripts.prepare_roads.place_shuffled_road_cells(
-        cells,
-        ctx,
-        accepted,
-        pass2_counts={},
-    )
-
-    assert count == 2
-    captured = capsys.readouterr()
-    assert captured.out == ""
-
-
-def test_place_shuffled_road_cells_invalid_interval() -> None:
-    """Verifies that non-positive progress intervals raise a ValueError."""
-    with pytest.raises(ValueError,
-                       match="progress_interval must be greater than 0"):
-        backend.scripts.prepare_roads.RoadPlacementContext(
-            roads_input='mock.gpkg',
-            spatial_filter=unittest.mock.MagicMock(),
-            neighbor_grid=unittest.mock.MagicMock(),
-            road_bounds=None,
-            cell_candidates={},
-            progress_interval=0,
-        )
-
-    with pytest.raises(ValueError,
-                       match="progress_interval must be greater than 0"):
-        backend.scripts.prepare_roads.RoadPlacementContext(
-            roads_input='mock.gpkg',
-            spatial_filter=unittest.mock.MagicMock(),
-            neighbor_grid=unittest.mock.MagicMock(),
-            road_bounds=None,
-            cell_candidates={},
-            progress_interval=-5,
-        )
-
-
-def test_place_shuffled_road_cells_empty_cells(
-    capsys: pytest.CaptureFixture[str], ) -> None:
-    """Verifies that empty cells list returns 0 and produces no stdout output."""
-    ctx = backend.scripts.prepare_roads.RoadPlacementContext(
-        roads_input='mock.gpkg',
-        spatial_filter=unittest.mock.MagicMock(),
-        neighbor_grid=unittest.mock.MagicMock(),
-        road_bounds=None,
-        cell_candidates={},
-        verbose=True,
-        progress_interval=100,
-    )
-    accepted: list[shapely.geometry.Point] = []
-    count = backend.scripts.prepare_roads.place_shuffled_road_cells(
-        [],
-        ctx,
-        accepted,
-        pass2_counts={},
-    )
-
-    assert count == 0
-    assert len(accepted) == 0
-    captured = capsys.readouterr()
-    assert captured.out == ""
-
-
 def test_main_cli_early_exit_when_gcs_output_fresh(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -904,14 +674,14 @@ def test_main_cli_uses_cached_filtered_pbf(
         return 'dummy.pbf'
 
     compiled_input = ''
-    skip_osmium_flag = False
+    delete_input_flag = False
 
     def fake_compile(input_path: str, output_path: str,
                      **kwargs: object) -> None:
         del output_path
-        nonlocal compiled_input, skip_osmium_flag
+        nonlocal compiled_input, delete_input_flag
         compiled_input = input_path
-        skip_osmium_flag = bool(kwargs.get('skip_osmium'))
+        delete_input_flag = bool(kwargs.get('delete_input'))
 
     monkeypatch.setattr(backend.scripts.prepare_roads,
                         'fetch_cached_filtered_pbf', fake_fetch_filtered)
@@ -927,7 +697,7 @@ def test_main_cli_uses_cached_filtered_pbf(
     assert cached_filtered_called
     assert not planet_fetched
     assert compiled_input.endswith('filtered_roads.osm.pbf')
-    assert skip_osmium_flag is True
+    assert delete_input_flag is True
 
 
 def test_fetch_cached_filtered_pbf_success_and_failure(
@@ -1084,3 +854,44 @@ def test_submit_roads_batch_job_force_flag_injection(
         'container']['commands']
     assert '--force' in mod_cmds
     assert mod_cmds[-1] == '--force'
+
+
+def test_process_osm_pbf_to_gpkg_prefiltered_input_skips_osmium(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verifies that pre-filtered input PBF bypasses osmium and preserves file
+    when delete_input=False.
+    """
+    work_dir = tmp_path / 'work'
+    work_dir.mkdir()
+    filtered_pbf = work_dir / 'filtered_roads.osm.pbf'
+    filtered_pbf.write_bytes(b'fake_prefiltered_pbf')
+    output_gpkg = work_dir / 'output.gpkg'
+
+    osmium_called = False
+
+    def fake_filter(*args: object, **kwargs: object) -> None:
+        del args, kwargs
+        nonlocal osmium_called
+        osmium_called = True
+
+    ogr_called = False
+
+    def fake_ogr(*args: object, **kwargs: object) -> None:
+        del args, kwargs
+        nonlocal ogr_called
+        ogr_called = True
+
+    monkeypatch.setattr(backend.scripts.prepare_roads,
+                        '_filter_and_cache_pbf_roads', fake_filter)
+    monkeypatch.setattr(backend.scripts.prepare_roads,
+                        '_run_ogr2ogr_roads_export', fake_ogr)
+
+    backend.scripts.prepare_roads.process_osm_pbf_to_gpkg(str(filtered_pbf),
+                                                          str(output_gpkg),
+                                                          delete_input=False)
+
+    assert not osmium_called
+    assert ogr_called
+    assert filtered_pbf.exists()
