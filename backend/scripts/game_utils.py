@@ -26,6 +26,7 @@ import mysql.connector.cursor
 
 import backend.scripts.db_utils
 import backend.scripts.generate_game
+import backend.scripts.prepare_water
 
 
 class HTMLFragmentValidator(html.parser.HTMLParser):
@@ -533,6 +534,17 @@ def activate_current_month_game(
     return active_id, active_title
 
 
+def _resolve_rollover_water_paths(current_dir: str) -> tuple[str, str]:
+    """Resolves water and land dataset paths for preview game generation."""
+    try:
+        water_path = backend.scripts.prepare_water.resolve_water_gpkg(
+            config_path=os.path.join(current_dir, '../config.ini'))
+        return water_path, ''
+    except (FileNotFoundError, RuntimeError):
+        return (os.path.join(current_dir, '../../data/ne_10m_land.zip'),
+                os.path.join(current_dir, '../../data/ne_10m_lakes.zip'))
+
+
 def generate_next_preview_game(
         cursor: mysql.connector.cursor.MySQLCursor,
         conn: mysql.connector.connection.MySQLConnection,
@@ -556,12 +568,11 @@ def generate_next_preview_game(
           f"({next_year}-{next_month:02d}) with {dashpoint_count} points...")
 
     if not dry_run:
+        land_path, lakes_path = _resolve_rollover_water_paths(current_dir)
         points = backend.scripts.generate_game.generate_valid_dashpoints(
             target_count=dashpoint_count,
-            land_zip_path=os.path.join(current_dir,
-                                       '../../data/ne_10m_land.zip'),
-            lakes_zip_path=os.path.join(current_dir,
-                                        '../../data/ne_10m_lakes.zip'))
+            land_zip_path=land_path,
+            lakes_zip_path=lakes_path)
         preview_id = backend.scripts.generate_game.initialize_new_game(
             cursor, preview_title, next_year, next_month, is_preview=True)
         backend.scripts.generate_game.bulk_insert_dashpoints(

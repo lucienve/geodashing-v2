@@ -115,3 +115,75 @@ def test_main_with_output_file(monkeypatch: pytest.MonkeyPatch,
     assert data["status"] == "success"
     assert data["lat"] == 51.51
     assert data["lon"] == -0.12
+
+
+def test_compute_search_bbox() -> None:
+    """Verifies bounding box calculation around equator, poles, and antimeridian."""
+    # Equator origin
+    minx, miny, maxx, maxy = backend.scripts.reroll_dashpoint.compute_search_bbox(
+        (0.0, 0.0), max_radius_km=10.0)
+    assert minx < 0.0 < maxx
+    assert miny < 0.0 < maxy
+    assert miny >= -90.0 and maxy <= 90.0
+
+    # Near North Pole (89 deg N) spans [-180, 180]
+    p_minx, _, p_maxx, p_maxy = (
+        backend.scripts.reroll_dashpoint.compute_search_bbox(
+            (89.5, 10.0), max_radius_km=100.0))
+    assert p_minx == -180.0
+    assert p_maxx == 180.0
+    assert p_maxy == 90.0
+
+    # Near antimeridian (179.9 deg E) spans [-180, 180]
+    a_minx, _, a_maxx, _ = backend.scripts.reroll_dashpoint.compute_search_bbox(
+        (0.0, 179.9), max_radius_km=20.0)
+    assert a_minx == -180.0
+    assert a_maxx == 180.0
+
+
+def test_main_cli_with_water_gpkg(tmp_path: pathlib.Path,
+                                  monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies that --water-gpkg routes correctly in main()."""
+    output_file = tmp_path / "result.json"
+    fake_gpkg = tmp_path / "water.gpkg"
+    fake_gpkg.write_bytes(b"data")
+
+    called_gpkg: list[str] = []
+
+    def mock_build_spatial_filter(land_zip: str,
+                                  _lakes_zip: str,
+                                  _verbose: bool = True,
+                                  **_kwargs: typing.Any) -> typing.Any:
+        called_gpkg.append(land_zip)
+        return object()
+
+    def mock_find_valid_reroll_point(
+            *_args: typing.Any, **_kwargs: typing.Any) -> tuple[float, float]:
+        return 40.0, -74.0
+
+    monkeypatch.setattr(
+        "backend.scripts.generate_game.build_spatial_filter",
+        mock_build_spatial_filter,
+    )
+    monkeypatch.setattr(
+        "backend.scripts.reroll_dashpoint.find_valid_reroll_point",
+        mock_find_valid_reroll_point,
+    )
+
+    test_args = [
+        "reroll_dashpoint.py",
+        "--lat",
+        "40.0",
+        "--lon",
+        "-74.0",
+        "--water-gpkg",
+        str(fake_gpkg),
+        "--output-file",
+        str(output_file),
+    ]
+    monkeypatch.setattr("sys.argv", test_args)
+
+    backend.scripts.reroll_dashpoint.main()
+
+    assert output_file.exists()
+    assert called_gpkg == [str(fake_gpkg)]

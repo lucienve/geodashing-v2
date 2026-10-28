@@ -10,3 +10,4 @@
 !/backend/scripts
 !/backend/scripts/__init__.py
 !/backend/scripts/prepare_roads.py
+!/backend/scripts/prepare_water.py

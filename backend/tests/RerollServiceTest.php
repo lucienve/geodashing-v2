@@ -308,4 +308,27 @@ class RerollServiceTest extends TestCase
         $this->assertStringContainsString('--output-file', $cmd);
         $this->assertStringContainsString('/tmp/test_out.json', $cmd);
     }
+
+    #[Test]
+    public function buildRerollCommandUsesWaterGpkgWhenAvailable(): void
+    {
+        $projectRoot = dirname(__DIR__, 2);
+        $gpkgPath = $projectRoot . '/data/world_osm_water.gpkg';
+        $created = false;
+        if (!file_exists($gpkgPath)) {
+            touch($gpkgPath);
+            $created = true;
+        }
+
+        try {
+            $service = new RerollService($this->pdoMock, null, $this->testConfig);
+            $cmd = $service->buildRerollCommand(51.5074, -0.1278, 10.0, '/tmp/test_out.json');
+            $this->assertStringContainsString('--water-gpkg', $cmd);
+            $this->assertStringContainsString('world_osm_water.gpkg', $cmd);
+        } finally {
+            if ($created && file_exists($gpkgPath)) {
+                unlink($gpkgPath);
+            }
+        }
+    }
 }

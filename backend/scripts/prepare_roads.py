@@ -158,6 +158,19 @@ def _filter_and_cache_pbf_roads(
                   'continuing with local GeoPackage compilation.')
 
 
+def get_ogr2ogr_env(work_dir: str) -> dict[str, str]:
+    """Builds environment variables configuring SQLite and VSI memory limits for ogr2ogr."""
+    env = os.environ.copy()
+    env['CPL_TMPDIR'] = work_dir
+    env['SQLITE_TMPDIR'] = work_dir
+    env['OSM_MAX_TMPFILE_SIZE'] = '45000'
+    env['OSM_COMPRESS_NODES'] = 'YES'
+    env['OGR_SQLITE_CACHE'] = '10240'
+    env['OGR_SQLITE_PRAGMA'] = 'page_size=65536'
+    env['OGR_SQLITE_SYNCHRONOUS'] = 'OFF'
+    return env
+
+
 def _run_ogr2ogr_roads_export(
     source_pbf: str,
     output_gpkg: str,
@@ -176,14 +189,7 @@ def _run_ogr2ogr_roads_export(
     if os.path.exists(output_gpkg):
         os.remove(output_gpkg)
 
-    env = os.environ.copy()
-    env['CPL_TMPDIR'] = work_dir
-    env['SQLITE_TMPDIR'] = work_dir
-    env['OSM_MAX_TMPFILE_SIZE'] = '45000'
-    env['OSM_COMPRESS_NODES'] = 'YES'
-    env['OGR_SQLITE_CACHE'] = '10240'
-    env['OGR_SQLITE_PRAGMA'] = 'page_size=65536'
-    env['OGR_SQLITE_SYNCHRONOUS'] = 'OFF'
+    env = get_ogr2ogr_env(work_dir)
 
     cmd_ogr = [
         'ogr2ogr',
@@ -457,6 +463,17 @@ def _check_gcs_planet_cache(
     return size
 
 
+def check_gcs_object_cache(
+    bucket_name: str,
+    credentials_path: str | None = None,
+    object_name: str = PLANET_PBF_CACHE_OBJECT,
+) -> int | None:
+    """Public wrapper checking if a GCS object exists and is fresh."""
+    return _check_gcs_planet_cache(bucket_name,
+                                   credentials_path=credentials_path,
+                                   object_name=object_name)
+
+
 def _get_expected_planet_size() -> int:
     """Queries remote HTTP HEAD Content-Length across configured OSM mirrors."""
     for url in PLANET_OSM_MIRRORS:
@@ -486,6 +503,11 @@ def _verify_planet_download(part_path: str, expected_size: int = 0) -> None:
     if shutil.which('osmium'):
         subprocess.run(['osmium', 'fileinfo', '--input-format=pbf', part_path],
                        check=True)
+
+
+def verify_pbf_download(part_path: str, expected_size: int = 0) -> None:
+    """Public wrapper verifying downloaded PBF completeness and header."""
+    _verify_planet_download(part_path, expected_size=expected_size)
 
 
 def fetch_cached_filtered_pbf(
@@ -609,6 +631,76 @@ def fetch_or_cache_planet_pbf(
     return dest_path
 
 
+def _read_config_dataset_path(config_path: str,
+                              config_option: str) -> str | None:
+    """Reads configured dataset path from config.ini across sections."""
+    target_cfg = config_path
+    if not os.path.exists(target_cfg):
+        alt_cfg = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               '../config.ini')
+        if os.path.exists(alt_cfg):
+            target_cfg = alt_cfg
+    if not os.path.exists(target_cfg):
+        return None
+    cfg = configparser.ConfigParser()
+    cfg.read(target_cfg)
+    for section in ('gcs', 'game'):
+        if cfg.has_option(section, config_option):
+            return cfg.get(section, config_option).strip('"\'')
+    return None
+
+
+def resolve_dataset_gpkg(
+    dataset_path: str | None,
+    config_path: str,
+    config_option: str,
+    default_path: str,
+    max_age_s: int = ROADS_GPKG_MAX_AGE_S,
+) -> str:
+    """Resolves and validates a local GeoPackage dataset path and freshness.
+
+    Args:
+        dataset_path: Optional explicit local path to check. If None, resolves
+            from config_path or falls back to default_path.
+        config_path: Path to backend config.ini.
+        config_option: Config key to check in config.ini (e.g. 'ROADS_GPKG_PATH').
+        default_path: Fallback path when not specified in config.
+        max_age_s: Maximum allowed age of the dataset file in seconds.
+
+    Returns:
+        Absolute path to the existing, non-empty, and fresh .gpkg file.
+
+    Raises:
+        FileNotFoundError: If the dataset is missing or empty.
+        RuntimeError: If the dataset is older than max_age_s.
+    """
+    label = 'Water' if 'WATER' in config_option else 'Road'
+    if dataset_path is not None:
+        target_path = dataset_path
+    else:
+        configured = _read_config_dataset_path(config_path, config_option)
+        target_path = configured or default_path
+
+    if not os.path.exists(target_path) or os.path.getsize(target_path) <= 0:
+        raise FileNotFoundError(
+            f"{label} dataset '{target_path}' is missing or empty. "
+            "See data/README.md for instructions on downloading it via "
+            "'gcloud storage cp'.")
+
+    mtime = os.path.getmtime(target_path)
+    now_ts = datetime.datetime.now(datetime.timezone.utc).timestamp()
+    age_s = now_ts - mtime
+    if age_s > max_age_s:
+        age_days = int(age_s // 86400)
+        raise RuntimeError(
+            f"{label} dataset '{target_path}' is more than 6 months old "
+            f"({age_days} days). See data/README.md for instructions on "
+            "refreshing and downloading an updated dataset via 'gcloud storage cp'."
+        )
+
+    return os.path.abspath(target_path)
+
+
 def resolve_roads_gpkg(
     roads_path: str | None = None,
     config_path: str = 'backend/config.ini',
@@ -629,42 +721,13 @@ def resolve_roads_gpkg(
         FileNotFoundError: If the road dataset is missing or empty.
         RuntimeError: If the road dataset is older than max_age_s.
     """
-    if roads_path is not None:
-        target_path = roads_path
-    else:
-        target_cfg = config_path
-        if not os.path.exists(target_cfg):
-            alt_cfg = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                   '../config.ini')
-            if os.path.exists(alt_cfg):
-                target_cfg = alt_cfg
-        configured_path: str | None = None
-        if os.path.exists(target_cfg):
-            cfg = configparser.ConfigParser()
-            cfg.read(target_cfg)
-            if cfg.has_option('gcs', 'ROADS_GPKG_PATH'):
-                raw_path = cfg.get('gcs', 'ROADS_GPKG_PATH')
-                configured_path = raw_path.strip('"\'')
-        target_path = configured_path or DEFAULT_ROADS_GPKG_PATH
-
-    if not os.path.exists(target_path) or os.path.getsize(target_path) <= 0:
-        raise FileNotFoundError(
-            f"Road dataset '{target_path}' is missing or empty. "
-            "See data/README.md for instructions on downloading it via "
-            "'gcloud storage cp'.")
-
-    mtime = os.path.getmtime(target_path)
-    now_ts = datetime.datetime.now(datetime.timezone.utc).timestamp()
-    age_s = now_ts - mtime
-    if age_s > max_age_s:
-        age_days = int(age_s // 86400)
-        raise RuntimeError(
-            f"Road dataset '{target_path}' is more than 6 months old "
-            f"({age_days} days). See data/README.md for instructions on "
-            "refreshing and downloading an updated dataset via 'gcloud storage cp'."
-        )
-
-    return os.path.abspath(target_path)
+    return resolve_dataset_gpkg(
+        dataset_path=roads_path,
+        config_path=config_path,
+        config_option='ROADS_GPKG_PATH',
+        default_path=DEFAULT_ROADS_GPKG_PATH,
+        max_age_s=max_age_s,
+    )
 
 
 def _compile_roads_dataset(

@@ -2,14 +2,19 @@
 set -euo pipefail
 
 FORCE_FLAG=""
+SKIP_BUILD=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --force)
       FORCE_FLAG="true"
       shift
       ;;
+    --skip-image-build)
+      SKIP_BUILD="true"
+      shift
+      ;;
     *)
-      echo "Usage: $0 [--force]" >&2
+      echo "Usage: $0 [--force] [--skip-image-build]" >&2
       exit 1
       ;;
   esac
@@ -49,18 +54,23 @@ mkdir -p "${BUILD_CTX}/backend/scripts"
 cp "${REPO_ROOT}/backend/__init__.py" "${BUILD_CTX}/backend/"
 cp "${REPO_ROOT}/backend/scripts/__init__.py" "${BUILD_CTX}/backend/scripts/"
 cp "${REPO_ROOT}/backend/scripts/prepare_roads.py" "${BUILD_CTX}/backend/scripts/"
+cp "${REPO_ROOT}/backend/scripts/prepare_water.py" "${BUILD_CTX}/backend/scripts/"
 
-echo "Configuring Docker authentication for Artifact Registry in us-east1..."
-gcloud auth configure-docker us-east1-docker.pkg.dev --quiet
+if [[ -z "${SKIP_BUILD}" ]]; then
+  echo "Configuring Docker authentication for Artifact Registry in us-east1..."
+  gcloud auth configure-docker us-east1-docker.pkg.dev --quiet
 
-echo "Building container image ${IMAGE_TAG}..."
-docker build \
-  -f "${DOCKERFILE_PATH}" \
-  -t "${IMAGE_TAG}" \
-  "${BUILD_CTX}"
+  echo "Building container image ${IMAGE_TAG}..."
+  docker build \
+    -f "${DOCKERFILE_PATH}" \
+    -t "${IMAGE_TAG}" \
+    "${BUILD_CTX}"
 
-echo "Pushing container image to Artifact Registry..."
-docker push "${IMAGE_TAG}"
+  echo "Pushing container image to Artifact Registry..."
+  docker push "${IMAGE_TAG}"
+else
+  echo "Skipping container image build and push (--skip-image-build enabled)."
+fi
 
 echo "Submitting Google Cloud Batch job ${JOB_ID} in us-east1..."
 gcloud batch jobs submit "${JOB_ID}" \

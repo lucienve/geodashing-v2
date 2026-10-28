@@ -93,6 +93,7 @@ database.
 |      | `--algorithm`  |  `str`  | Generation strategy: `random` (default), `grid`, or `road-proximity`.                                                                       |
 |      | `--grid-size`  | `float` | Grid cell size in km when using `grid` or `road-proximity`. Defaults to `60.05`.                                                            |
 |      | `--roads-gpkg` |  `str`  | Optional path to road GeoPackage for `road-proximity` (defaults to config or `data/world_drivable_roads.gpkg`). Must be $\le 6$ months old. |
+|      | `--water-gpkg` |  `str`  | Optional path to water GeoPackage for dry-land filtering (defaults to config or `data/world_osm_water.gpkg`). Must be $\le 6$ months old.   |
 
 #### Internal Mechanics
 
@@ -136,10 +137,12 @@ database.
        Cells without roads or where all candidates collide yield 0 points and do
        not trigger cardinal redistribution.
 2. **Landmass Filtering (EPSG:6933)**:
-   - Loads complex shapefiles for global landmasses (`data/ne_10m_land.zip`) and
-     major lakes (`data/ne_10m_lakes.zip`). When targeting `ne_10m_lakes.zip`,
-     the engine automatically resolves and loads regional lake supplements
-     located in `data/`:
+   - Evaluates coordinates against dry land using either the high-resolution
+     OpenStreetMap dataset (`data/world_osm_water.gpkg`, containing `land` and
+     `water` layers) or legacy Natural Earth shapefiles (`data/ne_10m_land.zip`
+     and `data/ne_10m_lakes.zip`). When targeting `ne_10m_lakes.zip`, the engine
+     automatically resolves and loads regional lake supplements located in
+     `data/`:
      - `ne_10m_lakes_australia.zip` (Australia supplement)
      - `ne_10m_lakes_europe.zip` (Europe supplement)
      - `ne_10m_lakes_north_america.zip` (North America supplement, providing
@@ -331,6 +334,7 @@ radius.
 |      | `--lat`           | `float` | **Required.** The latitude coordinate of the original location.                                           |
 |      | `--lon`           | `float` | **Required.** The longitude coordinate of the original location.                                          |
 |      | `--max-radius-km` | `float` | The maximum distance (in kilometers) to relocate the point. Defaults to `10.0`.                           |
+|      | `--water-gpkg`    |  `str`  | Optional path to the water GeoPackage. Defaults to `data/world_osm_water.gpkg` if present.                |
 |      | `--land-zip`      |  `str`  | Path to the Natural Earth land zip shapefile. Defaults to `data/ne_10m_land.zip`.                         |
 |      | `--lakes-zip`     |  `str`  | Path to the Natural Earth lakes zip shapefile. Defaults to `data/ne_10m_lakes.zip`.                       |
 |      | `--verbose`       | `flag`  | Enables verbose console logs and progress status messages during execution. Defaults to `False` (silent). |

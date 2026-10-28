@@ -1,0 +1,92 @@
+{
+  "taskGroups": [
+    {
+      "taskSpec": {
+        "runnables": [
+          {
+            "container": {
+              "imageUri": "us-east1-docker.pkg.dev/geodashing-v2/batch/prepare-roads:latest",
+              "enableImageStreaming": true,
+              "entrypoint": "uv",
+              "volumes": [
+                "/mnt/disks/scratch:/mnt/disks/scratch:rw"
+              ],
+              "commands": [
+                "run",
+                "--no-sync",
+                "--no-dev",
+                "python",
+                "-m",
+                "backend.scripts.prepare_water",
+                "--download-planet-osm",
+                "--input",
+                "/mnt/disks/scratch/planet-latest.osm.pbf",
+                "--output",
+                "/mnt/disks/scratch/world_osm_water.gpkg",
+                "--land-zip",
+                "/mnt/disks/scratch/land-polygons-split-4326.zip",
+                "--delete-input",
+                "--upload-gcs"
+              ]
+            }
+          }
+        ],
+        "computeResource": {
+          "cpuMilli": "8000",
+          "memoryMib": "65536"
+        },
+        "maxRunDuration": "43200s",
+        "maxRetryCount": 3,
+        "lifecyclePolicies": [
+          {
+            "action": "RETRY_TASK",
+            "actionCondition": {
+              "exitCodes": [
+                50001
+              ]
+            }
+          }
+        ],
+        "volumes": [
+          {
+            "deviceName": "scratch-ssd",
+            "mountPath": "/mnt/disks/scratch",
+            "mountOptions": [
+              "rw",
+              "async"
+            ]
+          }
+        ]
+      },
+      "taskCount": "1"
+    }
+  ],
+  "allocationPolicy": {
+    "instances": [
+      {
+        "policy": {
+          "machineType": "n2d-highmem-8",
+          "provisioningModel": "SPOT",
+          "disks": [
+            {
+              "deviceName": "scratch-ssd",
+              "newDisk": {
+                "type": "local-ssd",
+                "sizeGb": "375"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "serviceAccount": {
+      "email": "geodashing-uploader@geodashing-v2.iam.gserviceaccount.com",
+      "scopes": [
+        "https://www.googleapis.com/auth/cloud-platform"
+      ]
+    }
+  },
+  "logsPolicy": {
+    "destination": "CLOUD_LOGGING"
+  }
+}

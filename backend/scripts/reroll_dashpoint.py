@@ -3,6 +3,7 @@
 import argparse
 import json
 import math
+import os
 import sys
 
 import geopandas as gpd
@@ -103,6 +104,29 @@ def generate_polar_candidate(
     return cand_lat_deg, cand_lon_deg
 
 
+def compute_search_bbox(
+        origin: tuple[float, float],
+        max_radius_km: float) -> tuple[float, float, float, float]:
+    """Computes a padded (minx, miny, maxx, maxy) bounding box in degrees around origin."""
+    lat, lon = origin
+    pad_km = max_radius_km + 1.0
+    dlat = pad_km / KM_PER_DEGREE_LAT
+    min_lat = max(-90.0, lat - dlat)
+    max_lat = min(90.0, lat + dlat)
+
+    if (lat + dlat) >= 90.0 or (lat - dlat) <= -90.0:
+        return -180.0, min_lat, 180.0, max_lat
+
+    lat_extent = max(abs(min_lat), abs(max_lat))
+    cos_lat = max(math.cos(math.radians(lat_extent)), MIN_COS_LAT_FLOOR)
+    dlon = pad_km / (KM_PER_DEGREE_LAT * cos_lat)
+
+    if dlon >= 180.0 or (lon - dlon) < -180.0 or (lon + dlon) > 180.0:
+        return -180.0, min_lat, 180.0, max_lat
+
+    return lon - dlon, min_lat, lon + dlon, max_lat
+
+
 def find_valid_reroll_point(
         origin: tuple[float, float],
         max_radius_km: float = 10.0,
@@ -112,8 +136,16 @@ def find_valid_reroll_point(
         verbose: bool = False) -> tuple[float, float]:
     """Finds a new random point within max_radius_km that satisfies dry land constraints."""
     if spatial_filter is None:
-        spatial_filter = backend.scripts.generate_game.build_spatial_filter(
-            "data/ne_10m_land.zip", "data/ne_10m_lakes.zip", verbose)
+        bbox = compute_search_bbox(origin, max_radius_km)
+        if os.path.exists('data/world_osm_water.gpkg'):
+            spatial_filter = backend.scripts.generate_game.build_spatial_filter(
+                'data/world_osm_water.gpkg', '', verbose, bbox=bbox)
+        else:
+            spatial_filter = backend.scripts.generate_game.build_spatial_filter(
+                'data/ne_10m_land.zip',
+                'data/ne_10m_lakes.zip',
+                verbose,
+                bbox=bbox)
 
     for _ in range(max_attempts):
         lat_f, lon_f = generate_polar_candidate(origin, MIN_REROLL_RADIUS_KM,
@@ -143,6 +175,10 @@ def main() -> None:
                         type=float,
                         default=10.0,
                         help="Maximum relocation radius in km")
+    parser.add_argument("--water-gpkg",
+                        type=str,
+                        default=None,
+                        help="Optional path to water GeoPackage")
     parser.add_argument("--land-zip",
                         type=str,
                         default="data/ne_10m_land.zip",
@@ -162,8 +198,20 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
-        spatial_filter = backend.scripts.generate_game.build_spatial_filter(
-            args.land_zip, args.lakes_zip, args.verbose)
+        bbox = compute_search_bbox((args.lat, args.lon), args.max_radius_km)
+        if args.water_gpkg:
+            spatial_filter = backend.scripts.generate_game.build_spatial_filter(
+                args.water_gpkg, '', verbose=args.verbose, bbox=bbox)
+        elif os.path.exists('data/world_osm_water.gpkg'):
+            spatial_filter = backend.scripts.generate_game.build_spatial_filter(
+                'data/world_osm_water.gpkg',
+                '',
+                verbose=args.verbose,
+                bbox=bbox)
+        else:
+            spatial_filter = backend.scripts.generate_game.build_spatial_filter(
+                args.land_zip, args.lakes_zip, verbose=args.verbose, bbox=bbox)
+
         new_lat, new_lon = find_valid_reroll_point((args.lat, args.lon),
                                                    args.max_radius_km,
                                                    spatial_filter,

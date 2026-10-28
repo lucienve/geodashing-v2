@@ -19,6 +19,7 @@ import shapely.strtree
 
 import backend.scripts.db_utils
 import backend.scripts.prepare_roads
+import backend.scripts.prepare_water
 import backend.scripts.road_proximity
 
 EARTH_RADIUS_KM: float = 6371.0088
@@ -384,202 +385,12 @@ def generate_spherical_points(num_points: int) -> list[shapely.geometry.Point]:
     return [shapely.geometry.Point(lon, lat) for lon, lat in zip(lons, lats)]
 
 
-def subdivide_geometry(
-        geom: shapely.geometry.base.BaseGeometry,
-        max_size: float = 1000000.0
-) -> list[shapely.geometry.base.BaseGeometry]:
-    """Subdivides a geometry into a grid of smaller geometries of a maximum metric size."""
-    if geom is None or geom.is_empty:
-        return []
-    minx, miny, maxx, maxy = geom.bounds
-    x_coords = np.arange(minx, maxx + max_size, max_size)
-    y_coords = np.arange(miny, maxy + max_size, max_size)
-
-    # Flatten the grid creation to minimize nested block depth
-    grid_boxes: list[shapely.geometry.Polygon] = []
-    for i in range(len(x_coords) - 1):
-        for j in range(len(y_coords) - 1):
-            grid_boxes.append(
-                shapely.geometry.box(x_coords[i], y_coords[j], x_coords[i + 1],
-                                     y_coords[j + 1]))
-
-    subdivided: list[shapely.geometry.base.BaseGeometry] = []
-    for box in grid_boxes:
-        if not geom.intersects(box):
-            continue
-        inter = geom.intersection(box)
-        if inter.is_empty:
-            continue
-        # Unpack multi-geometries and geometry collections using get_parts
-        for g in shapely.get_parts(inter):
-            if g.geom_type in ('Polygon', 'MultiPolygon'):
-                subdivided.append(g)
-    return subdivided
-
-
-def resolve_lake_zip_paths(lakes_zip_path: str) -> list[str]:
-    """Resolves lake shapefile paths, expanding default ne_10m_lakes.zip with supplements."""
-    if os.path.basename(lakes_zip_path) == 'ne_10m_lakes.zip':
-        base_dir = os.path.dirname(lakes_zip_path)
-        return [lakes_zip_path] + [
-            os.path.join(base_dir, name) for name in LAKE_SUPPLEMENT_FILENAMES
-        ]
-    return [lakes_zip_path]
-
-
-def _load_and_project_geometries(
-        land_zip_path: str,
-        lakes_zip_path: str,
-        verbose: bool = True) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """Loads and projects the land and lake shapefiles to EPSG:6933."""
-    lake_paths = resolve_lake_zip_paths(lakes_zip_path)
-    try:
-        land_gdf = gpd.read_file(f"zip://{land_zip_path}")
-        lake_gdfs = [gpd.read_file(f"zip://{path}") for path in lake_paths]
-    except Exception as e:
-        raise FileNotFoundError(f"Failed to read shapefiles: {e}") from e
-
-    if verbose:
-        print("Projecting land and lakes geometries to EPSG:6933...")
-    land_proj = gpd.GeoDataFrame(
-        geometry=land_gdf.to_crs(epsg=6933).geometry.make_valid(),
-        crs="EPSG:6933")
-    lake_geoms: list[shapely.geometry.base.BaseGeometry] = []
-    for gdf in lake_gdfs:
-        valid_series = gdf.to_crs(epsg=6933).geometry.make_valid()
-        lake_geoms.extend(valid_series.tolist())
-    lakes_proj = gpd.GeoDataFrame(geometry=lake_geoms, crs="EPSG:6933")
-    return land_proj, lakes_proj
-
-
-class SpatialFilter:
-    """Helper class to encapsulate spatial indexing and boundary filtering logic."""
-
-    def __init__(self, tree_land: shapely.strtree.STRtree,
-                 tree_lakes: shapely.strtree.STRtree,
-                 land_sub: list[shapely.geometry.base.BaseGeometry],
-                 lakes_sub: list[shapely.geometry.base.BaseGeometry]) -> None:
-        """Initializes spatial trees and subdivided geometry lists."""
-        self.tree_land = tree_land
-        self.tree_lakes = tree_lakes
-        self.land_sub = land_sub
-        self.lakes_sub = lakes_sub
-
-    def get_candidate_matches(
-        self, buffers: typing.Any
-    ) -> tuple[dict[int, list[shapely.geometry.base.BaseGeometry]], dict[
-            int, list[shapely.geometry.base.BaseGeometry]]]:
-        """Finds matching land and lake geometries for each buffered point."""
-        land_matches = self.tree_land.query(buffers)
-        land_map: dict[int, list[shapely.geometry.base.BaseGeometry]] = {}
-        if land_matches.size > 0:
-            for buf_idx, land_idx in zip(land_matches[0], land_matches[1]):
-                land_map.setdefault(buf_idx,
-                                    []).append(self.land_sub[land_idx])
-
-        lake_matches = self.tree_lakes.query(buffers)
-        lake_map: dict[int, list[shapely.geometry.base.BaseGeometry]] = {}
-        if lake_matches.size > 0:
-            for buf_idx, lake_idx in zip(lake_matches[0], lake_matches[1]):
-                lake_map.setdefault(buf_idx,
-                                    []).append(self.lakes_sub[lake_idx])
-
-        return land_map, lake_map
-
-    def eval_boundary_point(
-            self, buffer_geom: shapely.geometry.base.BaseGeometry,
-            matching_lands: list[shapely.geometry.base.BaseGeometry],
-            matching_lakes: list[shapely.geometry.base.BaseGeometry]) -> bool:
-        """Determines if a single buffered point intersects dry land (land minus lakes)."""
-        if len(matching_lands) == 1:
-            land_geom = matching_lands[0]
-        else:
-            land_geom = shapely.union_all(matching_lands)
-
-        if matching_lakes:
-            if len(matching_lakes) == 1:
-                lake_geom = matching_lakes[0]
-            else:
-                lake_geom = shapely.union_all(matching_lakes)
-            land_minus_lakes = land_geom.difference(lake_geom)
-        else:
-            land_minus_lakes = land_geom
-
-        return buffer_geom.intersects(land_minus_lakes)
-
-    def _filter_batch_indices(
-            self, batch_points: list[shapely.geometry.Point]) -> set[int]:
-        """Filters a single batch of points and returns the valid local indices."""
-        proj_geoms = gpd.GeoDataFrame(
-            geometry=batch_points,
-            crs="EPSG:4326").to_crs(epsg=6933).geometry.tolist()
-
-        land_contains = self.tree_land.query(proj_geoms, predicate="contains")
-        on_land = set(land_contains[0])
-        lake_contains = self.tree_lakes.query(proj_geoms, predicate="contains")
-        in_lakes = set(lake_contains[0])
-
-        valid = on_land - in_lakes
-        remaining = [i for i in range(len(batch_points)) if i not in valid]
-        if remaining:
-            remaining_buffers = shapely.buffer(
-                [proj_geoms[i] for i in remaining], 100)
-            land_map, lake_map = self.get_candidate_matches(remaining_buffers)
-            for buf_idx, lands in land_map.items():
-                if self.eval_boundary_point(remaining_buffers[buf_idx], lands,
-                                            lake_map.get(buf_idx, [])):
-                    valid.add(remaining[buf_idx])
-
-        return valid
-
-    def filter_valid_indices(
-            self, raw_points: list[shapely.geometry.Point]) -> set[int]:
-        """Identifies indices of points situated on dry land or within 100m offshore."""
-        if not raw_points:
-            return set()
-
-        batch_size = 50000
-        valid_indices: set[int] = set()
-        for offset in range(0, len(raw_points), batch_size):
-            batch = raw_points[offset:offset + batch_size]
-            batch_valid = self._filter_batch_indices(batch)
-            valid_indices.update(offset + idx for idx in batch_valid)
-
-        return valid_indices
-
-
-def build_spatial_filter(land_zip_path: str,
-                         lakes_zip_path: str,
-                         verbose: bool = True) -> SpatialFilter:
-    """Loads shapefiles, projects them, subdivides them, and builds the SpatialFilter."""
-    land_proj, lakes_proj = _load_and_project_geometries(
-        land_zip_path, lakes_zip_path, verbose)
-
-    if verbose:
-        print(
-            "Subdividing land and lakes geometries to optimize spatial query performance..."
-        )
-    land_sub: list[shapely.geometry.base.BaseGeometry] = []
-    for geom in land_proj.geometry:
-        if geom is not None and not geom.is_empty:
-            land_sub.extend(subdivide_geometry(geom, max_size=1000000.0))
-
-    lakes_sub: list[shapely.geometry.base.BaseGeometry] = []
-    for geom in lakes_proj.geometry:
-        if geom is not None and not geom.is_empty:
-            lakes_sub.extend(subdivide_geometry(geom, max_size=1000000.0))
-
-    if verbose:
-        print("Building spatial indexes...")
-    tree_land = shapely.strtree.STRtree(land_sub)
-    tree_lakes = shapely.strtree.STRtree(lakes_sub)
-
-    if verbose:
-        print("Preparing geometries...")
-    shapely.prepare(land_sub)
-    shapely.prepare(lakes_sub)
-
-    return SpatialFilter(tree_land, tree_lakes, land_sub, lakes_sub)
+subdivide_geometry = backend.scripts.prepare_water.subdivide_geometry
+resolve_lake_zip_paths = backend.scripts.prepare_water.resolve_lake_zip_paths
+_load_and_project_geometries = (
+    backend.scripts.prepare_water.load_and_project_geometries)
+SpatialFilter = backend.scripts.prepare_water.SpatialFilter
+build_spatial_filter = backend.scripts.prepare_water.build_spatial_filter
 
 
 def generate_valid_dashpoints(
@@ -914,6 +725,12 @@ def main() -> None:
         default=None,
         help="Optional road GeoPackage path (default: resolved from config.ini)"
     )
+    parser.add_argument(
+        '--water-gpkg',
+        type=str,
+        default=None,
+        help=
+        "Optional water GeoPackage path (default: resolved from config.ini)")
     args = parser.parse_args()
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -922,14 +739,28 @@ def main() -> None:
     config_path = os.path.join(current_dir, '../config.ini')
     bad_words_path = os.path.join(current_dir, '../../data/bad_words.txt')
 
+    water_path: str | None = None
+    if args.water_gpkg:
+        water_path = backend.scripts.prepare_water.resolve_water_gpkg(
+            args.water_gpkg, config_path=config_path)
+    else:
+        try:
+            water_path = backend.scripts.prepare_water.resolve_water_gpkg(
+                config_path=config_path)
+        except (FileNotFoundError, RuntimeError):
+            water_path = None
+
+    effective_land = water_path or zip_path
+    effective_lakes = '' if water_path else lakes_zip
+
     try:
         if args.algorithm == 'grid':
             print(
                 f"Generating dashpoints using grid algorithm (size: {args.grid_size} km)..."
             )
             points = generate_grid_dashpoints(grid_size_km=args.grid_size,
-                                              land_zip_path=zip_path,
-                                              lakes_zip_path=lakes_zip)
+                                              land_zip_path=effective_land,
+                                              lakes_zip_path=effective_lakes)
         elif args.algorithm == 'road-proximity':
             print(f"Generating dashpoints using road-proximity algorithm "
                   f"(size: {args.grid_size} km)...")
@@ -937,15 +768,15 @@ def main() -> None:
                 args.roads_gpkg, config_path=config_path)
             points = generate_road_proximity_dashpoints(
                 grid_size_km=args.grid_size,
-                land_zip_path=zip_path,
-                lakes_zip_path=lakes_zip,
+                land_zip_path=effective_land,
+                lakes_zip_path=effective_lakes,
                 roads_input=roads_path)
         else:
             target = args.count
             print(f"Generating {target} dashpoints using random algorithm...")
             points = generate_valid_dashpoints(target_count=target,
-                                               land_zip_path=zip_path,
-                                               lakes_zip_path=lakes_zip)
+                                               land_zip_path=effective_land,
+                                               lakes_zip_path=effective_lakes)
 
         # 2. Upload to MySQL
         seed_database(points,

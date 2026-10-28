@@ -293,14 +293,24 @@ class RerollService
     ): string {
         $projectRoot = dirname(__DIR__, 2);
         $scriptPath = __DIR__ . '/../scripts/reroll_dashpoint.py';
-        $landZipPath = $projectRoot . '/data/ne_10m_land.zip';
-        $lakesZipPath = $projectRoot . '/data/ne_10m_lakes.zip';
+        $waterGpkgPath = $projectRoot . '/data/world_osm_water.gpkg';
+        if (file_exists($waterGpkgPath)) {
+            $datasetArgs = '--water-gpkg ' . escapeshellarg($waterGpkgPath);
+        } else {
+            $landZipPath = $projectRoot . '/data/ne_10m_land.zip';
+            $lakesZipPath = $projectRoot . '/data/ne_10m_lakes.zip';
+            $datasetArgs = sprintf(
+                '--land-zip %s --lakes-zip %s',
+                escapeshellarg($landZipPath),
+                escapeshellarg($lakesZipPath)
+            );
+        }
 
         $uvBin = $this->resolveUvBinary();
         if ($uvBin !== null) {
             return sprintf(
                 'UV_CACHE_DIR=/tmp/uv-cache PYTHONPATH=%s %s run --no-sync --no-dev --project %s python %s'
-                . ' --lat %F --lon %F --max-radius-km %F --land-zip %s --lakes-zip %s --output-file %s 2>&1',
+                . ' --lat %F --lon %F --max-radius-km %F %s --output-file %s 2>&1',
                 escapeshellarg($projectRoot),
                 escapeshellarg($uvBin),
                 escapeshellarg($projectRoot),
@@ -308,8 +318,7 @@ class RerollService
                 $origLat,
                 $origLon,
                 $maxRadiusKm,
-                escapeshellarg($landZipPath),
-                escapeshellarg($lakesZipPath),
+                $datasetArgs,
                 escapeshellarg($tempFile)
             );
         }
@@ -326,15 +335,14 @@ class RerollService
 
         return sprintf(
             'PYTHONPATH=%s %s %s --lat %F --lon %F --max-radius-km %F '
-            . '--land-zip %s --lakes-zip %s --output-file %s 2>&1',
+            . '%s --output-file %s 2>&1',
             escapeshellarg($projectRoot),
             escapeshellarg($pythonBin),
             escapeshellarg($scriptPath),
             $origLat,
             $origLon,
             $maxRadiusKm,
-            escapeshellarg($landZipPath),
-            escapeshellarg($lakesZipPath),
+            $datasetArgs,
             escapeshellarg($tempFile)
         );
     }
@@ -359,14 +367,17 @@ class RerollService
         }
 
         $projectRoot = dirname(__DIR__, 2);
+        $waterGpkgPath = $projectRoot . '/data/world_osm_water.gpkg';
         $landZipPath = $projectRoot . '/data/ne_10m_land.zip';
         $lakesZipPath = $projectRoot . '/data/ne_10m_lakes.zip';
 
-        if (!file_exists($landZipPath) || !is_readable($landZipPath)) {
-            throw new Exception("Land shapefile not found or unreadable at {$landZipPath}.");
-        }
-        if (!file_exists($lakesZipPath) || !is_readable($lakesZipPath)) {
-            throw new Exception("Lakes shapefile not found or unreadable at {$lakesZipPath}.");
+        if (!file_exists($waterGpkgPath) || !is_readable($waterGpkgPath)) {
+            if (!file_exists($landZipPath) || !is_readable($landZipPath)) {
+                throw new Exception("Land shapefile not found or unreadable at {$landZipPath}.");
+            }
+            if (!file_exists($lakesZipPath) || !is_readable($lakesZipPath)) {
+                throw new Exception("Lakes shapefile not found or unreadable at {$lakesZipPath}.");
+            }
         }
 
         $tempFile = tempnam(sys_get_temp_dir(), 'gd_reroll_');

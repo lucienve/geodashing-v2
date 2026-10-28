@@ -23,7 +23,7 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy application source code required for road preparation
 COPY backend/__init__.py backend/
-COPY backend/scripts/__init__.py backend/scripts/prepare_roads.py backend/scripts/
+COPY backend/scripts/__init__.py backend/scripts/prepare_roads.py backend/scripts/prepare_water.py backend/scripts/
 
 ENV UV_NO_SYNC=1
 

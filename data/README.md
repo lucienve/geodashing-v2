@@ -114,3 +114,40 @@ uv run python -m backend.scripts.prepare_roads \
   --input data/planet-latest.osm.pbf \
   --output data/world_drivable_roads.gpkg
 ```
+
+## Water & Coastline Datasets
+
+To prevent dashpoints from landing in open lakes, wide riverbanks, reservoirs,
+and coastal tidal flats, game generation and dashpoint rerolling support an
+indexed OpenStreetMap GeoPackage (`data/world_osm_water.gpkg`). The GeoPackage
+contains two R-tree indexed spatial layers:
+
+- `land`: Global coastline polygons pre-split on a 0.5-degree grid
+  (`land-polygons-split-4326.zip`).
+- `water`: Global inland water and inundated wetland polygons derived from
+  `planet-latest.osm.pbf` (`natural=water`, `waterway=riverbank`,
+  `landuse=reservoir,basin`, and `natural=wetland`).
+
+Like the road dataset, `world_osm_water.gpkg` must be non-empty and refreshed
+within the last **6 months** (180 days).
+
+### Downloading the Water Dataset
+
+Download the compiled GeoPackage directly from Google Cloud Storage:
+
+```bash
+gcloud storage cp gs://geodashing-v2-map-data/world_osm_water.gpkg data/world_osm_water.gpkg
+```
+
+### Refreshing the Water Dataset
+
+Administrators can submit an automated Cloud Batch job to rebuild and upload a
+fresh water dataset:
+
+```bash
+# Standard compilation with GCS checkpointing and early-exit guards
+./backend/scripts/submit_water_batch_job.sh
+
+# Force recompilation (bypassing GCS cache and freshness checks)
+./backend/scripts/submit_water_batch_job.sh --force
+```

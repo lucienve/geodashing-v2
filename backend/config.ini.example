@@ -41,3 +41,5 @@ SEND_TURNOVER_ANNOUNCEMENT = true
 GCS_MAP_DATA_BUCKET_NAME = "geodashing-v2-map-data"
 ; Local path to cached road GeoPackage file (e.g. data/world_drivable_roads.gpkg or /mnt/geodashing-data/world_drivable_roads.gpkg)
 ROADS_GPKG_PATH = "data/world_drivable_roads.gpkg"
+; Local path to cached water/coastline GeoPackage file (e.g. data/world_osm_water.gpkg)
+WATER_GPKG_PATH = "data/world_osm_water.gpkg"

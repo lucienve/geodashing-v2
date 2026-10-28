@@ -2401,3 +2401,31 @@ geographic games where they are tasked with reaching randomly generated
     temporary `[tool.pylint.design]` overrides (`max-module-lines = 1500`,
     `max-args = 6`) in `pyproject.toml` to be permanently removed while strictly
     satisfying default Pylint design thresholds.
+- **OpenStreetMap Water & Coastline Dataset Pipeline (`world_osm_water.gpkg`)**:
+  - Implemented `backend/scripts/prepare_water.py` to extract global water
+    polygons (`natural=water`, `waterway=riverbank`, `landuse=reservoir,basin`,
+    and inundated `natural=wetland` like tidal flats and swamps) and
+    pre-assembled OpenStreetMap coastline polygons
+    (`land-polygons-split-4326.zip`) into an R-tree indexed two-layer GeoPackage
+    (`data/world_osm_water.gpkg`).
+  - Added build-time geometry vertex simplification (`-simplify 0.00005`,
+    $\approx 5.5\text{ m}$) during `ogr2ogr` extraction and selective runtime
+    geometry preparation (`shapely.prepare` applied only to features $\ge 250$
+    vertices via vectorized `shapely.get_num_coordinates`), cutting memory
+    footprint and avoiding GEOS heap overhead on production web/cron instances
+    during game rollover.
+  - Decoupled `subdivide_geometry` (short-circuiting already split features),
+    `resolve_lake_zip_paths`, `load_and_project_geometries`, `SpatialFilter`,
+    and `build_spatial_filter` into `prepare_water.py` with backward-compatible
+    aliases in `generate_game.py`, reducing `generate_game.py` from 965 to 797
+    lines.
+  - Configured Google Cloud Batch compilation via
+    `backend/scripts/batch_prepare_water.json` and
+    `backend/scripts/submit_water_batch_job.sh`, reusing the
+    `prepare-roads:latest` container on `batch-cos` with Spot VM preemption
+    retries and multi-stage GCS checkpointing (`world_osm_water.gpkg`,
+    `cache/land-polygons-split-4326.zip`, and `cache/filtered_water.osm.pbf`).
+  - Integrated localized bounding-box spatial queries in
+    `backend/scripts/reroll_dashpoint.py` and updated
+    `backend/services/RerollService.php` to leverage `world_osm_water.gpkg` with
+    automatic fallback to legacy shapefiles.
