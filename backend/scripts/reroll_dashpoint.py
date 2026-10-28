@@ -12,6 +12,7 @@ import shapely
 import shapely.geometry
 
 import backend.scripts.generate_game
+import backend.scripts.road_proximity
 
 # Mean radius of the Earth in kilometers
 EARTH_RADIUS_KM: float = 6371.0
@@ -41,15 +42,17 @@ def haversine_distance_km(lat1: float, lon1: float, lat2: float,
 
 
 def is_valid_land_point(
-        lat: float, lon: float,
-        spatial_filter: backend.scripts.generate_game.SpatialFilter) -> bool:
+    lat: float, lon: float,
+    spatial_filter: backend.scripts.road_proximity.SpatialFilterProtocol
+) -> bool:
     """Evaluates whether a single (lat, lon) coordinate lands on dry land and not in a lake."""
     point = shapely.geometry.Point(lon, lat)
     gdf = gpd.GeoDataFrame(geometry=[point], crs="EPSG:4326")
     proj_points = gdf.to_crs(epsg=6933)
 
     proj_buffers = shapely.buffer(proj_points.geometry, 100)
-    land_map, lake_map = spatial_filter.get_candidate_matches(proj_buffers)
+    land_map, lake_map = spatial_filter.get_candidate_matches(
+        list(proj_buffers))
 
     if 0 in land_map:
         buffer_geom = proj_buffers[0]
@@ -130,7 +133,7 @@ def compute_search_bbox(
 def find_valid_reroll_point(
         origin: tuple[float, float],
         max_radius_km: float = 10.0,
-        spatial_filter: backend.scripts.generate_game.SpatialFilter
+        spatial_filter: backend.scripts.road_proximity.SpatialFilterProtocol
     | None = None,
         max_attempts: int = 2000,
         verbose: bool = False) -> tuple[float, float]:

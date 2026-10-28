@@ -34,6 +34,7 @@ LAKE_SUPPLEMENT_FILENAMES: tuple[str, ...] = (
 )
 
 LatitudeBand = backend.scripts.road_proximity.LatitudeBand
+SpatialFilterProtocol = backend.scripts.road_proximity.SpatialFilterProtocol
 
 
 class SphereNeighborGrid:
@@ -201,7 +202,7 @@ get_cell_bboxes = backend.scripts.road_proximity.get_cell_bboxes
 
 def _find_valid_cell_point(
         band: LatitudeBand, cell_idx: int, initial_pt: shapely.geometry.Point,
-        spatial_filter: 'SpatialFilter',
+        spatial_filter: SpatialFilterProtocol,
         neighbor_grid: SphereNeighborGrid) -> shapely.geometry.Point | None:
     """Finds a non-colliding dry-land point in the cell, retrying up to MAX_CELL_ATTEMPTS."""
     if neighbor_grid.insert(initial_pt.x, initial_pt.y):
@@ -448,7 +449,8 @@ def _collect_all_grid_cells(
 
 def _place_shuffled_darts(
         darts: list[tuple[LatitudeBand, int, shapely.geometry.Point]],
-        spatial_filter: SpatialFilter, neighbor_grid: SphereNeighborGrid,
+        spatial_filter: SpatialFilterProtocol,
+        neighbor_grid: SphereNeighborGrid,
         accepted_points: list[shapely.geometry.Point]) -> None:
     """Places darts in random order, retrying any 12km collisions."""
     rng = np.random.default_rng()
@@ -461,7 +463,7 @@ def _place_shuffled_darts(
 
 
 def _execute_pass1(
-    bands: list[LatitudeBand], spatial_filter: SpatialFilter,
+    bands: list[LatitudeBand], spatial_filter: SpatialFilterProtocol,
     neighbor_grid: SphereNeighborGrid,
     accepted_points: list[shapely.geometry.Point]
 ) -> list[tuple[LatitudeBand, int]]:
@@ -498,8 +500,9 @@ def _collect_cardinal_candidates(
     return candidates
 
 
-def _execute_pass2(water_cells: list[tuple[LatitudeBand, int]],
-                   bands: list[LatitudeBand], spatial_filter: SpatialFilter,
+def _execute_pass2(water_cells: list[tuple[LatitudeBand,
+                                           int]], bands: list[LatitudeBand],
+                   spatial_filter: SpatialFilterProtocol,
                    neighbor_grid: SphereNeighborGrid,
                    accepted_points: list[shapely.geometry.Point]) -> None:
     """Executes Pass 2 non-cascading cardinal water redistribution."""

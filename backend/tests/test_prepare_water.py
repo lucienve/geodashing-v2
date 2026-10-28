@@ -17,6 +17,7 @@ import shapely.geometry
 
 import backend.scripts.prepare_roads
 import backend.scripts.prepare_water
+import backend.scripts.road_proximity
 
 
 def test_build_water_where_clause() -> None:
@@ -476,3 +477,121 @@ def test_main_cli_full_flow(tmp_path: pathlib.Path,
     ])
     assert exit_code == 0
     assert uploaded
+
+
+def test_subdivide_geometry_non_polygons() -> None:
+    """Verifies that subdivide_geometry returns empty list on non-polygonal types."""
+    line = shapely.geometry.LineString([(0, 0), (10, 10)])
+    mline = shapely.geometry.MultiLineString([
+        shapely.geometry.LineString([(0, 0), (5, 5)]),
+        shapely.geometry.LineString([(5, 5), (10, 10)]),
+    ])
+    pt = shapely.geometry.Point(1, 1)
+    empty = shapely.geometry.Polygon()
+
+    assert backend.scripts.prepare_water.subdivide_geometry(None) == []
+    assert backend.scripts.prepare_water.subdivide_geometry(empty) == []
+    assert backend.scripts.prepare_water.subdivide_geometry(line) == []
+    assert backend.scripts.prepare_water.subdivide_geometry(mline) == []
+    assert backend.scripts.prepare_water.subdivide_geometry(pt) == []
+
+
+def test_clip_gdf_to_bbox() -> None:
+    """Verifies that _clip_gdf_to_bbox pre-clips geometries and drops empties."""
+    b1 = shapely.box(0, 0, 10, 10)
+    b2 = shapely.box(50, 50, 60, 60)
+    gdf = gpd.GeoDataFrame(geometry=[b1, b2], crs='EPSG:4326')
+
+    clipped = backend.scripts.prepare_water.clip_gdf_to_bbox(gdf,
+                                                             bbox=(0, 0, 5, 5),
+                                                             pad=0.05)
+    assert len(clipped) == 1
+    assert clipped.geometry.iloc[0].bounds[2] <= 5.06
+    assert clipped.geometry.iloc[0].bounds[3] <= 5.06
+
+
+def _create_mock_gpkg_database(db_path: str) -> None:
+    """Creates a minimal SQLite GeoPackage fixture with land and water layers."""
+    l1 = shapely.box(0, 0, 10, 10)
+    l2 = shapely.box(19, 19, 21, 21)
+    gdf_land = gpd.GeoDataFrame(geometry=[l1, l2], crs='EPSG:4326')
+    gdf_land.to_file(db_path, layer='land', driver='GPKG')
+
+    w1 = shapely.box(2, 2, 6, 6)
+    w2 = shapely.geometry.Polygon(
+        [(15, 15), (25, 15), (25, 25), (15, 25), (15, 15)],
+        holes=[[(19, 19), (21, 19), (21, 21), (19, 21), (19, 19)]],
+    )
+    gdf_water = gpd.GeoDataFrame(geometry=[w1, w2], crs='EPSG:4326')
+    gdf_water.to_file(db_path, layer='water', driver='GPKG')
+
+
+def test_gpkg_spatial_filter_comprehensive(tmp_path: pathlib.Path) -> None:
+    """Verifies GpkgSpatialFilter on-demand queries, point filtering, and classification."""
+    db_file = tmp_path / 'mock_world_water.gpkg'
+    _create_mock_gpkg_database(str(db_file))
+
+    sf = backend.scripts.road_proximity.GpkgSpatialFilter(str(db_file),
+                                                          verbose=False)
+    assert len(sf.land_fids) == 2
+    assert len(sf.water_fids) == 2
+
+    pts = [
+        shapely.geometry.Point(8, 8),  # dry land (index 0) -> True
+        shapely.geometry.Point(4, 4),  # in lake (index 1) -> False
+        shapely.geometry.Point(20, 20),  # island in lake (index 2) -> True
+        shapely.geometry.Point(16,
+                               16),  # in lake around island (index 3) -> False
+        shapely.geometry.Point(50, 50),  # open ocean (index 4) -> False
+        shapely.geometry.Point(
+            -179.99, 0.0),  # antimeridian open ocean (index 5) -> False
+    ]
+    valid = sf.filter_valid_indices(pts)
+    assert valid == {0, 2}
+
+    # Grid classification
+    land_band = backend.scripts.road_proximity.LatitudeBand(band_idx=0,
+                                                            lat_min=0.0,
+                                                            lat_max=10.0,
+                                                            lon_offset=0.0,
+                                                            num_cells=1,
+                                                            dlon=10.0)
+    ocean_band = backend.scripts.road_proximity.LatitudeBand(band_idx=1,
+                                                             lat_min=40.0,
+                                                             lat_max=50.0,
+                                                             lon_offset=0.0,
+                                                             num_cells=1,
+                                                             dlon=10.0)
+    land_c, water_c = sf.classify_grid_cells([land_band, ocean_band])
+    assert len(land_c) == 1
+    assert land_c[0][0].band_idx == 0
+    assert len(water_c) == 1
+    assert water_c[0][0].band_idx == 1
+
+    # Compatibility methods
+    buf = shapely.geometry.Point(8, 8).buffer(0.1)
+    land_map, lake_map = sf.get_candidate_matches([buf])
+    assert len(land_map) >= 1
+    assert sf.eval_boundary_point(buf, land_map.get(0, []),
+                                  lake_map.get(0, []))
+
+    sf.close()
+
+
+def test_build_spatial_filter_gpkg_wiring(tmp_path: pathlib.Path) -> None:
+    """Verifies build_spatial_filter returns GpkgSpatialFilter for valid GPKG without bbox."""
+    db_file = tmp_path / 'valid.gpkg'
+    _create_mock_gpkg_database(str(db_file))
+
+    # With bbox=None and valid GPKG -> returns GpkgSpatialFilter
+    sf = backend.scripts.prepare_water.build_spatial_filter(str(db_file),
+                                                            verbose=False)
+    assert isinstance(sf, backend.scripts.road_proximity.GpkgSpatialFilter)
+    sf.close()
+
+    # With bbox provided -> falls back to load_and_project_geometries (returns SpatialFilter)
+    sf_bbox = backend.scripts.prepare_water.build_spatial_filter(str(db_file),
+                                                                 verbose=False,
+                                                                 bbox=(0, 0,
+                                                                       10, 10))
+    assert isinstance(sf_bbox, backend.scripts.prepare_water.SpatialFilter)

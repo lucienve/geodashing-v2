@@ -11,6 +11,7 @@ subdivide_geometry) used during game generation and dashpoint rerolling.
 import argparse
 import os
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -26,6 +27,7 @@ import shapely.geometry
 import shapely.strtree
 
 import backend.scripts.prepare_roads
+import backend.scripts.road_proximity
 
 DEFAULT_WATER_GPKG_PATH = 'data/world_osm_water.gpkg'
 DEFAULT_GCS_BUCKET = 'geodashing-v2-map-data'
@@ -497,6 +499,8 @@ def subdivide_geometry(
     """Subdivides a geometry into smaller grid geometries if bounds exceed max_size."""
     if geom is None or geom.is_empty:
         return []
+    if geom.geom_type not in ('Polygon', 'MultiPolygon', 'GeometryCollection'):
+        return []
     minx, miny, maxx, maxy = geom.bounds
     if (maxx - minx) <= max_size and (maxy - miny) <= max_size:
         if geom.geom_type == 'Polygon':
@@ -552,6 +556,25 @@ def _project_and_validate_gdf(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return proj
 
 
+def clip_gdf_to_bbox(
+    gdf: gpd.GeoDataFrame,
+    bbox: tuple[float, float, float, float],
+    pad: float = 0.05,
+) -> gpd.GeoDataFrame:
+    """Clips GeoDataFrame geometries in EPSG:4326 to a padded bounding box."""
+    if gdf.empty:
+        return gdf
+    clip_box = (
+        max(-180.0, bbox[0] - pad),
+        max(-90.0, bbox[1] - pad),
+        min(180.0, bbox[2] + pad),
+        min(90.0, bbox[3] + pad),
+    )
+    clipped = shapely.clip_by_rect(gdf.geometry.values, *clip_box)
+    valid_mask = ~shapely.is_empty(clipped)
+    return gpd.GeoDataFrame(geometry=clipped[valid_mask], crs=gdf.crs)
+
+
 def load_and_project_geometries(
     land_path: str,
     lakes_path: str = '',
@@ -572,11 +595,17 @@ def load_and_project_geometries(
     if land_path.lower().endswith('.gpkg'):
         try:
             if bbox is not None:
-                land_gdf = gpd.read_file(land_path, layer='land', bbox=bbox)
-                water_gdf = gpd.read_file(land_path, layer='water', bbox=bbox)
+                land_gdf = gpd.read_file(land_path,
+                                         layer='land',
+                                         bbox=bbox,
+                                         columns=[])
+                water_gdf = gpd.read_file(land_path,
+                                          layer='water',
+                                          bbox=bbox,
+                                          columns=[])
             else:
-                land_gdf = gpd.read_file(land_path, layer='land')
-                water_gdf = gpd.read_file(land_path, layer='water')
+                land_gdf = gpd.read_file(land_path, layer='land', columns=[])
+                water_gdf = gpd.read_file(land_path, layer='water', columns=[])
         except Exception as exc:
             raise FileNotFoundError(
                 f"Failed to read GeoPackage layers from {land_path}: {exc}"
@@ -600,6 +629,10 @@ def load_and_project_geometries(
         except Exception as exc:
             raise FileNotFoundError(
                 f"Failed to read shapefiles: {exc}") from exc
+
+    if bbox is not None:
+        land_gdf = clip_gdf_to_bbox(land_gdf, bbox)
+        water_gdf = clip_gdf_to_bbox(water_gdf, bbox)
 
     if verbose:
         print("Projecting land and water geometries to EPSG:6933...")
@@ -670,21 +703,32 @@ class SpatialFilter:
         matching_lakes: list[shapely.geometry.base.BaseGeometry],
     ) -> bool:
         """Determines if a single buffered point intersects dry land."""
-        if len(matching_lands) == 1:
-            land_geom = matching_lands[0]
+        clipped_lands = [g.intersection(buffer_geom) for g in matching_lands]
+        clipped_lands = [g for g in clipped_lands if not g.is_empty]
+        if not clipped_lands:
+            return False
+        if len(clipped_lands) == 1:
+            land_geom = clipped_lands[0]
         else:
-            land_geom = shapely.union_all(matching_lands)
+            land_geom = shapely.union_all(clipped_lands)
 
         if matching_lakes:
-            if len(matching_lakes) == 1:
-                lake_geom = matching_lakes[0]
+            clipped_lakes = [
+                g.intersection(buffer_geom) for g in matching_lakes
+            ]
+            clipped_lakes = [g for g in clipped_lakes if not g.is_empty]
+            if clipped_lakes:
+                if len(clipped_lakes) == 1:
+                    lake_geom = clipped_lakes[0]
+                else:
+                    lake_geom = shapely.union_all(clipped_lakes)
+                land_minus_lakes = land_geom.difference(lake_geom)
             else:
-                lake_geom = shapely.union_all(matching_lakes)
-            land_minus_lakes = land_geom.difference(lake_geom)
+                land_minus_lakes = land_geom
         else:
             land_minus_lakes = land_geom
 
-        return buffer_geom.intersects(land_minus_lakes)
+        return not land_minus_lakes.is_empty
 
     def _filter_batch_indices(
             self, batch_points: list[shapely.geometry.Point]) -> set[int]:
@@ -735,8 +779,25 @@ def build_spatial_filter(
     lakes_path: str = '',
     verbose: bool = True,
     bbox: tuple[float, float, float, float] | None = None,
-) -> SpatialFilter:
+) -> typing.Union[SpatialFilter,
+                  backend.scripts.road_proximity.GpkgSpatialFilter]:
     """Loads datasets, subdivides them, and builds a SpatialFilter instance."""
+    if land_path.lower().endswith('.gpkg') and bbox is None:
+        try:
+            conn = sqlite3.connect(
+                f"file:{os.path.abspath(land_path)}?mode=ro",
+                uri=True,
+                check_same_thread=False,
+            )
+            cur = conn.cursor()
+            cur.execute("SELECT 1 FROM rtree_land_geom LIMIT 1")
+            cur.execute("SELECT 1 FROM rtree_water_geom LIMIT 1")
+            conn.close()
+            return backend.scripts.road_proximity.GpkgSpatialFilter(
+                land_path, verbose=verbose)
+        except (sqlite3.Error, OSError):
+            pass
+
     land_proj, lakes_proj = load_and_project_geometries(land_path,
                                                         lakes_path,
                                                         verbose=verbose,

@@ -1,16 +1,22 @@
 """Spatial road-proximity sampling and grid-cell placement primitives."""
 
+import collections
 import dataclasses
 import math
+import os
+import sqlite3
 import typing
 
 import geopandas as gpd
 import numpy as np
 import pyogrio
+import pyproj
 import shapely
 import shapely.affinity
+import shapely.errors
 import shapely.geometry
 import shapely.geometry.base
+import shapely.strtree
 
 EARTH_RADIUS_KM: float = 6371.0088
 
@@ -318,6 +324,9 @@ def classify_grid_cells(
     bands: list[LatitudeBand], spatial_filter: SpatialFilterProtocol
 ) -> tuple[list[tuple[LatitudeBand, int]], list[tuple[LatitudeBand, int]]]:
     """Partitions grid cells into dry land cells (> 0% land) and water-only cells (0% land)."""
+    if isinstance(spatial_filter, GpkgSpatialFilter):
+        return spatial_filter.classify_grid_cells(bands)
+
     flat_cells, boxes, box_to_cell = _build_cell_bounding_boxes(bands)
     proj_boxes = list(gpd.GeoSeries(boxes, crs='EPSG:4326').to_crs(epsg=6933))
     land_map, lake_map = spatial_filter.get_candidate_matches(proj_boxes)
@@ -336,6 +345,473 @@ def classify_grid_cells(
         c for i, c in enumerate(flat_cells) if i not in land_cell_indices
     ]
     return land_cells, water_cells
+
+
+def _safe_union(
+    geoms: list[shapely.geometry.base.BaseGeometry],
+) -> shapely.geometry.base.BaseGeometry:
+    """Safely unions geometries, falling back to make_valid on topology conflicts."""
+    if not geoms:
+        return shapely.geometry.Polygon()
+    if len(geoms) == 1:
+        return geoms[0]
+    try:
+        return shapely.union_all(geoms)
+    except shapely.errors.GEOSException:
+        repaired = [
+            shapely.make_valid(g) if not g.is_valid else g for g in geoms
+        ]
+        try:
+            return shapely.union_all(repaired)
+        except shapely.errors.GEOSException:
+            res = repaired[0]
+            for g in repaired[1:]:
+                try:
+                    res = res.union(g)
+                except (shapely.errors.GEOSException, ValueError):
+                    continue
+            return res
+
+
+def _safe_difference(
+    geom_a: shapely.geometry.base.BaseGeometry,
+    geom_b: shapely.geometry.base.BaseGeometry,
+) -> shapely.geometry.base.BaseGeometry:
+    """Safely computes geom_a.difference(geom_b), falling back to make_valid."""
+    if geom_a.is_empty:
+        return geom_a
+    if geom_b.is_empty:
+        return geom_a
+    try:
+        return geom_a.difference(geom_b)
+    except shapely.errors.GEOSException:
+        a_rep = shapely.make_valid(geom_a) if not geom_a.is_valid else geom_a
+        b_rep = shapely.make_valid(geom_b) if not geom_b.is_valid else geom_b
+        try:
+            return a_rep.difference(b_rep)
+        except shapely.errors.GEOSException:
+            return a_rep
+
+
+def _load_rtree_index(
+    conn: sqlite3.Connection,
+    table_name: str,
+) -> tuple[np.ndarray, shapely.strtree.STRtree]:
+    """Loads an R-tree table into an in-memory STRtree with chunked fetching.
+
+    Args:
+        conn: Read-only SQLite connection.
+        table_name: Name of the R-tree table (e.g. 'rtree_land_geom').
+
+    Returns:
+        tuple[np.ndarray, shapely.strtree.STRtree]: Tuple of (fids, strtree).
+    """
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+    count = cursor.fetchone()[0]
+    if count == 0:
+        return np.empty(0, dtype=np.int64), shapely.strtree.STRtree([])
+
+    fids = np.empty(count, dtype=np.int64)
+    boxes = np.empty((count, 4), dtype=np.float64)
+
+    cursor.execute(f"SELECT id, minx, miny, maxx, maxy FROM {table_name}")
+    offset = 0
+    chunk_size = 100000
+    while True:
+        rows = cursor.fetchmany(chunk_size)
+        if not rows:
+            break
+        chunk_arr = np.asarray(rows, dtype=np.float64)
+        n = len(rows)
+        fids[offset:offset + n] = chunk_arr[:, 0].astype(np.int64)
+        boxes[offset:offset + n] = chunk_arr[:, 1:5]
+        offset += n
+
+    box_geoms = shapely.box(boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3])
+    del boxes
+    tree = shapely.strtree.STRtree(box_geoms)
+    return fids, tree
+
+
+def _parse_gpkg_wkb(
+    blob: bytes | None, ) -> shapely.geometry.base.BaseGeometry | None:
+    """Parses a GeoPackage binary geometry blob into a Shapely geometry."""
+    if not blob or len(blob) < 8 or blob[:2] != b'GP':
+        return None
+    flags = blob[3]
+    is_empty = (flags >> 4) & 0x01
+    if is_empty:
+        return None
+    env_indicator = (flags >> 1) & 0x07
+    env_sizes = {0: 0, 1: 32, 2: 48, 3: 48, 4: 64}
+    env_size = env_sizes.get(env_indicator)
+    if env_size is None or len(blob) < 8 + env_size:
+        return None
+    wkb_bytes = blob[8 + env_size:]
+    try:
+        return shapely.from_wkb(wkb_bytes)
+    except (shapely.errors.GEOSException, ValueError, IndexError):
+        return None
+
+
+def _build_batch_pt_boxes(
+    batch_points: list[shapely.geometry.Point],
+) -> list[shapely.geometry.Polygon]:
+    """Builds polar-scaled and antimeridian-wrapped search boxes for points."""
+    pt_boxes: list[shapely.geometry.Polygon] = []
+    for pt in batch_points:
+        lat, lon = pt.y, pt.x
+        cos_lat = max(math.cos(math.radians(abs(lat))), 0.01)
+        delta = 0.002 / cos_lat
+        minx, maxx = lon - delta, lon + delta
+        miny, maxy = max(-90.0, lat - delta), min(90.0, lat + delta)
+        if (minx < -180.0 or maxx > 180.0 or (lat + delta) >= 90.0
+                or (lat - delta) <= -90.0):
+            minx, maxx = -180.0, 180.0
+        pt_boxes.append(shapely.box(minx, miny, maxx, maxy))
+    return pt_boxes
+
+
+@dataclasses.dataclass(frozen=True)
+class _RtreeIndex:
+    """Stores R-tree feature IDs and corresponding STRtree spatial index."""
+    fids: np.ndarray
+    tree: shapely.strtree.STRtree
+
+
+class GpkgSpatialFilter:
+    """Spatial filter querying a GeoPackage using R-tree indexes and on-demand WKB."""
+
+    _MAX_CACHE_SIZE: int = 256
+
+    def __init__(self, gpkg_path: str, verbose: bool = True) -> None:
+        """Initializes the filter and loads R-tree envelopes into memory."""
+        self.gpkg_path = gpkg_path
+        self._conn = sqlite3.connect(
+            f"file:{os.path.abspath(gpkg_path)}?mode=ro",
+            uri=True,
+            check_same_thread=False,
+        )
+        self._transformer = pyproj.Transformer.from_crs('EPSG:4326',
+                                                        'EPSG:6933',
+                                                        always_xy=True)
+        self._inv_transformer = pyproj.Transformer.from_crs('EPSG:6933',
+                                                            'EPSG:4326',
+                                                            always_xy=True)
+        self._geom_cache: collections.OrderedDict[
+            tuple[str, int], shapely.geometry.base.BaseGeometry
+            | None] = collections.OrderedDict()
+
+        if verbose:
+            print(f"Loading R-tree spatial indexes from {gpkg_path}...")
+        self._land_index = _RtreeIndex(
+            *_load_rtree_index(self._conn, 'rtree_land_geom'))
+        self._water_index = _RtreeIndex(
+            *_load_rtree_index(self._conn, 'rtree_water_geom'))
+        if verbose:
+            print(f"Loaded {len(self.land_fids)} land and "
+                  f"{len(self.water_fids)} water envelopes.")
+
+    @property
+    def land_fids(self) -> np.ndarray:
+        """Returns array of feature IDs for the land layer."""
+        return self._land_index.fids
+
+    @property
+    def land_tree(self) -> shapely.strtree.STRtree:
+        """Returns STRtree spatial index for the land layer."""
+        return self._land_index.tree
+
+    @property
+    def water_fids(self) -> np.ndarray:
+        """Returns array of feature IDs for the water layer."""
+        return self._water_index.fids
+
+    @property
+    def water_tree(self) -> shapely.strtree.STRtree:
+        """Returns STRtree spatial index for the water layer."""
+        return self._water_index.tree
+
+    def close(self) -> None:
+        """Cleans up in-memory caches and closes the SQLite connection."""
+        self._geom_cache.clear()
+        self._conn.close()
+
+    def _to_6933(self, coords: np.ndarray) -> np.ndarray:
+        """Transforms coordinate array from EPSG:4326 to EPSG:6933."""
+        x, y = self._transformer.transform(coords[:, 0], coords[:, 1])
+        return np.column_stack((x, y))
+
+    def _to_wgs84(self, coords: np.ndarray) -> np.ndarray:
+        """Transforms coordinate array from EPSG:6933 to EPSG:4326."""
+        x, y = self._inv_transformer.transform(coords[:, 0], coords[:, 1])
+        return np.column_stack((x, y))
+
+    def _fetch_single_geom(
+            self, layer: str,
+            fid: int) -> shapely.geometry.base.BaseGeometry | None:
+        """Fetches and caches a single geometry by layer and feature ID."""
+        key = (layer, int(fid))
+        if key in self._geom_cache:
+            self._geom_cache.move_to_end(key)
+            return self._geom_cache[key]
+
+        cursor = self._conn.cursor()
+        cursor.execute(f"SELECT geom FROM {layer} WHERE fid = ?", (int(fid), ))
+        row = cursor.fetchone()
+        geom = _parse_gpkg_wkb(row[0]) if row else None
+
+        if len(self._geom_cache) >= self._MAX_CACHE_SIZE:
+            self._geom_cache.popitem(last=False)
+        self._geom_cache[key] = geom
+        return geom
+
+    def _clip_patch(
+        self,
+        layer: str,
+        fids: list[int],
+        box_bounds: tuple[float, float, float, float],
+    ) -> shapely.geometry.base.BaseGeometry | None:
+        """Fetches, clips, and unions geometries for a single layer within box_bounds."""
+        if not fids:
+            return None
+        geoms = [self._fetch_single_geom(layer, f) for f in fids]
+        clipped = [
+            shapely.clip_by_rect(g, *box_bounds) for g in geoms
+            if g is not None and not g.is_empty
+        ]
+        clipped = [g for g in clipped if not g.is_empty]
+        return _safe_union(clipped) if clipped else None
+
+    def _eval_candidate_point(
+        self,
+        pt: shapely.geometry.Point,
+        box_geom: shapely.geometry.Polygon,
+        l_fids: list[int],
+        w_fids: list[int],
+    ) -> bool:
+        """Evaluates whether a point's 100m EPSG:6933 buffer touches dry land."""
+        land_patch = self._clip_patch('land', l_fids, box_geom.bounds)
+        if land_patch is None or land_patch.is_empty:
+            return False
+
+        water_patch = self._clip_patch('water', w_fids, box_geom.bounds)
+        if water_patch is not None and not water_patch.is_empty:
+            land_patch = _safe_difference(land_patch, water_patch)
+
+        if land_patch.is_empty:
+            return False
+
+        px, py = self._transformer.transform(pt.x, pt.y)
+        pt_buf = shapely.geometry.Point(px, py).buffer(100.0)
+        proj_patch = shapely.transform(land_patch, self._to_6933)
+        return bool(pt_buf.intersects(proj_patch))
+
+    def _filter_batch_indices(
+        self,
+        batch_points: list[shapely.geometry.Point],
+    ) -> set[int]:
+        """Filters a single batch of points using R-tree envelopes and on-demand WKB."""
+        pt_boxes = _build_batch_pt_boxes(batch_points)
+        land_hits = self.land_tree.query(pt_boxes, predicate='intersects')
+        if land_hits.size == 0:
+            return set()
+
+        land_map: dict[int, list[int]] = {}
+        for p, g in zip(land_hits[0], land_hits[1]):
+            land_map.setdefault(p, []).append(int(self.land_fids[g]))
+
+        cand_indices = sorted(land_map.keys())
+        cand_boxes = [pt_boxes[i] for i in cand_indices]
+        water_hits = self.water_tree.query(cand_boxes, predicate='intersects')
+        water_map: dict[int, list[int]] = {}
+        if water_hits.size > 0:
+            for c, g in zip(water_hits[0], water_hits[1]):
+                water_map.setdefault(cand_indices[c],
+                                     []).append(int(self.water_fids[g]))
+
+        valid_batch: set[int] = set()
+        for p in cand_indices:
+            if self._eval_candidate_point(
+                    batch_points[p],
+                    pt_boxes[p],
+                    land_map[p],
+                    water_map.get(p, []),
+            ):
+                valid_batch.add(int(p))
+
+        return valid_batch
+
+    def filter_valid_indices(
+        self,
+        raw_points: list[shapely.geometry.Point],
+    ) -> set[int]:
+        """Identifies indices of points situated on dry land or within 100m offshore."""
+        if not raw_points:
+            return set()
+        matched: set[int] = set()
+        step = 50000
+        for start in range(0, len(raw_points), step):
+            subset = raw_points[start:start + step]
+            matched.update(start + i
+                           for i in self._filter_batch_indices(subset))
+        return matched
+
+    def _eval_witness_loop(
+        self,
+        cl_land: shapely.geometry.base.BaseGeometry,
+    ) -> bool:
+        """Iteratively tests representative points against covering water geometries."""
+        tried_w_fids: set[int] = set()
+        curr_land = cl_land
+        while not curr_land.is_empty and curr_land.area > 1e-12:
+            rep_pt = curr_land.representative_point()
+            w_hits = self.water_tree.query(rep_pt, predicate='intersects')
+            covering_w: shapely.geometry.base.BaseGeometry | None = None
+            for wg_idx in w_hits:
+                w_fid = int(self.water_fids[wg_idx])
+                if w_fid in tried_w_fids:
+                    continue
+                w_geom = self._fetch_single_geom('water', w_fid)
+                if (w_geom is not None and not w_geom.is_empty
+                        and w_geom.intersects(rep_pt)):
+                    tried_w_fids.add(w_fid)
+                    covering_w = w_geom
+                    break
+            if covering_w is None:
+                return True
+            cl_w = shapely.clip_by_rect(covering_w, *curr_land.bounds)
+            curr_land = _safe_difference(curr_land, cl_w)
+        return False
+
+    def _box_has_dry_land(
+        self,
+        box_geom: shapely.geometry.Polygon,
+        l_idxs: list[int],
+    ) -> bool:
+        """Determines if a cell bounding box contains dry land via iterative witness points."""
+        minx, miny, maxx, maxy = box_geom.bounds
+        sorted_l_idxs = sorted(
+            l_idxs,
+            key=lambda g: self.land_tree.geometries[g].area,
+            reverse=True,
+        )
+        for g_idx in sorted_l_idxs:
+            l_fid = int(self.land_fids[g_idx])
+            l_geom = self._fetch_single_geom('land', l_fid)
+            if l_geom is None or l_geom.is_empty:
+                continue
+            cl_land = shapely.clip_by_rect(l_geom, minx, miny, maxx, maxy)
+            if cl_land.is_empty:
+                continue
+            if self._eval_witness_loop(cl_land):
+                return True
+        return False
+
+    def classify_grid_cells(
+        self,
+        bands: list[LatitudeBand],
+    ) -> tuple[list[tuple[LatitudeBand, int]], list[tuple[LatitudeBand, int]]]:
+        """Partitions grid cells into dry land cells and water-only cells."""
+        flat_cells, boxes, box_to_cell = _build_cell_bounding_boxes(bands)
+        if not flat_cells:
+            return [], []
+
+        land_hits = self.land_tree.query(boxes, predicate='intersects')
+        if land_hits.size == 0:
+            return [], flat_cells
+
+        box_to_l_idxs: dict[int, list[int]] = {}
+        for b, g in zip(land_hits[0], land_hits[1]):
+            box_to_l_idxs.setdefault(b, []).append(g)
+
+        land_cell_indices: set[int] = set()
+        for b in sorted(box_to_l_idxs.keys()):
+            c_idx = box_to_cell[b]
+            if c_idx in land_cell_indices:
+                continue
+            if self._box_has_dry_land(boxes[b], box_to_l_idxs[b]):
+                land_cell_indices.add(c_idx)
+
+        land_cells = [
+            c for i, c in enumerate(flat_cells) if i in land_cell_indices
+        ]
+        water_cells = [
+            c for i, c in enumerate(flat_cells) if i not in land_cell_indices
+        ]
+        return land_cells, water_cells
+
+    def get_candidate_matches(
+        self,
+        buffers: typing.Sequence[shapely.geometry.base.BaseGeometry],
+    ) -> tuple[dict[int, list[shapely.geometry.base.BaseGeometry]], dict[
+            int, list[shapely.geometry.base.BaseGeometry]]]:
+        """Queries candidate land and lake geometries for bounding boxes."""
+        if not buffers:
+            return {}, {}
+        sample_geom = buffers[0]
+        bounds = sample_geom.bounds
+        is_projected = abs(bounds[0]) > 180.0 or abs(bounds[1]) > 90.0
+
+        if is_projected:
+            search_boxes = [
+                shapely.transform(g, self._to_wgs84) for g in buffers
+            ]
+        else:
+            search_boxes = list(buffers)
+
+        land_matches = self.land_tree.query(search_boxes,
+                                            predicate='intersects')
+        land_map: dict[int, list[shapely.geometry.base.BaseGeometry]] = {}
+        if land_matches.size > 0:
+            for b_idx, g_idx in zip(land_matches[0], land_matches[1]):
+                l_geom = self._fetch_single_geom('land',
+                                                 int(self.land_fids[g_idx]))
+                if l_geom is not None and not l_geom.is_empty:
+                    if is_projected:
+                        l_geom = shapely.transform(l_geom, self._to_6933)
+                    land_map.setdefault(b_idx, []).append(l_geom)
+
+        water_matches = self.water_tree.query(search_boxes,
+                                              predicate='intersects')
+        lake_map: dict[int, list[shapely.geometry.base.BaseGeometry]] = {}
+        if water_matches.size > 0:
+            for b_idx, g_idx in zip(water_matches[0], water_matches[1]):
+                w_geom = self._fetch_single_geom('water',
+                                                 int(self.water_fids[g_idx]))
+                if w_geom is not None and not w_geom.is_empty:
+                    if is_projected:
+                        w_geom = shapely.transform(w_geom, self._to_6933)
+                    lake_map.setdefault(b_idx, []).append(w_geom)
+
+        return land_map, lake_map
+
+    def eval_boundary_point(
+        self,
+        buffer_geom: shapely.geometry.base.BaseGeometry,
+        matching_lands: list[shapely.geometry.base.BaseGeometry],
+        matching_lakes: list[shapely.geometry.base.BaseGeometry],
+    ) -> bool:
+        """Determines if a single buffered point intersects dry land."""
+        clipped_lands = [
+            g.intersection(buffer_geom) for g in matching_lands
+            if not g.is_empty
+        ]
+        clipped_lands = [g for g in clipped_lands if not g.is_empty]
+        if not clipped_lands:
+            return False
+        land_geom = _safe_union(clipped_lands)
+
+        if matching_lakes:
+            clipped_lakes = [
+                g.intersection(buffer_geom) for g in matching_lakes
+            ]
+            valid_lakes = [g for g in clipped_lakes if not g.is_empty]
+            if valid_lakes:
+                return not _safe_difference(land_geom,
+                                            _safe_union(valid_lakes)).is_empty
+        return True
 
 
 @dataclasses.dataclass(frozen=True)

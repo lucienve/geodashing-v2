@@ -2429,3 +2429,39 @@ geographic games where they are tasked with reaching randomly generated
     `backend/scripts/reroll_dashpoint.py` and updated
     `backend/services/RerollService.php` to leverage `world_osm_water.gpkg` with
     automatic fallback to legacy shapefiles.
+- **On-Demand R-Tree Spatial Filtering & Memory Optimization
+  (`GpkgSpatialFilter`)**:
+  - Implemented streaming on-demand spatial filtering for
+    `data/world_osm_water.gpkg` via `GpkgSpatialFilter` in
+    `backend/scripts/road_proximity.py` and wired into `build_spatial_filter` in
+    `backend/scripts/prepare_water.py`, reducing peak memory consumption
+    from >14.3 GB (OOM exit status 137) to **< 1.55 GB Peak RSS** across all
+    dashpoint generation algorithms (`random`, `grid`, `road-proximity`).
+  - Employs zero-heap STRtree index caching, streaming R-tree bounding boxes
+    directly from SQLite virtual tables (`rtree_land_geom`, `rtree_water_geom`)
+    in chunks of 100,000 envelopes without loading multi-gigabyte WKB geometry
+    blobs into memory.
+  - Implemented iterative witness-point subtraction for grid cell dry-land
+    classification (`_box_has_dry_land`), querying covering water envelopes
+    point-by-point via `representative_point()` rather than performing global
+    multi-polygon unions. This accelerated 60.05 km production grid
+    classification (141,447 cells) to 10.82 seconds with a 57% LRU cache hit
+    rate.
+  - Point validation uses local WKB envelope clipping with polar-scaled latitude
+    and longitude bounding boxes before projecting to EPSG:6933, guaranteeing
+    zero loss of resolution or accuracy for the 100-meter dry-land
+    classification.
+  - Complete mathematical proofs, memory telemetry, and diagnostic procedures
+    are documented in
+    [spatial_filtering_analysis.md](./spatial_filtering_analysis.md).
+- **Cloud Batch Container Build Provenance Suppression**:
+  - Suppressed default Docker BuildKit provenance attestation manifests by
+    adding `--provenance=false` to `docker build` in
+    `backend/scripts/submit_roads_batch_job.sh` and
+    `backend/scripts/submit_water_batch_job.sh`.
+  - Ensures pushed images produce a single Docker/OCI image manifest carrying
+    the `latest` tag directly, preventing the generation of redundant
+    attestation manifests and wrapper OCI Image Indexes in Artifact Registry.
+  - Simplifies repository lifecycle management so obsolete untagged images can
+    be deleted cleanly by the repository cleanup policy without OCI parent-child
+    manifest dependencies.
