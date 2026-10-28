@@ -62,6 +62,7 @@ if [[ -z "${SKIP_BUILD}" ]]; then
 
   echo "Building container image ${IMAGE_TAG}..."
   docker build \
+    --provenance=false \
     -f "${DOCKERFILE_PATH}" \
     -t "${IMAGE_TAG}" \
     "${BUILD_CTX}"
