@@ -8,6 +8,16 @@ output "bucket_url" {
   value       = google_storage_bucket.blobs.url
 }
 
+output "map_data_bucket_name" {
+  description = "The name of the GCS bucket storing road and map datasets."
+  value       = google_storage_bucket.map_data.name
+}
+
+output "map_data_bucket_url" {
+  description = "The storage URL of the road and map datasets bucket."
+  value       = google_storage_bucket.map_data.url
+}
+
 output "service_account_email" {
   description = "The email address of the uploader service account."
   value       = google_service_account.geodashing_uploader.email

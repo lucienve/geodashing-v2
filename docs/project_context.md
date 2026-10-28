@@ -2186,3 +2186,85 @@ geographic games where they are tasked with reaching randomly generated
   [README.md](../data/README.md) and [admin_guide.md](admin_guide.md).
 - Verified that all Python unit tests, linters (Pylint 10.00/10 with zero
   suppressions), and type checkers pass with zero errors.
+
+### 89. Road-Proximity Dashpoint Generation Algorithm (`--algorithm road-proximity`)
+
+- Implemented an alternate dashpoint generation algorithm
+  (`--algorithm road-proximity`) on branch `feat/new-road-algo` combining the
+  staggered spherical trapezoid grid decomposition and water-only cardinal
+  neighbor bonus logic of `--algorithm grid` with OpenStreetMap drivable road
+  network proximity ($\le 50\text{ m}$).
+- Built dedicated road dataset pipeline and spatial primitives in
+  [prepare_roads.py](../backend/scripts/prepare_roads.py):
+  - OpenStreetMap road filtering (`filter_drivable_roads`) retaining public
+    drivable highways (`primary`, `secondary`, `tertiary`, `unclassified`,
+    `residential`, and links) while excluding non-public access (`private`,
+    `no`, `customers`, `military`, `permit`, `agricultural`, `forestry`).
+  - Streaming GeoPackage export (`export_roads_geopackage`) with spatial R-tree
+    indexing and OSM PBF compilation (`process_osm_pbf_to_gpkg`) via `osmium`
+    and `ogr2ogr`.
+  - Resumable 128 MiB chunked GCS upload/download utilities
+    (`upload_roads_to_gcs`, `download_roads_from_gcs`, `resolve_roads_gpkg`)
+    with Application Default Credentials (ADC) fallback, plus 7-day GCS caching
+    (`cache/planet-latest.osm.pbf`) and multi-connection `aria2c` mirror
+    downloads (`fetch_or_cache_planet_pbf`, `--download-planet-osm`) with US
+    East/Central mirror priority (`ftpmirror.your.org`) and strict completeness
+    verification (`Content-Length` match, `.aria2` absence, and
+    `osmium fileinfo` validation).
+  - Cell bounding box splitting at poles and antimeridian (`get_cell_bboxes`),
+    dry-land vs. water-only cell classification (`classify_grid_cells`), and
+    road candidate sampling (`sample_cell_road_candidates`) with
+    `shapely.clip_by_rect` and latitude-cosine metric weighting.
+- Provisioned dedicated Cloud Storage bucket `geodashing-v2-map-data` (including
+  a 7-day lifecycle deletion rule for `cache/` objects), enabled required GCP
+  APIs (`compute.googleapis.com`, `batch.googleapis.com`,
+  `logging.googleapis.com`, `monitoring.googleapis.com`,
+  `storage.googleapis.com`), granted Cloud Batch IAM roles
+  (`roles/batch.agentReporter`, `roles/logging.logWriter`,
+  `roles/monitoring.metricWriter`), and configured Cloud Batch job spec
+  [batch_prepare_roads.json](../backend/scripts/batch_prepare_roads.json) and
+  [submit_roads_batch_job.sh](../backend/scripts/submit_roads_batch_job.sh) in
+  Terraform (`terraform/main.tf`, `terraform/outputs.tf`) for compiling global
+  `planet-latest.osm.pbf` into `world_drivable_roads.gpkg` on a `SPOT`
+  `n2d-highmem-8` (8 vCPU, 64 GiB RAM, 250 GB `pd-ssd`) instance with a 45 GB
+  in-memory GDAL node cache (`OSM_MAX_TMPFILE_SIZE=45000`), sector delta
+  compression (`OSM_COMPRESS_NODES=YES`), 10 GiB SQLite cache
+  (`OGR_SQLITE_CACHE=10240`), and 64 KB SQLite page size
+  (`OGR_SQLITE_PRAGMA=page_size=65536`) so the global road node index remains in
+  `/vsimem/` RAM without spilling to disk (using a hermetic local GCS code
+  bundle upload, strict POSIX `/bin/sh` syntax, direct `/usr/local/bin` tool
+  installation, `aria2c` multi-source downloads, 7-day GCS planet PBF caching,
+  and immediate post-`osmium` local PBF deletion via `--delete-input`).
+- Integrated road-proximity generation in
+  [generate_game.py](../backend/scripts/generate_game.py) with two-pass
+  placement:
+  - Pass 1: Samples 1 candidate point within 50m of a road across all dry-land
+    grid cells in randomized order.
+  - Pass 2: For water-only cells (0% dry land), attempts 1 bonus road dart in
+    each cardinal neighbor cell containing dry land (non-cascading).
+  - Enforces minimum 12 km unit-sphere chord spacing via `SphereNeighborGrid`
+    with up to 50 replacement retries per cell.
+- Standardized host road dataset synchronization on direct `gcloud storage cp`
+  downloads
+  (`gcloud storage cp gs://geodashing-v2-map-data/world_drivable_roads.gpkg data/world_drivable_roads.gpkg`)
+  and removed the `--download-gcs` CLI option from
+  [prepare_roads.py](../backend/scripts/prepare_roads.py).
+- Enforced a 6-month dataset freshness gate
+  (`ROADS_GPKG_MAX_AGE_S = 180 * 24 * 3600`) in `resolve_roads_gpkg`
+  ([prepare_roads.py](../backend/scripts/prepare_roads.py)), surfacing
+  actionable error messages pointing administrators to
+  [README.md](../data/README.md) to download or refresh the dataset if the local
+  GeoPackage is missing, empty, or older than 180 days.
+- Added comprehensive unit tests in
+  [test_prepare_roads.py](../backend/tests/test_prepare_roads.py) (20 tests
+  including POSIX `/bin/sh` validation, ShellCheck analysis, bundle packaging
+  simulation, 7-day GCS cache hit/miss/expiration, incomplete download
+  rejection, fresh/stale road dataset validation, and CLI option validation) and
+  [test_generate_game.py](../backend/tests/test_generate_game.py) (20 tests).
+- Documented CLI arguments and dataset instructions in
+  [README.md](../data/README.md) and [admin_guide.md](admin_guide.md).
+- Verified that all Python unit tests, linters (Pylint 10.00/10 with zero
+  suppressions), and type checkers (Mypy, Pyright) pass with zero errors.
+- Merged branch `feat/new-road-algo` into `main`, introducing
+  `--algorithm road-proximity` as an opt-in game generation strategy while
+  preserving the default `random` algorithm across all operations.

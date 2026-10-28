@@ -205,7 +205,8 @@ players from logging visits until July 1st.
 
 Run the game generator using the `--preview` flag. Explicitly set the title,
 target year, and target month. You can select either the standard `random`
-algorithm or the `grid` algorithm (`--algorithm grid --grid-size 60.05`):
+algorithm, the `grid` algorithm (`--algorithm grid --grid-size 60.05`), or the
+`road-proximity` algorithm (`--algorithm road-proximity --grid-size 60.05`):
 
 ```bash
 # Seeding Game 15 for July 2026 in inactive preview mode (random algorithm)
@@ -222,6 +223,15 @@ uv run --no-sync --no-dev python -m backend.scripts.generate_game \
   --year 2026 \
   --month 7 \
   --algorithm grid \
+  --grid-size 60.05 \
+  --preview
+
+# Alternatively, seeding in preview mode using the road-proximity algorithm
+uv run --no-sync --no-dev python -m backend.scripts.generate_game \
+  --title "July 2026 Dashing Classic" \
+  --year 2026 \
+  --month 7 \
+  --algorithm road-proximity \
   --grid-size 60.05 \
   --preview
 ```

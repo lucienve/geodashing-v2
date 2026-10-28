@@ -19,11 +19,13 @@ import shapely.geometry.base
 import shapely.strtree
 
 import backend.scripts.db_utils
+import backend.scripts.prepare_roads
 
 EARTH_RADIUS_KM: float = 6371.0088
 DEFAULT_GRID_SIZE_KM: float = 60.05
 MIN_NEIGHBOR_DISTANCE_KM: float = 12.0
 MAX_CELL_ATTEMPTS: int = 50
+MAX_ROAD_DISTANCE_M: float = 50.0
 LAKE_SUPPLEMENT_FILENAMES: tuple[str, ...] = (
     'ne_10m_lakes_australia.zip',
     'ne_10m_lakes_europe.zip',
@@ -200,6 +202,9 @@ def sample_point_in_cell(band: LatitudeBand,
     lon = ((raw_lon + 180.0) % 360.0) - 180.0
 
     return shapely.geometry.Point(lon, lat)
+
+
+get_cell_bboxes = backend.scripts.prepare_roads.get_cell_bboxes
 
 
 def _find_valid_cell_point(
@@ -445,10 +450,13 @@ def _load_and_project_geometries(
 
     if verbose:
         print("Projecting land and lakes geometries to EPSG:6933...")
-    land_proj = land_gdf.to_crs(epsg=6933)
+    land_proj = gpd.GeoDataFrame(
+        geometry=land_gdf.to_crs(epsg=6933).geometry.make_valid(),
+        crs="EPSG:6933")
     lake_geoms: list[shapely.geometry.base.BaseGeometry] = []
     for gdf in lake_gdfs:
-        lake_geoms.extend(gdf.to_crs(epsg=6933).geometry.tolist())
+        valid_series = gdf.to_crs(epsg=6933).geometry.make_valid()
+        lake_geoms.extend(valid_series.tolist())
     lakes_proj = gpd.GeoDataFrame(geometry=lake_geoms, crs="EPSG:6933")
     return land_proj, lakes_proj
 
@@ -507,30 +515,6 @@ class SpatialFilter:
             land_minus_lakes = land_geom
 
         return buffer_geom.intersects(land_minus_lakes)
-
-    def filter_boundary_candidates(
-            self, raw_points: list[shapely.geometry.Point],
-            proj_geoms: list[shapely.geometry.base.BaseGeometry],
-            remaining_indices: list[int]) -> list[shapely.geometry.Point]:
-        """Filters the remaining points using 100m buffers and local geometry intersections."""
-        remaining_pts = [proj_geoms[i] for i in remaining_indices]
-        remaining_buffers = shapely.buffer(remaining_pts, 100)
-
-        land_map, lake_map = self.get_candidate_matches(remaining_buffers)
-        if not land_map:
-            return []
-
-        valid: list[shapely.geometry.Point] = []
-        for buf_idx, matching_lands in land_map.items():
-            buffer_geom = remaining_buffers[buf_idx]
-            matching_lakes = lake_map.get(buf_idx, [])
-
-            if self.eval_boundary_point(buffer_geom, matching_lands,
-                                        matching_lakes):
-                orig_idx = remaining_indices[buf_idx]
-                valid.append(raw_points[orig_idx])
-
-        return valid
 
     def _filter_batch_indices(
             self, batch_points: list[shapely.geometry.Point]) -> set[int]:
@@ -770,6 +754,116 @@ def generate_grid_dashpoints(
     return accepted_points
 
 
+classify_grid_cells = backend.scripts.prepare_roads.classify_grid_cells
+
+
+def _collect_road_pass2_slots(
+    water_cells: list[tuple[LatitudeBand, int]],
+    bands: list[LatitudeBand],
+    land_cells: list[tuple[LatitudeBand, int]],
+) -> tuple[list[tuple[LatitudeBand, int]], dict[tuple[int, int], int]]:
+    """Identifies Pass 2 cardinal bonus slots in land neighbor cells."""
+    land_cell_map = {(b.band_idx, c): b for b, c in land_cells}
+    pass2_counts: dict[tuple[int, int], int] = {}
+    pass2_slots: list[tuple[LatitudeBand, int]] = []
+    for b, c in water_cells:
+        for nb_band_idx, nb_c in get_cardinal_neighbors(b, c, bands):
+            if (nb_band_idx, nb_c) in land_cell_map:
+                pass2_slots.append((land_cell_map[(nb_band_idx, nb_c)], nb_c))
+                pass2_counts[(nb_band_idx, nb_c)] = (pass2_counts.get(
+                    (nb_band_idx, nb_c), 0) + 1)
+    return pass2_slots, pass2_counts
+
+
+def _run_road_placement_passes(
+    land_cells: list[tuple[LatitudeBand, int]],
+    pass2_data: tuple[list[tuple[LatitudeBand, int]], dict[tuple[int, int],
+                                                           int]],
+    ctx: backend.scripts.prepare_roads.RoadPlacementContext,
+    accepted_points: list[shapely.geometry.Point],
+    verbose: bool = True,
+) -> None:
+    """Executes Pass 1 and Pass 2 road-proximity candidate placement."""
+    pass2_slots, pass2_counts = pass2_data
+    if verbose:
+        print(f"Running Pass 1 with {len(land_cells)} land cells...")
+    backend.scripts.prepare_roads.place_shuffled_road_cells(
+        land_cells, ctx, accepted_points, pass2_counts)
+
+    if verbose:
+        print(
+            f"Pass 1 placed {len(accepted_points)} points. "
+            f"Running Pass 2 with {len(pass2_slots)} cardinal bonus slots...")
+    placed_bonus = backend.scripts.prepare_roads.place_shuffled_road_cells(
+        pass2_slots, ctx, accepted_points, pass2_counts)
+
+    if verbose:
+        print(
+            f"Pass 2 placed {placed_bonus} bonus points. "
+            f"Total road-proximity dashpoints placed: {len(accepted_points)}")
+
+
+def generate_road_proximity_dashpoints(
+    grid_size_km: float = DEFAULT_GRID_SIZE_KM,
+    land_zip_path: str = '../../data/ne_10m_land.zip',
+    lakes_zip_path: str = '../../data/ne_10m_lakes.zip',
+    roads_input: str | gpd.GeoDataFrame = (
+        backend.scripts.prepare_roads.DEFAULT_ROADS_GPKG_PATH),
+    verbose: bool = True,
+) -> list[shapely.geometry.Point]:
+    """Generates globally distributed dashpoints within 50m of drivable roads.
+
+    Algorithm:
+        1. Tiles the globe into spherical trapezoid bands using build_spherical_grid.
+        2. Classifies cells into dry land cells (> 0% land) and water-only cells (0% land).
+        3. Pass 1: Shuffles all land cells and attempts 1 road-proximity point per cell.
+        4. Pass 2: For each water-only cell, throws 1 bonus road dart in each cardinal neighbor
+           cell that contains land (strictly non-cascading).
+        5. Validates candidate points on dry land and enforces 12 km minimum distance spacing.
+
+    Args:
+        grid_size_km: Desired grid cell size in kilometers.
+        land_zip_path: Path to Natural Earth land zip file.
+        lakes_zip_path: Path to Natural Earth lakes zip file.
+        roads_input: Path to road GeoPackage or in-memory GeoDataFrame.
+        verbose: Whether to log progress messages.
+
+    Returns:
+        list[shapely.geometry.Point]: A list of accepted Point geometries.
+    """
+    spatial_filter = build_spatial_filter(land_zip_path,
+                                          lakes_zip_path,
+                                          verbose=verbose)
+    bands = build_spherical_grid(grid_size_km)
+    neighbor_grid = SphereNeighborGrid()
+    accepted_points: list[shapely.geometry.Point] = []
+
+    if verbose:
+        print("Classifying spherical grid cells into land and water...")
+    land_cells, water_cells = classify_grid_cells(bands, spatial_filter)
+    if verbose:
+        print(f"Grid classified: {len(land_cells)} land cells, "
+              f"{len(water_cells)} water-only cells.")
+
+    pass2_data = _collect_road_pass2_slots(water_cells, bands, land_cells)
+
+    ctx = backend.scripts.prepare_roads.RoadPlacementContext(
+        roads_input=roads_input,
+        spatial_filter=spatial_filter,
+        neighbor_grid=neighbor_grid,
+        road_bounds=backend.scripts.prepare_roads.get_roads_total_bounds(
+            roads_input),
+        cell_candidates={},
+    )
+
+    _run_road_placement_passes(land_cells, pass2_data, ctx, accepted_points,
+                               verbose)
+
+    rng = np.random.default_rng()
+    rng.shuffle(accepted_points)
+    return accepted_points
+
+
 def main() -> None:
     """Main execution point for generating games."""
     parser = argparse.ArgumentParser(
@@ -810,17 +904,23 @@ def main() -> None:
     parser.add_argument(
         '--algorithm',
         type=str,
-        choices=['random', 'grid'],
+        choices=['random', 'grid', 'road-proximity'],
         default='random',
         help=
-        "Dashpoint distribution algorithm to use: 'random' or 'grid' (default: random)"
+        "Distribution algorithm: 'random', 'grid', or 'road-proximity' (default: random)"
     )
     parser.add_argument(
         '--grid-size',
         type=float,
         default=DEFAULT_GRID_SIZE_KM,
         help=
-        "Cell width/height in km when --algorithm grid is used (default: 60.05)"
+        "Cell size in km for grid or road-proximity algorithm (default: 60.05)"
+    )
+    parser.add_argument(
+        '--roads-gpkg',
+        type=str,
+        default=None,
+        help="Optional road GeoPackage path (default: resolved from config.ini)"
     )
     args = parser.parse_args()
 
@@ -838,6 +938,16 @@ def main() -> None:
             points = generate_grid_dashpoints(grid_size_km=args.grid_size,
                                               land_zip_path=zip_path,
                                               lakes_zip_path=lakes_zip)
+        elif args.algorithm == 'road-proximity':
+            print(f"Generating dashpoints using road-proximity algorithm "
+                  f"(size: {args.grid_size} km)...")
+            roads_path = backend.scripts.prepare_roads.resolve_roads_gpkg(
+                args.roads_gpkg, config_path=config_path)
+            points = generate_road_proximity_dashpoints(
+                grid_size_km=args.grid_size,
+                land_zip_path=zip_path,
+                lakes_zip_path=lakes_zip,
+                roads_input=roads_path)
         else:
             target = args.count
             print(f"Generating {target} dashpoints using random algorithm...")

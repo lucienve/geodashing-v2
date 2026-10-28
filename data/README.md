@@ -48,3 +48,56 @@ wget https://naciscdn.org/naturalearth/10m/physical/ne_10m_lakes_north_america.z
 # List of dirty/bad words for filtering generated dashpoint IDs
 curl -s "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en" | grep -xE '.{4}' | tr '[:lower:]' '[:upper:]' | sort > bad_words.txt
 ```
+
+## Road Proximity Datasets
+
+The `--algorithm road-proximity` generator mode requires an indexed
+OpenStreetMap GeoPackage file (`data/world_drivable_roads.gpkg`) containing
+qualifying public drivable roads (`primary`, `secondary`, `tertiary`,
+`unclassified`, `residential`, and links).
+
+To ensure dashpoint accessibility and account for road network evolution,
+`generate_game.py` validates that `data/world_drivable_roads.gpkg` exists, is
+non-empty, and has a file modification time within the last **6 months** (180
+days). If the file is missing or older than 6 months, execution halts with an
+instruction to download or refresh it.
+
+### Downloading the Road Dataset
+
+Download the pre-compiled global road network GeoPackage directly from Google
+Cloud Storage using `gcloud storage cp`:
+
+```bash
+gcloud storage cp gs://geodashing-v2-map-data/world_drivable_roads.gpkg data/world_drivable_roads.gpkg
+```
+
+### Refreshing the Road Dataset
+
+If the dataset in Cloud Storage is approaching or past 6 months old,
+administrators can trigger an automated Cloud Batch compilation job to rebuild
+and upload a fresh GeoPackage from the latest planet OSM PBF extract:
+
+```bash
+./backend/scripts/submit_roads_batch_job.sh
+```
+
+Monitor job status via the Cloud Batch CLI:
+
+```bash
+gcloud batch jobs list --project=geodashing-v2 --location=us-east1 --limit=5
+```
+
+Once the batch job reaches `SUCCEEDED`, re-run `gcloud storage cp` to download
+the new dataset locally.
+
+### Building Locally from OSM PBF
+
+Alternatively, administrators can compile a custom or local OSM extract using
+`prepare_roads.py`:
+
+```bash
+# Compile from an existing local OSM PBF extract
+uv run python -m backend.scripts.prepare_roads \
+  --input data/planet-latest.osm.pbf \
+  --output data/world_drivable_roads.gpkg
+```

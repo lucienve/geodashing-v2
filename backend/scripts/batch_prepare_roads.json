@@ -1,0 +1,45 @@
+{
+  "taskGroups": [
+    {
+      "taskSpec": {
+        "runnables": [
+          {
+            "script": {
+              "text": "set -eu\necho \"Installing system dependencies...\"\napt-get update && apt-get install -y aria2 osmium-tool gdal-bin curl ca-certificates tar\necho \"Installing uv to /usr/local/bin...\"\ncurl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=\"/usr/local/bin\" sh\nexport PATH=\"/usr/local/bin:$PATH\"\nexport PYTHONUNBUFFERED=\"1\"\nmkdir -p /var/tmp/geodashing-work/app\ncd /var/tmp/geodashing-work/app\necho \"Fetching code bundle from GCS...\"\nMETA_JSON=$(curl -s -f -H \"Metadata-Flavor: Google\" \"http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token\")\nTOKEN=$(printf '%s' \"${META_JSON}\" | sed -n 's/.*\"access_token\":\"\\([^\"]*\\)\".*/\\1/p')\ntest -n \"${TOKEN}\"\ncurl -f -L -H \"Authorization: Bearer ${TOKEN}\" \"https://storage.googleapis.com/storage/v1/b/geodashing-v2-map-data/o/batch%2Fgeodashing-roads-bundle.tar.gz?alt=media\" -o bundle.tar.gz\ntar -xzf bundle.tar.gz\nrm -f bundle.tar.gz\necho \"Synchronizing Python environment...\"\nuv sync --no-dev\necho \"Running prepare_roads pipeline (with 7-day GCS cache and multi-mirror download)...\"\nuv run --no-sync python -m backend.scripts.prepare_roads --download-planet-osm --input /var/tmp/geodashing-work/planet-latest.osm.pbf --output /var/tmp/geodashing-work/world_drivable_roads.gpkg --delete-input --upload-gcs\n"
+            }
+          }
+        ],
+        "computeResource": {
+          "cpuMilli": "8000",
+          "memoryMib": "65536",
+          "bootDiskMib": "256000"
+        },
+        "maxRunDuration": "43200s"
+      },
+      "taskCount": "1"
+    }
+  ],
+  "allocationPolicy": {
+    "instances": [
+      {
+        "policy": {
+          "machineType": "n2d-highmem-8",
+          "provisioningModel": "SPOT",
+          "bootDisk": {
+            "type": "pd-ssd",
+            "sizeGb": "250"
+          }
+        }
+      }
+    ],
+    "serviceAccount": {
+      "email": "geodashing-uploader@geodashing-v2.iam.gserviceaccount.com",
+      "scopes": [
+        "https://www.googleapis.com/auth/cloud-platform"
+      ]
+    }
+  },
+  "logsPolicy": {
+    "destination": "CLOUD_LOGGING"
+  }
+}

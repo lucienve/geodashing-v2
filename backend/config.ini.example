@@ -42,3 +42,8 @@ TAGS_ENABLED = false
 ; Comma-separated list of usernames allowed to access tagging when TAGS_ENABLED = false
 TAGS_ALLOWLIST = ""
 
+[gcs]
+; Dedicated GCS bucket for global road and map datasets
+GCS_MAP_DATA_BUCKET_NAME = "geodashing-v2-map-data"
+; Local path to cached road GeoPackage file (e.g. data/world_drivable_roads.gpkg or /mnt/geodashing-data/world_drivable_roads.gpkg)
+ROADS_GPKG_PATH = "data/world_drivable_roads.gpkg"
