@@ -2312,3 +2312,43 @@ geographic games where they are tasked with reaching randomly generated
       unauthenticated guest access protection and cross-device sync tests.
   - **Verification**: All 103 PHPUnit tests, all 45 Playwright E2E tests, and
     the complete pre-commit runner passed with zero errors.
+- **Container-Based Cloud Batch Architecture for Road Dataset Preparation**:
+  - **Infrastructure (`terraform/main.tf`, `terraform/outputs.tf`)**:
+    - Enabled `artifactregistry.googleapis.com` and
+      `containerfilesystem.googleapis.com` (Image Streaming).
+    - Provisioned regional Docker repository
+      `google_artifact_registry_repository.batch`
+      (`us-east1-docker.pkg.dev/geodashing-v2/batch`) with automated version
+      pruning (keeping 3 most recent tags, deleting older layers after 7 days).
+    - Granted `roles/artifactregistry.reader` on the batch repository to
+      `serviceAccount:geodashing-uploader@geodashing-v2.iam.gserviceaccount.com`.
+    - Exported `batch_artifact_registry_url` in `terraform/outputs.tf`.
+  - **Container Definition & Context Isolation**:
+    - Created
+      [Dockerfile.prepare_roads](../backend/scripts/Dockerfile.prepare_roads)
+      based on `ghcr.io/astral-sh/uv:python3.14-bookworm-slim` with system
+      dependencies (`aria2`, `osmium-tool`, `gdal-bin`, `ca-certificates`,
+      `curl`), immutable dependencies via
+      `uv sync --frozen --no-dev --no-install-project`, unbuffered execution
+      (`ENV PYTHONUNBUFFERED=1`), and entrypoint running
+      `python -m backend.scripts.prepare_roads`.
+    - Created
+      [Dockerfile.prepare_roads.dockerignore](../backend/scripts/Dockerfile.prepare_roads.dockerignore)
+      with default-deny `*` and strict allowlisting of the 6 required project
+      files to prevent large datasets (`data/`), `.venv/`, or credentials from
+      entering build context.
+  - **Cloud Batch Job Configuration
+    (`backend/scripts/batch_prepare_roads.json`)**:
+    - Migrated from `script` runnable on `batch-debian` to `container` runnable
+      on `batch-cos` with `enableImageStreaming: true`.
+    - Removed 250 GB `pd-ssd` boot disk override, keeping the default 30 GB
+      `batch-cos` boot disk, and attached 1 x 375 GiB `local-ssd` scratch disk
+      mounted at `/mnt/disks/scratch` (`rw`, `async`) for peak ~120 GB PBF,
+      SQLite, and GPKG intermediate processing.
+    - Configured `maxRetryCount: 3` with `lifecyclePolicies` (`RETRY_TASK` on
+      Cloud Batch exit code `50001` for Spot VM preemption), ensuring
+      application bugs or crashes fail fast without unwanted retries.
+  - **Submission Wrapper (`backend/scripts/submit_roads_batch_job.sh`)**:
+    - Replaced GCS tarball packaging with clean staging into a temporary
+      context, Artifact Registry Docker credential configuration,
+      `docker build`, `docker push`, and `gcloud batch jobs submit`.

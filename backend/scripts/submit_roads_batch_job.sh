@@ -5,22 +5,32 @@ JOB_ID="prepare-osm-roads-$(date +%Y%m%d-%H%M%S)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CONFIG_FILE="${SCRIPT_DIR}/batch_prepare_roads.json"
-BUCKET_URI="gs://geodashing-v2-map-data/batch/geodashing-roads-bundle.tar.gz"
+DOCKERFILE_PATH="${SCRIPT_DIR}/Dockerfile.prepare_roads"
+IMAGE_TAG="us-east1-docker.pkg.dev/geodashing-v2/batch/prepare-roads:latest"
 
-BUNDLE_TAR="$(mktemp /tmp/geodashing-roads-bundle-XXXXXX.tar.gz)"
-trap 'rm -f "${BUNDLE_TAR}"' EXIT
+BUILD_CTX="$(mktemp -d /tmp/geodashing-roads-build-XXXXXX)"
+trap 'rm -rf "${BUILD_CTX}"' EXIT
 
-echo "Packaging local road preparation bundle from ${REPO_ROOT}..."
-tar -czf "${BUNDLE_TAR}" -C "${REPO_ROOT}" \
-  .python-version \
-  pyproject.toml \
-  uv.lock \
-  backend/scripts/prepare_roads.py
+echo "Staging hermetic build context from ${REPO_ROOT} into ${BUILD_CTX}..."
+cp "${REPO_ROOT}/.python-version" "${BUILD_CTX}/"
+cp "${REPO_ROOT}/pyproject.toml" "${BUILD_CTX}/"
+cp "${REPO_ROOT}/uv.lock" "${BUILD_CTX}/"
+mkdir -p "${BUILD_CTX}/backend/scripts"
+cp "${REPO_ROOT}/backend/__init__.py" "${BUILD_CTX}/backend/"
+cp "${REPO_ROOT}/backend/scripts/__init__.py" "${BUILD_CTX}/backend/scripts/"
+cp "${REPO_ROOT}/backend/scripts/prepare_roads.py" "${BUILD_CTX}/backend/scripts/"
 
-echo "Uploading hermetic code bundle to ${BUCKET_URI}..."
-gcloud storage cp "${BUNDLE_TAR}" "${BUCKET_URI}" \
-  --project="geodashing-v2" \
-  --quiet
+echo "Configuring Docker authentication for Artifact Registry in us-east1..."
+gcloud auth configure-docker us-east1-docker.pkg.dev --quiet
+
+echo "Building container image ${IMAGE_TAG}..."
+docker build \
+  -f "${DOCKERFILE_PATH}" \
+  -t "${IMAGE_TAG}" \
+  "${BUILD_CTX}"
+
+echo "Pushing container image to Artifact Registry..."
+docker push "${IMAGE_TAG}"
 
 echo "Submitting Google Cloud Batch job ${JOB_ID} in us-east1..."
 gcloud batch jobs submit "${JOB_ID}" \

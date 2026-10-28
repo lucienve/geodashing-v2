@@ -1,0 +1,12 @@
+# Default-deny everything to prevent large datasets, virtualenvs, or secrets from entering build context
+*
+
+# Allowlist strictly the required project files
+!/.python-version
+!/pyproject.toml
+!/uv.lock
+!/backend
+!/backend/__init__.py
+!/backend/scripts
+!/backend/scripts/__init__.py
+!/backend/scripts/prepare_roads.py

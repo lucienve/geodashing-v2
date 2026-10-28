@@ -36,6 +36,22 @@ resource "google_project_service" "storage" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "artifactregistry" {
+  project            = var.project_id
+  service            = "artifactregistry.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "containerfilesystem" {
+  project            = var.project_id
+  service            = "containerfilesystem.googleapis.com"
+  disable_on_destroy = false
+
+  depends_on = [
+    google_project_service.artifactregistry,
+  ]
+}
+
 # -----------------------------------------------------------------------------
 # Google Cloud Storage - Media Assets Bucket
 # -----------------------------------------------------------------------------
@@ -207,6 +223,49 @@ resource "google_project_iam_member" "uploader_metric_writer" {
   project = var.project_id
   role    = "roles/monitoring.metricWriter"
   member  = "serviceAccount:${google_service_account.geodashing_uploader.email}"
+}
+
+# -----------------------------------------------------------------------------
+# Google Artifact Registry - Cloud Batch Container Images
+# -----------------------------------------------------------------------------
+
+resource "google_artifact_registry_repository" "batch" {
+  location      = var.region
+  repository_id = "batch"
+  description   = "Container images for Geodashing Cloud Batch jobs"
+  format        = "DOCKER"
+
+  cleanup_policies {
+    id     = "keep-recent-versions"
+    action = "KEEP"
+
+    most_recent_versions {
+      keep_count = 3
+    }
+  }
+
+  cleanup_policies {
+    id     = "delete-old-versions"
+    action = "DELETE"
+
+    condition {
+      tag_state  = "ANY"
+      older_than = "604800s"
+    }
+  }
+
+  depends_on = [
+    google_project_service.artifactregistry,
+  ]
+}
+
+# Reader access on the batch repository for the batch VM service account
+resource "google_artifact_registry_repository_iam_member" "uploader_batch_reader" {
+  project    = var.project_id
+  location   = google_artifact_registry_repository.batch.location
+  repository = google_artifact_registry_repository.batch.name
+  role       = "roles/artifactregistry.reader"
+  member     = "serviceAccount:${google_service_account.geodashing_uploader.email}"
 }
 
 # -----------------------------------------------------------------------------

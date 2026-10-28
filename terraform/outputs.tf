@@ -23,6 +23,11 @@ output "service_account_email" {
   value       = google_service_account.geodashing_uploader.email
 }
 
+output "batch_artifact_registry_url" {
+  description = "The repository URL for Cloud Batch container images in Artifact Registry."
+  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.batch.repository_id}"
+}
+
 output "backend_processing_key_id" {
   description = "The resource ID of the Gemini Backend Processing API key."
   value       = google_apikeys_key.backend_processing.id

@@ -4,17 +4,50 @@
       "taskSpec": {
         "runnables": [
           {
-            "script": {
-              "text": "set -eu\necho \"Installing system dependencies...\"\napt-get update && apt-get install -y aria2 osmium-tool gdal-bin curl ca-certificates tar\necho \"Installing uv to /usr/local/bin...\"\ncurl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=\"/usr/local/bin\" sh\nexport PATH=\"/usr/local/bin:$PATH\"\nexport PYTHONUNBUFFERED=\"1\"\nmkdir -p /var/tmp/geodashing-work/app\ncd /var/tmp/geodashing-work/app\necho \"Fetching code bundle from GCS...\"\nMETA_JSON=$(curl -s -f -H \"Metadata-Flavor: Google\" \"http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token\")\nTOKEN=$(printf '%s' \"${META_JSON}\" | sed -n 's/.*\"access_token\":\"\\([^\"]*\\)\".*/\\1/p')\ntest -n \"${TOKEN}\"\ncurl -f -L -H \"Authorization: Bearer ${TOKEN}\" \"https://storage.googleapis.com/storage/v1/b/geodashing-v2-map-data/o/batch%2Fgeodashing-roads-bundle.tar.gz?alt=media\" -o bundle.tar.gz\ntar -xzf bundle.tar.gz\nrm -f bundle.tar.gz\necho \"Synchronizing Python environment...\"\nuv sync --no-dev\necho \"Running prepare_roads pipeline (with 7-day GCS cache and multi-mirror download)...\"\nuv run --no-sync python -m backend.scripts.prepare_roads --download-planet-osm --input /var/tmp/geodashing-work/planet-latest.osm.pbf --output /var/tmp/geodashing-work/world_drivable_roads.gpkg --delete-input --upload-gcs\n"
+            "container": {
+              "imageUri": "us-east1-docker.pkg.dev/geodashing-v2/batch/prepare-roads:latest",
+              "enableImageStreaming": true,
+              "volumes": [
+                "/mnt/disks/scratch:/mnt/disks/scratch:rw"
+              ],
+              "commands": [
+                "--download-planet-osm",
+                "--input",
+                "/mnt/disks/scratch/planet-latest.osm.pbf",
+                "--output",
+                "/mnt/disks/scratch/world_drivable_roads.gpkg",
+                "--delete-input",
+                "--upload-gcs"
+              ]
             }
           }
         ],
         "computeResource": {
           "cpuMilli": "8000",
-          "memoryMib": "65536",
-          "bootDiskMib": "256000"
+          "memoryMib": "65536"
         },
-        "maxRunDuration": "43200s"
+        "maxRunDuration": "43200s",
+        "maxRetryCount": 3,
+        "lifecyclePolicies": [
+          {
+            "action": "RETRY_TASK",
+            "actionCondition": {
+              "exitCodes": [
+                50001
+              ]
+            }
+          }
+        ],
+        "volumes": [
+          {
+            "deviceName": "scratch-ssd",
+            "mountPath": "/mnt/disks/scratch",
+            "mountOptions": [
+              "rw",
+              "async"
+            ]
+          }
+        ]
       },
       "taskCount": "1"
     }
@@ -25,10 +58,15 @@
         "policy": {
           "machineType": "n2d-highmem-8",
           "provisioningModel": "SPOT",
-          "bootDisk": {
-            "type": "pd-ssd",
-            "sizeGb": "250"
-          }
+          "disks": [
+            {
+              "deviceName": "scratch-ssd",
+              "newDisk": {
+                "type": "local-ssd",
+                "sizeGb": "375"
+              }
+            }
+          ]
         }
       }
     ],

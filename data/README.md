@@ -75,13 +75,19 @@ gcloud storage cp gs://geodashing-v2-map-data/world_drivable_roads.gpkg data/wor
 
 If the dataset in Cloud Storage is approaching or past 6 months old,
 administrators can trigger an automated Cloud Batch compilation job to rebuild
-and upload a fresh GeoPackage from the latest planet OSM PBF extract:
+and upload a fresh GeoPackage from the latest planet OSM PBF extract.
+
+The pipeline executes as a containerized job on Container-Optimized OS
+(`batch-cos`) in Google Cloud Batch with Image Streaming enabled from Artifact
+Registry (`us-east1-docker.pkg.dev/geodashing-v2/batch/prepare-roads:latest`),
+leveraging an attached 375 GiB Local NVMe SSD for fast intermediate indexing and
+automated retries on Spot VM preemption:
 
 ```bash
 ./backend/scripts/submit_roads_batch_job.sh
 ```
 
-Monitor job status via the Cloud Batch CLI:
+Monitor job status via the Cloud Batch CLI or Google Cloud Console:
 
 ```bash
 gcloud batch jobs list --project=geodashing-v2 --location=us-east1 --limit=5

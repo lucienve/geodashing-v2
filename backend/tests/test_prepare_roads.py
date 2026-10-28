@@ -7,7 +7,6 @@ import os
 import pathlib
 import shutil
 import subprocess
-import tarfile
 import tempfile
 import unittest.mock
 
@@ -361,8 +360,8 @@ def test_process_osm_pbf_to_gpkg_deletes_input_after_osmium(
     assert not input_pbf.exists()
 
 
-def test_batch_prepare_roads_json_syntax_and_shellcheck() -> None:
-    """Validates Cloud Batch JSON schema and verifies inline script passes POSIX sh shellcheck."""
+def test_batch_prepare_roads_json_syntax_and_schema() -> None:
+    """Validates Cloud Batch JSON schema, container runnable, Local SSD, and retry policy."""
     repo_root = pathlib.Path(__file__).resolve().parent.parent.parent
     config_path = repo_root / 'backend' / 'scripts' / 'batch_prepare_roads.json'
     assert config_path.exists()
@@ -373,32 +372,51 @@ def test_batch_prepare_roads_json_syntax_and_shellcheck() -> None:
     task_groups = data.get('taskGroups', [])
     assert len(task_groups) == 1
     task_spec = task_groups[0].get('taskSpec', {})
-    assert task_spec.get('computeResource', {}).get('memoryMib') == '65536'
+    compute_res = task_spec.get('computeResource', {})
+    assert compute_res.get('memoryMib') == '65536'
+    assert compute_res.get('cpuMilli') == '8000'
+    assert 'bootDiskMib' not in compute_res
+
     policy = (data.get('allocationPolicy', {}).get('instances',
                                                    [{}])[0].get('policy', {}))
     assert policy.get('machineType') == 'n2d-highmem-8'
     assert policy.get('provisioningModel') == 'SPOT'
-    assert (backend.scripts.prepare_roads.RESUMABLE_CHUNK_SIZE == 128 * 1024 *
-            1024)
+    assert 'bootDisk' not in policy
+
+    disks = policy.get('disks', [])
+    assert len(disks) == 1
+    assert disks[0].get('deviceName') == 'scratch-ssd'
+    new_disk = disks[0].get('newDisk', {})
+    assert new_disk.get('type') == 'local-ssd'
+    assert new_disk.get('sizeGb') == '375'
+
+    volumes = task_spec.get('volumes', [])
+    assert len(volumes) == 1
+    assert volumes[0].get('deviceName') == 'scratch-ssd'
+    assert volumes[0].get('mountPath') == '/mnt/disks/scratch'
+    assert 'rw' in volumes[0].get('mountOptions', [])
+
+    assert task_spec.get('maxRetryCount') == 3
+    lifecycle_policies = task_spec.get('lifecyclePolicies', [])
+    assert len(lifecycle_policies) == 1
+    assert lifecycle_policies[0].get('action') == 'RETRY_TASK'
+    assert lifecycle_policies[0].get('actionCondition',
+                                     {}).get('exitCodes') == [50001]
+
     runnables = task_spec.get('runnables', [])
     assert len(runnables) == 1
-    script_text = runnables[0].get('script', {}).get('text', '')
-    assert script_text
-
-    # Verify POSIX sh syntax via /bin/sh -n
-    sh_proc = subprocess.run(['/bin/sh', '-n'],
-                             input=script_text.encode('utf-8'),
-                             check=False,
-                             capture_output=True)
-    assert sh_proc.returncode == 0, f"POSIX /bin/sh syntax check failed: {sh_proc.stderr.decode()}"
-
-    # Verify via shellcheck with strict POSIX sh dialect if installed
-    if shutil.which('shellcheck'):
-        sc_proc = subprocess.run(['shellcheck', '--shell=sh', '-'],
-                                 input=script_text.encode('utf-8'),
-                                 check=False,
-                                 capture_output=True)
-        assert sc_proc.returncode == 0, f"shellcheck --shell=sh failed:\n{sc_proc.stdout.decode()}"
+    container = runnables[0].get('container', {})
+    assert container
+    assert container.get(
+        'imageUri'
+    ) == 'us-east1-docker.pkg.dev/geodashing-v2/batch/prepare-roads:latest'
+    assert container.get('enableImageStreaming') is True
+    assert '/mnt/disks/scratch:/mnt/disks/scratch:rw' in container.get(
+        'volumes', [])
+    assert '--download-planet-osm' in container.get('commands', [])
+    assert '--upload-gcs' in container.get('commands', [])
+    assert 'options' not in container
+    assert 'environment' not in container
 
 
 def test_submit_roads_batch_job_syntax_and_shellcheck() -> None:
@@ -421,32 +439,35 @@ def test_submit_roads_batch_job_syntax_and_shellcheck() -> None:
         assert sc_proc.returncode == 0, f"shellcheck failed:\n{sc_proc.stdout.decode()}"
 
 
-def test_batch_bundle_packaging_simulation(tmp_path: pathlib.Path) -> None:
-    """Simulates bundling of the hermetic code package and verifies contents unpack cleanly."""
+def test_dockerfile_prepare_roads_structure_and_isolation() -> None:
+    """Verifies Dockerfile instructions, hermetic dependencies, and context isolation."""
     repo_root = pathlib.Path(__file__).resolve().parent.parent.parent
-    bundle_path = tmp_path / 'test_bundle.tar.gz'
-    files_to_pack = [
-        '.python-version',
-        'pyproject.toml',
-        'uv.lock',
-        'backend/scripts/prepare_roads.py',
-    ]
-    for rel_path in files_to_pack:
-        assert (repo_root / rel_path).exists()
+    dockerfile_path = repo_root / 'backend' / 'scripts' / 'Dockerfile.prepare_roads'
+    dockerignore_path = (repo_root / 'backend' / 'scripts' /
+                         'Dockerfile.prepare_roads.dockerignore')
 
-    with tarfile.open(bundle_path, 'w:gz') as tar:
-        for rel_path in files_to_pack:
-            tar.add(repo_root / rel_path, arcname=rel_path)
+    assert dockerfile_path.exists()
+    assert dockerignore_path.exists()
 
-    unpack_dir = tmp_path / 'unpacked'
-    unpack_dir.mkdir()
-    with tarfile.open(bundle_path, 'r:gz') as tar:
-        tar.extractall(unpack_dir)
+    df_content = dockerfile_path.read_text(encoding='utf-8')
+    assert 'FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim' in df_content
+    assert 'osmium-tool' in df_content
+    assert 'gdal-bin' in df_content
+    assert 'aria2' in df_content
+    assert 'ENV PYTHONUNBUFFERED=1' in df_content
+    assert 'uv sync --frozen --no-dev --no-install-project' in df_content
+    assert 'ENV UV_NO_SYNC=1' in df_content
+    assert df_content.index('uv sync') < df_content.index('ENV UV_NO_SYNC=1')
+    assert 'ENTRYPOINT' in df_content
+    assert 'backend.scripts.prepare_roads' in df_content
 
-    for rel_path in files_to_pack:
-        unpacked_file = unpack_dir / rel_path
-        assert unpacked_file.exists()
-        assert unpacked_file.stat().st_size > 0
+    di_content = dockerignore_path.read_text(encoding='utf-8')
+    assert di_content.startswith('#') or di_content.startswith('*')
+    assert '*' in di_content
+    assert '!/.python-version' in di_content
+    assert '!/pyproject.toml' in di_content
+    assert '!/uv.lock' in di_content
+    assert '!/backend/scripts/prepare_roads.py' in di_content
 
 
 def test_fetch_or_cache_planet_pbf_cache_hit(
