@@ -15,7 +15,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * TagServiceTest
  *
- * Verifies TagService feature flags, ETag determinism, and dashpoint tag CRUD.
+ * Verifies TagService ETag determinism and dashpoint tag CRUD.
  */
 #[CoversClass(TagService::class)]
 class TagServiceTest extends TestCase
@@ -34,66 +34,6 @@ class TagServiceTest extends TestCase
         putenv('APP_ENV=testing');
         $_ENV['APP_ENV'] = 'testing';
         $this->pdoMock = $this->createStub(PDO::class);
-    }
-
-    /**
-     * Cleans up environment overrides after each test.
-     */
-    #[\Override]
-    protected function tearDown(): void
-    {
-        putenv('TAGS_ENABLED');
-        putenv('TAGS_ALLOWLIST');
-        unset($_ENV['TAGS_ENABLED'], $_ENV['TAGS_ALLOWLIST']);
-    }
-
-    #[Test]
-    public function featureFlagReturnsTrueWhenGloballyEnabled(): void
-    {
-        $config = [
-            'tags' => [
-                'TAGS_ENABLED' => true,
-                'TAGS_ALLOWLIST' => ''
-            ]
-        ];
-        $service = new TagService($this->pdoMock, $config);
-
-        $this->assertTrue($service->isFeatureEnabledForUser(null));
-        $this->assertTrue($service->isFeatureEnabledForUser('anyone'));
-    }
-
-    #[Test]
-    public function featureFlagAllowsUserInAllowlistWhenGloballyDisabled(): void
-    {
-        $config = [
-            'tags' => [
-                'TAGS_ENABLED' => false,
-                'TAGS_ALLOWLIST' => 'Alice, Bob, Charlie'
-            ]
-        ];
-        $service = new TagService($this->pdoMock, $config);
-
-        $this->assertTrue($service->isFeatureEnabledForUser('alice'));
-        $this->assertTrue($service->isFeatureEnabledForUser('BOB'));
-        $this->assertTrue($service->isFeatureEnabledForUser('charlie'));
-        $this->assertFalse($service->isFeatureEnabledForUser('Dave'));
-        $this->assertFalse($service->isFeatureEnabledForUser(null));
-        $this->assertFalse($service->isFeatureEnabledForUser(''));
-    }
-
-    #[Test]
-    public function featureFlagDisallowsAllWhenGloballyDisabledAndAllowlistEmpty(): void
-    {
-        $config = [
-            'tags' => [
-                'TAGS_ENABLED' => false,
-                'TAGS_ALLOWLIST' => ''
-            ]
-        ];
-        $service = new TagService($this->pdoMock, $config);
-
-        $this->assertFalse($service->isFeatureEnabledForUser('alice'));
-        $this->assertFalse($service->isFeatureEnabledForUser(null));
     }
 
     #[Test]
@@ -128,7 +68,7 @@ class TagServiceTest extends TestCase
             ->method('prepare')
             ->willReturn($stmtMock);
 
-        $service = new TagService($this->pdoMock, ['tags' => ['TAGS_ENABLED' => true]]);
+        $service = new TagService($this->pdoMock);
         $tags = $service->getTagsForUserAndGame(1, 2);
 
         $this->assertCount(2, $tags);
@@ -147,7 +87,7 @@ class TagServiceTest extends TestCase
     #[Test]
     public function setTagRejectsInvalidColor(): void
     {
-        $service = new TagService($this->pdoMock, ['tags' => ['TAGS_ENABLED' => true]]);
+        $service = new TagService($this->pdoMock);
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Invalid color code or shape specified.');
@@ -158,7 +98,7 @@ class TagServiceTest extends TestCase
     #[Test]
     public function setTagRejectsInvalidShape(): void
     {
-        $service = new TagService($this->pdoMock, ['tags' => ['TAGS_ENABLED' => true]]);
+        $service = new TagService($this->pdoMock);
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Invalid color code or shape specified.');
@@ -177,7 +117,7 @@ class TagServiceTest extends TestCase
             ->method('prepare')
             ->willReturn($checkStmt);
 
-        $service = new TagService($this->pdoMock, ['tags' => ['TAGS_ENABLED' => true]]);
+        $service = new TagService($this->pdoMock);
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Dashpoint not found.');
@@ -200,7 +140,7 @@ class TagServiceTest extends TestCase
             ->method('prepare')
             ->willReturn($checkStmt);
 
-        $service = new TagService($this->pdoMock, ['tags' => ['TAGS_ENABLED' => true]]);
+        $service = new TagService($this->pdoMock);
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Tags cannot be modified for completed games.');
@@ -228,7 +168,7 @@ class TagServiceTest extends TestCase
             ->method('prepare')
             ->willReturnOnConsecutiveCalls($checkStmt, $insertStmt);
 
-        $service = new TagService($this->pdoMock, ['tags' => ['TAGS_ENABLED' => true]]);
+        $service = new TagService($this->pdoMock);
         $result = $service->setTag(1, 'GD001-AAAA', '#1a73e8', 'star');
 
         $this->assertEquals('success', $result['status']);
@@ -259,7 +199,7 @@ class TagServiceTest extends TestCase
             ->method('prepare')
             ->willReturnOnConsecutiveCalls($checkStmt, $insertStmt);
 
-        $service = new TagService($this->pdoMock, ['tags' => ['TAGS_ENABLED' => true]]);
+        $service = new TagService($this->pdoMock);
         $result = $service->setTag(1, 'GD002-AAAA', '#8e24aa', 'diamond');
 
         $this->assertEquals('success', $result['status']);
@@ -287,7 +227,7 @@ class TagServiceTest extends TestCase
             ->method('prepare')
             ->willReturn($checkStmt);
 
-        $service = new TagService($this->pdoMock, ['tags' => ['TAGS_ENABLED' => true]]);
+        $service = new TagService($this->pdoMock);
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Tags cannot be modified for completed games.');
@@ -317,7 +257,7 @@ class TagServiceTest extends TestCase
             ->method('prepare')
             ->willReturnOnConsecutiveCalls($checkStmt, $deleteStmt);
 
-        $service = new TagService($this->pdoMock, ['tags' => ['TAGS_ENABLED' => true]]);
+        $service = new TagService($this->pdoMock);
         $res = $service->deleteTag(1, 'GD001-AAAA');
 
         $this->assertTrue($res);
@@ -339,7 +279,7 @@ class TagServiceTest extends TestCase
             ->method('prepare')
             ->willReturn($stmtMock);
 
-        $service = new TagService($this->pdoMock, ['tags' => ['TAGS_ENABLED' => true]]);
+        $service = new TagService($this->pdoMock);
         $count = $service->purgeTagsForDashpoint('GD002-AAAA');
 
         $this->assertEquals(3, $count);
@@ -387,18 +327,5 @@ class TagServiceTest extends TestCase
         $this->assertNotEquals($etagA, $etagB);
         $this->assertNotEquals($etagA, $etagC);
         $this->assertNotEquals($etagB, $etagC);
-    }
-
-    #[Test]
-    public function constructorAppliesEnvironmentVariableOverridesWhenConfigIsNull(): void
-    {
-        putenv('TAGS_ENABLED=false');
-        putenv('TAGS_ALLOWLIST=CustomTester,EnvUser');
-
-        $service = new TagService($this->pdoMock);
-
-        $this->assertTrue($service->isFeatureEnabledForUser('CustomTester'));
-        $this->assertTrue($service->isFeatureEnabledForUser('envuser'));
-        $this->assertFalse($service->isFeatureEnabledForUser('Stranger'));
     }
 }

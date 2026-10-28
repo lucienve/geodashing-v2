@@ -41,32 +41,10 @@ test.describe('Private Point Tagging Feature', () => {
     await expect(tagContainer).toBeHidden();
   });
 
-  test('Tag UI is hidden for users not in allowlist when TAGS_ENABLED=false', async ({
+  test('Authenticated user can tag an active game dashpoint and see the marker badge', async ({
     page,
   }) => {
-    // Log in as NewUser (who is not in TAGS_ALLOWLIST)
-    await page.goto('/#login');
-    await page.fill('#login-username', 'NewUser');
-    await page.fill('#login-password', 'testpass');
-    await Promise.all([
-      page.waitForResponse(
-        (resp) => resp.url().includes('action=login') && resp.status() === 200,
-      ),
-      page.click('#btn-submit-login'),
-    ]);
-    await page.waitForURL('**/#home');
-
-    await page.goto(`/#dashpoint?id=${activeDpId}`);
-    await page.waitForSelector('#dp-id-label');
-
-    const tagContainer = page.locator('#dp-tag-container');
-    await expect(tagContainer).toBeHidden();
-  });
-
-  test('Allowed user can tag an active game dashpoint and see the marker badge', async ({
-    page,
-  }) => {
-    // Log in as TestUser (present in TAGS_ALLOWLIST)
+    // Log in as TestUser
     await page.goto('/#login');
     await page.fill('#login-username', 'TestUser');
     await page.fill('#login-password', 'testpass');
@@ -142,7 +120,9 @@ test.describe('Private Point Tagging Feature', () => {
     await expect(clearBtn).toBeDisabled();
   });
 
-  test('Allowed user can tag preview game dashpoint', async ({ page }) => {
+  test('Authenticated user can tag preview game dashpoint', async ({
+    page,
+  }) => {
     // Log in as TestUser
     await page.goto('/#login');
     await page.fill('#login-username', 'TestUser');

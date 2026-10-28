@@ -28,13 +28,6 @@ if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
         $db = \App\Database::getConnection();
         $tagService = new TagService($db);
 
-        $currentUsername = $_SESSION['username'] ?? null;
-        if (!$tagService->isFeatureEnabledForUser($currentUsername)) {
-            http_response_code(403);
-            echo json_encode(["status" => "error", "message" => "Tagging feature is currently disabled."]);
-            exit;
-        }
-
         $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
         $userId = (int) $_SESSION['user_id'];
 

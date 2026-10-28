@@ -10,7 +10,7 @@ use PDO;
 /**
  * TagService
  *
- * Manages private player-specific dashpoint tags, feature flags,
+ * Manages private player-specific dashpoint tags
  * and game state validation (active/preview allowed, past games read-only).
  */
 class TagService
@@ -33,65 +33,13 @@ class TagService
     private PDO $db;
 
     /**
-     * @var array<string, mixed> Parsed configuration array.
-     */
-    private array $config;
-
-    /**
      * Constructor.
      *
      * @param PDO $db Database connection.
-     * @param array<string, mixed>|null $config Optional injected configuration array.
      */
-    public function __construct(PDO $db, ?array $config = null)
+    public function __construct(PDO $db)
     {
         $this->db = $db;
-        if ($config === null) {
-            $configPath = __DIR__ . '/../config.ini';
-            $this->config = (file_exists($configPath) && is_readable($configPath))
-                ? (parse_ini_file($configPath, true) ?: [])
-                : [];
-            if (getenv('TAGS_ENABLED') !== false) {
-                $this->config['tags']['TAGS_ENABLED'] = getenv('TAGS_ENABLED');
-            }
-            if (getenv('TAGS_ALLOWLIST') !== false) {
-                $this->config['tags']['TAGS_ALLOWLIST'] = getenv('TAGS_ALLOWLIST');
-            }
-        } else {
-            $this->config = $config;
-        }
-    }
-
-    /**
-     * Checks if the private tagging feature is enabled for the specified username.
-     *
-     * @param string|null $username The player username to check.
-     * @return bool True if globally enabled or if the user is present in the allowlist.
-     */
-    public function isFeatureEnabledForUser(?string $username): bool
-    {
-        $tagsConfig = $this->config['tags'] ?? [];
-        $globallyEnabled = filter_var($tagsConfig['TAGS_ENABLED'] ?? false, FILTER_VALIDATE_BOOLEAN);
-
-        if ($globallyEnabled) {
-            return true;
-        }
-
-        if (empty($username)) {
-            return false;
-        }
-
-        $allowlistRaw = (string) ($tagsConfig['TAGS_ALLOWLIST'] ?? '');
-        if (trim($allowlistRaw) === '') {
-            return false;
-        }
-
-        $allowedUsers = array_map(
-            static fn(string $u): string => strtolower(trim($u)),
-            explode(',', $allowlistRaw)
-        );
-
-        return in_array(strtolower(trim($username)), $allowedUsers, true);
     }
 
     /**

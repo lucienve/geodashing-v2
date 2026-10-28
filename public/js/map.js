@@ -612,7 +612,7 @@ function decorateActiveMarkersWithTags() {
 }
 
 /**
- * Loads user tags for the specified game if tagging is enabled for the session.
+ * Loads user tags for the specified game if an active session exists.
  * @param {number} gameId Active or selected game ID.
  */
 function loadUserTagsForGame(gameId) {
@@ -621,7 +621,7 @@ function loadUserTagsForGame(gameId) {
   if (typeof API !== 'undefined' && API.checkSession && API.loadUserTags) {
     API.checkSession(gameId)
       .then((auth) => {
-        if (auth.status === 'success' && auth.tags_enabled) {
+        if (auth.status === 'success') {
           API.loadUserTags(gameId)
             .then(() => {
               decorateActiveMarkersWithTags();

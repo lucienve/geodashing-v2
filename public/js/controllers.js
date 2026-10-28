@@ -379,7 +379,7 @@ document.addEventListener('routeLoaded', (e) => {
 
           if (tagContainer) {
             API.checkSession(dp.game_id).then((res) => {
-              if (res.status === 'success' && res.tags_enabled) {
+              if (res.status === 'success') {
                 tagContainer.classList.remove('d-none');
 
                 const isPastGame = !dp.is_game_active && !dp.is_game_preview;
@@ -2750,10 +2750,8 @@ document.addEventListener('routeLoaded', (e) => {
             return false;
           }
         }
-        return (
-          window.currentUser &&
-          window.currentUser.status === 'success' &&
-          Boolean(window.currentUser.tags_enabled)
+        return Boolean(
+          window.currentUser && window.currentUser.status === 'success',
         );
       };
 

@@ -2268,3 +2268,44 @@ geographic games where they are tasked with reaching randomly generated
 - Merged branch `feat/new-road-algo` into `main`, introducing
   `--algorithm road-proximity` as an opt-in game generation strategy while
   preserving the default `random` algorithm across all operations.
+
+### 90. Permanent Enablement of Private Dashpoint Tagging
+
+- Permanently enabled the private dashpoint tagging feature (`tags`) across the
+  entire application, removing the feature flag gating and allowlist logic:
+  - **Backend Simplification**:
+    - Reduced [TagService.php](../backend/services/TagService.php) to a pure
+      PDO-backed domain service (`__construct(PDO $db)`), eliminating `$config`
+      parsing, `TAGS_ENABLED` / `TAGS_ALLOWLIST` environment variable checks,
+      and the `isFeatureEnabledForUser(?string $username)` method.
+    - Updated [public/api/auth.php](../public/api/auth.php) to remove the
+      `TagService` instantiation, check, and `tags_enabled` property from the
+      JSON session response.
+    - Simplified [public/api/user_tags.php](../public/api/user_tags.php) by
+      removing the HTTP 403 feature flag guard, relying strictly on standard
+      session authentication (`$_SESSION['user_id']`).
+  - **Frontend Integration**:
+    - Simplified `#dashpoint` tag controls in
+      [public/js/controllers.js](../public/js/controllers.js) to check
+      `res.status === 'success'` directly upon session check.
+    - Simplified `enforceTagsAccess()` in the Multi-Stop Route Planner
+      ([public/js/controllers.js](../public/js/controllers.js)) to verify active
+      authenticated session status without checking `tags_enabled`.
+    - Simplified `loadUserTagsForGame` in
+      [public/js/map.js](../public/js/map.js) to trigger tag loading for all
+      authenticated users.
+  - **Configuration & CI Parity**:
+    - Removed the `[tags]` section from
+      [backend/config.ini.example](../backend/config.ini.example).
+    - Removed the `[tags]` block from
+      [.github/workflows/ci-e2e.yml](../.github/workflows/ci-e2e.yml).
+  - **Test Suite Updates**:
+    - Removed the 4 feature-flag unit tests and environment teardown in
+      [backend/tests/TagServiceTest.php](../backend/tests/TagServiceTest.php)
+      and simplified remaining test instantiations to
+      `new TagService($this->pdoMock)`.
+    - Removed the allowlist gating test from
+      [e2e/tagging.spec.js](../e2e/tagging.spec.js) while maintaining full
+      unauthenticated guest access protection and cross-device sync tests.
+  - **Verification**: All 103 PHPUnit tests, all 45 Playwright E2E tests, and
+    the complete pre-commit runner passed with zero errors.
