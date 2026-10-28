@@ -236,21 +236,21 @@ resource "google_artifact_registry_repository" "batch" {
   format        = "DOCKER"
 
   cleanup_policies {
-    id     = "keep-recent-versions"
+    id     = "keep-tagged-versions"
     action = "KEEP"
 
-    most_recent_versions {
-      keep_count = 3
+    condition {
+      tag_state = "TAGGED"
     }
   }
 
   cleanup_policies {
-    id     = "delete-old-versions"
+    id     = "delete-untagged"
     action = "DELETE"
 
     condition {
-      tag_state  = "ANY"
-      older_than = "604800s"
+      tag_state  = "UNTAGGED"
+      older_than = "0s"
     }
   }
 
