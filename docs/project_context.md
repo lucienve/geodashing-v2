@@ -2465,3 +2465,12 @@ geographic games where they are tasked with reaching randomly generated
   - Simplifies repository lifecycle management so obsolete untagged images can
     be deleted cleanly by the repository cleanup policy without OCI parent-child
     manifest dependencies.
+- **Artifact Registry Automated TTL Cleanup**:
+  - Configured 14-day TTL lifecycle cleanup (`delete-older-than-14d`,
+    `1209600s`) for all images (`tag_state = "ANY"`) on the `batch` Artifact
+    Registry repository in `terraform/main.tf`.
+  - Removed the unconditional `keep-tagged-versions` policy so tagged batch
+    images age out automatically after 14 days, well beyond the 12-hour max run
+    duration and Spot VM preemption retry window.
+  - Maintained `delete-untagged` (`older_than = "0s"`) for immediate removal of
+    obsolete images whenever a newer build is pushed.
