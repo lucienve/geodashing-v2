@@ -44,4 +44,7 @@ jobs:
         run: uv sync --all-groups
 
       - name: Run Pre-Commit Checks
-        run: uv run pre-commit run --all-files
+        run: uv run pre-commit run --all-files --hook-stage pre-commit
+
+      - name: Run Pre-Push Checks
+        run: uv run pre-commit run --all-files --hook-stage pre-push

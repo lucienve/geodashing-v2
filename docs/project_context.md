@@ -46,9 +46,12 @@ geographic games where they are tasked with reaching randomly generated
   - Lighthouse tests are integrated to enforce SEO, accessibility, and
     performance best practices.
   - Code verification checkers (linters, type checkers, and unit tests) are
-    unified using the **`pre-commit`** framework, ensuring identical
-    verification pipelines locally and in the GitHub Actions CI environment. E2E
-    Playwright tests run separately due to heavy infrastructure requirements.
+    unified using the **`pre-commit`** framework, split into `pre-commit` (fast
+    formatters and syntax checks) and `pre-push` (deep static analyzers and unit
+    test suites) stages. Local git hooks are registered with
+    `uv run pre-commit install --hook-type pre-commit --hook-type pre-push`. E2E
+    Playwright tests run separately in CI due to heavy infrastructure
+    requirements.
 
 ## Detailed Milestones & Implementation History
 
@@ -2488,3 +2491,37 @@ geographic games where they are tasked with reaching randomly generated
     (`generate_next_preview_game`) to seed upcoming preview games using the
     `grid` algorithm while streamlining its signature to 4 parameters and
     maintaining full Pylint design compliance.
+
+### 91. Pre-Commit and Pre-Push Hook Stage Split
+
+- Restructured [.pre-commit-config.yaml](../.pre-commit-config.yaml) to decouple
+  fast formatters and syntax linters from long-running static analyzers and unit
+  test suites, mirroring the configuration established in `lucienve/pikescan`
+  (commit `f5340ab`):
+  - **Pre-Commit Stage (`stages: [pre-commit]`)**:
+    - Assigned lightweight, near-instant format and syntax linters to the
+      `pre-commit` stage: `yapf` (Python), `eslint` (JS), `prettier` (Markdown &
+      JS), `markdownlint` (Markdown), and `phpcs` (PHP).
+    - Guarantees local `git commit` operations complete in ~1–2 seconds,
+      eliminating developer friction and encouraging frequent, atomic commits.
+  - **Pre-Push Stage (`stages: [pre-push]`)**:
+    - Deferred comprehensive static analyzers and test runners to the `pre-push`
+      stage: `pylint` (Python AST linting), `mypy` (Python type checking),
+      `pyright` (Python type checking), `pytest` (Python backend test suite),
+      and `phpunit` (PHP unit test suite).
+    - Ensures that deep code health, type safety, and test assertions are
+      enforced before code is pushed to remote branches via
+      `uv run pre-commit install --hook-type pre-commit --hook-type pre-push`.
+  - **Unified CI Pipeline Alignment
+    ([.github/workflows/ci-verification.yml](../.github/workflows/ci-verification.yml))**:
+    - Split the unified verification runner into two distinct sequential steps:
+      `Run Pre-Commit Checks`
+      (`uv run pre-commit run --all-files --hook-stage pre-commit`) and
+      `Run Pre-Push Checks`
+      (`uv run pre-commit run --all-files --hook-stage pre-push`).
+    - Surfaces clear visual failure diagnostics in GitHub Actions and ensures
+      fast fail-fast behavior when formatting or syntax issues occur before
+      spending compute on deep analyzers.
+  - **Verification**: Executed both `pre-commit` and `pre-push` hook stages
+    across all files, as well as `pytest` and `phpunit` test suites, confirming
+    clean exit codes of 0 across all tools.

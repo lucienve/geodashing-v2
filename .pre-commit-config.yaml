@@ -7,6 +7,7 @@ repos:
         language: system
         pass_filenames: false
         files: ^backend/.*\.py$
+        stages: [pre-commit]
 
       - id: pylint
         name: PyLint
@@ -14,6 +15,7 @@ repos:
         language: system
         pass_filenames: false
         files: ^backend/.*\.py$
+        stages: [pre-push]
 
       - id: mypy
         name: Mypy
@@ -21,6 +23,7 @@ repos:
         language: system
         pass_filenames: false
         files: ^backend/.*\.py$
+        stages: [pre-push]
 
       - id: pyright
         name: Pyright
@@ -28,6 +31,7 @@ repos:
         language: system
         pass_filenames: false
         files: ^backend/.*\.py$
+        stages: [pre-push]
 
       - id: pytest
         name: Pytest
@@ -35,6 +39,7 @@ repos:
         language: system
         pass_filenames: false
         files: ^backend/.*\.py$
+        stages: [pre-push]
 
       - id: eslint
         name: ESLint
@@ -42,6 +47,7 @@ repos:
         language: system
         pass_filenames: false
         files: ^(public/js/.*\.js|e2e/.*\.js|.*\.m?js)$
+        stages: [pre-commit]
 
       - id: prettier
         name: Prettier
@@ -49,6 +55,7 @@ repos:
         language: system
         pass_filenames: false
         files: \.(md|m?js)$
+        stages: [pre-commit]
 
       - id: markdownlint
         name: Markdownlint
@@ -56,6 +63,7 @@ repos:
         language: system
         pass_filenames: false
         files: \.md$
+        stages: [pre-commit]
 
       - id: phpcs
         name: PHP CodeSniffer
@@ -63,6 +71,7 @@ repos:
         language: system
         pass_filenames: false
         files: ^(backend|public/api|e2e)/.*\.php$
+        stages: [pre-commit]
 
       - id: phpunit
         name: PHPUnit
@@ -70,3 +79,4 @@ repos:
         language: system
         pass_filenames: false
         files: ^(backend|public/api|e2e)/.*\.php$
+        stages: [pre-push]
