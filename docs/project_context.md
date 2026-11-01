@@ -2630,3 +2630,34 @@ geographic games where they are tasked with reaching randomly generated
     specifications and 6-month freshness rules, upstream OSM coastline
     compilation source (`land-polygons-split-4326.zip`), Google Cloud Batch
     workflow triggers, and the purpose of few-shot summary assets.
+
+### 95. Ephemeral GCS Staging for OSM Datasets & Lifecycle Optimization
+
+- **Cloud Storage Bucket Reconfiguration (`geodashing-v2-map-data`)**:
+  - Reconfigured `resource "google_storage_bucket" "map_data"` in
+    [`terraform/main.tf`](../terraform/main.tf) to operate as a strictly
+    ephemeral 7-day staging and checkpoint bucket for semiannual Cloud Batch
+    compilation jobs (`submit_roads_batch_job.sh` and
+    `submit_water_batch_job.sh`).
+  - Disabled Autoclass (`autoclass { enabled = false }`) and object versioning
+    (`versioning { enabled = false }`), preventing deleted or overwritten
+    datasets from generating noncurrent versions that bill for 180 days.
+  - Disabled soft delete
+    (`soft_delete_policy { retention_duration_seconds = 0 }`) to eliminate the
+    7-day post-deletion retention window on temporary PBF and GeoPackage
+    artifacts.
+  - Broadened the 7-day `Delete` lifecycle rule across all live bucket objects
+    (`age = 7`, `with_state = "LIVE"`) without prefix restrictions, aligning
+    bucket expiration directly with `PLANET_PBF_CACHE_MAX_AGE_S` (7 days) in
+    [`prepare_roads.py`](../backend/scripts/prepare_roads.py) and zeroing out
+    resting storage costs between 6-month compilation cycles.
+  - Configured a 1-day noncurrent cleanup rule
+    (`days_since_noncurrent_time = 1`, `with_state = "ARCHIVED"`) to rapidly
+    purge any residual noncurrent versions.
+- **Workflow & Operator Documentation Overhaul**:
+  - Updated [`data/README.md`](../data/README.md) and
+    [`docs/admin_guide.md`](admin_guide.md) to define the 7-day post-batch
+    download window and document dataset distribution: copying
+    `world_osm_water.gpkg` to both the development machine and production server
+    (leveraging `scp`/`rsync -z` to avoid duplicate GCS egress), while keeping
+    `world_drivable_roads.gpkg` strictly on the development machine.

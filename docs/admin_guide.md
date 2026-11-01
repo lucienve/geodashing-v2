@@ -124,9 +124,10 @@ database.
        exists, is non-empty, and has an `mtime` within the last 6 months (180
        days). If missing or older than 6 months, execution terminates with an
        actionable error pointing the administrator to
-       [README.md](../data/README.md) to download or refresh it via
-       `gcloud storage cp` (or submit the Cloud Batch pipeline via
-       `./backend/scripts/submit_roads_batch_job.sh`).
+       [README.md](../data/README.md) to rebuild it via the Cloud Batch pipeline
+       (`./backend/scripts/submit_roads_batch_job.sh`) and download the staged
+       GeoPackage from `gs://geodashing-v2-map-data` during its 7-day staging
+       window.
      - **Pass 1 (Base Road Darts)**: Shuffles all dry land cells and samples 1
        candidate within 50 m of a qualifying road in that cell.
      - **Pass 2 (Water-Only Cardinal Redistribution)**: For water-only cells (0%

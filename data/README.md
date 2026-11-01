@@ -70,9 +70,38 @@ days)** freshness gate on `data/world_osm_water.gpkg`. If the file is missing,
 empty, or older than 180 days, execution halts immediately with an actionable
 error message.
 
+### Ephemeral GCS Staging Policy & Download Window
+
+The Google Cloud Storage bucket `gs://geodashing-v2-map-data` operates strictly
+as an **ephemeral 7-day staging and checkpoint bucket** for Cloud Batch Spot VM
+compilation, not permanent storage. Staged GeoPackages and intermediate
+checkpoints expire and are deleted automatically by bucket lifecycle policy 7
+days after upload.
+
+Once Cloud Batch completes a compilation job, administrators must download the
+fresh GeoPackages before the 7-day window expires:
+
+- **`world_osm_water.gpkg`**: Required on **both** the local development machine
+  and the production server (for dashpoint rerolls and monthly rollover
+  validation). To avoid duplicate GCS egress charges, download to the
+  development machine first via `gcloud storage cp`, then sync to production via
+  `scp` or `rsync -z`.
+- **`world_drivable_roads.gpkg`**: Required **only** on the development machine
+  (where manual game generation using `--algorithm road-proximity` is executed).
+  The production server does not require this 37.91 GB dataset.
+
+Once downloaded and verified locally, administrators can optionally delete all
+staged objects immediately to clear resting storage
+(`gcloud storage rm --all-versions "gs://geodashing-v2-map-data/**"`), or allow
+the 7-day lifecycle policy to clean them up automatically. If a new development
+machine needs datasets mid-cycle after the 7-day staging window has passed, copy
+`data/*.gpkg` directly from an existing machine or trigger a fresh Cloud Batch
+build.
+
 ### Downloading the Water Dataset
 
-Download the pre-compiled GeoPackage directly from Google Cloud Storage:
+Download the pre-compiled GeoPackage from Google Cloud Storage during the 7-day
+post-compilation window:
 
 ```bash
 gcloud storage cp gs://geodashing-v2-map-data/world_osm_water.gpkg data/world_osm_water.gpkg
@@ -126,8 +155,8 @@ refreshed within the last **6 months** (180 days).
 
 ### Downloading the Road Dataset
 
-Download the pre-compiled global road network GeoPackage directly from Google
-Cloud Storage:
+Download the pre-compiled global road network GeoPackage from Google Cloud
+Storage during the 7-day post-compilation window:
 
 ```bash
 gcloud storage cp gs://geodashing-v2-map-data/world_drivable_roads.gpkg data/world_drivable_roads.gpkg

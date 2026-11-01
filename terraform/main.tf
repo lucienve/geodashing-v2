@@ -82,7 +82,7 @@ resource "google_storage_bucket" "blobs" {
 }
 
 # -----------------------------------------------------------------------------
-# Google Cloud Storage - Road & Map Datasets Bucket
+# Google Cloud Storage - Road & Map Datasets Bucket (Ephemeral Staging)
 # -----------------------------------------------------------------------------
 
 resource "google_storage_bucket" "map_data" {
@@ -94,36 +94,15 @@ resource "google_storage_bucket" "map_data" {
   force_destroy               = false
 
   autoclass {
-    enabled                = true
-    terminal_storage_class = "ARCHIVE"
+    enabled = false
   }
 
   versioning {
-    enabled = true
+    enabled = false
   }
 
   soft_delete_policy {
-    retention_duration_seconds = 604800
-  }
-
-  lifecycle_rule {
-    action {
-      type = "Delete"
-    }
-    condition {
-      days_since_noncurrent_time = 180
-      with_state                 = "ARCHIVED"
-    }
-  }
-
-  lifecycle_rule {
-    action {
-      type = "Delete"
-    }
-    condition {
-      num_newer_versions = 2
-      with_state         = "ARCHIVED"
-    }
+    retention_duration_seconds = 0
   }
 
   lifecycle_rule {
@@ -140,9 +119,8 @@ resource "google_storage_bucket" "map_data" {
       type = "Delete"
     }
     condition {
-      age            = 7
-      matches_prefix = ["cache/"]
-      with_state     = "LIVE"
+      age        = 7
+      with_state = "LIVE"
     }
   }
 
@@ -152,7 +130,6 @@ resource "google_storage_bucket" "map_data" {
     }
     condition {
       days_since_noncurrent_time = 1
-      matches_prefix             = ["cache/"]
       with_state                 = "ARCHIVED"
     }
   }
