@@ -159,7 +159,7 @@ def test_load_chat_history(_mock_open: unittest.mock.MagicMock,
     """Test loading chat history from directory."""
     mock_isdir.return_value = True
     mock_listdir.return_value = [
-        'example_1_input.txt', 'example_2_input.txt', 'other.txt'
+        'game_1_input.txt', 'game_2_input.txt', 'other.txt'
     ]
     mock_exists.return_value = True
 

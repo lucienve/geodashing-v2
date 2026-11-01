@@ -352,8 +352,7 @@ def _load_benchmark_input(exs_d: str, prefix: str) -> str:
         return f.read()
 
 
-@pytest.mark.parametrize("prefix",
-                         ["example_1", "example_2", "game_1", "game_2"])
+@pytest.mark.parametrize("prefix", ["game_1", "game_2", "game_4", "game_5"])
 def test_evaluate_benchmark_summary(prefix: str) -> None:
     """Runs the full E2E evaluation against a benchmark case."""
     c_dir = os.path.dirname(os.path.abspath(__file__))

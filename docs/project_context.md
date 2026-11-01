@@ -2595,3 +2595,38 @@ geographic games where they are tasked with reaching randomly generated
   - Updated PHPUnit tests in
     [RerollServiceTest.php](../backend/tests/RerollServiceTest.php) to validate
     freshness checking and CLI command construction.
+
+### 94. Data Directory Cleanup, `.gitignore` Tracking Inversion, and Dataset Documentation
+
+- **Data Directory Sanitization**:
+  - Removed obsolete legacy Natural Earth shapefile archives (`ne_10m_land.zip`,
+    `ne_10m_lakes.zip`, and regional lake supplements) from `data/`.
+  - Removed outdated legacy text-only summary example pairs
+    (`example_1_input.txt`, `example_1_output.html`, `example_2_input.txt`, and
+    `example_2_output.html`) from `data/summary_examples/`, standardizing
+    few-shot summary generation and benchmark evaluations on modern rich-context
+    examples (`game_1` through `game_5`).
+- **`.gitignore` Tracking Policy Inversion**:
+  - Inverted the `.gitignore` policy for `data/` from an allowlist pattern to an
+    explicit denylist pattern.
+  - All project configuration, metadata, and training assets (`README.md`,
+    `game_titles.json`, `summary_system_instructions.txt`, and
+    `summary_examples/game_*`) are now tracked in version control by default.
+  - Explicitly ignored downloaded third-party datasets (`bad_words.txt`,
+    `cities15000.txt`, `admin1CodesASCII.txt`, `countryInfo.txt`), GeoPackages
+    (`*.gpkg*`), OSM PBF extracts (`*.osm.pbf`), shapefile archives (`*.zip`),
+    and temporary cache directories (`cache/`, `*.tmp`, `*.part*`, `*.aria2`).
+- **Evaluation Benchmark Suite Alignment**:
+  - Updated benchmark parametrization in
+    [test_summary_evaluation.py](../backend/tests/test_summary_evaluation.py)
+    from `["example_1", "example_2", "game_1", "game_2"]` to
+    `["game_1", "game_2", "game_4", "game_5"]`.
+  - Updated mock filenames in
+    [test_generate_summary.py](../backend/tests/test_generate_summary.py) to
+    reflect modern `game_*` prefixes.
+- **Documentation Overhaul**:
+  - Rewrote [data/README.md](../data/README.md) to document the explicit
+    tracking policy, `world_osm_water.gpkg` and `world_drivable_roads.gpkg`
+    specifications and 6-month freshness rules, upstream OSM coastline
+    compilation source (`land-polygons-split-4326.zip`), Google Cloud Batch
+    workflow triggers, and the purpose of few-shot summary assets.

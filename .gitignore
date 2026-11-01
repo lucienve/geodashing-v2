@@ -28,13 +28,19 @@ venv/
 ENV/
 vendor/
 
-# Data sets
-data/*
-!data/README.md
-!data/game_titles.json
-!data/summary_system_instructions.txt
-!data/summary_examples/
-data/summary_examples/example_*
+# Data sets (track project assets by default; ignore downloaded/generated artifacts)
+data/bad_words.txt
+data/cities15000.txt
+data/admin1CodesASCII.txt
+data/countryInfo.txt
+data/cache/
+data/*.gpkg*
+data/*.osm.pbf
+data/*.zip
+data/*.part*
+data/*.aria2
+data/*.tmp
+data/*.gstmp
 
 # IDEs and Editors
 .vscode/

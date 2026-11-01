@@ -1,90 +1,139 @@
 # Geodashing Data Directory
 
-This directory stores necessary datasets for running Geodashing features, such
-as geographical contextualization algorithms.
+This directory stores datasets, configuration assets, and few-shot examples
+required for game generation, spatial validation, geographic contextualization,
+and AI summary generation.
 
-## Generating GeoNames Datasets
+## Version Control & File Tracking Policy
 
-The geographical contextualization feature requires local demographic data to
-function offline and avoid third-party API costs when finding the nearest major
-population center.
+Files in this directory follow an explicit tracking policy configured in the
+root `.gitignore`:
 
-You can download the latest required GeoNames files directly into this directory
-by running the following commands:
+- **Tracked in Version Control**:
+  - `README.md`: This documentation guide.
+  - `game_titles.json`: Curated list of game titles used during monthly rollover
+    and manual game generation.
+  - `summary_system_instructions.txt`: System instructions provided to Gemini
+    models for monthly game summary generation.
+  - `summary_examples/`: Few-shot training pairs (`game_*_input.txt` and
+    `game_*_output.html`) used to condition the LLM summary generator.
+- **Untracked (Downloaded or Compiled Externally)**:
+  - `bad_words.txt`: LDNOOBW profane wordlist for dashpoint ID filtering.
+  - GeoNames files: `cities15000.txt`, `admin1CodesASCII.txt`, and
+    `countryInfo.txt`.
+  - GeoPackages: `world_osm_water.gpkg` and `world_drivable_roads.gpkg` (and any
+    SQLite WAL/SHM companion files).
+  - OpenStreetMap extracts and shapefile archives: `*.osm.pbf`,
+    `land-polygons-split-4326.zip`, and general `*.zip` files.
+  - Temporary or download cache directories: `cache/`, `*.tmp`, `*.part*`, and
+    `*.aria2`.
+
+---
+
+## Game Generation & Spatial Datasets
+
+Game generation (`generate_game.py`) and dashpoint relocation
+(`reroll_dashpoint.py`) rely exclusively on OpenStreetMap-derived GeoPackage
+datasets and a profanity filter list. Legacy Natural Earth shapefiles
+(`ne_10m_*`) have been completely retired.
+
+### Profanity Filter List (`bad_words.txt`)
+
+To ensure generated dashpoint IDs do not spell offensive 4-letter words,
+download and sort the 4-letter subset from the LDNOOBW repository:
 
 ```bash
-# 1. Download and extract the major cities dataset (cities with population > 15,000)
-curl -O http://download.geonames.org/export/dump/cities15000.zip
-unzip cities15000.zip
-rm cities15000.zip
-
-# 2. Download the administrative area mappings (e.g., State/Province codes to full names)
-curl -O http://download.geonames.org/export/dump/admin1CodesASCII.txt
-
-# 3. Download the country code mappings
-curl -O http://download.geonames.org/export/dump/countryInfo.txt
+curl -s "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en" | grep -xE '.{4}' | tr '[:lower:]' '[:upper:]' | sort > data/bad_words.txt
 ```
 
-After downloading these files, you can populate the local database by running
-the seed script from the root directory:
+---
+
+## Water & Coastline Dataset (`world_osm_water.gpkg`)
+
+To prevent dashpoints from landing in open oceans, lakes, wide riverbanks,
+reservoirs, and wetlands, game generation and dashpoint rerolling require
+`data/world_osm_water.gpkg`.
+
+The GeoPackage contains two R-tree indexed spatial layers:
+
+- `land`: Global coastline polygons pre-split on a 0.5-degree grid, compiled
+  from the official OSM coastline dataset (`land-polygons-split-4326.zip`).
+- `water`: Global inland water and inundated wetland polygons extracted from
+  `planet-latest.osm.pbf` (`natural=water`, `waterway=riverbank`,
+  `landuse=reservoir,basin`, and `natural=wetland`).
+
+### Freshness Requirement
+
+To maintain geographical accuracy as water bodies and coastlines change,
+`generate_game.py` and `reroll_dashpoint.py` enforce a strict **6-month (180
+days)** freshness gate on `data/world_osm_water.gpkg`. If the file is missing,
+empty, or older than 180 days, execution halts immediately with an actionable
+error message.
+
+### Downloading the Water Dataset
+
+Download the pre-compiled GeoPackage directly from Google Cloud Storage:
 
 ```bash
-uv run python -m backend.scripts.seed_major_cities
+gcloud storage cp gs://geodashing-v2-map-data/world_osm_water.gpkg data/world_osm_water.gpkg
 ```
 
-## Game Generation Datasets
+### Refreshing the Water Dataset via Google Cloud Batch
 
-The core geographic generation logic requires natural earth shapefiles and a bad
-words list. You can download them using the following commands:
+Administrators can trigger an automated Cloud Batch compilation job to rebuild
+and publish a fresh water GeoPackage from the latest planet OSM PBF extract:
 
 ```bash
-# Natural Earth datasets for geographical boundaries
-wget https://naciscdn.org/naturalearth/10m/physical/ne_10m_land.zip
-wget https://naciscdn.org/naturalearth/10m/physical/ne_10m_lakes.zip
-wget https://naciscdn.org/naturalearth/10m/physical/ne_10m_lakes_australia.zip
-wget https://naciscdn.org/naturalearth/10m/physical/ne_10m_lakes_europe.zip
-wget https://naciscdn.org/naturalearth/10m/physical/ne_10m_lakes_north_america.zip
+# Standard compilation with GCS caching and checkpointing
+./backend/scripts/submit_water_batch_job.sh
 
-# List of dirty/bad words for filtering generated dashpoint IDs
-curl -s "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en" | grep -xE '.{4}' | tr '[:lower:]' '[:upper:]' | sort > bad_words.txt
+# Force recompilation (bypassing GCS cache and freshness checks)
+./backend/scripts/submit_water_batch_job.sh --force
 ```
 
-## Road Proximity Datasets
+Monitor job status via the Cloud Batch CLI:
+
+```bash
+gcloud batch jobs list --project=geodashing-v2 --location=us-east1 --limit=5
+```
+
+### Building Locally with `prepare_water.py`
+
+Administrators can also compile the water dataset locally. Note that
+`prepare_water.py` automatically downloads or consumes the upstream OSM
+coastline archive `land-polygons-split-4326.zip` (from
+`https://osmdata.openstreetmap.de/download/land-polygons-split-4326.zip`), which
+is used to compile the `land` layer:
+
+```bash
+uv run python -m backend.scripts.prepare_water \
+  --osm-pbf data/planet-latest.osm.pbf \
+  --land-zip data/land-polygons-split-4326.zip \
+  --output data/world_osm_water.gpkg
+```
+
+---
+
+## Road Proximity Dataset (`world_drivable_roads.gpkg`)
 
 The `--algorithm road-proximity` generator mode requires an indexed
 OpenStreetMap GeoPackage file (`data/world_drivable_roads.gpkg`) containing
 qualifying public drivable roads (`primary`, `secondary`, `tertiary`,
 `unclassified`, `residential`, and links).
 
-To ensure dashpoint accessibility and account for road network evolution,
-`generate_game.py` validates that `data/world_drivable_roads.gpkg` exists, is
-non-empty, and has a file modification time within the last **6 months** (180
-days). If the file is missing or older than 6 months, execution halts with an
-instruction to download or refresh it.
+Like the water dataset, `world_drivable_roads.gpkg` must be non-empty and
+refreshed within the last **6 months** (180 days).
 
 ### Downloading the Road Dataset
 
 Download the pre-compiled global road network GeoPackage directly from Google
-Cloud Storage using `gcloud storage cp`:
+Cloud Storage:
 
 ```bash
 gcloud storage cp gs://geodashing-v2-map-data/world_drivable_roads.gpkg data/world_drivable_roads.gpkg
 ```
 
-### Refreshing the Road Dataset
-
-If the dataset in Cloud Storage is approaching or past 6 months old,
-administrators can trigger an automated Cloud Batch compilation job to rebuild
-and upload a fresh GeoPackage from the latest planet OSM PBF extract.
-
-The pipeline executes as a containerized job on Container-Optimized OS
-(`batch-cos`) in Google Cloud Batch with Image Streaming enabled from Artifact
-Registry (`us-east1-docker.pkg.dev/geodashing-v2/batch/prepare-roads:latest`),
-leveraging an attached 375 GiB Local NVMe SSD for fast intermediate indexing and
-automated retries on Spot VM preemption. The job maintains multi-stage GCS
-caching (`cache/planet-latest.osm.pbf` and `cache/filtered_roads.osm.pbf`) and
-an early-exit check on `world_drivable_roads.gpkg`, allowing preempted VMs to
-resume without repeating mirror downloads or `osmium` filtering:
+### Refreshing the Road Dataset via Google Cloud Batch
 
 ```bash
 # Standard compilation with GCS checkpointing and early-exit guards
@@ -94,60 +143,69 @@ resume without repeating mirror downloads or `osmium` filtering:
 ./backend/scripts/submit_roads_batch_job.sh --force
 ```
 
-Monitor job status via the Cloud Batch CLI or Google Cloud Console:
+### Building Locally with `prepare_roads.py`
 
 ```bash
-gcloud batch jobs list --project=geodashing-v2 --location=us-east1 --limit=5
-```
-
-Once the batch job reaches `SUCCEEDED`, re-run `gcloud storage cp` to download
-the new dataset locally.
-
-### Building Locally from OSM PBF
-
-Alternatively, administrators can compile a custom or local OSM extract using
-`prepare_roads.py`:
-
-```bash
-# Compile from an existing local OSM PBF extract
 uv run python -m backend.scripts.prepare_roads \
   --input data/planet-latest.osm.pbf \
   --output data/world_drivable_roads.gpkg
 ```
 
-## Water & Coastline Datasets
+---
 
-To prevent dashpoints from landing in open lakes, wide riverbanks, reservoirs,
-and coastal tidal flats, game generation and dashpoint rerolling support an
-indexed OpenStreetMap GeoPackage (`data/world_osm_water.gpkg`). The GeoPackage
-contains two R-tree indexed spatial layers:
+## GeoNames Datasets (Geographical Contextualization)
 
-- `land`: Global coastline polygons pre-split on a 0.5-degree grid
-  (`land-polygons-split-4326.zip`).
-- `water`: Global inland water and inundated wetland polygons derived from
-  `planet-latest.osm.pbf` (`natural=water`, `waterway=riverbank`,
-  `landuse=reservoir,basin`, and `natural=wetland`).
+The nearest-city contextualization feature requires local demographic data to
+function offline and avoid third-party API costs when locating the nearest major
+population center.
 
-Like the road dataset, `world_osm_water.gpkg` must be non-empty and refreshed
-within the last **6 months** (180 days).
-
-### Downloading the Water Dataset
-
-Download the compiled GeoPackage directly from Google Cloud Storage:
+Download and seed the GeoNames files into the local database:
 
 ```bash
-gcloud storage cp gs://geodashing-v2-map-data/world_osm_water.gpkg data/world_osm_water.gpkg
+# 1. Download and extract major cities (population > 15,000)
+curl -O http://download.geonames.org/export/dump/cities15000.zip
+unzip cities15000.zip
+rm cities15000.zip
+
+# 2. Download administrative area mappings (state/province codes to names)
+curl -O http://download.geonames.org/export/dump/admin1CodesASCII.txt
+
+# 3. Download country code mappings
+curl -O http://download.geonames.org/export/dump/countryInfo.txt
+
+# 4. Populate the local database
+uv run python -m backend.scripts.seed_major_cities
 ```
 
-### Refreshing the Water Dataset
+---
 
-Administrators can submit an automated Cloud Batch job to rebuild and upload a
-fresh water dataset:
+## Summary Generation & Evaluation Datasets
 
-```bash
-# Standard compilation with GCS checkpointing and early-exit guards
-./backend/scripts/submit_water_batch_job.sh
+The files below support the monthly game summary generation engine
+(`backend/scripts/generate_summary.py`) and automated LLM regression evaluation
+(`backend/tests/test_summary_evaluation.py`).
 
-# Force recompilation (bypassing GCS cache and freshness checks)
-./backend/scripts/submit_water_batch_job.sh --force
-```
+### `game_titles.json`
+
+A version-controlled JSON list of creative, thematic titles used during monthly
+game rollover (`game_utils.py`) and CLI initialization (`generate_game.py`).
+
+### `summary_system_instructions.txt`
+
+The canonical prompt system instruction file instructing Gemini models on the
+persona, tone, formatting conventions, and HTML tag constraints for generating
+monthly wrap-up emails.
+
+### `summary_examples/`
+
+A directory containing paired few-shot interaction examples:
+
+- `game_{id}_input.txt`: Structured game data including final standings, top
+  dashpoints, and player visit log extracts.
+- `game_{id}_output.html`: Curated, human-verified HTML output meeting all
+  layout, styling, and link conventions.
+
+These pairs are loaded dynamically by `load_chat_history()` in
+`generate_summary.py` to condition the Gemini model via multi-turn few-shot
+in-context learning. They are also used as benchmark cases in
+`test_summary_evaluation.py` to evaluate tone, accuracy, and narrative quality.
