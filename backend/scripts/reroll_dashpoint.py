@@ -12,6 +12,7 @@ import shapely
 import shapely.geometry
 
 import backend.scripts.generate_game
+import backend.scripts.prepare_water
 import backend.scripts.road_proximity
 
 # Mean radius of the Earth in kilometers
@@ -140,15 +141,12 @@ def find_valid_reroll_point(
     """Finds a new random point within max_radius_km that satisfies dry land constraints."""
     if spatial_filter is None:
         bbox = compute_search_bbox(origin, max_radius_km)
-        if os.path.exists('data/world_osm_water.gpkg'):
-            spatial_filter = backend.scripts.generate_game.build_spatial_filter(
-                'data/world_osm_water.gpkg', '', verbose, bbox=bbox)
-        else:
-            spatial_filter = backend.scripts.generate_game.build_spatial_filter(
-                'data/ne_10m_land.zip',
-                'data/ne_10m_lakes.zip',
-                verbose,
-                bbox=bbox)
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(current_dir, '../config.ini')
+        water_path = backend.scripts.prepare_water.resolve_water_gpkg(
+            config_path=config_path)
+        spatial_filter = backend.scripts.generate_game.build_spatial_filter(
+            water_path, verbose=verbose, bbox=bbox)
 
     for _ in range(max_attempts):
         lat_f, lon_f = generate_polar_candidate(origin, MIN_REROLL_RADIUS_KM,
@@ -182,14 +180,6 @@ def main() -> None:
                         type=str,
                         default=None,
                         help="Optional path to water GeoPackage")
-    parser.add_argument("--land-zip",
-                        type=str,
-                        default="data/ne_10m_land.zip",
-                        help="Path to land shapefile")
-    parser.add_argument("--lakes-zip",
-                        type=str,
-                        default="data/ne_10m_lakes.zip",
-                        help="Path to lakes shapefile")
     parser.add_argument("--verbose",
                         action="store_true",
                         help="Print debug/progress messages to stdout")
@@ -200,20 +190,15 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(current_dir, '../config.ini')
+
     try:
         bbox = compute_search_bbox((args.lat, args.lon), args.max_radius_km)
-        if args.water_gpkg:
-            spatial_filter = backend.scripts.generate_game.build_spatial_filter(
-                args.water_gpkg, '', verbose=args.verbose, bbox=bbox)
-        elif os.path.exists('data/world_osm_water.gpkg'):
-            spatial_filter = backend.scripts.generate_game.build_spatial_filter(
-                'data/world_osm_water.gpkg',
-                '',
-                verbose=args.verbose,
-                bbox=bbox)
-        else:
-            spatial_filter = backend.scripts.generate_game.build_spatial_filter(
-                args.land_zip, args.lakes_zip, verbose=args.verbose, bbox=bbox)
+        water_path = backend.scripts.prepare_water.resolve_water_gpkg(
+            args.water_gpkg, config_path=config_path)
+        spatial_filter = backend.scripts.generate_game.build_spatial_filter(
+            water_path, verbose=args.verbose, bbox=bbox)
 
         new_lat, new_lon = find_valid_reroll_point((args.lat, args.lon),
                                                    args.max_radius_km,

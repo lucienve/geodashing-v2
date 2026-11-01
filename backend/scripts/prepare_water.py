@@ -44,12 +44,6 @@ PREPARE_VERTEX_THRESHOLD = 250
 SIX_MONTHS_SECONDS = 180 * 24 * 3600
 PREEMPTION_CACHE_MAX_AGE_SECONDS = 7 * 86400
 
-LAKE_SUPPLEMENT_FILENAMES = (
-    'ne_10m_lakes_australia.zip',
-    'ne_10m_lakes_europe.zip',
-    'ne_10m_lakes_north_america.zip',
-)
-
 OSMIUM_WATER_FILTER_EXPRESSIONS = (
     'wr/natural=water,wetland',
     'wr/waterway=riverbank',
@@ -533,16 +527,6 @@ def subdivide_geometry(
     return subdivided
 
 
-def resolve_lake_zip_paths(lakes_zip_path: str) -> list[str]:
-    """Resolves lake shapefile paths, expanding default ne_10m_lakes.zip with supplements."""
-    if os.path.basename(lakes_zip_path) == 'ne_10m_lakes.zip':
-        base_dir = os.path.dirname(lakes_zip_path)
-        return [lakes_zip_path] + [
-            os.path.join(base_dir, name) for name in LAKE_SUPPLEMENT_FILENAMES
-        ]
-    return [lakes_zip_path]
-
-
 def _project_and_validate_gdf(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """Converts a GeoDataFrame to EPSG:6933 and repairs invalid geometries."""
     if gdf.empty:
@@ -576,59 +560,42 @@ def clip_gdf_to_bbox(
 
 
 def load_and_project_geometries(
-    land_path: str,
-    lakes_path: str = '',
+    water_gpkg_path: str,
     verbose: bool = True,
     bbox: tuple[float, float, float, float] | None = None,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """Loads and projects land and lake geometries to EPSG:6933.
+    """Loads and projects land and water geometries to EPSG:6933.
 
     Args:
-        land_path: Path to .gpkg file or legacy land shapefile zip.
-        lakes_path: Optional path to legacy lakes shapefile zip.
+        water_gpkg_path: Path to the water/coastline .gpkg file.
         verbose: Whether to print progress messages.
         bbox: Optional (minx, miny, maxx, maxy) bounding box filter.
 
     Returns:
-        tuple[GeoDataFrame, GeoDataFrame]: (land_proj, lakes_proj) in EPSG:6933.
+        tuple[GeoDataFrame, GeoDataFrame]: (land_proj, water_proj) in EPSG:6933.
+
+    Raises:
+        FileNotFoundError: If the GeoPackage layers cannot be read.
     """
-    if land_path.lower().endswith('.gpkg'):
-        try:
-            if bbox is not None:
-                land_gdf = gpd.read_file(land_path,
-                                         layer='land',
-                                         bbox=bbox,
-                                         columns=[])
-                water_gdf = gpd.read_file(land_path,
-                                          layer='water',
-                                          bbox=bbox,
-                                          columns=[])
-            else:
-                land_gdf = gpd.read_file(land_path, layer='land', columns=[])
-                water_gdf = gpd.read_file(land_path, layer='water', columns=[])
-        except Exception as exc:
-            raise FileNotFoundError(
-                f"Failed to read GeoPackage layers from {land_path}: {exc}"
-            ) from exc
-    else:
-        lake_paths = resolve_lake_zip_paths(lakes_path)
-        try:
-            if bbox is not None:
-                land_gdf = gpd.read_file(f"zip://{land_path}", bbox=bbox)
-                lake_gdfs = [
-                    gpd.read_file(f"zip://{p}", bbox=bbox) for p in lake_paths
-                ]
-            else:
-                land_gdf = gpd.read_file(f"zip://{land_path}")
-                lake_gdfs = [gpd.read_file(f"zip://{p}") for p in lake_paths]
-            water_geoms: list[shapely.geometry.base.BaseGeometry] = []
-            for lgdf in lake_gdfs:
-                water_geoms.extend(lgdf.geometry.tolist())
-            water_gdf = gpd.GeoDataFrame(geometry=water_geoms,
-                                         crs=land_gdf.crs or 'EPSG:4326')
-        except Exception as exc:
-            raise FileNotFoundError(
-                f"Failed to read shapefiles: {exc}") from exc
+    try:
+        if bbox is not None:
+            land_gdf = gpd.read_file(water_gpkg_path,
+                                     layer='land',
+                                     bbox=bbox,
+                                     columns=[])
+            water_gdf = gpd.read_file(water_gpkg_path,
+                                      layer='water',
+                                      bbox=bbox,
+                                      columns=[])
+        else:
+            land_gdf = gpd.read_file(water_gpkg_path, layer='land', columns=[])
+            water_gdf = gpd.read_file(water_gpkg_path,
+                                      layer='water',
+                                      columns=[])
+    except Exception as exc:
+        raise FileNotFoundError(
+            f"Failed to read GeoPackage layers from {water_gpkg_path}: {exc}"
+        ) from exc
 
     if bbox is not None:
         land_gdf = clip_gdf_to_bbox(land_gdf, bbox)
@@ -775,17 +742,16 @@ class SpatialFilter:
 
 
 def build_spatial_filter(
-    land_path: str = DEFAULT_WATER_GPKG_PATH,
-    lakes_path: str = '',
+    water_gpkg_path: str = DEFAULT_WATER_GPKG_PATH,
     verbose: bool = True,
     bbox: tuple[float, float, float, float] | None = None,
 ) -> typing.Union[SpatialFilter,
                   backend.scripts.road_proximity.GpkgSpatialFilter]:
     """Loads datasets, subdivides them, and builds a SpatialFilter instance."""
-    if land_path.lower().endswith('.gpkg') and bbox is None:
+    if water_gpkg_path.lower().endswith('.gpkg') and bbox is None:
         try:
             conn = sqlite3.connect(
-                f"file:{os.path.abspath(land_path)}?mode=ro",
+                f"file:{os.path.abspath(water_gpkg_path)}?mode=ro",
                 uri=True,
                 check_same_thread=False,
             )
@@ -794,12 +760,11 @@ def build_spatial_filter(
             cur.execute("SELECT 1 FROM rtree_water_geom LIMIT 1")
             conn.close()
             return backend.scripts.road_proximity.GpkgSpatialFilter(
-                land_path, verbose=verbose)
+                water_gpkg_path, verbose=verbose)
         except (sqlite3.Error, OSError):
             pass
 
-    land_proj, lakes_proj = load_and_project_geometries(land_path,
-                                                        lakes_path,
+    land_proj, water_proj = load_and_project_geometries(water_gpkg_path,
                                                         verbose=verbose,
                                                         bbox=bbox)
 
@@ -810,22 +775,22 @@ def build_spatial_filter(
         if geom is not None and not geom.is_empty:
             land_sub.extend(subdivide_geometry(geom, max_size=1000000.0))
 
-    lakes_sub: list[shapely.geometry.base.BaseGeometry] = []
-    for geom in lakes_proj.geometry:
+    water_sub: list[shapely.geometry.base.BaseGeometry] = []
+    for geom in water_proj.geometry:
         if geom is not None and not geom.is_empty:
-            lakes_sub.extend(subdivide_geometry(geom, max_size=1000000.0))
+            water_sub.extend(subdivide_geometry(geom, max_size=1000000.0))
 
     if verbose:
         print("Building spatial indexes...")
     tree_land = shapely.strtree.STRtree(land_sub)
-    tree_lakes = shapely.strtree.STRtree(lakes_sub)
+    tree_water = shapely.strtree.STRtree(water_sub)
 
     if verbose:
         print("Selectively preparing complex geometries...")
     prepare_complex_geometries(land_sub)
-    prepare_complex_geometries(lakes_sub)
+    prepare_complex_geometries(water_sub)
 
-    return SpatialFilter(tree_land, tree_lakes, land_sub, lakes_sub)
+    return SpatialFilter(tree_land, tree_water, land_sub, water_sub)
 
 
 # =============================================================================

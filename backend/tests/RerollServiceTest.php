@@ -310,24 +310,69 @@ class RerollServiceTest extends TestCase
     }
 
     #[Test]
-    public function buildRerollCommandUsesWaterGpkgWhenAvailable(): void
+    public function buildRerollCommandAlwaysUsesWaterGpkg(): void
     {
-        $projectRoot = dirname(__DIR__, 2);
-        $gpkgPath = $projectRoot . '/data/world_osm_water.gpkg';
-        $created = false;
-        if (!file_exists($gpkgPath)) {
-            touch($gpkgPath);
-            $created = true;
-        }
+        $service = new RerollService($this->pdoMock, null, $this->testConfig);
+        $cmd = $service->buildRerollCommand(51.5074, -0.1278, 10.0, '/tmp/test_out.json');
+        $this->assertStringContainsString('--water-gpkg', $cmd);
+        $this->assertStringContainsString('world_osm_water.gpkg', $cmd);
+
+        $customConfig = [
+            'gcs' => [
+                'WATER_GPKG_PATH' => '/custom/path/custom_water.gpkg',
+            ],
+        ];
+        $customService = new RerollService($this->pdoMock, null, $customConfig);
+        $customCmd = $customService->buildRerollCommand(51.5074, -0.1278, 10.0, '/tmp/test_out.json');
+        $this->assertStringContainsString('--water-gpkg', $customCmd);
+        $this->assertStringContainsString('/custom/path/custom_water.gpkg', $customCmd);
+    }
+
+    #[Test]
+    public function validateWaterGpkgAcceptsFreshFile(): void
+    {
+        $service = new RerollService($this->pdoMock, null, $this->testConfig);
+        $tempFile = tempnam(sys_get_temp_dir(), 'test_water_');
+        $this->assertNotFalse($tempFile);
+        file_put_contents($tempFile, 'dummy-gpkg-content');
 
         try {
-            $service = new RerollService($this->pdoMock, null, $this->testConfig);
-            $cmd = $service->buildRerollCommand(51.5074, -0.1278, 10.0, '/tmp/test_out.json');
-            $this->assertStringContainsString('--water-gpkg', $cmd);
-            $this->assertStringContainsString('world_osm_water.gpkg', $cmd);
+            $service->validateWaterGpkg($tempFile);
+            $this->assertTrue(true);
         } finally {
-            if ($created && file_exists($gpkgPath)) {
-                unlink($gpkgPath);
+            if (file_exists($tempFile)) {
+                unlink($tempFile);
+            }
+        }
+    }
+
+    #[Test]
+    public function validateWaterGpkgRejectsMissingOrEmptyFile(): void
+    {
+        $service = new RerollService($this->pdoMock, null, $this->testConfig);
+        $nonExistent = sys_get_temp_dir() . '/nonexistent_water_' . uniqid() . '.gpkg';
+
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('missing or empty');
+        $service->validateWaterGpkg($nonExistent);
+    }
+
+    #[Test]
+    public function validateWaterGpkgRejectsStaleFile(): void
+    {
+        $service = new RerollService($this->pdoMock, null, $this->testConfig);
+        $tempFile = tempnam(sys_get_temp_dir(), 'stale_water_');
+        $this->assertNotFalse($tempFile);
+        file_put_contents($tempFile, 'dummy-gpkg-content');
+        touch($tempFile, time() - (185 * 86400));
+
+        try {
+            $this->expectException(\Exception::class);
+            $this->expectExceptionMessage('more than 6 months old');
+            $service->validateWaterGpkg($tempFile);
+        } finally {
+            if (file_exists($tempFile)) {
+                unlink($tempFile);
             }
         }
     }

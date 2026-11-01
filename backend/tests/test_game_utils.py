@@ -463,6 +463,8 @@ class TestRolloverCLI(unittest.TestCase):
         self.assertEqual(preview_id, 16)
         self.assertEqual(preview_title, "September 2026")
 
+    @unittest.mock.patch("backend.scripts.prepare_water.resolve_water_gpkg",
+                         autospec=True)
     @unittest.mock.patch(
         "backend.scripts.generate_game.generate_grid_dashpoints",
         autospec=True)
@@ -473,9 +475,11 @@ class TestRolloverCLI(unittest.TestCase):
     def test_generate_next_preview_game_generates(
             self, mock_bulk_insert: unittest.mock.MagicMock,
             mock_init_game: unittest.mock.MagicMock,
-            mock_gen_points: unittest.mock.MagicMock) -> None:
+            mock_gen_points: unittest.mock.MagicMock,
+            mock_resolve_water: unittest.mock.MagicMock) -> None:
         """If next preview is missing, generate points and seed DB."""
         self.mock_cursor.fetchall.return_value = []
+        mock_resolve_water.return_value = "resolved_water.gpkg"
         mock_gen_points.return_value = [shapely.geometry.Point(0, 0)]
         mock_init_game.return_value = 17
 
@@ -485,12 +489,23 @@ class TestRolloverCLI(unittest.TestCase):
         self.assertEqual(preview_title,
                          "Random Destinations of Unwarranted Grandeur")
         mock_gen_points.assert_called_once_with(
-            grid_size_km=60.05,
-            land_zip_path=unittest.mock.ANY,
-            lakes_zip_path=unittest.mock.ANY)
+            grid_size_km=60.05, water_gpkg_path="resolved_water.gpkg")
         mock_init_game.assert_called_once()
         mock_bulk_insert.assert_called_once()
         self.mock_conn.commit.assert_called_once()
+
+    @unittest.mock.patch("backend.scripts.prepare_water.resolve_water_gpkg",
+                         autospec=True)
+    def test_generate_next_preview_game_stale_water_fails(
+            self, mock_resolve_water: unittest.mock.MagicMock) -> None:
+        """Verify that missing or stale water GeoPackage propagates RuntimeError."""
+        self.mock_cursor.fetchall.return_value = []
+        mock_resolve_water.side_effect = RuntimeError(
+            "Water dataset 'data/world_osm_water.gpkg' is more than 6 months old"
+        )
+        with self.assertRaises(RuntimeError):
+            backend.scripts.game_utils.generate_next_preview_game(
+                self.mock_cursor, self.mock_conn, (2026, 9), dry_run=False)
 
     @unittest.mock.patch("backend.scripts.game_utils.load_game_config",
                          autospec=True)

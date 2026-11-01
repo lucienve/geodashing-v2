@@ -246,7 +246,7 @@ Measure wall-clock time and peak resident set size using `/usr/bin/time -v`:
 ```bash
 /usr/bin/time -v uv run python -c "
 from backend.scripts.generate_game import generate_valid_dashpoints
-pts = generate_valid_dashpoints(target_count=50, land_zip_path='data/world_osm_water.gpkg', lakes_zip_path='')
+pts = generate_valid_dashpoints(target_count=50, water_gpkg_path='data/world_osm_water.gpkg')
 print(f'Generated {len(pts)} dashpoints.')
 "
 ```

@@ -10,6 +10,7 @@ import pytest
 import shapely.geometry
 
 import backend.scripts.generate_game
+import backend.scripts.prepare_water
 import backend.scripts.reroll_dashpoint
 
 
@@ -31,18 +32,20 @@ def test_is_valid_land_point(monkeypatch: pytest.MonkeyPatch) -> None:
     land_polygon = shapely.geometry.box(-2.0, 50.0, 2.0, 53.0)
     lake_polygon = shapely.geometry.box(0.5, 51.0, 1.0, 52.0)
 
-    def read_file_side_effect(path: str) -> gpd.GeoDataFrame:
-        if "land" in path:
+    def read_file_side_effect(_path: str,
+                              layer: str = "",
+                              **_kwargs: typing.Any) -> gpd.GeoDataFrame:
+        if layer == "land":
             return gpd.GeoDataFrame(geometry=[land_polygon], crs="EPSG:4326")
-        if "lakes" in path:
+        if layer == "water":
             return gpd.GeoDataFrame(geometry=[lake_polygon], crs="EPSG:4326")
         return gpd.GeoDataFrame()
 
-    monkeypatch.setattr("backend.scripts.generate_game.gpd.read_file",
+    monkeypatch.setattr("backend.scripts.prepare_water.gpd.read_file",
                         read_file_side_effect)
 
     spatial_filter = backend.scripts.generate_game.build_spatial_filter(
-        "mock_land.zip", "mock_lakes.zip", verbose=False)
+        "mock_water.gpkg", verbose=False)
     # London (51.5074, -0.1278) is dry land
     is_valid = backend.scripts.reroll_dashpoint.is_valid_land_point(
         51.5074, -0.1278, spatial_filter)
@@ -50,18 +53,20 @@ def test_is_valid_land_point(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_find_valid_reroll_point(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Verifies valid reroll point selection on dry land using mock shapefiles."""
+    """Verifies valid reroll point selection on dry land using mock GeoPackage."""
     land_polygon = shapely.geometry.box(-2.0, 50.0, 2.0, 53.0)
     lake_polygon = shapely.geometry.box(0.5, 51.0, 1.0, 52.0)
 
-    def read_file_side_effect(path: str) -> gpd.GeoDataFrame:
-        if "land" in path:
+    def read_file_side_effect(_path: str,
+                              layer: str = "",
+                              **_kwargs: typing.Any) -> gpd.GeoDataFrame:
+        if layer == "land":
             return gpd.GeoDataFrame(geometry=[land_polygon], crs="EPSG:4326")
-        if "lakes" in path:
+        if layer == "water":
             return gpd.GeoDataFrame(geometry=[lake_polygon], crs="EPSG:4326")
         return gpd.GeoDataFrame()
 
-    monkeypatch.setattr("backend.scripts.generate_game.gpd.read_file",
+    monkeypatch.setattr("backend.scripts.prepare_water.gpd.read_file",
                         read_file_side_effect)
 
     # London origin (51.5074, -0.1278)
@@ -69,7 +74,7 @@ def test_find_valid_reroll_point(monkeypatch: pytest.MonkeyPatch) -> None:
     max_radius_km = 10.0
 
     spatial_filter = backend.scripts.generate_game.build_spatial_filter(
-        "mock_land.zip", "mock_lakes.zip", verbose=False)
+        "mock_water.gpkg", verbose=False)
     new_lat, new_lon = backend.scripts.reroll_dashpoint.find_valid_reroll_point(
         origin, max_radius_km, spatial_filter)
     # Verify distance constraint
@@ -83,6 +88,10 @@ def test_main_with_output_file(monkeypatch: pytest.MonkeyPatch,
     """Verifies CLI main function writes output to specified --output-file."""
     output_file = tmp_path / "reroll_out.json"
 
+    def mock_resolve_water_gpkg(*_args: typing.Any,
+                                **_kwargs: typing.Any) -> str:
+        return "resolved_water.gpkg"
+
     def mock_build_spatial_filter(*_args: typing.Any,
                                   **_kwargs: typing.Any) -> typing.Any:
         return None
@@ -91,6 +100,8 @@ def test_main_with_output_file(monkeypatch: pytest.MonkeyPatch,
             *_args: typing.Any, **_kwargs: typing.Any) -> tuple[float, float]:
         return 51.51, -0.12
 
+    monkeypatch.setattr("backend.scripts.prepare_water.resolve_water_gpkg",
+                        mock_resolve_water_gpkg)
     monkeypatch.setattr("backend.scripts.generate_game.build_spatial_filter",
                         mock_build_spatial_filter)
     monkeypatch.setattr(
@@ -150,17 +161,24 @@ def test_main_cli_with_water_gpkg(tmp_path: pathlib.Path,
 
     called_gpkg: list[str] = []
 
-    def mock_build_spatial_filter(land_zip: str,
-                                  _lakes_zip: str,
+    def mock_resolve_water_gpkg(custom_path: str | None = None,
+                                **_kwargs: typing.Any) -> str:
+        return custom_path or "default.gpkg"
+
+    def mock_build_spatial_filter(water_gpkg: str,
                                   _verbose: bool = True,
                                   **_kwargs: typing.Any) -> typing.Any:
-        called_gpkg.append(land_zip)
+        called_gpkg.append(water_gpkg)
         return object()
 
     def mock_find_valid_reroll_point(
             *_args: typing.Any, **_kwargs: typing.Any) -> tuple[float, float]:
         return 40.0, -74.0
 
+    monkeypatch.setattr(
+        "backend.scripts.prepare_water.resolve_water_gpkg",
+        mock_resolve_water_gpkg,
+    )
     monkeypatch.setattr(
         "backend.scripts.generate_game.build_spatial_filter",
         mock_build_spatial_filter,
@@ -187,3 +205,40 @@ def test_main_cli_with_water_gpkg(tmp_path: pathlib.Path,
 
     assert output_file.exists()
     assert called_gpkg == [str(fake_gpkg)]
+
+
+def test_main_cli_water_gpkg_missing_or_stale(
+        tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies CLI error output and exit code 1 when water GeoPackage is missing or stale."""
+    output_file = tmp_path / "error_out.json"
+
+    def mock_resolve_water_gpkg(*_args: typing.Any,
+                                **_kwargs: typing.Any) -> str:
+        raise RuntimeError(
+            "Water GeoPackage is older than 6 months (180 days). Please refresh it."
+        )
+
+    monkeypatch.setattr(
+        "backend.scripts.prepare_water.resolve_water_gpkg",
+        mock_resolve_water_gpkg,
+    )
+
+    test_args = [
+        "reroll_dashpoint.py",
+        "--lat",
+        "40.0",
+        "--lon",
+        "-74.0",
+        "--output-file",
+        str(output_file),
+    ]
+    monkeypatch.setattr("sys.argv", test_args)
+
+    with pytest.raises(SystemExit) as exc_info:
+        backend.scripts.reroll_dashpoint.main()
+
+    assert exc_info.value.code == 1
+    assert output_file.exists()
+    data = json.loads(output_file.read_text(encoding="utf-8"))
+    assert data["status"] == "error"
+    assert "older than 6 months" in data["message"]

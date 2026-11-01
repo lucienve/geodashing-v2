@@ -54,14 +54,16 @@ def test_inland_lake_avoidance(monkeypatch: pytest.MonkeyPatch) -> None:
     land_polygon = shapely.geometry.box(-5, -5, 5, 5)
     lake_polygon = shapely.geometry.box(-1, -1, 1, 1)
 
-    def read_file_side_effect(path: str) -> gpd.GeoDataFrame:
-        if 'land' in path:
+    def read_file_side_effect(_path: str,
+                              layer: str = '',
+                              **_kwargs: object) -> gpd.GeoDataFrame:
+        if layer == 'land':
             return gpd.GeoDataFrame(geometry=[land_polygon], crs="EPSG:4326")
-        if 'lakes' in path:
+        if layer == 'water':
             return gpd.GeoDataFrame(geometry=[lake_polygon], crs="EPSG:4326")
         return gpd.GeoDataFrame()
 
-    monkeypatch.setattr('backend.scripts.generate_game.gpd.read_file',
+    monkeypatch.setattr('backend.scripts.prepare_water.gpd.read_file',
                         read_file_side_effect)
 
     # 2. Inject target coordinates representing candidate generator output
@@ -80,9 +82,7 @@ def test_inland_lake_avoidance(monkeypatch: pytest.MonkeyPatch) -> None:
 
     # 3. Execute the spatial filter pipeline
     valid_points = backend.scripts.generate_game.generate_valid_dashpoints(
-        target_count=1,
-        land_zip_path="mock_land.zip",
-        lakes_zip_path="mock_lakes.zip")
+        target_count=1, water_gpkg_path="mock_water.gpkg")
 
     # 4. Assert geometric filtering result
     assert len(valid_points) == 1, "Exactly one Dashpoint should exist."
@@ -292,21 +292,21 @@ def test_generate_grid_dashpoints(monkeypatch: pytest.MonkeyPatch) -> None:
     land_polygon = shapely.geometry.box(-30, -30, 30, 30)
     lake_polygon = shapely.geometry.box(-1, -1, 1, 1)
 
-    def read_file_side_effect(path: str) -> gpd.GeoDataFrame:
-        if 'land' in path:
+    def read_file_side_effect(_path: str,
+                              layer: str = '',
+                              **_kwargs: object) -> gpd.GeoDataFrame:
+        if layer == 'land':
             return gpd.GeoDataFrame(geometry=[land_polygon], crs="EPSG:4326")
-        if 'lakes' in path:
+        if layer == 'water':
             return gpd.GeoDataFrame(geometry=[lake_polygon], crs="EPSG:4326")
         return gpd.GeoDataFrame()
 
-    monkeypatch.setattr('backend.scripts.generate_game.gpd.read_file',
+    monkeypatch.setattr('backend.scripts.prepare_water.gpd.read_file',
                         read_file_side_effect)
 
     # Run with grid size 500 km for fast test execution with guaranteed land hits
     points = backend.scripts.generate_game.generate_grid_dashpoints(
-        grid_size_km=500.0,
-        land_zip_path="mock_land.zip",
-        lakes_zip_path="mock_lakes.zip")
+        grid_size_km=500.0, water_gpkg_path="mock_water.gpkg")
 
     assert len(points) > 0
     for pt in points:
@@ -327,6 +327,8 @@ def test_main_cli_algorithm_routing(monkeypatch: pytest.MonkeyPatch) -> None:
         backend.scripts.generate_game.seed_database)
     monkeypatch.setattr('backend.scripts.generate_game.seed_database',
                         mock_seed)
+    monkeypatch.setattr('backend.scripts.prepare_water.resolve_water_gpkg',
+                        lambda *_args, **_kwargs: 'resolved_water.gpkg')
 
     # Test grid algorithm routing with explicit grid size
     monkeypatch.setattr('sys.argv', [
@@ -341,8 +343,7 @@ def test_main_cli_algorithm_routing(monkeypatch: pytest.MonkeyPatch) -> None:
 
     backend.scripts.generate_game.main()
     mock_grid.assert_called_once_with(grid_size_km=2000.0,
-                                      land_zip_path=unittest.mock.ANY,
-                                      lakes_zip_path=unittest.mock.ANY)
+                                      water_gpkg_path='resolved_water.gpkg')
     mock_seed.assert_called_once()
 
     # Test grid algorithm routing with default grid size (60.05 km) when omitted (default)
@@ -352,8 +353,7 @@ def test_main_cli_algorithm_routing(monkeypatch: pytest.MonkeyPatch) -> None:
                         ['generate_game.py', '-t', 'Grid Default Test'])
     backend.scripts.generate_game.main()
     mock_grid.assert_called_once_with(grid_size_km=60.05,
-                                      land_zip_path=unittest.mock.ANY,
-                                      lakes_zip_path=unittest.mock.ANY)
+                                      water_gpkg_path='resolved_water.gpkg')
     mock_seed.assert_called_once()
 
     # Test random algorithm routing when explicitly requested
@@ -370,8 +370,7 @@ def test_main_cli_algorithm_routing(monkeypatch: pytest.MonkeyPatch) -> None:
 
     backend.scripts.generate_game.main()
     mock_random.assert_called_once_with(target_count=100,
-                                        land_zip_path=unittest.mock.ANY,
-                                        lakes_zip_path=unittest.mock.ANY)
+                                        water_gpkg_path='resolved_water.gpkg')
     mock_seed.assert_called_once()
 
     # Test road-proximity algorithm routing
@@ -392,8 +391,7 @@ def test_main_cli_algorithm_routing(monkeypatch: pytest.MonkeyPatch) -> None:
     backend.scripts.generate_game.main()
     mock_road.assert_called_once_with(
         grid_size_km=backend.scripts.generate_game.DEFAULT_GRID_SIZE_KM,
-        land_zip_path=unittest.mock.ANY,
-        lakes_zip_path=unittest.mock.ANY,
+        water_gpkg_path='resolved_water.gpkg',
         roads_input='resolved_roads.gpkg')
     mock_seed.assert_called_once()
 
@@ -414,8 +412,7 @@ def test_main_cli_algorithm_routing(monkeypatch: pytest.MonkeyPatch) -> None:
     mock_resolve.assert_called_once_with(None, config_path=unittest.mock.ANY)
     mock_road.assert_called_once_with(
         grid_size_km=backend.scripts.generate_game.DEFAULT_GRID_SIZE_KM,
-        land_zip_path=unittest.mock.ANY,
-        lakes_zip_path=unittest.mock.ANY,
+        water_gpkg_path='resolved_water.gpkg',
         roads_input='default_resolved_roads.gpkg')
     mock_seed.assert_called_once()
 
@@ -425,6 +422,8 @@ def test_main_cli_road_proximity_error_surfacing(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Verifies that missing or stale road dataset errors are surfaced cleanly."""
+    monkeypatch.setattr('backend.scripts.prepare_water.resolve_water_gpkg',
+                        lambda *_args, **_kwargs: 'resolved_water.gpkg')
     monkeypatch.setattr('sys.argv', [
         'generate_game.py', '-t', 'Road Error Test', '--algorithm',
         'road-proximity'
@@ -467,75 +466,47 @@ def test_main_cli_road_proximity_error_surfacing(
     assert 'gcloud storage cp' in out2
 
 
-def test_resolve_lake_zip_paths() -> None:
-    """Verify that default ne_10m_lakes.zip expands to include regional supplements."""
-    expanded = backend.scripts.generate_game.resolve_lake_zip_paths(
-        'data/ne_10m_lakes.zip')
-    assert expanded == [
-        'data/ne_10m_lakes.zip',
-        'data/ne_10m_lakes_australia.zip',
-        'data/ne_10m_lakes_europe.zip',
-        'data/ne_10m_lakes_north_america.zip',
-    ]
+def test_main_cli_water_gpkg_error_surfacing(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Verifies that missing or stale water GeoPackage errors terminate execution."""
+    monkeypatch.setattr('sys.argv',
+                        ['generate_game.py', '-t', 'Water Error Test'])
 
-    custom_expanded = backend.scripts.generate_game.resolve_lake_zip_paths(
-        '/var/data/ne_10m_lakes.zip')
-    assert custom_expanded == [
-        '/var/data/ne_10m_lakes.zip',
-        '/var/data/ne_10m_lakes_australia.zip',
-        '/var/data/ne_10m_lakes_europe.zip',
-        '/var/data/ne_10m_lakes_north_america.zip',
-    ]
+    # 1. Missing file error
+    def raise_water_missing(*_args: object, **_kwargs: object) -> str:
+        raise FileNotFoundError(
+            "Water dataset 'data/world_osm_water.gpkg' is missing or "
+            "empty. See data/README.md for instructions on downloading it "
+            "via 'gcloud storage cp'.")
 
-    single = backend.scripts.generate_game.resolve_lake_zip_paths(
-        'mock_lakes.zip')
-    assert single == ['mock_lakes.zip']
+    monkeypatch.setattr('backend.scripts.prepare_water.resolve_water_gpkg',
+                        raise_water_missing)
+    with pytest.raises(SystemExit) as exit_exc1:
+        backend.scripts.generate_game.main()
+    assert exit_exc1.value.code == 1
+    out1 = capsys.readouterr().out
+    assert 'Execution Error:' in out1
+    assert 'Water dataset' in out1
+    assert 'data/README.md' in out1
 
+    # 2. Stale dataset error (>6 months old)
+    def raise_water_stale(*_args: object, **_kwargs: object) -> str:
+        raise RuntimeError(
+            "Water dataset 'data/world_osm_water.gpkg' is more than "
+            "6 months old (185 days). See data/README.md for instructions on "
+            "refreshing and downloading an updated dataset via "
+            "'gcloud storage cp'.")
 
-def test_supplemental_lakes_exclusion(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Verify that points inside Australia, Europe, and NA lake supplements are excluded."""
-    land_polygon = shapely.geometry.box(-20, -20, 20, 20)
-    base_lake = shapely.geometry.box(-2, -2, -1, -1)
-    aus_lake = shapely.geometry.box(1, 1, 2, 2)
-    eur_lake = shapely.geometry.box(3, 3, 4, 4)
-    na_lake = shapely.geometry.box(5, 5, 6, 6)
-
-    def read_file_side_effect(path: str) -> gpd.GeoDataFrame:
-        if 'land' in path:
-            return gpd.GeoDataFrame(geometry=[land_polygon], crs="EPSG:4326")
-        if 'australia' in path:
-            return gpd.GeoDataFrame(geometry=[aus_lake], crs="EPSG:4326")
-        if 'europe' in path:
-            return gpd.GeoDataFrame(geometry=[eur_lake], crs="EPSG:4326")
-        if 'north_america' in path:
-            return gpd.GeoDataFrame(geometry=[na_lake], crs="EPSG:4326")
-        if 'lakes' in path:
-            return gpd.GeoDataFrame(geometry=[base_lake], crs="EPSG:4326")
-        return gpd.GeoDataFrame()
-
-    monkeypatch.setattr('backend.scripts.generate_game.gpd.read_file',
-                        read_file_side_effect)
-
-    test_points = [
-        shapely.geometry.Point(-1.5, -1.5),  # in base lake -> exclude
-        shapely.geometry.Point(1.5, 1.5),  # in Australia supplement -> exclude
-        shapely.geometry.Point(3.5, 3.5),  # in Europe supplement -> exclude
-        shapely.geometry.Point(5.5, 5.5),  # in NA supplement -> exclude
-        shapely.geometry.Point(10.0, 10.0),  # dry land -> keep
-    ]
-
-    monkeypatch.setattr(
-        'backend.scripts.generate_game.generate_spherical_points',
-        lambda *args, **kwargs: test_points)
-
-    valid_points = backend.scripts.generate_game.generate_valid_dashpoints(
-        target_count=1,
-        land_zip_path="data/ne_10m_land.zip",
-        lakes_zip_path="data/ne_10m_lakes.zip")
-
-    assert len(valid_points) == 1
-    assert valid_points[0].x == 10.0
-    assert valid_points[0].y == 10.0
+    monkeypatch.setattr('backend.scripts.prepare_water.resolve_water_gpkg',
+                        raise_water_stale)
+    with pytest.raises(SystemExit) as exit_exc2:
+        backend.scripts.generate_game.main()
+    assert exit_exc2.value.code == 1
+    out2 = capsys.readouterr().out
+    assert 'Execution Error:' in out2
+    assert 'more than 6 months old' in out2
 
 
 def test_get_cell_bboxes() -> None:
@@ -641,8 +612,7 @@ def test_generate_road_proximity_dashpoints(
 
     points = backend.scripts.generate_game.generate_road_proximity_dashpoints(
         grid_size_km=50.0,
-        land_zip_path='mock_land.zip',
-        lakes_zip_path='mock_lakes.zip',
+        water_gpkg_path='mock_water.gpkg',
         roads_input=roads_gdf,
         verbose=False,
     )

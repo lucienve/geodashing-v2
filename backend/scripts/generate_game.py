@@ -27,11 +27,6 @@ DEFAULT_GRID_SIZE_KM: float = 60.05
 MIN_NEIGHBOR_DISTANCE_KM: float = 12.0
 MAX_CELL_ATTEMPTS: int = 50
 MAX_ROAD_DISTANCE_M: float = 50.0
-LAKE_SUPPLEMENT_FILENAMES: tuple[str, ...] = (
-    'ne_10m_lakes_australia.zip',
-    'ne_10m_lakes_europe.zip',
-    'ne_10m_lakes_north_america.zip',
-)
 
 LatitudeBand = backend.scripts.road_proximity.LatitudeBand
 SpatialFilterProtocol = backend.scripts.road_proximity.SpatialFilterProtocol
@@ -387,17 +382,14 @@ def generate_spherical_points(num_points: int) -> list[shapely.geometry.Point]:
 
 
 subdivide_geometry = backend.scripts.prepare_water.subdivide_geometry
-resolve_lake_zip_paths = backend.scripts.prepare_water.resolve_lake_zip_paths
-_load_and_project_geometries = (
-    backend.scripts.prepare_water.load_and_project_geometries)
 SpatialFilter = backend.scripts.prepare_water.SpatialFilter
 build_spatial_filter = backend.scripts.prepare_water.build_spatial_filter
 
 
 def generate_valid_dashpoints(
     target_count: int = 2000,
-    land_zip_path: str = '../../data/ne_10m_land.zip',
-    lakes_zip_path: str = '../../data/ne_10m_lakes.zip'
+    water_gpkg_path: str = backend.scripts.prepare_water.
+    DEFAULT_WATER_GPKG_PATH,
 ) -> list[shapely.geometry.Point]:
     """Generates valid dashpoints ensuring they are on land or <= 100m offshore.
 
@@ -413,16 +405,15 @@ def generate_valid_dashpoints(
 
     Args:
         target_count (int): The number of valid points to generate.
-        land_zip_path (str): The relative or absolute path to the Natural Earth land zip file.
-        lakes_zip_path (str): The path to the Natural Earth lakes zip file.
+        water_gpkg_path (str): The path to the water/coastline GeoPackage file.
 
     Returns:
         list[shapely.geometry.Point]: A list of valid Shapely Point objects.
 
     Raises:
-        FileNotFoundError: If the land or lake shapefiles cannot be found or read.
+        FileNotFoundError: If the water GeoPackage cannot be found or read.
     """
-    spatial_filter = build_spatial_filter(land_zip_path, lakes_zip_path)
+    spatial_filter = build_spatial_filter(water_gpkg_path)
 
     valid_points: list[shapely.geometry.Point] = []
     batch_size = 50000 if target_count > 10000 else 10000
@@ -516,8 +507,8 @@ def _execute_pass2(water_cells: list[tuple[LatitudeBand,
 
 def generate_grid_dashpoints(
     grid_size_km: float = DEFAULT_GRID_SIZE_KM,
-    land_zip_path: str = '../../data/ne_10m_land.zip',
-    lakes_zip_path: str = '../../data/ne_10m_lakes.zip'
+    water_gpkg_path: str = backend.scripts.prepare_water.
+    DEFAULT_WATER_GPKG_PATH,
 ) -> list[shapely.geometry.Point]:
     """Generates globally distributed dashpoints using a staggered spherical trapezoid grid.
 
@@ -532,13 +523,12 @@ def generate_grid_dashpoints(
 
     Args:
         grid_size_km (float): Desired grid cell size in kilometers (default: 60.05).
-        land_zip_path (str): Path to Natural Earth land zip file.
-        lakes_zip_path (str): Path to Natural Earth lakes zip file.
+        water_gpkg_path (str): Path to water/coastline GeoPackage file.
 
     Returns:
         list[shapely.geometry.Point]: A list of accepted Point geometries.
     """
-    spatial_filter = build_spatial_filter(land_zip_path, lakes_zip_path)
+    spatial_filter = build_spatial_filter(water_gpkg_path)
     bands = build_spherical_grid(grid_size_km)
     neighbor_grid = SphereNeighborGrid()
     accepted_points: list[shapely.geometry.Point] = []
@@ -610,8 +600,8 @@ def _run_road_placement_passes(
 
 def generate_road_proximity_dashpoints(
     grid_size_km: float = DEFAULT_GRID_SIZE_KM,
-    land_zip_path: str = '../../data/ne_10m_land.zip',
-    lakes_zip_path: str = '../../data/ne_10m_lakes.zip',
+    water_gpkg_path: str = backend.scripts.prepare_water.
+    DEFAULT_WATER_GPKG_PATH,
     roads_input: str | gpd.GeoDataFrame = (
         backend.scripts.prepare_roads.DEFAULT_ROADS_GPKG_PATH),
     verbose: bool = True,
@@ -628,17 +618,14 @@ def generate_road_proximity_dashpoints(
 
     Args:
         grid_size_km: Desired grid cell size in kilometers.
-        land_zip_path: Path to Natural Earth land zip file.
-        lakes_zip_path: Path to Natural Earth lakes zip file.
+        water_gpkg_path: Path to water/coastline GeoPackage file.
         roads_input: Path to road GeoPackage or in-memory GeoDataFrame.
         verbose: Whether to log progress messages.
 
     Returns:
         list[shapely.geometry.Point]: A list of accepted Point geometries.
     """
-    spatial_filter = build_spatial_filter(land_zip_path,
-                                          lakes_zip_path,
-                                          verbose=verbose)
+    spatial_filter = build_spatial_filter(water_gpkg_path, verbose=verbose)
     bands = build_spherical_grid(grid_size_km)
     neighbor_grid = SphereNeighborGrid()
     accepted_points: list[shapely.geometry.Point] = []
@@ -737,33 +724,19 @@ def main() -> None:
     args = parser.parse_args()
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    zip_path = os.path.join(current_dir, '../../data/ne_10m_land.zip')
-    lakes_zip = os.path.join(current_dir, '../../data/ne_10m_lakes.zip')
     config_path = os.path.join(current_dir, '../config.ini')
     bad_words_path = os.path.join(current_dir, '../../data/bad_words.txt')
 
-    water_path: str | None = None
-    if args.water_gpkg:
+    try:
         water_path = backend.scripts.prepare_water.resolve_water_gpkg(
             args.water_gpkg, config_path=config_path)
-    else:
-        try:
-            water_path = backend.scripts.prepare_water.resolve_water_gpkg(
-                config_path=config_path)
-        except (FileNotFoundError, RuntimeError):
-            water_path = None
 
-    effective_land = water_path or zip_path
-    effective_lakes = '' if water_path else lakes_zip
-
-    try:
         if args.algorithm == 'grid':
             print(
                 f"Generating dashpoints using grid algorithm (size: {args.grid_size} km)..."
             )
             points = generate_grid_dashpoints(grid_size_km=args.grid_size,
-                                              land_zip_path=effective_land,
-                                              lakes_zip_path=effective_lakes)
+                                              water_gpkg_path=water_path)
         elif args.algorithm == 'road-proximity':
             print(f"Generating dashpoints using road-proximity algorithm "
                   f"(size: {args.grid_size} km)...")
@@ -771,15 +744,13 @@ def main() -> None:
                 args.roads_gpkg, config_path=config_path)
             points = generate_road_proximity_dashpoints(
                 grid_size_km=args.grid_size,
-                land_zip_path=effective_land,
-                lakes_zip_path=effective_lakes,
+                water_gpkg_path=water_path,
                 roads_input=roads_path)
         else:
             target = args.count
             print(f"Generating {target} dashpoints using random algorithm...")
             points = generate_valid_dashpoints(target_count=target,
-                                               land_zip_path=effective_land,
-                                               lakes_zip_path=effective_lakes)
+                                               water_gpkg_path=water_path)
 
         # 2. Upload to MySQL
         seed_database(points,

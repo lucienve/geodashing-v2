@@ -277,6 +277,60 @@ class RerollService
     }
 
     /**
+     * Resolves the configured or default water GeoPackage path.
+     *
+     * @return string
+     */
+    public function resolveWaterGpkgPath(): string
+    {
+        $projectRoot = dirname(__DIR__, 2);
+        $configured = $this->config['gcs']['WATER_GPKG_PATH']
+            ?? ($this->config['game']['WATER_GPKG_PATH']
+            ?? ($this->config['WATER_GPKG_PATH'] ?? ''));
+
+        $configured = is_string($configured) ? trim($configured) : '';
+        if ($configured === '') {
+            return $projectRoot . '/data/world_osm_water.gpkg';
+        }
+
+        if (str_starts_with($configured, '/') || (strlen($configured) > 2 && $configured[1] === ':')) {
+            return $configured;
+        }
+
+        return $projectRoot . '/' . ltrim($configured, '/');
+    }
+
+    /**
+     * Validates that the water GeoPackage exists, is non-empty, and <= 6 months old.
+     *
+     * @param string $waterGpkgPath Path to the water GeoPackage.
+     * @return void
+     * @throws Exception
+     */
+    public function validateWaterGpkg(string $waterGpkgPath): void
+    {
+        if (!file_exists($waterGpkgPath) || !is_readable($waterGpkgPath) || (filesize($waterGpkgPath) ?: 0) <= 0) {
+            throw new Exception(
+                "Water dataset '{$waterGpkgPath}' is missing or empty. "
+                . "See data/README.md for instructions on downloading it via 'gcloud storage cp'."
+            );
+        }
+
+        $mtime = filemtime($waterGpkgPath);
+        if ($mtime !== false) {
+            $ageSeconds = time() - $mtime;
+            if ($ageSeconds > 180 * 86400) {
+                $ageDays = (int)floor($ageSeconds / 86400);
+                throw new Exception(
+                    "Water dataset '{$waterGpkgPath}' is more than 6 months old ({$ageDays} days). "
+                    . "See data/README.md for instructions on refreshing and downloading an updated "
+                    . "dataset via 'gcloud storage cp'."
+                );
+            }
+        }
+    }
+
+    /**
      * Builds the execution command for relocating a dashpoint.
      *
      * @param float  $origLat     Original latitude.
@@ -293,18 +347,8 @@ class RerollService
     ): string {
         $projectRoot = dirname(__DIR__, 2);
         $scriptPath = __DIR__ . '/../scripts/reroll_dashpoint.py';
-        $waterGpkgPath = $projectRoot . '/data/world_osm_water.gpkg';
-        if (file_exists($waterGpkgPath)) {
-            $datasetArgs = '--water-gpkg ' . escapeshellarg($waterGpkgPath);
-        } else {
-            $landZipPath = $projectRoot . '/data/ne_10m_land.zip';
-            $lakesZipPath = $projectRoot . '/data/ne_10m_lakes.zip';
-            $datasetArgs = sprintf(
-                '--land-zip %s --lakes-zip %s',
-                escapeshellarg($landZipPath),
-                escapeshellarg($lakesZipPath)
-            );
-        }
+        $waterGpkgPath = $this->resolveWaterGpkgPath();
+        $datasetArgs = '--water-gpkg ' . escapeshellarg($waterGpkgPath);
 
         $uvBin = $this->resolveUvBinary();
         if ($uvBin !== null) {
@@ -366,19 +410,8 @@ class RerollService
             ];
         }
 
-        $projectRoot = dirname(__DIR__, 2);
-        $waterGpkgPath = $projectRoot . '/data/world_osm_water.gpkg';
-        $landZipPath = $projectRoot . '/data/ne_10m_land.zip';
-        $lakesZipPath = $projectRoot . '/data/ne_10m_lakes.zip';
-
-        if (!file_exists($waterGpkgPath) || !is_readable($waterGpkgPath)) {
-            if (!file_exists($landZipPath) || !is_readable($landZipPath)) {
-                throw new Exception("Land shapefile not found or unreadable at {$landZipPath}.");
-            }
-            if (!file_exists($lakesZipPath) || !is_readable($lakesZipPath)) {
-                throw new Exception("Lakes shapefile not found or unreadable at {$lakesZipPath}.");
-            }
-        }
+        $waterGpkgPath = $this->resolveWaterGpkgPath();
+        $this->validateWaterGpkg($waterGpkgPath);
 
         $tempFile = tempnam(sys_get_temp_dir(), 'gd_reroll_');
         if ($tempFile === false) {

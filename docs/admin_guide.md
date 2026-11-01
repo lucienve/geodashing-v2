@@ -137,17 +137,11 @@ database.
        Cells without roads or where all candidates collide yield 0 points and do
        not trigger cardinal redistribution.
 2. **Landmass Filtering (EPSG:6933)**:
-   - Evaluates coordinates against dry land using either the high-resolution
+   - Evaluates coordinates against dry land using the high-resolution
      OpenStreetMap dataset (`data/world_osm_water.gpkg`, containing `land` and
-     `water` layers) or legacy Natural Earth shapefiles (`data/ne_10m_land.zip`
-     and `data/ne_10m_lakes.zip`). When targeting `ne_10m_lakes.zip`, the engine
-     automatically resolves and loads regional lake supplements located in
-     `data/`:
-     - `ne_10m_lakes_australia.zip` (Australia supplement)
-     - `ne_10m_lakes_europe.zip` (Europe supplement)
-     - `ne_10m_lakes_north_america.zip` (North America supplement, providing
-       higher feature density including Lake Washington and regional reservoirs)
-   - Projects both land and combined lake datasets to a Cylindrical Equal-Area
+     `water` layers). The dataset must be $\le 6$ months old (180 days) or
+     execution fails immediately.
+   - Projects both land and water datasets to a Cylindrical Equal-Area
      coordinate system (`EPSG:6933`) and subdivides them using a grid-based
      approach (`subdivide_geometry` with a max size of 1,000,000m) to minimize
      vertex complexity per feature.
@@ -329,15 +323,13 @@ radius.
 
 #### Command Line Arguments (`reroll_dashpoint.py`)
 
-| Flag | Long Form         |  Type   | Description                                                                                               |
-| :--- | :---------------- | :-----: | :-------------------------------------------------------------------------------------------------------- |
-|      | `--lat`           | `float` | **Required.** The latitude coordinate of the original location.                                           |
-|      | `--lon`           | `float` | **Required.** The longitude coordinate of the original location.                                          |
-|      | `--max-radius-km` | `float` | The maximum distance (in kilometers) to relocate the point. Defaults to `10.0`.                           |
-|      | `--water-gpkg`    |  `str`  | Optional path to the water GeoPackage. Defaults to `data/world_osm_water.gpkg` if present.                |
-|      | `--land-zip`      |  `str`  | Path to the Natural Earth land zip shapefile. Defaults to `data/ne_10m_land.zip`.                         |
-|      | `--lakes-zip`     |  `str`  | Path to the Natural Earth lakes zip shapefile. Defaults to `data/ne_10m_lakes.zip`.                       |
-|      | `--verbose`       | `flag`  | Enables verbose console logs and progress status messages during execution. Defaults to `False` (silent). |
+| Flag | Long Form         |  Type   | Description                                                                                                                 |
+| :--- | :---------------- | :-----: | :-------------------------------------------------------------------------------------------------------------------------- |
+|      | `--lat`           | `float` | **Required.** The latitude coordinate of the original location.                                                             |
+|      | `--lon`           | `float` | **Required.** The longitude coordinate of the original location.                                                            |
+|      | `--max-radius-km` | `float` | The maximum distance (in kilometers) to relocate the point. Defaults to `10.0`.                                             |
+|      | `--water-gpkg`    |  `str`  | Optional path to the water GeoPackage. Defaults to `data/world_osm_water.gpkg` or `config.ini`. Must be $\le 6$ months old. |
+|      | `--verbose`       | `flag`  | Enables verbose console logs and progress status messages during execution. Defaults to `False` (silent).                   |
 
 ---
 

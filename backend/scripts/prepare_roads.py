@@ -681,6 +681,15 @@ def resolve_dataset_gpkg(
         configured = _read_config_dataset_path(config_path, config_option)
         target_path = configured or default_path
 
+    if dataset_path is None and not os.path.isabs(
+            target_path) and not os.path.exists(target_path):
+        project_root = os.path.abspath(
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), '../..'))
+        candidate_path = os.path.join(project_root, target_path)
+        if os.path.exists(candidate_path) and os.path.getsize(
+                candidate_path) > 0:
+            target_path = candidate_path
+
     if not os.path.exists(target_path) or os.path.getsize(target_path) <= 0:
         raise FileNotFoundError(
             f"{label} dataset '{target_path}' is missing or empty. "

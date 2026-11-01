@@ -2545,3 +2545,53 @@ geographic games where they are tasked with reaching randomly generated
 - Removed legacy `.agents` exclusion rules from [../.gitignore](../.gitignore)
   to allow workspace skills and agent configurations to be tracked in version
   control.
+
+### 93. Removal of Natural Earth Fallbacks & GeoPackage Freshness Enforcement
+
+- **Deprecation of `ne_10m_*` Fallbacks**:
+  - Removed all fallback code paths targeting legacy Natural Earth shapefiles
+    (`ne_10m_land.zip`, `ne_10m_lakes.zip`, and regional lake supplements)
+    across Python CLI scripts and PHP backend services.
+  - Standardized all spatial landmass and inland water filtering exclusively on
+    `data/world_osm_water.gpkg` (containing `land` and `water` layers compiled
+    from OpenStreetMap).
+  - Cleaned up parameter signatures and CLI options in
+    [prepare_water.py](../backend/scripts/prepare_water.py),
+    [generate_game.py](../backend/scripts/generate_game.py),
+    [game_utils.py](../backend/scripts/game_utils.py),
+    [reroll_dashpoint.py](../backend/scripts/reroll_dashpoint.py), and
+    [RerollService.php](../backend/services/RerollService.php):
+    - Replaced `land_zip_path` and `lakes_zip_path` parameters with
+      `water_gpkg_path: str = DEFAULT_WATER_GPKG_PATH`.
+    - Removed CLI flags `--land-zip` and `--lakes-zip` from
+      `reroll_dashpoint.py`.
+    - Maintained `land-polygons-split-4326.zip` in `prepare_water.py` as it is
+      the upstream OpenStreetMap coastline compilation input used to compile the
+      `land` layer of `world_osm_water.gpkg`, not a legacy Natural Earth
+      dependency.
+- **6-Month Freshness Gate Enforcement**:
+  - Enforced a strict 6-month (180 days) freshness gate on
+    `data/world_osm_water.gpkg` across both Python
+    ([prepare_water.py](../backend/scripts/prepare_water.py) via
+    `resolve_water_gpkg`) and PHP
+    ([RerollService.php](../backend/services/RerollService.php) via
+    `validateWaterGpkg`), matching the existing rule for
+    `world_drivable_roads.gpkg`.
+  - Missing or stale datasets now fail fast with actionable error messages
+    directing operators to download fresh artifacts from Google Cloud Storage or
+    rebuild them via Google Cloud Batch workflows.
+  - Added working-directory fallback resilience to
+    [prepare_roads.py](../backend/scripts/prepare_roads.py)
+    (`resolve_dataset_gpkg`) for parity with `prepare_water.py`.
+- **Test Suite Modernization & CI Hermeticity**:
+  - Updated all Python spatial unit tests in
+    [test_generate_game.py](../backend/tests/test_generate_game.py),
+    [test_game_utils.py](../backend/tests/test_game_utils.py), and
+    [test_reroll_dashpoint.py](../backend/tests/test_reroll_dashpoint.py) to
+    mock `backend.scripts.prepare_water.resolve_water_gpkg` and verify
+    `water_gpkg_path` routing and layer filtering (`land` and `water`).
+  - Added negative error testing asserting that missing or stale water
+    GeoPackages trigger immediate fail-fast exceptions.
+  - Updated PHPUnit tests in
+    [RerollServiceTest.php](../backend/tests/RerollServiceTest.php) to validate
+    freshness checking and CLI command construction.
