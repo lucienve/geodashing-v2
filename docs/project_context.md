@@ -2525,3 +2525,23 @@ geographic games where they are tasked with reaching randomly generated
   - **Verification**: Executed both `pre-commit` and `pre-push` hook stages
     across all files, as well as `pytest` and `phpunit` test suites, confirming
     clean exit codes of 0 across all tools.
+
+### 92. Feature Summary Email Workspace Skill & `.agents` Tracking
+
+- Defined a dedicated workspace skill in
+  `../.agents/skills/feature-summary-email/SKILL.md` to persist the monthly
+  player-facing development summary email workflow for Antigravity.
+- Codified the end-to-end runbook:
+  - Finding the latest `email-summary/YYYY-MM-DD` Git tag and reviewing commits
+    introduced since that release via `git log <latest-email-tag>..HEAD`.
+  - Filtering for player-visible enhancements (gameplay, map navigation, field
+    logging, draft auto-save, route export, mailing list settings) while
+    omitting internal refactoring, dependencies, and infrastructure.
+  - Generating an interactive HTML preview artifact using the `generative_ui`
+    pattern with theme-neutral inline HTML copy buttons (`text/html` and
+    `text/plain`) to bridge WSL to Windows 11 host clipboard (`CF_HTML`) without
+    losing rich formatting in Gmail.
+  - Applying an annotated Git tag on HEAD once the email is confirmed sent.
+- Removed legacy `.agents` exclusion rules from [../.gitignore](../.gitignore)
+  to allow workspace skills and agent configurations to be tracked in version
+  control.
