@@ -2766,3 +2766,35 @@ geographic games where they are tasked with reaching randomly generated
     [`e2e/radar.spec.js`](../e2e/radar.spec.js) verifying floating banner
     appearance, 1-tap active switch, profile back-navigation, and radar
     suppression during inactive game exploration.
+
+### 99. Leaderboard Stepper, Active Shortcut, & Preview Notice (Phase 4, #149)
+
+- **In-View Chronological Game Stepper**:
+  - Implemented `.leaderboard-stepper-row` in
+    [`public/templates/leaderboard.html`](../public/templates/leaderboard.html)
+    featuring `◀` (`#btn-leaderboard-prev`) and `▶` (`#btn-leaderboard-next`)
+    navigation buttons flanking `#leaderboard-cycle-title`.
+  - Chronologically sorts games ascending by start time in
+    [`public/js/controllers.js`](../public/js/controllers.js) so `◀` steps to
+    the immediately older game and `▶` steps to the immediately newer game.
+  - Automatically disables stepper buttons at chronological boundaries (e.g.,
+    `◀` is disabled on the oldest game; `▶` is disabled on the newest game).
+- **One-Tap Active Game Shortcut**:
+  - Added `#leaderboard-active-shortcut` with `#btn-leaderboard-active`
+    (`↩ Return to Active Game`) below `.dash-hero`.
+  - Reveals whenever viewing a historical completed game or upcoming preview
+    game, allowing players to instantly return to the active cycle leaderboard
+    with a single tap.
+- **Dedicated Preview Mode Notice**:
+  - Implemented `#leaderboard-preview-notice` with glassmorphic styling and cyan
+    accenting in [`public/css/index.css`](../public/css/index.css).
+  - Displays scheduled start date and explains that rankings and logs will be
+    tracked once the game begins.
+  - Renders a dedicated `[ GAME IN PREVIEW MODE • STARTS ... ]` notice in the
+    table body when no logs exist for upcoming preview games.
+- **Automated Verification**:
+  - Added Playwright E2E tests in
+    [`e2e/multi_game.spec.js`](../e2e/multi_game.spec.js) and
+    [`e2e/preview_game.spec.js`](../e2e/preview_game.spec.js) verifying stepper
+    boundary disable states, shortcut navigation, and preview notice display
+    across desktop and mobile devices.

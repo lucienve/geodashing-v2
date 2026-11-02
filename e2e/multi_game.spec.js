@@ -291,4 +291,61 @@ test.describe('Multi-Game State and Logic', () => {
     // The back-to-profile button must be hidden
     await expect(page.locator('#dp-back-profile-btn')).toBeHidden();
   });
+
+  test('Leaderboard stepper allows navigating chronologically between games and respects boundary states', async ({
+    page,
+  }) => {
+    await page.goto('/#leaderboard');
+    await expect(page.locator('#view-leaderboard')).toBeVisible({
+      timeout: 10000,
+    });
+
+    const prevBtn = page.locator('#btn-leaderboard-prev');
+    const nextBtn = page.locator('#btn-leaderboard-next');
+    const shortcut = page.locator('#leaderboard-active-shortcut');
+    const cycleTitle = page.locator('#leaderboard-cycle-title');
+
+    // On Active Game 2: both prev and next are enabled; shortcut is hidden
+    await expect(prevBtn).toBeVisible({ timeout: 10000 });
+    await expect(nextBtn).toBeVisible();
+    await expect(prevBtn).toBeEnabled();
+    await expect(nextBtn).toBeEnabled();
+    await expect(shortcut).toBeHidden();
+    await expect(cycleTitle).toContainText('Game 2');
+
+    // Step older (◀) to Game 1
+    await prevBtn.click();
+    await expect(page).toHaveURL(/#leaderboard\?game=1/, { timeout: 10000 });
+    await expect(cycleTitle).toContainText('Game 1');
+    await expect(prevBtn).toBeDisabled();
+    await expect(nextBtn).toBeEnabled();
+    await expect(shortcut).toBeVisible();
+
+    // Summary button should appear for Game 1
+    await expect(page.locator('#btn-view-summary')).toBeVisible();
+
+    // Return to Active Game via shortcut button
+    const returnBtn = page.locator('#btn-leaderboard-active');
+    await expect(returnBtn).toBeVisible();
+    await returnBtn.click();
+    await expect(page).toHaveURL(/#leaderboard$/, { timeout: 10000 });
+    await expect(cycleTitle).toContainText('Game 2');
+    await expect(prevBtn).toBeEnabled();
+    await expect(nextBtn).toBeEnabled();
+    await expect(shortcut).toBeHidden();
+
+    // Step newer (▶) to Game 3 (Preview)
+    await nextBtn.click();
+    await expect(page).toHaveURL(/#leaderboard\?game=3/, { timeout: 10000 });
+    await expect(cycleTitle).toContainText('Game 3');
+    await expect(nextBtn).toBeDisabled();
+    await expect(prevBtn).toBeEnabled();
+    await expect(shortcut).toBeVisible();
+    await expect(page.locator('#leaderboard-preview-notice')).toBeVisible();
+
+    // Step back to Game 2 using prev button
+    await prevBtn.click();
+    await expect(page).toHaveURL(/#leaderboard$/, { timeout: 10000 });
+    await expect(cycleTitle).toContainText('Game 2');
+  });
 });

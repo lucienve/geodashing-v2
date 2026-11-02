@@ -5,9 +5,31 @@
         <h3 class="dash-hero-title-sm">
             TOP GEODASHERS
         </h3>
-        <p id="leaderboard-cycle-title" class="dash-hero-subtitle-caps">
-            CURRENT GAME CYCLE
-        </p>
+        <div class="leaderboard-stepper-row">
+            <button type="button" id="btn-leaderboard-prev" class="btn btn-secondary btn-sm leaderboard-step-btn" aria-label="Previous Game" title="Previous Game">◀</button>
+            <p id="leaderboard-cycle-title" class="dash-hero-subtitle-caps">
+                CURRENT GAME CYCLE
+            </p>
+            <button type="button" id="btn-leaderboard-next" class="btn btn-secondary btn-sm leaderboard-step-btn" aria-label="Next Game" title="Next Game">▶</button>
+        </div>
+    </div>
+
+    <!-- Active Game Shortcut (when viewing historical or preview game) -->
+    <div id="leaderboard-active-shortcut" class="leaderboard-active-shortcut d-none">
+        <button type="button" id="btn-leaderboard-active" class="btn btn-outline btn-sm btn-leaderboard-active">
+            ↩ Return to Active Game
+        </button>
+    </div>
+
+    <!-- Preview Notice for Upcoming Game -->
+    <div id="leaderboard-preview-notice" class="leaderboard-preview-notice d-none">
+        <span class="preview-notice-icon">⏳</span>
+        <div class="preview-notice-content">
+            <strong class="preview-notice-title">Game Preview Mode</strong>
+            <p id="leaderboard-preview-desc" class="preview-notice-desc">
+                This game has not started yet. Rankings will appear once the game begins.
+            </p>
+        </div>
     </div>
 
     <!-- Game Summary View Trigger -->

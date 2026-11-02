@@ -2742,6 +2742,123 @@ body, html {
 }
 
 /* =========================================================================
+   Leaderboard Stepper, Active Shortcut, & Preview Notice (Phase 4)
+   ========================================================================= */
+.leaderboard-stepper-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.leaderboard-step-btn {
+  width: auto;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 0.6rem;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.leaderboard-step-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+}
+
+.leaderboard-step-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.leaderboard-active-shortcut {
+  display: flex;
+  justify-content: center;
+  margin-top: -0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.btn-leaderboard-active {
+  width: auto;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.85rem;
+  color: var(--accent-amber);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.08);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-leaderboard-active:hover {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: var(--accent-amber);
+  box-shadow: 0 0 10px var(--accent-amber-glow);
+}
+
+.leaderboard-preview-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding: 0.85rem 1rem;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 6px;
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.1);
+}
+
+.preview-notice-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.preview-notice-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  text-align: left;
+}
+
+.preview-notice-title {
+  color: #38bdf8;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.preview-notice-desc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.td-preview-notice {
+  padding: 2rem 1rem !important;
+  text-align: center;
+  color: #38bdf8 !important;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+/* =========================================================================
    Leaderboard Row & Tie Group Styling (Strategy 4)
    ========================================================================= */
 .leaderboard-row {

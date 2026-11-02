@@ -2423,6 +2423,117 @@ document.addEventListener('routeLoaded', (e) => {
           }
         }
 
+        // Setup Stepper Buttons (◀ Previous Game, ▶ Next Game) and Active Game shortcut
+        const btnPrev = document.getElementById('btn-leaderboard-prev');
+        const btnNext = document.getElementById('btn-leaderboard-next');
+        const activeShortcut = document.getElementById(
+          'leaderboard-active-shortcut',
+        );
+        const btnActive = document.getElementById('btn-leaderboard-active');
+
+        if (
+          window.gamesList &&
+          window.gamesList.length > 0 &&
+          window.currentGameContext &&
+          window.currentGameContext.id
+        ) {
+          const sortedGames = [...window.gamesList].sort((a, b) => {
+            const timeA = a.start_time
+              ? new Date(a.start_time).getTime()
+              : a.id;
+            const timeB = b.start_time
+              ? new Date(b.start_time).getTime()
+              : b.id;
+            return timeA - timeB;
+          });
+
+          const currentIdx = sortedGames.findIndex(
+            (g) => g.id === window.currentGameContext.id,
+          );
+
+          if (btnPrev) {
+            if (currentIdx <= 0) {
+              btnPrev.disabled = true;
+              btnPrev.removeAttribute('title');
+            } else {
+              btnPrev.disabled = false;
+              const prevGame = sortedGames[currentIdx - 1];
+              btnPrev.title = `Previous: Game ${prevGame.id} (${prevGame.title || ''})`;
+              btnPrev.onclick = () => {
+                window.setGameContext(prevGame.id);
+              };
+            }
+          }
+
+          if (btnNext) {
+            if (currentIdx >= sortedGames.length - 1 || currentIdx === -1) {
+              btnNext.disabled = true;
+              btnNext.removeAttribute('title');
+            } else {
+              btnNext.disabled = false;
+              const nextGame = sortedGames[currentIdx + 1];
+              btnNext.title = `Next: Game ${nextGame.id} (${nextGame.title || ''})`;
+              btnNext.onclick = () => {
+                window.setGameContext(nextGame.id);
+              };
+            }
+          }
+
+          if (activeShortcut && btnActive) {
+            if (
+              window.activeGameId &&
+              window.currentGameContext.id !== window.activeGameId
+            ) {
+              activeShortcut.classList.remove('d-none');
+              btnActive.onclick = () => {
+                window.setGameContext(window.activeGameId);
+              };
+            } else {
+              activeShortcut.classList.add('d-none');
+            }
+          }
+        } else {
+          if (btnPrev) {
+            btnPrev.disabled = true;
+            btnPrev.removeAttribute('title');
+          }
+          if (btnNext) {
+            btnNext.disabled = true;
+            btnNext.removeAttribute('title');
+          }
+          if (activeShortcut) {
+            activeShortcut.classList.add('d-none');
+          }
+        }
+
+        // Preview notice banner for upcoming games
+        const previewNotice = document.getElementById(
+          'leaderboard-preview-notice',
+        );
+        const previewDesc = document.getElementById('leaderboard-preview-desc');
+        if (previewNotice) {
+          if (
+            window.currentGameContext &&
+            window.currentGameContext.is_preview
+          ) {
+            previewNotice.classList.remove('d-none');
+            if (previewDesc) {
+              const formattedStart = window.currentGameContext.start_time
+                ? new Date(
+                    window.currentGameContext.start_time,
+                  ).toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })
+                : 'soon';
+              previewDesc.textContent = `This game has not started yet (scheduled to start on ${formattedStart}). Rankings and claims will be tracked once the game begins.`;
+            }
+          } else {
+            previewNotice.classList.add('d-none');
+          }
+        }
+
         // Display and bind Game Summary Button if available
         const summaryContainer = document.getElementById(
           'leaderboard-summary-container',
@@ -2518,7 +2629,26 @@ document.addEventListener('routeLoaded', (e) => {
               const data = json.data;
 
               if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="td-loading">[ NO LOGS YET ]</td></tr>`;
+                if (
+                  window.currentGameContext &&
+                  window.currentGameContext.is_preview
+                ) {
+                  const formattedStart = window.currentGameContext.start_time
+                    ? new Date(
+                        window.currentGameContext.start_time,
+                      ).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })
+                    : '';
+                  const startSuffix = formattedStart
+                    ? ` • STARTS ${formattedStart.toUpperCase()}`
+                    : '';
+                  tbody.innerHTML = `<tr><td colspan="4" class="td-preview-notice">[ GAME IN PREVIEW MODE${startSuffix} ]</td></tr>`;
+                } else {
+                  tbody.innerHTML = `<tr><td colspan="4" class="td-loading">[ NO LOGS YET ]</td></tr>`;
+                }
                 return;
               }
 
