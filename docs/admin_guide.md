@@ -14,7 +14,7 @@ must be executed in an environment matching the core production specifications.
 
 ### Technical Target Versions
 
-- **Python**: `3.14` (Pinned via `.python-version`)
+- **Python**: `3.15` (Pinned via `.python-version`)
 - **PHP**: `8.5`
 - **MySQL**: `8.4.8`
 

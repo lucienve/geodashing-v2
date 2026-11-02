@@ -25,8 +25,8 @@ Ensure all code and syntax is explicitly compatible with the following versions:
 
 - **PHP:** `8.5`
 - **MySQL:** `8.4`
-- **Python:** `3.14` (Pinned via `.python-version`). `uv` (Astral) MUST be used
-  to manage Python 3.14 runtimes, `pyproject.toml` dependencies, and the `.venv`
+- **Python:** `3.15` (Pinned via `.python-version`). `uv` (Astral) MUST be used
+  to manage Python 3.15 runtimes, `pyproject.toml` dependencies, and the `.venv`
   virtual environment via `uv sync`. Note: when fetching the installer via curl,
   the `-L` flag (`curl -LsSf https://astral.sh/uv/install.sh | sh`) is required
   to follow redirects.

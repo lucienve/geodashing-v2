@@ -16,9 +16,9 @@ geographic games where they are tasked with reaching randomly generated
     Node.js **24.16.0** is enforced via `.nvmrc` for local tooling, linting, and
     E2E testing.
   - **Backend**: Primary API layer written in **PHP 8.5** (`public/api`)
-    supplemented with **Python 3.14** (pinned via `.python-version`) for
+    supplemented with **Python 3.15** (pinned via `.python-version`) for
     server-side scripts / game generation algorithms (`generate_game.py`). `uv`
-    (Astral) is mandated to provision and manage the Python 3.14 runtime,
+    (Astral) is mandated to provision and manage the Python 3.15 runtime,
     `pyproject.toml` dependencies, and execution via `uv run`.
   - **Database**: **MySQL 8.4.8** using native drivers (PDO for PHP,
     `mysql-connector-python` for Python). **No ORM is used**. All queries are
@@ -2798,3 +2798,26 @@ geographic games where they are tasked with reaching randomly generated
     [`e2e/preview_game.spec.js`](../e2e/preview_game.spec.js) verifying stepper
     boundary disable states, shortcut navigation, and preview notice display
     across desktop and mobile devices.
+
+### 100. Python 3.15 Runtime, Tooling & Container Migration
+
+- Upgraded the project Python runtime from `3.14` to `3.15` across all
+  development, CI, Cloud Batch container, and production environments:
+  - Updated [`.python-version`](../.python-version) from `3.14` to `3.15` and
+    [`pyproject.toml`](../pyproject.toml) to `requires-python = ">=3.15"`.
+  - Regenerated [`uv.lock`](../uv.lock) for Python 3.15 via `uv lock --upgrade`,
+    incorporating native Python 3.15 wheels for `pandas` (`3.1.0`), `pyproj`
+    (`3.8.0`), `shapely` (`2.2.0`), `numpy` (`2.5.4`), `pydantic-core`
+    (`2.50.2`), and `mypy` (`2.4.1`).
+  - Aligned static type checker configurations in [`mypy.ini`](../mypy.ini)
+    (`python_version = 3.15`) and [`pyrightconfig.json`](../pyrightconfig.json)
+    (`"pythonVersion": "3.15"`).
+  - Upgraded the Cloud Batch container base image in
+    [`backend/scripts/Dockerfile.prepare_roads`](../backend/scripts/Dockerfile.prepare_roads)
+    from `ghcr.io/astral-sh/uv:python3.14-bookworm-slim` to
+    `ghcr.io/astral-sh/uv:python3.15-trixie-slim`, and updated container
+    assertions in
+    [`backend/tests/test_prepare_roads.py`](../backend/tests/test_prepare_roads.py).
+  - Updated documentation in
+    [`.agents/rules/geodashing_rules.md`](../.agents/rules/geodashing_rules.md)
+    and [`docs/admin_guide.md`](admin_guide.md).

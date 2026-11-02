@@ -360,7 +360,7 @@ def test_dockerfile_prepare_roads_structure_and_isolation() -> None:
     assert dockerignore_path.exists()
 
     df_content = dockerfile_path.read_text(encoding='utf-8')
-    assert 'FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim' in df_content
+    assert 'FROM ghcr.io/astral-sh/uv:python3.15-trixie-slim' in df_content
     assert 'osmium-tool' in df_content
     assert 'gdal-bin' in df_content
     assert 'aria2' in df_content
