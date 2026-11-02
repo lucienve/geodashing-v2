@@ -305,4 +305,41 @@ test.describe('Proximity Radar HUD Integration Tests', () => {
     expect(currentOptions).not.toBeNull();
     expect(currentOptions.enableHighAccuracy).toBe(true);
   });
+
+  test('Proximity Radar HUD is suppressed when viewing non-active games', async ({
+    page,
+    context,
+  }) => {
+    // 1. Position inside active game range (< 500m of NYC point GD001-AAAA: 40.7128, -74.0060)
+    await setGeolocationAndFlush(context, page, 40.715, -74.006);
+    await expect(page.locator('#radar-hud')).toBeVisible({ timeout: 10000 });
+
+    // 2. Switch context to non-active Game 1 (Historical)
+    await page.evaluate(() => {
+      if (typeof window.setGameContext === 'function') {
+        window.setGameContext(1);
+      }
+    });
+
+    // 3. Radar HUD must immediately hide
+    await expect(page.locator('#radar-hud')).toBeHidden();
+
+    // 4. Trigger another position update while in Game 1
+    await setGeolocationAndFlush(context, page, 40.713, -74.006);
+    await page.waitForTimeout(500);
+
+    // 5. Radar HUD must remain hidden for inactive game
+    await expect(page.locator('#radar-hud')).toBeHidden();
+
+    // 6. Switch back to active Game 2
+    await page.evaluate(() => {
+      if (typeof window.setGameContext === 'function') {
+        window.setGameContext(2);
+      }
+    });
+
+    // 7. Flush position in active game -> Radar HUD restores
+    await setGeolocationAndFlush(context, page, 40.715, -74.006);
+    await expect(page.locator('#radar-hud')).toBeVisible({ timeout: 10000 });
+  });
 });

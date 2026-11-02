@@ -99,9 +99,11 @@ document.addEventListener('routeLoaded', (e) => {
   });
   activeRouteCleanups = [];
 
-  // Clear any marker navigation tracking if navigating away from dashpoint views
+  // Clear any marker or profile referrer tracking if navigating away from dashpoint views
   if (!route.startsWith('#dashpoint')) {
     window._openedFromMapMarkerId = null;
+    window._dashpointReferrerProfile = null;
+    window._dashpointReferrerGameId = null;
   }
 
   // ==========================================================
@@ -167,6 +169,42 @@ document.addEventListener('routeLoaded', (e) => {
 
           const fromMapMarker = window._openedFromMapMarkerId === dp.id;
           window._openedFromMapMarkerId = null;
+          if (fromMapMarker) {
+            window._dashpointReferrerProfile = null;
+            window._dashpointReferrerGameId = null;
+          }
+
+          const btnBackProfile = document.getElementById('dp-back-profile-btn');
+          if (btnBackProfile) {
+            if (window._dashpointReferrerProfile) {
+              const profUser = window._dashpointReferrerProfile;
+              const refGameId = window._dashpointReferrerGameId;
+              btnBackProfile.textContent = `← Back to ${profUser}'s Profile`;
+              btnBackProfile.href = `#profile?username=${encodeURIComponent(profUser)}`;
+              btnBackProfile.classList.remove('d-none');
+
+              btnBackProfile.addEventListener(
+                'click',
+                (e) => {
+                  e.preventDefault();
+                  if (
+                    refGameId &&
+                    typeof window.setGameContext === 'function'
+                  ) {
+                    window.setGameContext(refGameId, {
+                      triggerRouteUpdate: false,
+                    });
+                  }
+                  window._dashpointReferrerProfile = null;
+                  window._dashpointReferrerGameId = null;
+                  window.location.hash = `#profile?username=${encodeURIComponent(profUser)}`;
+                },
+                { once: true },
+              );
+            } else {
+              btnBackProfile.classList.add('d-none');
+            }
+          }
 
           // If opening from external deep link, email, or profile, center and reset zoom to 10.
           // If opening from an in-map marker click, preserve zoom level (map.panTo was triggered on click in map.js).
@@ -1904,6 +1942,16 @@ document.addEventListener('routeLoaded', (e) => {
                 body.classList.remove('is-collapsed');
               }
             }
+          });
+        });
+
+        const profileLogLinks = container.querySelectorAll('.profile-log-item');
+        profileLogLinks.forEach((link) => {
+          link.addEventListener('click', () => {
+            window._dashpointReferrerProfile = u.username;
+            window._dashpointReferrerGameId = window.currentGameContext
+              ? window.currentGameContext.id
+              : null;
           });
         });
 

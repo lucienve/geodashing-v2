@@ -293,6 +293,12 @@ window.initMap = function () {
      * @param {{lat: number, lng: number}} pos Current user coordinates.
      */
     function processProximityRadar(pos) {
+      // Inactive game guard: Radar HUD is strictly reserved for live, active game claims
+      if (window.currentGameContext && !window.currentGameContext.is_active) {
+        hideRadarHUD();
+        return;
+      }
+
       if (!window.loadedDashpoints || window.loadedDashpoints.length === 0) {
         hideRadarHUD();
         return;
@@ -450,6 +456,8 @@ window.initMap = function () {
       inRangeLockId = null;
       lastVibratedId = null;
     }
+
+    window.hideRadarHUD = hideRadarHUD;
 
     const locationVisibility = new window.VisibilityManager(
       () => startLocationWatch('high'),

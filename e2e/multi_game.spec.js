@@ -216,4 +216,79 @@ test.describe('Multi-Game State and Logic', () => {
     });
     await expect(leaderboardContainer).toContainText('3', { timeout: 10000 });
   });
+
+  test('Floating game context banner shows for historical/preview game on map and allows switching to active game', async ({
+    page,
+  }) => {
+    await page.goto('/#home');
+    const banner = page.locator('#game-context-banner');
+    await expect(banner).toBeHidden();
+
+    // Switch to Game 1 (Historical)
+    const switcherBtn = page.locator('#game-switcher-btn');
+    await switcherBtn.click();
+    await page.click('#game-switcher-popover [data-game-id="1"]');
+
+    // On #home with Game 1 active, the floating banner must be visible
+    await expect(banner).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#game-context-banner-text')).toContainText(
+      'Viewing Past Game: Game 1',
+    );
+
+    // Click 1-tap "Switch to Active Game" button on the banner
+    const switchActiveBtn = page.locator('#btn-context-switch-active');
+    await expect(switchActiveBtn).toBeVisible();
+    await switchActiveBtn.click();
+
+    // Banner should hide and context should revert to Game 2
+    await expect(banner).toBeHidden();
+    await expect(switcherBtn).toContainText('Game 2');
+    await expect(switcherBtn).toContainText('[ACTIVE]');
+  });
+
+  test('Dashpoint detail shows back to profile link when referred from player profile and returns cleanly', async ({
+    page,
+  }) => {
+    // Navigate to player profile
+    await page.goto('/#profile?username=TestUser');
+    await expect(page.locator('#profile-container')).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Click dashpoint GD000-AAAA log item from profile
+    const logItem = page.locator('.profile-log-item').first();
+    await expect(logItem).toBeVisible();
+    await logItem.click();
+
+    // We should now be on #dashpoint?id=GD000-AAAA
+    await expect(page).toHaveURL(/#dashpoint\?id=GD000-AAAA/, {
+      timeout: 10000,
+    });
+
+    // The back-to-profile button must be visible
+    const backBtn = page.locator('#dp-back-profile-btn');
+    await expect(backBtn).toBeVisible();
+    await expect(backBtn).toContainText("← Back to TestUser's Profile");
+
+    // Click the back button to return to profile
+    await backBtn.click();
+    await expect(page).toHaveURL(/#profile\?username=TestUser/, {
+      timeout: 10000,
+    });
+    await expect(page.locator('#profile-container')).toBeVisible();
+    await expect(page.locator('#game-switcher-btn')).toContainText('Game 2');
+  });
+
+  test('Dashpoint detail does not show back to profile button when opened directly without profile referrer', async ({
+    page,
+  }) => {
+    // Navigate directly to dashpoint
+    await page.goto('/#dashpoint?id=GD001-AAAA');
+    await expect(page.locator('#dp-id-label')).toContainText('GD001-AAAA', {
+      timeout: 10000,
+    });
+
+    // The back-to-profile button must be hidden
+    await expect(page.locator('#dp-back-profile-btn')).toBeHidden();
+  });
 });

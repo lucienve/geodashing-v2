@@ -69,6 +69,15 @@
             <span class="error-icon">⚠️</span> GPS location not available. Some features may be limited.
         </div>
 
+        <!-- Non-Active Game Context Floating Banner -->
+        <div id="game-context-banner" class="game-context-banner glass-panel d-none" role="region" aria-label="Game Context Alert">
+            <div class="banner-content">
+                <span class="banner-icon" aria-hidden="true">ℹ️</span>
+                <span id="game-context-banner-text" class="banner-text">Viewing Historical Game</span>
+                <button type="button" id="btn-context-switch-active" class="btn btn-secondary btn-sm banner-action-btn">Switch to Active Game</button>
+            </div>
+        </div>
+
         <!-- Mobile Navigation Drawer -->
         <div id="mobile-nav-drawer" class="glass-panel">
             <button id="mobile-close-btn" class="btn btn-outline glow-box">&times;</button>

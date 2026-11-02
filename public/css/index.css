@@ -1594,6 +1594,17 @@ body, html {
     justify-content: space-between;
   }
 
+  .game-context-banner .banner-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .game-context-banner .banner-action-btn {
+    width: 100%;
+    text-align: center;
+  }
+
   #app-content {
     max-width: 100%;
     padding: 0;
@@ -2393,6 +2404,97 @@ body, html {
 
 #gps-error-banner .error-icon {
   color: var(--accent-red);
+}
+
+.game-context-banner {
+  background: var(--bg-glass-heavy);
+  border: 1px solid var(--accent-amber);
+  color: var(--text-main);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 0.6rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  border-radius: var(--border-radius-md, 8px);
+  margin: 0.75rem auto 0;
+  max-width: 600px;
+  width: calc(100% - 2rem);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+  pointer-events: auto;
+  z-index: 450;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.game-context-banner.banner-preview {
+  border-color: #00d2ff;
+}
+
+.game-context-banner .banner-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 0.75rem;
+}
+
+.game-context-banner .banner-text {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.game-context-banner .banner-icon {
+  margin-right: 0.35rem;
+}
+
+.game-context-banner .banner-action-btn {
+  font-size: 0.75rem;
+  padding: 0.3rem 0.65rem;
+  white-space: nowrap;
+  background: rgba(255, 170, 0, 0.15);
+  border: 1px solid var(--accent-amber);
+  color: var(--accent-amber);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.game-context-banner .banner-action-btn:hover,
+.game-context-banner .banner-action-btn:focus-visible {
+  background: var(--accent-amber);
+  color: #000;
+}
+
+.game-context-banner.banner-preview .banner-action-btn {
+  background: rgba(0, 210, 255, 0.15);
+  border-color: #00d2ff;
+  color: #00d2ff;
+}
+
+.game-context-banner.banner-preview .banner-action-btn:hover,
+.game-context-banner.banner-preview .banner-action-btn:focus-visible {
+  background: #00d2ff;
+  color: #000;
+}
+
+.dp-back-link {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--accent-amber);
+  margin-bottom: 0.75rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.dp-back-link:hover,
+.dp-back-link:focus-visible {
+  text-decoration: underline;
+  color: #fff;
 }
 
 @keyframes fadeIn {

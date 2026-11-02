@@ -224,6 +224,10 @@ function initRouting() {
   window.loadRoute = async function () {
     closeMobileDrawer();
 
+    if (typeof window.updateGameContextBanner === 'function') {
+      window.updateGameContextBanner();
+    }
+
     let fullHash = window.location.hash;
 
     // Redirect '#leaderboard' to '#leaderboard?game=ID' if a non-current game is selected.
@@ -411,6 +415,14 @@ window.setGameContext = function (gameId, options = {}) {
 
   updateGameSwitcherUI(game);
 
+  if (typeof window.updateGameContextBanner === 'function') {
+    window.updateGameContextBanner();
+  }
+
+  if (!isActive && typeof window.hideRadarHUD === 'function') {
+    window.hideRadarHUD();
+  }
+
   if (typeof window.resetUserTags === 'function') {
     window.resetUserTags();
   }
@@ -431,7 +443,8 @@ window.setGameContext = function (gameId, options = {}) {
       }
     } else if (
       window.location.hash === '' ||
-      window.location.hash === '#home'
+      window.location.hash === '#home' ||
+      window.location.hash.startsWith('#home?')
     ) {
       if (typeof window.refreshMapBounds === 'function') {
         window.refreshMapBounds();
@@ -798,6 +811,22 @@ function initGameContext() {
 
         initGameSwitcherEvents();
         renderGameSwitcherPopover(json.data, targetGameId);
+
+        const btnSwitchActive = document.getElementById(
+          'btn-context-switch-active',
+        );
+        if (btnSwitchActive && !btnSwitchActive.dataset.bound) {
+          btnSwitchActive.dataset.bound = 'true';
+          btnSwitchActive.addEventListener('click', () => {
+            if (
+              window.activeGameId &&
+              typeof window.setGameContext === 'function'
+            ) {
+              window.setGameContext(window.activeGameId);
+            }
+          });
+        }
+
         window.setGameContext(targetGameId, { triggerRouteUpdate: false });
       }
     })
@@ -805,6 +834,45 @@ function initGameContext() {
       console.error('Could not fetch active game configuration.'),
     );
 }
+
+/**
+ * Updates the visibility and text of the floating game context banner.
+ */
+window.updateGameContextBanner = function () {
+  const banner = document.getElementById('game-context-banner');
+  if (!banner) return;
+
+  const isHome =
+    window.location.hash === '' ||
+    window.location.hash === '#home' ||
+    window.location.hash.startsWith('#home?');
+
+  if (
+    !window.currentGameContext ||
+    window.currentGameContext.is_active ||
+    !isHome
+  ) {
+    banner.classList.add('d-none');
+    return;
+  }
+
+  const textEl = document.getElementById('game-context-banner-text');
+  const ctx = window.currentGameContext;
+  banner.classList.remove('banner-preview');
+
+  if (ctx.is_preview) {
+    banner.classList.add('banner-preview');
+    if (textEl) {
+      textEl.textContent = `Viewing Upcoming Preview: Game ${ctx.id}${ctx.title ? ` (${ctx.title})` : ''}`;
+    }
+  } else {
+    if (textEl) {
+      textEl.textContent = `Viewing Past Game: Game ${ctx.id}${ctx.title ? ` (${ctx.title})` : ''}`;
+    }
+  }
+
+  banner.classList.remove('d-none');
+};
 
 /**
  * Initializes authentication session checking and navigation auth UI updates.

@@ -2735,3 +2735,34 @@ geographic games where they are tasked with reaching randomly generated
     [`e2e/multi_game.spec.js`](../e2e/multi_game.spec.js) verifying default
     expansion states, ARIA toggle attribute updates, and collapse/expand DOM
     visibility transitions on click.
+
+### 98. Non-Active Game Banner, Back-Nav, & Radar Guard (Phase 3, #149)
+
+- **Floating Game Context Banner**:
+  - Implemented `#game-context-banner` in
+    [`public/index.html`](../public/index.html) and
+    [`public/css/index.css`](../public/css/index.css), floating below `#top-nav`
+    with `pointer-events: auto` and `z-index: 450`.
+  - Automatically displays on `#home` whenever the user views a non-active past
+    game or preview game, providing clear context and a 1-tap
+    `Switch to Active Game` button that restores the active game context.
+- **Profile Back-Navigation Link**:
+  - Added `#dp-back-profile-btn` in
+    [`public/templates/dashpoint.html`](../public/templates/dashpoint.html).
+  - When navigating to a dashpoint from a player profile log link, tracks
+    referrer profile username and game context in
+    [`public/js/controllers.js`](../public/js/controllers.js).
+  - Displays `← Back to {username}'s Profile` on the dashpoint sheet, restoring
+    previous game context and returning to the profile upon click.
+- **Radar HUD Suppression for Inactive Games**:
+  - Guarded `processProximityRadar()` in
+    [`public/js/map.js`](../public/js/map.js) to suppress `#radar-hud` and clear
+    active polyline lines whenever `window.currentGameContext.is_active` is
+    false.
+  - Exposed `window.hideRadarHUD` globally to immediately dismiss the HUD when
+    switching game context from the top switcher.
+- **Automated Verification**:
+  - Added E2E tests in [`e2e/multi_game.spec.js`](../e2e/multi_game.spec.js) and
+    [`e2e/radar.spec.js`](../e2e/radar.spec.js) verifying floating banner
+    appearance, 1-tap active switch, profile back-navigation, and radar
+    suppression during inactive game exploration.
