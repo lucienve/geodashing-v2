@@ -2661,3 +2661,47 @@ geographic games where they are tasked with reaching randomly generated
     `world_osm_water.gpkg` to both the development machine and production server
     (leveraging `scp`/`rsync -z` to avoid duplicate GCS egress), while keeping
     `world_drivable_roads.gpkg` strictly on the development machine.
+
+### 96. Scalable Game Switcher Popover & Context Management (Phase 1, #149)
+
+- **Decoupled Brand & Game Navigation**:
+  - Extracted game context switching out of the `<h1>` brand link into an
+    independent `.nav-brand-group` flex container in
+    [`public/index.html`](../public/index.html).
+  - Replaced the native `<select id="game-selector">` with an accessible custom
+    switcher component: `<button id="game-switcher-btn">` and
+    `<div id="game-switcher-popover">` dialog overlay.
+- **Responsive Status Indication & Popover Hierarchy**:
+  - Implemented dual-label responsive text in
+    [`public/css/index.css`](../public/css/index.css): `.switcher-label-full`
+    renders descriptive status on desktop (`Game 2 (Nov 2026) [ACTIVE] ▾`),
+    while `.switcher-label-compact` activates on mobile viewports
+    (`G2 • ACTIVE ▾`) to prevent top navigation overflow.
+  - Structured the popover menu into two clear functional sections:
+    1. **Current & Upcoming Pinned Section**: Highlights the currently active
+       game (`[ACTIVE]`) and immediate upcoming preview games (`[PREVIEW]`) with
+       accent color borders, status badges, and relative countdown timing
+       (`Ends in Xd Yh` / `Starts in Xd Yh`).
+    2. **Archive Section**: Groups completed past games chronologically by year
+       into collapsible `<details class="game-archive-year">` accordions.
+  - Designed mobile positioning to avoid stacking traps: `.nav-brand-group` and
+    `.game-switcher` remain static on mobile while the popover positions
+    absolutely below `#top-nav`, stretching across the viewport with margin
+    guards.
+- **Centralized Game Context Controller**:
+  - Introduced `window.setGameContext(gameId, options)` in
+    [`public/js/app.js`](../public/js/app.js), managing state updates for
+    `is_active`, `is_preview`, `start_time`, `title`, and `monthYear` while
+    synchronizing hash routing and map bounds.
+  - Decoupled deep-linking in
+    [`public/js/controllers.js`](../public/js/controllers.js) from select
+    element options, triggering `window.setGameContext` programmatically on
+    dashpoint and leaderboard views.
+- **Automated Verification**:
+  - Updated all affected E2E specifications
+    ([`e2e/multi_game.spec.js`](../e2e/multi_game.spec.js),
+    [`e2e/preview_game.spec.js`](../e2e/preview_game.spec.js),
+    [`e2e/accessibility.spec.js`](../e2e/accessibility.spec.js),
+    [`e2e/export.spec.js`](../e2e/export.spec.js), and
+    [`e2e/visit_markers.spec.js`](../e2e/visit_markers.spec.js)) to interact
+    with the new popover triggers and assert mobile compact layout constraints.

@@ -40,12 +40,20 @@
 
         <!-- Top Navigation -->
         <nav id="top-nav" class="glass-panel">
-            <h1 class="logo glow-text">
-                <a href="#home">GEODASHING<span class="version-tag">.v2</span></a>
-                <select id="game-selector" title="Select Game Context" aria-label="Select Game Context">
-                    <option value="">[ Loading ... ]</option>
-                </select>
-            </h1>
+            <div class="nav-brand-group">
+                <h1 class="logo glow-text">
+                    <a href="#home">GEODASHING<span class="version-tag">.v2</span></a>
+                </h1>
+                <div id="game-switcher" class="game-switcher">
+                    <button type="button" id="game-switcher-btn" class="game-switcher-btn" aria-haspopup="dialog"
+                        aria-expanded="false" aria-controls="game-switcher-popover" aria-label="Select Game Context">
+                        <span class="switcher-label-full">[ Loading ... ]</span>
+                        <span class="switcher-label-compact">[ Loading ... ]</span>
+                    </button>
+                    <div id="game-switcher-popover" class="game-switcher-popover glass-panel d-none" role="dialog"
+                        aria-label="Select Game"></div>
+                </div>
+            </div>
 
             <div id="desktop-links" class="nav-links">
                 <!-- Standard navigation links are dynamically generated in app.js via the APP_NAVIGATION array -->

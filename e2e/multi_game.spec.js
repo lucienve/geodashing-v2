@@ -12,31 +12,67 @@ test.describe('Multi-Game State and Logic', () => {
     await page.goto('/');
   });
 
-  test('Game Selector renders both games and defaults to active game', async ({
+  test('Game Switcher renders pinned games and defaults to active game', async ({
     page,
   }) => {
-    const options = page.locator('#game-selector option');
-    await expect(options).toHaveCount(3, { timeout: 10000 });
+    const switcherBtn = page.locator('#game-switcher-btn');
+    await expect(switcherBtn).toBeVisible({ timeout: 10000 });
+    await expect(switcherBtn).toContainText('Game 2');
+    await expect(switcherBtn).toContainText('[ACTIVE]');
 
-    // Check text content - options should be ordered correctly
-    const optionText1 = await options.nth(0).innerText();
-    const optionText2 = await options.nth(1).innerText();
-    const optionText3 = await options.nth(2).innerText();
+    // Open popover
+    await switcherBtn.click();
+    const popover = page.locator('#game-switcher-popover');
+    await expect(popover).toBeVisible();
 
-    // The API sorts descending, so Game 3 is first, Game 2 is second, and Game 1 is third.
-    expect(optionText1).toContain('Game 3');
-    expect(optionText2).toContain('Game 2');
-    expect(optionText3).toContain('Game 1');
+    const options = popover.locator('.game-switcher-option');
+    await expect(options).toHaveCount(3);
 
-    // Verify active game (id 2) is selected by default
-    const selectedValue = await page.$eval('#game-selector', (el) => el.value);
-    expect(selectedValue).toBe('2');
+    // Verify pinned section has Active (Game 2) and Preview (Game 3)
+    const activeCard = popover.locator('.pinned-active');
+    await expect(activeCard).toContainText('Game 2');
+    await expect(activeCard).toHaveAttribute('aria-selected', 'true');
+    await expect(activeCard.locator('.badge-active')).toContainText('[ACTIVE]');
+
+    const previewCard = popover.locator('.pinned-preview');
+    await expect(previewCard).toContainText('Game 3');
+    await expect(previewCard.locator('.badge-preview')).toContainText(
+      '[PREVIEW]',
+    );
+
+    // Verify archive section has Historical Game (Game 1)
+    const archiveCard = popover.locator('.archive-card');
+    await expect(archiveCard).toContainText('Game 1');
+    await expect(archiveCard.locator('.badge-completed')).toContainText(
+      '[COMPLETED]',
+    );
+  });
+
+  test('Game Switcher displays compact label on mobile viewport without overflowing', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    const switcherBtn = page.locator('#game-switcher-btn');
+    await expect(switcherBtn).toBeVisible({ timeout: 10000 });
+
+    const compactLabel = switcherBtn.locator('.switcher-label-compact');
+    await expect(compactLabel).toBeVisible();
+    await expect(compactLabel).toContainText('G2 • ACTIVE ▾');
+
+    const fullLabel = switcherBtn.locator('.switcher-label-full');
+    await expect(fullLabel).toBeHidden();
+
+    // Verify popover fits within screen width on mobile
+    await switcherBtn.click();
+    const popover = page.locator('#game-switcher-popover');
+    await expect(popover).toBeVisible();
+    const popoverBox = await popover.boundingBox();
+    expect(popoverBox.x + popoverBox.width).toBeLessThanOrEqual(375);
   });
 
   test('Map Search updates when switching game context', async ({ page }) => {
-    await expect(page.locator('#game-selector option')).toHaveCount(3, {
-      timeout: 10000,
-    });
+    const switcherBtn = page.locator('#game-switcher-btn');
+    await expect(switcherBtn).toBeVisible({ timeout: 10000 });
 
     // Home view map load triggers a search
     await page.goto('/#home');
@@ -49,16 +85,16 @@ test.describe('Multi-Game State and Logic', () => {
     );
 
     // Switch to Game 1
-    await page.selectOption('#game-selector', '1');
+    await switcherBtn.click();
+    await page.click('#game-switcher-popover [data-game-id="1"]');
     await searchPromise2;
   });
 
   test('Leaderboard switches context when game selector changes', async ({
     page,
   }) => {
-    await expect(page.locator('#game-selector option')).toHaveCount(3, {
-      timeout: 10000,
-    });
+    const switcherBtn = page.locator('#game-switcher-btn');
+    await expect(switcherBtn).toBeVisible({ timeout: 10000 });
 
     // Go to leaderboard
     await page.goto('/#leaderboard');
@@ -70,7 +106,8 @@ test.describe('Multi-Game State and Logic', () => {
     });
 
     // Switch to Game 1, which HAS a visit for TestUser (score 3)
-    await page.selectOption('#game-selector', '1');
+    await switcherBtn.click();
+    await page.click('#game-switcher-popover [data-game-id="1"]');
 
     // Wait for leaderboard to rerender, it should now contain TestUser
     await expect(leaderboardContainer).toContainText('TestUser', {
@@ -105,8 +142,9 @@ test.describe('Multi-Game State and Logic', () => {
     // Go directly to game 1 leaderboard
     await page.goto('/#leaderboard?game=1');
 
-    // Verify the game selector is set to Game 1
-    await expect(page.locator('#game-selector')).toHaveValue('1', {
+    // Verify the game switcher button is set to Game 1
+    const switcherBtn = page.locator('#game-switcher-btn');
+    await expect(switcherBtn).toContainText('Game 1', {
       timeout: 10000,
     });
 
@@ -121,12 +159,12 @@ test.describe('Multi-Game State and Logic', () => {
   test('Leaderboard url updates and shows game ID when navigating to leaderboard menu after selecting completed game', async ({
     page,
   }) => {
-    await expect(page.locator('#game-selector option')).toHaveCount(3, {
-      timeout: 10000,
-    });
+    const switcherBtn = page.locator('#game-switcher-btn');
+    await expect(switcherBtn).toBeVisible({ timeout: 10000 });
 
     // Switch to Game 1
-    await page.selectOption('#game-selector', '1');
+    await switcherBtn.click();
+    await page.click('#game-switcher-popover [data-game-id="1"]');
 
     // Go to leaderboard by changing the hash directly (viewport-independent simulation of navigation click)
     await page.evaluate(() => {

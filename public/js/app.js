@@ -54,9 +54,13 @@ function initGlobalState() {
   window.currentGameContext = {
     id: null,
     is_active: true,
+    is_preview: false,
     title: '',
     monthYear: '',
+    start_time: '',
+    has_summary: false,
   };
+  window.gamesList = [];
   window.postMaxSize = '25M';
   window.postSizeBytes = 25 * 1024 * 1024; // Fallback to 25MB
 }
@@ -369,15 +373,390 @@ function initRouting() {
 }
 
 /**
- * Fetches the list of games and initializes the top-bar game selector dropdown.
+ * Sets the active game context across the application and updates the UI switcher.
+ * @param {number} gameId Target game ID.
+ * @param {Object} [options]
+ * @param {boolean} [options.triggerRouteUpdate=true] Whether to trigger routing/map updates.
+ */
+window.setGameContext = function (gameId, options = {}) {
+  const { triggerRouteUpdate = true } = options;
+  if (!window.gamesList || window.gamesList.length === 0) return;
+
+  const game = window.gamesList.find((g) => g.id === gameId);
+  if (!game) return;
+
+  const activeGame =
+    window.gamesList.find((g) => Number(g.is_active) === 1) ||
+    window.gamesList[0];
+  const activeStart = activeGame
+    ? new Date(activeGame.start_time).getTime()
+    : 0;
+  const gameStart = new Date(game.start_time).getTime();
+  const isActive = Number(game.is_active) === 1;
+  const isPreview = !isActive && gameStart > activeStart;
+
+  const d = new Date(game.start_time);
+  const monthYear = d.toLocaleDateString('en-US', {
+    month: 'short',
+    year: 'numeric',
+  });
+
+  window.currentGameContext.id = game.id;
+  window.currentGameContext.is_active = isActive;
+  window.currentGameContext.is_preview = isPreview;
+  window.currentGameContext.title = game.title;
+  window.currentGameContext.monthYear = monthYear;
+  window.currentGameContext.start_time = game.start_time;
+  window.currentGameContext.has_summary = Number(game.has_summary) === 1;
+
+  updateGameSwitcherUI(game);
+
+  if (typeof window.resetUserTags === 'function') {
+    window.resetUserTags();
+  }
+
+  if (triggerRouteUpdate) {
+    if (window.location.hash.startsWith('#leaderboard')) {
+      const targetHash =
+        window.activeGameId && game.id === window.activeGameId
+          ? '#leaderboard'
+          : `#leaderboard?game=${game.id}`;
+
+      if (window.location.hash !== targetHash) {
+        window.location.hash = targetHash;
+      } else {
+        if (window.loadRoute) {
+          window.loadRoute();
+        }
+      }
+    } else if (
+      window.location.hash === '' ||
+      window.location.hash === '#home'
+    ) {
+      if (typeof window.refreshMapBounds === 'function') {
+        window.refreshMapBounds();
+      }
+    } else {
+      if (window.loadRoute) {
+        window.loadRoute();
+      }
+    }
+  }
+};
+
+/**
+ * Updates the game switcher button and popover selection state.
+ * @param {Object} game Currently active game object.
+ */
+function updateGameSwitcherUI(game) {
+  const btn = document.getElementById('game-switcher-btn');
+  if (!btn) return;
+
+  const activeGame =
+    (window.gamesList &&
+      window.gamesList.find((g) => Number(g.is_active) === 1)) ||
+    (window.gamesList && window.gamesList[0]);
+  const activeStart = activeGame
+    ? new Date(activeGame.start_time).getTime()
+    : 0;
+  const gameStart = new Date(game.start_time).getTime();
+  const isActive = Number(game.is_active) === 1;
+  const isPreview = !isActive && gameStart > activeStart;
+
+  const d = new Date(game.start_time);
+  const monthYear = d.toLocaleDateString('en-US', {
+    month: 'short',
+    year: 'numeric',
+  });
+
+  btn.classList.remove('status-active', 'status-preview', 'status-completed');
+  let statusBadge;
+  let compactStatus;
+
+  if (isActive) {
+    btn.classList.add('status-active');
+    statusBadge = ' [ACTIVE]';
+    compactStatus = 'ACTIVE';
+  } else if (isPreview) {
+    btn.classList.add('status-preview');
+    statusBadge = ' [PREVIEW]';
+    compactStatus = 'PREVIEW';
+  } else {
+    btn.classList.add('status-completed');
+    statusBadge = ' [COMPLETED]';
+    compactStatus = 'PAST';
+  }
+
+  const fullSpan = btn.querySelector('.switcher-label-full');
+  const compactSpan = btn.querySelector('.switcher-label-compact');
+  if (fullSpan) {
+    fullSpan.textContent = `Game ${game.id} (${monthYear})${statusBadge} ▾`;
+  }
+  if (compactSpan) {
+    compactSpan.textContent = `G${game.id} • ${compactStatus} ▾`;
+  }
+
+  const popover = document.getElementById('game-switcher-popover');
+  if (popover) {
+    popover.querySelectorAll('.game-switcher-option').forEach((card) => {
+      const cId = parseInt(card.getAttribute('data-game-id'), 10);
+      const isSelected = cId === game.id;
+      card.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+      if (isSelected) {
+        card.classList.add('is-selected');
+      } else {
+        card.classList.remove('is-selected');
+      }
+    });
+  }
+}
+
+/**
+ * Formats countdown or timing string for game cards.
+ * @param {Object} game Game object.
+ * @param {boolean} isAct Is active game.
+ * @param {boolean} isPrev Is preview game.
+ * @returns {string} Formatted duration or empty string.
+ */
+function formatGameTiming(game, isAct, isPrev) {
+  const now = Date.now();
+  if (isAct && game.end_time) {
+    const endMs = new Date(game.end_time).getTime();
+    const diffMs = endMs - now;
+    if (diffMs > 0) {
+      const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const hours = Math.floor(
+        (diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
+      );
+      return `Ends in ${days}d ${hours}h`;
+    }
+  }
+  if (isPrev && game.start_time) {
+    const startMs = new Date(game.start_time).getTime();
+    const diffMs = startMs - now;
+    if (diffMs > 0) {
+      const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const hours = Math.floor(
+        (diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
+      );
+      return `Starts in ${days}d ${hours}h`;
+    }
+  }
+  return '';
+}
+
+/**
+ * Renders the popover menu content for game selection.
+ * @param {Array<Object>} games All games list.
+ * @param {number} selectedGameId Selected game ID.
+ */
+function renderGameSwitcherPopover(games, selectedGameId) {
+  const popover = document.getElementById('game-switcher-popover');
+  if (!popover) return;
+
+  const activeGame = games.find((g) => Number(g.is_active) === 1) || games[0];
+  const activeStart = activeGame
+    ? new Date(activeGame.start_time).getTime()
+    : 0;
+
+  const previewGames = games
+    .filter(
+      (g) =>
+        Number(g.is_active) !== 1 &&
+        new Date(g.start_time).getTime() > activeStart,
+    )
+    .sort(
+      (a, b) =>
+        new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
+    );
+
+  const completedGames = games
+    .filter(
+      (g) =>
+        Number(g.is_active) !== 1 &&
+        new Date(g.start_time).getTime() <= activeStart,
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.start_time).getTime() - new Date(a.start_time).getTime(),
+    );
+
+  const gamesByYear = {};
+  completedGames.forEach((g) => {
+    const yr = new Date(g.start_time).getFullYear().toString();
+    if (!gamesByYear[yr]) {
+      gamesByYear[yr] = [];
+    }
+    gamesByYear[yr].push(g);
+  });
+
+  let html = '';
+
+  html += '<div class="popover-section pinned-section">';
+  html += '<div class="popover-section-title">Current &amp; Upcoming</div>';
+  html += '<div class="pinned-cards-grid">';
+
+  if (activeGame) {
+    const isSel = activeGame.id === selectedGameId;
+    const d = new Date(activeGame.start_time);
+    const mY = d.toLocaleDateString('en-US', {
+      month: 'short',
+      year: 'numeric',
+    });
+    const timing = formatGameTiming(activeGame, true, false);
+    html += `
+      <button type="button" class="game-switcher-option pinned-card pinned-active ${isSel ? 'is-selected' : ''}" 
+              data-game-id="${activeGame.id}" role="option" aria-selected="${isSel}">
+        <div class="pinned-card-header">
+          <span class="pinned-card-title">Game ${activeGame.id}</span>
+          <span class="game-badge badge-active">[ACTIVE]</span>
+        </div>
+        <div class="pinned-card-meta">${mY} &bull; ${window.escapeHTML(activeGame.title)}</div>
+        ${timing ? `<div class="pinned-card-timing">${timing}</div>` : ''}
+      </button>`;
+  }
+
+  previewGames.forEach((prevGame) => {
+    const isSel = prevGame.id === selectedGameId;
+    const d = new Date(prevGame.start_time);
+    const mY = d.toLocaleDateString('en-US', {
+      month: 'short',
+      year: 'numeric',
+    });
+    const timing = formatGameTiming(prevGame, false, true);
+    html += `
+      <button type="button" class="game-switcher-option pinned-card pinned-preview ${isSel ? 'is-selected' : ''}" 
+              data-game-id="${prevGame.id}" role="option" aria-selected="${isSel}">
+        <div class="pinned-card-header">
+          <span class="pinned-card-title">Game ${prevGame.id}</span>
+          <span class="game-badge badge-preview">[PREVIEW]</span>
+        </div>
+        <div class="pinned-card-meta">${mY} &bull; ${window.escapeHTML(prevGame.title)}</div>
+        ${timing ? `<div class="pinned-card-timing">${timing}</div>` : ''}
+      </button>`;
+  });
+
+  html += '</div></div>';
+
+  const years = Object.keys(gamesByYear).sort((a, b) => Number(b) - Number(a));
+  if (years.length > 0) {
+    html += '<div class="popover-section archive-section">';
+    html += '<div class="popover-section-title">Archive</div>';
+    years.forEach((yr, idx) => {
+      const isCurrentYear = idx === 0;
+      const hasSelectedGame = gamesByYear[yr].some(
+        (g) => g.id === selectedGameId,
+      );
+      const isOpen = isCurrentYear || hasSelectedGame ? 'open' : '';
+      html += `<details class="game-archive-year" ${isOpen}>`;
+      html += `<summary class="archive-year-summary">${yr}</summary>`;
+      html += '<div class="archive-games-list">';
+      gamesByYear[yr].forEach((g) => {
+        const isSel = g.id === selectedGameId;
+        const d = new Date(g.start_time);
+        const mY = d.toLocaleDateString('en-US', {
+          month: 'short',
+          year: 'numeric',
+        });
+        html += `
+          <button type="button" class="game-switcher-option archive-card ${isSel ? 'is-selected' : ''}" 
+                  data-game-id="${g.id}" role="option" aria-selected="${isSel}">
+            <div class="archive-card-header">
+              <span class="archive-card-name">Game ${g.id} &bull; ${window.escapeHTML(g.title)}</span>
+              <span class="game-badge badge-completed">[COMPLETED]</span>
+            </div>
+            <div class="pinned-card-meta">${mY}</div>
+          </button>`;
+      });
+      html += '</div></details>';
+    });
+    html += '</div>';
+  }
+
+  popover.innerHTML = html;
+}
+
+let gameSwitcherEventsInitialized = false;
+
+/**
+ * Binds user interaction events for the game switcher button and popover.
+ */
+function initGameSwitcherEvents() {
+  if (gameSwitcherEventsInitialized) return;
+  gameSwitcherEventsInitialized = true;
+
+  const switcher = document.getElementById('game-switcher');
+  const btn = document.getElementById('game-switcher-btn');
+  const popover = document.getElementById('game-switcher-popover');
+  if (!switcher || !btn || !popover) return;
+
+  /**
+   * Opens the game switcher popover and sets focus to the active/first option.
+   */
+  function openPopover() {
+    popover.classList.remove('d-none');
+    btn.setAttribute('aria-expanded', 'true');
+    const selectedOption =
+      popover.querySelector('.game-switcher-option.is-selected') ||
+      popover.querySelector('.game-switcher-option');
+    if (selectedOption) {
+      selectedOption.focus();
+    }
+  }
+
+  /**
+   * Closes the game switcher popover and updates the aria-expanded state.
+   */
+  function closePopover() {
+    popover.classList.add('d-none');
+    btn.setAttribute('aria-expanded', 'false');
+  }
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+    if (isExpanded) {
+      closePopover();
+    } else {
+      openPopover();
+    }
+  });
+
+  popover.addEventListener('click', (e) => {
+    const optionBtn = e.target.closest('.game-switcher-option');
+    if (optionBtn) {
+      const gameId = parseInt(optionBtn.getAttribute('data-game-id'), 10);
+      if (!isNaN(gameId) && typeof window.setGameContext === 'function') {
+        window.setGameContext(gameId);
+      }
+      closePopover();
+      btn.focus();
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!switcher.contains(e.target)) {
+      closePopover();
+    }
+  });
+
+  switcher.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closePopover();
+      btn.focus();
+    }
+  });
+}
+
+/**
+ * Fetches the list of games and initializes the top-bar game switcher popover.
  */
 function initGameContext() {
-  // 4. One-time Global Data Boot: Pings the active game parameters explicitly into the Header Navigation Bar
-  const gameSelector = document.getElementById('game-selector');
-
   window.gameContextLoaded = API.getGames()
     .then((json) => {
       if (json.status === 'success' && json.data.length > 0) {
+        window.gamesList = json.data;
+
         // Find Active Game
         const activeGame =
           json.data.find((g) => Number(g.is_active) === 1) || json.data[0];
@@ -399,16 +778,7 @@ function initGameContext() {
             targetGameId = parsedId;
           }
         }
-        if (fullHash.startsWith('#dashpoint?id=')) {
-          const dpId = fullHash.split('?id=')[1];
-          if (dpId && dpId.startsWith('GD')) {
-            const gameIdStr = dpId.split('-')[0].substring(2);
-            const parsedId = parseInt(gameIdStr, 10);
-            if (!isNaN(parsedId) && json.data.find((g) => g.id === parsedId)) {
-              targetGameId = parsedId;
-            }
-          }
-        }
+
         if (fullHash.startsWith('#leaderboard')) {
           if (fullHash.includes('?')) {
             const hashParams = new URLSearchParams(fullHash.split('?')[1]);
@@ -426,104 +796,9 @@ function initGameContext() {
           }
         }
 
-        const selectedGame =
-          json.data.find((g) => g.id === targetGameId) || activeGame;
-
-        window.currentGameContext.id = selectedGame.id;
-        window.currentGameContext.is_active =
-          Number(selectedGame.is_active) === 1;
-        window.currentGameContext.title = selectedGame.title;
-        window.currentGameContext.has_summary =
-          Number(selectedGame.has_summary) === 1;
-        const activeD = new Date(selectedGame.start_time);
-        window.currentGameContext.monthYear = activeD.toLocaleDateString(
-          'en-US',
-          { month: 'short', year: 'numeric' },
-        );
-
-        // Populate the Dropdown
-        if (gameSelector) {
-          gameSelector.innerHTML = '';
-          const activeGameStart = new Date(activeGame.start_time).getTime();
-          const fragment = document.createDocumentFragment();
-
-          json.data.forEach((game) => {
-            const d = new Date(game.start_time);
-            const gameStart = d.getTime();
-            const monthYear = d.toLocaleDateString('en-US', {
-              month: 'short',
-              year: 'numeric',
-            });
-            const option = document.createElement('option');
-            option.value = game.id;
-            option.dataset.isActive = game.is_active;
-            option.dataset.title = game.title;
-            option.dataset.monthYear = monthYear;
-            option.dataset.hasSummary = game.has_summary;
-
-            let statusTag = '';
-            if (game.id !== activeGame.id) {
-              if (gameStart > activeGameStart) {
-                statusTag = ' [PREVIEW]';
-              } else if (gameStart < activeGameStart) {
-                statusTag = ' [COMPLETED]';
-              }
-            }
-
-            // Removed titleStr to keep the option text short and prevent layout overflow on mobile
-            option.innerText = `Game ${game.id} (${monthYear})${statusTag}`;
-
-            if (game.id === selectedGame.id) {
-              option.selected = true;
-            }
-            fragment.appendChild(option);
-          });
-
-          gameSelector.appendChild(fragment);
-
-          // Bind the Context Switching Handler
-          gameSelector.addEventListener('change', (e) => {
-            const selOpt = e.target.options[e.target.selectedIndex];
-            const gameId = parseInt(e.target.value);
-            window.currentGameContext.id = gameId;
-            window.currentGameContext.is_active =
-              selOpt.dataset.isActive === '1';
-            window.currentGameContext.title = selOpt.dataset.title;
-            window.currentGameContext.monthYear = selOpt.dataset.monthYear;
-            window.currentGameContext.has_summary =
-              selOpt.dataset.hasSummary === '1';
-
-            if (typeof window.resetUserTags === 'function') {
-              window.resetUserTags();
-            }
-
-            if (window.location.hash.startsWith('#leaderboard')) {
-              const targetHash =
-                window.activeGameId && gameId === window.activeGameId
-                  ? '#leaderboard'
-                  : `#leaderboard?game=${gameId}`;
-
-              if (window.location.hash !== targetHash) {
-                window.location.hash = targetHash;
-              } else {
-                if (window.loadRoute) {
-                  window.loadRoute();
-                }
-              }
-            } else if (
-              window.location.hash === '' ||
-              window.location.hash === '#home'
-            ) {
-              if (typeof window.refreshMapBounds === 'function') {
-                window.refreshMapBounds();
-              }
-            } else {
-              if (window.loadRoute) {
-                window.loadRoute();
-              }
-            }
-          });
-        }
+        initGameSwitcherEvents();
+        renderGameSwitcherPopover(json.data, targetGameId);
+        window.setGameContext(targetGameId, { triggerRouteUpdate: false });
       }
     })
     .catch((_err) =>

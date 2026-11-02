@@ -195,12 +195,13 @@ test.describe('Export Functionality', () => {
     await page.fill('#search-e', '5.0');
     await page.fill('#search-w', '-5.0');
 
-    // Select a different game from the top nav dropdown (assuming game ID 1 exists as historical)
-    // Wait for game selector to be visible and have options
-    await expect(page.locator('#game-selector')).toBeVisible();
+    // Select a different game from the top nav switcher (assuming game ID 1 exists as historical)
+    // Wait for game switcher button to be visible
+    await expect(page.locator('#game-switcher-btn')).toBeVisible();
 
     // Select Game 1 (Historical Game)
-    await page.selectOption('#game-selector', '1');
+    await page.click('#game-switcher-btn');
+    await page.click('#game-switcher-popover [data-game-id="1"]');
 
     // Ensure the export overlay reflects the new game
     await expect(page.locator('#export-game-info')).toContainText(

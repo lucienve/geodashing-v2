@@ -267,9 +267,10 @@ test.describe('E2E Accessibility & Visual Contrast Suite', () => {
     const leaderboardView = page.locator('#view-leaderboard');
     await expect(leaderboardView).toBeVisible();
 
-    // 1. Choose Completed Game 1 from Selector to show summary trigger
-    await expect(page.locator('#game-selector')).toBeVisible();
-    await page.selectOption('#game-selector', '1');
+    // 1. Choose Completed Game 1 from Switcher to show summary trigger
+    await expect(page.locator('#game-switcher-btn')).toBeVisible();
+    await page.click('#game-switcher-btn');
+    await page.click('#game-switcher-popover [data-game-id="1"]');
 
     // 2. Read Game Summary trigger visibility
     const summaryContainer = page.locator('#leaderboard-summary-container');

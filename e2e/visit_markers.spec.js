@@ -44,7 +44,8 @@ test.describe('Actual Log Locations Map Markers', () => {
     });
 
     // Switch to Game 1 context.
-    await page.selectOption('#game-selector', '1');
+    await page.click('#game-switcher-btn');
+    await page.click('#game-switcher-popover [data-game-id="1"]');
 
     // Wait for user position watcher to start
     await page.waitForFunction(() => window.currentUserPosition !== undefined, {

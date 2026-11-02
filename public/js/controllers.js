@@ -151,19 +151,12 @@ document.addEventListener('routeLoaded', (e) => {
           if (
             window.currentGameContext &&
             dp.game_id &&
-            window.currentGameContext.id !== dp.game_id
+            window.currentGameContext.id !== parseInt(dp.game_id, 10)
           ) {
-            window.currentGameContext.id = parseInt(dp.game_id);
-            const gameSelector = document.getElementById('game-selector');
-            if (gameSelector) {
-              gameSelector.value = dp.game_id;
-              const selOpt = gameSelector.options[gameSelector.selectedIndex];
-              if (selOpt) {
-                window.currentGameContext.is_active =
-                  selOpt.dataset.isActive === '1';
-                window.currentGameContext.title = selOpt.dataset.title;
-                window.currentGameContext.monthYear = selOpt.dataset.monthYear;
-              }
+            if (typeof window.setGameContext === 'function') {
+              window.setGameContext(parseInt(dp.game_id, 10), {
+                triggerRouteUpdate: false,
+              });
             }
           }
 
@@ -198,8 +191,9 @@ document.addEventListener('routeLoaded', (e) => {
           // Evaluate Ownership & Authentication dynamically wrapping the Primary Button State
           if (btnLog) {
             if (
-              window.currentGameContext &&
-              !window.currentGameContext.is_active
+              !dp.is_game_active ||
+              (window.currentGameContext &&
+                !window.currentGameContext.is_active)
             ) {
               // Hide actions representing the read-only state.
               btnLog.classList.add('d-none');
@@ -2320,21 +2314,12 @@ document.addEventListener('routeLoaded', (e) => {
         }
 
         if (gameId) {
-          const gameSelector = document.getElementById('game-selector');
-          if (gameSelector && parseInt(gameSelector.value) !== gameId) {
-            const option = Array.from(gameSelector.options).find(
-              (opt) => parseInt(opt.value) === gameId,
-            );
-            if (option) {
-              gameSelector.value = gameId.toString();
-              window.currentGameContext.id = gameId;
-              window.currentGameContext.is_active =
-                option.dataset.isActive === '1';
-              window.currentGameContext.title = option.dataset.title;
-              window.currentGameContext.monthYear = option.dataset.monthYear;
-              window.currentGameContext.has_summary =
-                option.dataset.hasSummary === '1';
-            }
+          if (
+            window.currentGameContext &&
+            window.currentGameContext.id !== gameId &&
+            typeof window.setGameContext === 'function'
+          ) {
+            window.setGameContext(gameId, { triggerRouteUpdate: false });
           }
         }
 
