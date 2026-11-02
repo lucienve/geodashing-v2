@@ -1822,47 +1822,90 @@ document.addEventListener('routeLoaded', (e) => {
         if (data.games && data.games.length > 0) {
           html += `<h4 class="profile-section-title">Historical Activity</h4>`;
 
+          const activeGameInList = data.games.find(
+            (g) => Number(g.is_active) === 1 || g.is_active === true,
+          );
+          const defaultExpandedGameId = activeGameInList
+            ? activeGameInList.game_id
+            : data.games[0].game_id;
+
           data.games.forEach((game) => {
+            const isActive =
+              Number(game.is_active) === 1 || game.is_active === true;
+            const isExpanded = game.game_id === defaultExpandedGameId;
+            const logCount = game.visits ? game.visits.length : 0;
+            const activeCardClass = isActive ? ' profile-game-active' : '';
+
             html += `
-                        <div class="dash-block profile-game-card">
-                            <div class="profile-game-header">
-                                <strong class="profile-game-title">Game ${game.game_id} 
-                                    ${game.title ? `- ${window.escapeHTML(game.title)}` : ''} 
-                                    ${game.is_active ? `<span class="profile-badge-active">[ACTIVE]</span>` : ''}
-                                </strong>
-                                <span class="profile-game-score">${game.game_total_score} PT</span>
-                            </div>
-                            <div class="profile-game-meta">
-                                ${game.visits ? game.visits.length : 0} Recorded Logs
-                            </div>
-                            <div class="profile-logs-grid">
+                        <div class="dash-block profile-game-card${activeCardClass}">
+                            <button type="button" class="profile-game-header profile-game-toggle" 
+                                    aria-expanded="${isExpanded ? 'true' : 'false'}" 
+                                    aria-controls="profile-game-body-${game.game_id}">
+                                <div class="profile-game-header-left">
+                                    <strong class="profile-game-title">Game ${game.game_id} 
+                                        ${game.title ? `- ${window.escapeHTML(game.title)}` : ''} 
+                                    </strong>
+                                    ${isActive ? `<span class="profile-badge-active">[ACTIVE]</span>` : ''}
+                                </div>
+                                <div class="profile-game-header-right">
+                                    <span class="profile-game-meta-badge">${logCount} Logs</span>
+                                    <span class="profile-game-score">${game.game_total_score} PT</span>
+                                    <span class="profile-accordion-chevron" aria-hidden="true">▾</span>
+                                </div>
+                            </button>
+                            <div id="profile-game-body-${game.game_id}" class="profile-game-body${isExpanded ? '' : ' is-collapsed'}">
+                                <div class="profile-logs-grid">
                     `;
 
-            game.visits.forEach((v, index) => {
-              const logTime = new Date(v.reported_time).toLocaleDateString();
-              const isAttempt =
-                Number(v.is_attempt) === 1 || v.is_attempt === true;
-              const scoreLabel = isAttempt ? 'ATTEMPT' : `+${v.score_awarded}`;
-              const attemptClass = isAttempt ? ' is-attempt' : '';
+            if (game.visits && game.visits.length > 0) {
+              game.visits.forEach((v, index) => {
+                const logTime = new Date(v.reported_time).toLocaleDateString();
+                const isAttempt =
+                  Number(v.is_attempt) === 1 || v.is_attempt === true;
+                const scoreLabel = isAttempt
+                  ? 'ATTEMPT'
+                  : `+${v.score_awarded}`;
+                const attemptClass = isAttempt ? ' is-attempt' : '';
 
-              html += `
-                            <a href="#dashpoint?id=${encodeURIComponent(v.dashpoint_id)}" class="nav-link profile-log-item${attemptClass}">
-                                <div class="profile-log-row">
-                                    <span class="profile-log-name${attemptClass}">${index + 1}. ${window.escapeHTML(v.dashpoint_id)}</span>
-                                    <span class="profile-log-score${attemptClass}">${scoreLabel}</span>
-                                </div>
-                                <div class="profile-log-date">[ LOGGED: ${logTime} ]</div>
-                            </a>
-                        `;
-            });
+                html += `
+                              <a href="#dashpoint?id=${encodeURIComponent(v.dashpoint_id)}" class="nav-link profile-log-item${attemptClass}">
+                                  <div class="profile-log-row">
+                                      <span class="profile-log-name${attemptClass}">${index + 1}. ${window.escapeHTML(v.dashpoint_id)}</span>
+                                      <span class="profile-log-score${attemptClass}">${scoreLabel}</span>
+                                  </div>
+                                  <div class="profile-log-date">[ LOGGED: ${logTime} ]</div>
+                              </a>
+                          `;
+              });
+            } else {
+              html += `<div class="profile-logs-empty">[ No Dashpoints Claimed in Game ${game.game_id} ]</div>`;
+            }
 
-            html += `</div></div>`;
+            html += `</div></div></div>`;
           });
         } else {
           html += `<div class="profile-empty-history">[ NO GAME HISTORY FOUND ]</div>`;
         }
 
         container.innerHTML = html;
+
+        const gameToggles = container.querySelectorAll('.profile-game-toggle');
+        gameToggles.forEach((toggle) => {
+          toggle.addEventListener('click', () => {
+            const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+            const bodyId = toggle.getAttribute('aria-controls');
+            const body = document.getElementById(bodyId);
+            if (body) {
+              if (isExpanded) {
+                toggle.setAttribute('aria-expanded', 'false');
+                body.classList.add('is-collapsed');
+              } else {
+                toggle.setAttribute('aria-expanded', 'true');
+                body.classList.remove('is-collapsed');
+              }
+            }
+          });
+        });
 
         const toggleBtn = document.getElementById('btn-toggle-subscription');
         if (toggleBtn) {

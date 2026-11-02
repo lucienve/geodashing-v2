@@ -136,6 +136,41 @@ test.describe('Multi-Game State and Logic', () => {
     });
   });
 
+  test('Profile game cards render accordion toggles and collapse/expand on click', async ({
+    page,
+  }) => {
+    // Visit TestUser's profile directly via URL hash
+    await page.goto('/#profile?username=TestUser');
+
+    const profileContainer = page.locator('#profile-container');
+    await expect(profileContainer).toBeVisible({ timeout: 10000 });
+
+    const gameCard = profileContainer.locator('.profile-game-card');
+    await expect(gameCard).toBeVisible();
+
+    const toggleBtn = gameCard.locator('.profile-game-toggle');
+    await expect(toggleBtn).toBeVisible();
+
+    // Since TestUser only has Game 1 activity (index 0), it is expanded by default
+    await expect(toggleBtn).toHaveAttribute('aria-expanded', 'true');
+    const body = gameCard.locator('.profile-game-body');
+    await expect(body).toBeVisible();
+    await expect(body).not.toHaveClass(/is-collapsed/);
+    await expect(body).toContainText('GD000-AAAA');
+
+    // Click to collapse
+    await toggleBtn.click();
+    await expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
+    await expect(body).toHaveClass(/is-collapsed/);
+    await expect(body).toBeHidden();
+
+    // Click to expand again
+    await toggleBtn.click();
+    await expect(toggleBtn).toHaveAttribute('aria-expanded', 'true');
+    await expect(body).not.toHaveClass(/is-collapsed/);
+    await expect(body).toBeVisible();
+  });
+
   test('Leaderboard loads specific game context when deep-linked', async ({
     page,
   }) => {

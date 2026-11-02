@@ -2705,3 +2705,33 @@ geographic games where they are tasked with reaching randomly generated
     [`e2e/export.spec.js`](../e2e/export.spec.js), and
     [`e2e/visit_markers.spec.js`](../e2e/visit_markers.spec.js)) to interact
     with the new popover triggers and assert mobile compact layout constraints.
+
+### 97. Player Profile Collapsible Accordion Game Cards (Phase 2, #149)
+
+- **Accessible Collapsible Card Architecture**:
+  - Refactored `.profile-game-card` in
+    [`public/js/controllers.js`](../public/js/controllers.js) from static block
+    containers into accessible collapsible accordions.
+  - Replaced the card header with a native interactive trigger:
+    `<button type="button" class="profile-game-header profile-game-toggle"`
+    `aria-expanded="..." aria-controls="...">`.
+  - Added rotating chevron indicator (`.profile-accordion-chevron`) and dynamic
+    log counter badges alongside total points.
+- **Smart Default Expansion Policy**:
+  - Automatically identifies if the player has recorded visits in the active
+    game; if so, only the active game card expands by default while older games
+    collapse.
+  - If the player has no logs in the active game, the most recent game
+    (`data.games[0]`) expands by default, preventing unnecessary vertical
+    scrolling on long player histories.
+- **Responsive Layout & Mobile Guardrails**:
+  - Implemented responsive wrapping in
+    [`public/css/index.css`](../public/css/index.css): on mobile viewports ($\le
+    768\text{px}$), the toggle header flexes into a two-row layout (game
+    title/badge above, log count and score below), preventing score badges from
+    overflowing the glass panel boundary.
+- **Automated Testing**:
+  - Added dedicated Playwright E2E coverage in
+    [`e2e/multi_game.spec.js`](../e2e/multi_game.spec.js) verifying default
+    expansion states, ARIA toggle attribute updates, and collapse/expand DOM
+    visibility transitions on click.
