@@ -220,8 +220,7 @@ def test_get_gemini_client_with_api_key(
     client = backend.scripts.generate_summary.get_gemini_client(ai_config)
 
     assert client == mock_client_class.return_value
-    mock_client_class.assert_called_once_with(vertexai=False,
-                                              api_key="test-api-key")
+    mock_client_class.assert_called_once_with(api_key="test-api-key")
 
 
 @unittest.mock.patch.dict("os.environ", {}, clear=True)
@@ -241,7 +240,7 @@ def test_get_gemini_client(mock_auth_default: unittest.mock.MagicMock,
     assert client == mock_client_class.return_value
     mock_creds.with_quota_project.assert_called_once_with("test-project-123")
     mock_client_class.assert_called_once_with(
-        vertexai=False, credentials=mock_creds.with_quota_project.return_value)
+        credentials=mock_creds.with_quota_project.return_value)
 
 
 @unittest.mock.patch(

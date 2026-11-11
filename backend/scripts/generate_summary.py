@@ -124,7 +124,7 @@ def get_gemini_client(ai_config: dict[str, str | None]) -> google.genai.Client:
     """Builds a GenAI client using API key or project billing credentials."""
     api_key = ai_config.get('api_key') or os.environ.get('GEMINI_API_KEY')
     if api_key:
-        return google.genai.Client(vertexai=False, api_key=api_key)
+        return google.genai.Client(api_key=api_key)
 
     project_id = ai_config.get('project_id')
     try:
@@ -135,7 +135,7 @@ def get_gemini_client(ai_config: dict[str, str | None]) -> google.genai.Client:
     except google.auth.exceptions.DefaultCredentialsError:
         creds = None
 
-    return google.genai.Client(vertexai=False, credentials=creds)
+    return google.genai.Client(credentials=creds)
 
 
 def download_file_to_temp(url: str) -> str | None:

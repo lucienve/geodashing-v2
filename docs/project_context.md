@@ -2821,3 +2821,23 @@ geographic games where they are tasked with reaching randomly generated
   - Updated documentation in
     [`.agents/rules/geodashing_rules.md`](../.agents/rules/geodashing_rules.md)
     and [`docs/admin_guide.md`](admin_guide.md).
+
+### 101. Google GenAI 3.1.0 SDK Upgrade (httpx2 Transport & v1 Routing)
+
+- Upgraded `google-genai` from `>=2.19.0` to `>=3.1.0` in
+  [`pyproject.toml`](../pyproject.toml) and refreshed [`uv.lock`](../uv.lock):
+  - Updated dev dependency `pydantic` constraint from `>=2.11.0` to `>=2.12.5`
+    to match the new minimum floor requirement of `google-genai` 3.1.0.
+  - Transitioned the internal HTTP transport from legacy `httpx` (`0.28.1`) and
+    `httpcore` (`1.0.9`) to `httpx2` (`2.16.0`), `httpcore2` (`2.16.0`), and
+    `truststore` (`0.10.5`), removing all transitive dependencies on `httpx`.
+  - Removed legacy `vertexai=False` initialization arguments in
+    [`get_gemini_client`](../backend/scripts/generate_summary.py), defaulting
+    cleanly to the Gemini Developer API endpoint, and updated mock constructor
+    assertions in
+    [`backend/tests/test_generate_summary.py`](../backend/tests/test_generate_summary.py).
+  - Executed precursor live verification confirming `v1` File API upload,
+    multimodal image URI interactions, and remote file deletion.
+  - Validated qualitative summary generation through the 4-game live benchmark
+    evaluation suite in
+    [`backend/tests/test_summary_evaluation.py`](../backend/tests/test_summary_evaluation.py).
