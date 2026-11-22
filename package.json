@@ -30,13 +30,13 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@playwright/test": "^1.65.0",
-    "eslint": "^10.14.0",
-    "eslint-plugin-jsdoc": "^65.4.5",
+    "@playwright/test": "^1.65.1",
+    "eslint": "^10.15.0",
+    "eslint-plugin-jsdoc": "^65.4.12",
     "globals": "^17.14.0",
     "lighthouse": "^13.6.0",
-    "markdownlint-cli2": "^0.24.0",
+    "markdownlint-cli2": "^0.24.1",
     "playwright-lighthouse": "^4.0.0",
-    "prettier": "^3.10.0"
+    "prettier": "^3.10.1"
   }
 }
